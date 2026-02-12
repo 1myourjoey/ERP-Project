@@ -3,13 +3,18 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from models.task import Task
 from schemas.workflow import (
-    WorkflowResponse, WorkflowListItem,
-    WorkflowInstantiateRequest, WorkflowInstanceResponse,
-    WorkflowStepInstanceResponse, WorkflowStepCompleteRequest,
+    WorkflowResponse,
+    WorkflowListItem,
+    WorkflowCreateRequest,
+    WorkflowUpdateRequest,
+    WorkflowInstantiateRequest,
+    WorkflowInstanceResponse,
+    WorkflowStepInstanceResponse,
+    WorkflowStepCompleteRequest,
 )
 from services.workflow_service import instantiate_workflow
 
@@ -20,7 +25,7 @@ router = APIRouter(tags=["workflows"])
 
 @router.get("/api/workflows", response_model=list[WorkflowListItem])
 def list_workflows(db: Session = Depends(get_db)):
-    workflows = db.query(Workflow).all()
+    workflows = db.query(Workflow).order_by(Workflow.id.desc()).all()
     result = []
     for wf in workflows:
         item = WorkflowListItem(
@@ -41,6 +46,104 @@ def get_workflow(workflow_id: int, db: Session = Depends(get_db)):
     if not wf:
         raise HTTPException(404, "Workflow not found")
     return wf
+
+
+@router.post("/api/workflows", response_model=WorkflowResponse, status_code=201)
+def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
+    wf = Workflow(
+        name=data.name,
+        trigger_description=data.trigger_description,
+        category=data.category,
+        total_duration=data.total_duration,
+    )
+
+    for step in data.steps:
+        wf.steps.append(WorkflowStep(
+            order=step.order,
+            name=step.name,
+            timing=step.timing,
+            timing_offset_days=step.timing_offset_days,
+            estimated_time=step.estimated_time,
+            quadrant=step.quadrant,
+            memo=step.memo,
+        ))
+
+    for doc in data.documents:
+        wf.documents.append(WorkflowDocument(
+            name=doc.name,
+            required=doc.required,
+            timing=doc.timing,
+            notes=doc.notes,
+        ))
+
+    for warning in data.warnings:
+        wf.warnings.append(WorkflowWarning(content=warning.content))
+
+    db.add(wf)
+    db.commit()
+    db.refresh(wf)
+    return wf
+
+
+@router.put("/api/workflows/{workflow_id}", response_model=WorkflowResponse)
+def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session = Depends(get_db)):
+    wf = db.get(Workflow, workflow_id)
+    if not wf:
+        raise HTTPException(404, "Workflow not found")
+
+    wf.name = data.name
+    wf.trigger_description = data.trigger_description
+    wf.category = data.category
+    wf.total_duration = data.total_duration
+
+    wf.steps.clear()
+    for step in data.steps:
+        wf.steps.append(WorkflowStep(
+            order=step.order,
+            name=step.name,
+            timing=step.timing,
+            timing_offset_days=step.timing_offset_days,
+            estimated_time=step.estimated_time,
+            quadrant=step.quadrant,
+            memo=step.memo,
+        ))
+
+    wf.documents.clear()
+    for doc in data.documents:
+        wf.documents.append(WorkflowDocument(
+            name=doc.name,
+            required=doc.required,
+            timing=doc.timing,
+            notes=doc.notes,
+        ))
+
+    wf.warnings.clear()
+    for warning in data.warnings:
+        wf.warnings.append(WorkflowWarning(content=warning.content))
+
+    db.commit()
+    db.refresh(wf)
+    return wf
+
+
+@router.delete("/api/workflows/{workflow_id}")
+def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
+    wf = db.get(Workflow, workflow_id)
+    if not wf:
+        raise HTTPException(404, "Workflow not found")
+
+    has_instances = (
+        db.query(WorkflowInstance)
+        .filter(WorkflowInstance.workflow_id == workflow_id)
+        .count()
+        > 0
+    )
+    if has_instances:
+        raise HTTPException(409, "Cannot delete workflow template with instances")
+
+    db.delete(wf)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/api/workflows/{workflow_id}/instantiate", response_model=WorkflowInstanceResponse)
@@ -88,7 +191,6 @@ def complete_step(
     si.actual_time = data.actual_time
     si.notes = data.notes
 
-    # 연결된 Task도 완료 처리
     if si.task_id:
         task = db.get(Task, si.task_id)
         if task:
@@ -96,7 +198,6 @@ def complete_step(
             task.completed_at = datetime.now()
             task.actual_time = data.actual_time
 
-    # 모든 step 완료 시 instance도 완료
     instance = db.get(WorkflowInstance, instance_id)
     all_done = all(
         s.status in ("completed", "skipped")
@@ -117,12 +218,13 @@ def cancel_instance(instance_id: int, db: Session = Depends(get_db)):
     if not instance:
         raise HTTPException(404, "Instance not found")
     instance.status = "cancelled"
-    # 미완료 Task도 삭제
+
     for si in instance.step_instances:
         if si.task_id and si.status == "pending":
             task = db.get(Task, si.task_id)
             if task and task.status == "pending":
                 db.delete(task)
+
     db.commit()
     db.refresh(instance)
     return _build_instance_response(instance)

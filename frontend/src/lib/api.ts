@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
 
-// ── Tasks ──
+// -- Tasks --
 export const fetchTaskBoard = (status = 'pending') =>
   api.get('/tasks/board', { params: { status } }).then(r => r.data)
 
@@ -24,16 +24,25 @@ export const completeTask = (id: number, actual_time: string) =>
 export const deleteTask = (id: number) =>
   api.delete(`/tasks/${id}`)
 
-// ── Dashboard ──
+// -- Dashboard --
 export const fetchDashboard = () =>
   api.get('/dashboard/today').then(r => r.data)
 
-// ── Workflows ──
+// -- Workflows --
 export const fetchWorkflows = () =>
   api.get('/workflows').then(r => r.data)
 
 export const fetchWorkflow = (id: number) =>
   api.get(`/workflows/${id}`).then(r => r.data)
+
+export const createWorkflowTemplate = (data: WorkflowTemplateInput) =>
+  api.post('/workflows', data).then(r => r.data)
+
+export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput) =>
+  api.put(`/workflows/${id}`, data).then(r => r.data)
+
+export const deleteWorkflowTemplate = (id: number) =>
+  api.delete(`/workflows/${id}`).then(r => r.data)
 
 export const instantiateWorkflow = (id: number, data: { name: string; trigger_date: string; memo?: string }) =>
   api.post(`/workflows/${id}/instantiate`, data).then(r => r.data)
@@ -50,7 +59,7 @@ export const completeWorkflowStep = (instanceId: number, stepId: number, data: {
 export const cancelWorkflowInstance = (id: number) =>
   api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
 
-// ── WorkLogs ──
+// -- WorkLogs --
 export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }) =>
   api.get('/worklogs', { params }).then(r => r.data)
 
@@ -66,7 +75,7 @@ export const updateWorkLog = (id: number, data: any) =>
 export const deleteWorkLog = (id: number) =>
   api.delete(`/worklogs/${id}`)
 
-// ── Types ──
+// -- Types --
 export interface TaskCreate {
   title: string
   deadline?: string | null
@@ -97,4 +106,35 @@ export interface TaskBoard {
   Q2: Task[]
   Q3: Task[]
   Q4: Task[]
+}
+
+export interface WorkflowStepInput {
+  order: number
+  name: string
+  timing: string
+  timing_offset_days: number
+  estimated_time?: string | null
+  quadrant?: string
+  memo?: string | null
+}
+
+export interface WorkflowDocumentInput {
+  name: string
+  required: boolean
+  timing?: string | null
+  notes?: string | null
+}
+
+export interface WorkflowWarningInput {
+  content: string
+}
+
+export interface WorkflowTemplateInput {
+  name: string
+  trigger_description?: string | null
+  category?: string | null
+  total_duration?: string | null
+  steps: WorkflowStepInput[]
+  documents: WorkflowDocumentInput[]
+  warnings: WorkflowWarningInput[]
 }

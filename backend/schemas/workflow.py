@@ -5,6 +5,47 @@ from typing import Optional
 
 # --- Template schemas ---
 
+class WorkflowStepCreate(BaseModel):
+    order: int
+    name: str
+    timing: str
+    timing_offset_days: int
+    estimated_time: Optional[str] = None
+    quadrant: str = "Q1"
+    memo: Optional[str] = None
+
+
+class WorkflowDocumentCreate(BaseModel):
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class WorkflowWarningCreate(BaseModel):
+    content: str
+
+
+class WorkflowCreateRequest(BaseModel):
+    name: str
+    trigger_description: Optional[str] = None
+    category: Optional[str] = None
+    total_duration: Optional[str] = None
+    steps: list[WorkflowStepCreate] = []
+    documents: list[WorkflowDocumentCreate] = []
+    warnings: list[WorkflowWarningCreate] = []
+
+
+class WorkflowUpdateRequest(BaseModel):
+    name: str
+    trigger_description: Optional[str] = None
+    category: Optional[str] = None
+    total_duration: Optional[str] = None
+    steps: list[WorkflowStepCreate] = []
+    documents: list[WorkflowDocumentCreate] = []
+    warnings: list[WorkflowWarningCreate] = []
+
+
 class WorkflowStepResponse(BaseModel):
     id: int
     order: int
