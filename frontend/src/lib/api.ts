@@ -59,6 +59,34 @@ export const completeWorkflowStep = (instanceId: number, stepId: number, data: {
 export const cancelWorkflowInstance = (id: number) =>
   api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
 
+// -- Funds --
+export const fetchFunds = () =>
+  api.get('/funds').then(r => r.data)
+
+export const fetchFund = (id: number) =>
+  api.get(`/funds/${id}`).then(r => r.data)
+
+export const createFund = (data: FundInput) =>
+  api.post('/funds', data).then(r => r.data)
+
+export const updateFund = (id: number, data: Partial<FundInput>) =>
+  api.put(`/funds/${id}`, data).then(r => r.data)
+
+export const deleteFund = (id: number) =>
+  api.delete(`/funds/${id}`)
+
+export const fetchFundLPs = (fundId: number) =>
+  api.get(`/funds/${fundId}/lps`).then(r => r.data)
+
+export const createFundLP = (fundId: number, data: LPInput) =>
+  api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
+
+export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) =>
+  api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
+
+export const deleteFundLP = (fundId: number, lpId: number) =>
+  api.delete(`/funds/${fundId}/lps/${lpId}`)
+
 // -- WorkLogs --
 export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }) =>
   api.get('/worklogs', { params }).then(r => r.data)
@@ -137,4 +165,24 @@ export interface WorkflowTemplateInput {
   steps: WorkflowStepInput[]
   documents: WorkflowDocumentInput[]
   warnings: WorkflowWarningInput[]
+}
+
+export interface FundInput {
+  name: string
+  type: string
+  formation_date?: string | null
+  status?: string
+  gp?: string | null
+  co_gp?: string | null
+  trustee?: string | null
+  commitment_total?: number | null
+  aum?: number | null
+}
+
+export interface LPInput {
+  name: string
+  type: string
+  commitment?: number | null
+  paid_in?: number | null
+  contact?: string | null
 }

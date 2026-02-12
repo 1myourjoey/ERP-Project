@@ -1,21 +1,21 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, KanbanSquare, GitBranch, BookOpen } from 'lucide-react'
+import { LayoutDashboard, KanbanSquare, GitBranch, BookOpen, Building2 } from 'lucide-react'
 
 const NAV = [
-  { to: '/dashboard', label: 'ëŒ€ì‹œë³´ë“œ', icon: LayoutDashboard },
-  { to: '/tasks', label: 'ì‘ì—… ë³´ë“œ', icon: KanbanSquare },
-  { to: '/workflows', label: 'ì›Œí¬í”Œë¡œìš°', icon: GitBranch },
-  { to: '/worklogs', label: 'ì—…ë¬´ì¼ì§€', icon: BookOpen },
+  { to: '/dashboard', label: '´ë½Ãº¸µå', icon: LayoutDashboard },
+  { to: '/tasks', label: 'ÀÛ¾÷ º¸µå', icon: KanbanSquare },
+  { to: '/workflows', label: '¿öÅ©ÇÃ·Î¿ì', icon: GitBranch },
+  { to: '/worklogs', label: '¾÷¹«ÀÏÁö', icon: BookOpen },
+  { to: '/funds', label: 'Æİµå °ü¸®', icon: Building2 },
 ]
 
 export default function Layout() {
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <aside className="w-56 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-5 py-4 border-b border-slate-700">
           <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
-          <p className="text-xs text-slate-400 mt-0.5">íŠ¸ë¦¬ê±°íˆ¬ìíŒŒíŠ¸ë„ˆìŠ¤</p>
+          <p className="text-xs text-slate-400 mt-0.5">Æ®¸®°ÅÅõÀÚÆÄÆ®³Ê½º</p>
         </div>
         <nav className="flex-1 py-3">
           {NAV.map(({ to, label, icon: Icon }) => (
@@ -37,7 +37,6 @@ export default function Layout() {
         </nav>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
