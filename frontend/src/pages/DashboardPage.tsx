@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { fetchDashboard } from '../lib/api'
 import type { Task } from '../lib/api'
 import { Clock, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
@@ -10,13 +11,16 @@ const QUADRANT_COLORS: Record<string, string> = {
   Q4: 'bg-gray-100 text-gray-600',
 }
 
-function TaskCard({ task }: { task: Task }) {
+function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : null
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 hover:shadow-sm transition-shadow">
+    <div
+      onClick={onClick}
+      className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 hover:shadow-sm hover:border-blue-300 transition-all cursor-pointer"
+    >
       <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${QUADRANT_COLORS[task.quadrant] || ''}`}>
         {task.quadrant}
       </span>
@@ -36,11 +40,12 @@ function TaskCard({ task }: { task: Task }) {
   )
 }
 
-function TaskSection({ title, tasks, totalTime, icon }: {
+function TaskSection({ title, tasks, totalTime, icon, onTaskClick }: {
   title: string
   tasks: Task[]
   totalTime?: string
   icon?: React.ReactNode
+  onTaskClick: () => void
 }) {
   return (
     <div>
@@ -62,7 +67,7 @@ function TaskSection({ title, tasks, totalTime, icon }: {
         </p>
       ) : (
         <div className="space-y-2">
-          {tasks.map((t) => <TaskCard key={t.id} task={t} />)}
+          {tasks.map((t) => <TaskCard key={t.id} task={t} onClick={onTaskClick} />)}
         </div>
       )}
     </div>
@@ -70,6 +75,7 @@ function TaskSection({ title, tasks, totalTime, icon }: {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboard,
@@ -98,7 +104,11 @@ export default function DashboardPage() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {active_workflows.map((wf: any) => (
-              <div key={wf.id} className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <div
+                key={wf.id}
+                onClick={() => navigate('/workflows', { state: { expandInstanceId: wf.id } })}
+                className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg hover:shadow-sm hover:border-indigo-400 transition-all cursor-pointer"
+              >
                 <p className="text-sm font-medium text-indigo-800">{wf.name}</p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-indigo-600">진행: {wf.progress}</span>
@@ -119,22 +129,26 @@ export default function DashboardPage() {
           tasks={today.tasks}
           totalTime={today.total_estimated_time}
           icon={<AlertTriangle size={16} className="text-red-500" />}
+          onTaskClick={() => navigate('/tasks')}
         />
         <TaskSection
           title="내일"
           tasks={tomorrow.tasks}
           totalTime={tomorrow.total_estimated_time}
           icon={<Clock size={16} className="text-amber-500" />}
+          onTaskClick={() => navigate('/tasks')}
         />
         <TaskSection
           title="이번 주"
           tasks={this_week}
           icon={<CheckCircle2 size={16} className="text-blue-500" />}
+          onTaskClick={() => navigate('/tasks')}
         />
         <TaskSection
           title="다가오는 일정"
           tasks={upcoming}
           icon={<CheckCircle2 size={16} className="text-slate-400" />}
+          onTaskClick={() => navigate('/tasks')}
         />
       </div>
     </div>

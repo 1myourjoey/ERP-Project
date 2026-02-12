@@ -1,9 +1,137 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchWorkLogs, fetchWorkLogCategories, createWorkLog, deleteWorkLog } from '../lib/api'
-import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import { fetchWorkLogs, fetchWorkLogCategories, createWorkLog, updateWorkLog, deleteWorkLog } from '../lib/api'
+import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 
-function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => void }) {
+function DynamicList({ label, items, onChange, color = 'slate' }: {
+  label: string
+  items: { content: string }[]
+  onChange: (items: { content: string }[]) => void
+  color?: string
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <p className={`text-xs font-semibold text-${color}-700`}>{label}</p>
+        <button
+          onClick={() => onChange([...items, { content: '' }])}
+          className="text-xs text-blue-600 hover:text-blue-800"
+        >
+          + 추가
+        </button>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-1 mb-1">
+          <input
+            value={item.content}
+            onChange={e => {
+              const next = [...items]
+              next[i] = { content: e.target.value }
+              onChange(next)
+            }}
+            className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500">
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }: {
+  categories: string[]
+  initial?: any
+  onSave: (data: any) => void
+  onClose: () => void
+  title: string
+}) {
+  const [form, setForm] = useState({
+    date: initial?.date || new Date().toISOString().split('T')[0],
+    category: initial?.category || categories[0] || '',
+    title: initial?.title || '',
+    content: initial?.content || '',
+    status: initial?.status || '완료',
+    estimated_time: initial?.estimated_time || '',
+    actual_time: initial?.actual_time || '',
+    time_diff: initial?.time_diff || '',
+  })
+  const [details, setDetails] = useState<{ content: string }[]>(
+    initial?.details?.map((d: any) => ({ content: d.content })) || []
+  )
+  const [lessons, setLessons] = useState<{ content: string }[]>(
+    initial?.lessons?.map((l: any) => ({ content: l.content })) || []
+  )
+  const [followUps, setFollowUps] = useState<{ content: string }[]>(
+    initial?.follow_ups?.map((f: any) => ({ content: f.content })) || []
+  )
+
+  const set = (key: string) => (e: any) => setForm({ ...form, [key]: e.target.value })
+
+  const submit = () => {
+    if (!form.title) return
+    onSave({
+      ...form,
+      details: details.filter(d => d.content.trim()),
+      lessons: lessons.filter(l => l.content.trim()),
+      follow_ups: followUps.filter(f => f.content.trim()),
+    })
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+      <h3 className="text-base font-semibold text-slate-800">{formTitle}</h3>
+
+      <div className="grid grid-cols-2 gap-2">
+        <input type="date" value={form.date} onChange={set('date')} className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <select value={form.category} onChange={set('category')} className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      <input
+        value={form.title}
+        onChange={set('title')}
+        placeholder="제목"
+        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+
+      <textarea
+        value={form.content}
+        onChange={set('content')}
+        placeholder="내용 (선택)"
+        rows={2}
+        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+      />
+
+      <div className="grid grid-cols-3 gap-2">
+        <input value={form.estimated_time} onChange={set('estimated_time')} placeholder="예상 시간" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input value={form.actual_time} onChange={set('actual_time')} placeholder="실제 시간" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input value={form.time_diff} onChange={set('time_diff')} placeholder="차이" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      </div>
+
+      <DynamicList label="상세 항목" items={details} onChange={setDetails} />
+      <DynamicList label="교훈" items={lessons} onChange={setLessons} color="amber" />
+      <DynamicList label="후속 업무" items={followUps} onChange={setFollowUps} color="blue" />
+
+      <div className="flex gap-2">
+        <button
+          onClick={submit}
+          disabled={!form.title}
+          className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 transition-colors"
+        >
+          저장
+        </button>
+        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: number) => void; onEdit: (log: any) => void }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -35,7 +163,6 @@ function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => v
             <p className="text-sm text-slate-600 mt-2">{log.content}</p>
           )}
 
-          {/* Time diff */}
           {log.estimated_time && log.actual_time && (
             <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
               <span>예상: {log.estimated_time}</span>
@@ -44,7 +171,6 @@ function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => v
             </div>
           )}
 
-          {/* Details */}
           {log.details?.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-slate-600 mb-1">상세</p>
@@ -56,7 +182,6 @@ function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => v
             </div>
           )}
 
-          {/* Lessons */}
           {log.lessons?.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-amber-700 mb-1">교훈</p>
@@ -68,7 +193,6 @@ function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => v
             </div>
           )}
 
-          {/* Follow-ups */}
           {log.follow_ups?.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-1">후속 업무</p>
@@ -83,85 +207,22 @@ function WorkLogEntry({ log, onDelete }: { log: any; onDelete: (id: number) => v
             </div>
           )}
 
-          <button
-            onClick={() => { if (confirm('삭제하시겠습니까?')) onDelete(log.id) }}
-            className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 mt-2"
-          >
-            <Trash2 size={12} /> 삭제
-          </button>
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={() => onEdit(log)}
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <Pencil size={12} /> 편집
+            </button>
+            <button
+              onClick={() => { if (confirm('삭제하시겠습니까?')) onDelete(log.id) }}
+              className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+            >
+              <Trash2 size={12} /> 삭제
+            </button>
+          </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function AddWorkLogForm({ categories, onClose }: { categories: string[]; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    category: categories[0] || '',
-    title: '',
-    content: '',
-    status: '완료',
-    estimated_time: '',
-    actual_time: '',
-    time_diff: '',
-  })
-
-  const mutation = useMutation({
-    mutationFn: createWorkLog,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
-      onClose()
-    },
-  })
-
-  const set = (key: string) => (e: any) => setForm({ ...form, [key]: e.target.value })
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-      <h3 className="text-base font-semibold text-slate-800">업무 기록 추가</h3>
-
-      <div className="grid grid-cols-2 gap-2">
-        <input type="date" value={form.date} onChange={set('date')} className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <select value={form.category} onChange={set('category')} className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-
-      <input
-        value={form.title}
-        onChange={set('title')}
-        placeholder="제목"
-        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
-
-      <textarea
-        value={form.content}
-        onChange={set('content')}
-        placeholder="내용 (선택)"
-        rows={2}
-        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-      />
-
-      <div className="grid grid-cols-3 gap-2">
-        <input value={form.estimated_time} onChange={set('estimated_time')} placeholder="예상 시간" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <input value={form.actual_time} onChange={set('actual_time')} placeholder="실제 시간" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <input value={form.time_diff} onChange={set('time_diff')} placeholder="차이" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          onClick={() => form.title && mutation.mutate(form)}
-          disabled={!form.title}
-          className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 transition-colors"
-        >
-          저장
-        </button>
-        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-          취소
-        </button>
-      </div>
     </div>
   )
 }
@@ -169,6 +230,7 @@ function AddWorkLogForm({ categories, onClose }: { categories: string[]; onClose
 export default function WorkLogsPage() {
   const queryClient = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
+  const [editingLog, setEditingLog] = useState<any | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('')
 
   const { data: logs, isLoading } = useQuery({
@@ -181,12 +243,27 @@ export default function WorkLogsPage() {
     queryFn: fetchWorkLogCategories,
   })
 
+  const createMut = useMutation({
+    mutationFn: createWorkLog,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
+      setShowAdd(false)
+    },
+  })
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => updateWorkLog(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
+      setEditingLog(null)
+    },
+  })
+
   const deleteMut = useMutation({
     mutationFn: deleteWorkLog,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['worklogs'] }),
   })
 
-  // Group by date
   const grouped: Record<string, any[]> = {}
   if (logs) {
     for (const log of logs) {
@@ -203,14 +280,13 @@ export default function WorkLogsPage() {
           <BookOpen size={24} /> 업무일지
         </h2>
         <button
-          onClick={() => setShowAdd(!showAdd)}
+          onClick={() => { setShowAdd(!showAdd); setEditingLog(null) }}
           className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={16} /> 기록 추가
         </button>
       </div>
 
-      {/* Category filter */}
       <div className="flex gap-1 flex-wrap mb-4">
         <button
           onClick={() => setCategoryFilter('')}
@@ -235,7 +311,24 @@ export default function WorkLogsPage() {
 
       {showAdd && categories && (
         <div className="mb-4">
-          <AddWorkLogForm categories={categories} onClose={() => setShowAdd(false)} />
+          <WorkLogForm
+            categories={categories}
+            title="업무 기록 추가"
+            onSave={(data) => createMut.mutate(data)}
+            onClose={() => setShowAdd(false)}
+          />
+        </div>
+      )}
+
+      {editingLog && categories && (
+        <div className="mb-4">
+          <WorkLogForm
+            categories={categories}
+            initial={editingLog}
+            title="업무 기록 편집"
+            onSave={(data) => updateMut.mutate({ id: editingLog.id, data })}
+            onClose={() => setEditingLog(null)}
+          />
         </div>
       )}
 
@@ -252,7 +345,12 @@ export default function WorkLogsPage() {
               </h3>
               <div className="space-y-2">
                 {items.map((log: any) => (
-                  <WorkLogEntry key={log.id} log={log} onDelete={(id) => deleteMut.mutate(id)} />
+                  <WorkLogEntry
+                    key={log.id}
+                    log={log}
+                    onEdit={(log) => { setEditingLog(log); setShowAdd(false) }}
+                    onDelete={(id) => deleteMut.mutate(id)}
+                  />
                 ))}
               </div>
             </div>

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchTaskBoard, createTask, completeTask, deleteTask } from '../lib/api'
+import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask } from '../lib/api'
 import type { Task, TaskBoard, TaskCreate } from '../lib/api'
-import { Plus, Clock, Trash2, Check } from 'lucide-react'
+import { Plus, Clock, Trash2, Check, Pencil } from 'lucide-react'
 
 const QUADRANTS = [
   { key: 'Q1', label: 'Q1: 긴급 & 중요', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -11,10 +11,11 @@ const QUADRANTS = [
   { key: 'Q4', label: 'Q4: 비긴급 & 비중요', color: 'border-gray-300', bg: 'bg-gray-50', badge: 'bg-gray-400' },
 ]
 
-function TaskItem({ task, onComplete, onDelete }: {
+function TaskItem({ task, onComplete, onDelete, onEdit }: {
   task: Task
   onComplete: (id: number) => void
   onDelete: (id: number) => void
+  onEdit: (task: Task) => void
 }) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
@@ -27,7 +28,7 @@ function TaskItem({ task, onComplete, onDelete }: {
         className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
         title="완료"
       />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEdit(task)}>
         <p className="text-sm text-slate-800 leading-snug">{task.title}</p>
         <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
           {deadlineStr && <span>{deadlineStr}</span>}
@@ -41,13 +42,14 @@ function TaskItem({ task, onComplete, onDelete }: {
           )}
         </div>
       </div>
-      <button
-        onClick={() => onDelete(task.id)}
-        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all"
-        title="삭제"
-      >
-        <Trash2 size={14} />
-      </button>
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        <button onClick={() => onEdit(task)} className="text-slate-400 hover:text-blue-500" title="편집">
+          <Pencil size={14} />
+        </button>
+        <button onClick={() => onDelete(task.id)} className="text-slate-400 hover:text-red-500" title="삭제">
+          <Trash2 size={14} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -119,6 +121,119 @@ function AddTaskForm({ quadrant, onAdd }: { quadrant: string; onAdd: (data: Task
   )
 }
 
+function EditTaskModal({ task, onSave, onCancel }: {
+  task: Task
+  onSave: (id: number, data: Partial<TaskCreate>) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState(task.title)
+  const [deadline, setDeadline] = useState(task.deadline ? task.deadline.split('T')[0] : '')
+  const [estimatedTime, setEstimatedTime] = useState(task.estimated_time || '')
+  const [quadrant, setQuadrant] = useState(task.quadrant)
+  const [memo, setMemo] = useState(task.memo || '')
+  const [delegateTo, setDelegateTo] = useState(task.delegate_to || '')
+
+  const submit = () => {
+    if (!title.trim()) return
+    onSave(task.id, {
+      title: title.trim(),
+      deadline: deadline || null,
+      estimated_time: estimatedTime || null,
+      quadrant,
+      memo: memo || null,
+      delegate_to: delegateTo || null,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
+      <div className="bg-white rounded-xl p-5 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-base font-semibold text-slate-800 mb-4">작업 편집</h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">작업명</label>
+            <input
+              autoFocus
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">마감일</label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={e => setDeadline(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">예상시간</label>
+              <input
+                value={estimatedTime}
+                onChange={e => setEstimatedTime(e.target.value)}
+                placeholder="예: 2h, 30m"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">분면</label>
+              <select
+                value={quadrant}
+                onChange={e => setQuadrant(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="Q1">Q1: 긴급 & 중요</option>
+                <option value="Q2">Q2: 중요 & 비긴급</option>
+                <option value="Q3">Q3: 긴급 & 비중요</option>
+                <option value="Q4">Q4: 비긴급 & 비중요</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">위임 대상</label>
+              <input
+                value={delegateTo}
+                onChange={e => setDelegateTo(e.target.value)}
+                placeholder="선택사항"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">메모</label>
+            <textarea
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={submit}
+            className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            저장
+          </button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CompleteModal({ task, onConfirm, onCancel }: {
   task: Task
   onConfirm: (actualTime: string) => void
@@ -159,6 +274,7 @@ function CompleteModal({ task, onConfirm, onCancel }: {
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
 
   const { data: board, isLoading } = useQuery<TaskBoard>({
@@ -169,6 +285,15 @@ export default function TaskBoardPage() {
   const addMutation = useMutation({
     mutationFn: createTask,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['taskBoard'] }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<TaskCreate> }) => updateTask(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setEditingTask(null)
+    },
   })
 
   const completeMutation = useMutation({
@@ -222,6 +347,7 @@ export default function TaskBoardPage() {
                     key={t.id}
                     task={t}
                     onComplete={() => setCompletingTask(t)}
+                    onEdit={(task) => setEditingTask(task)}
                     onDelete={(id) => {
                       if (confirm('삭제하시겠습니까?')) deleteMutation.mutate(id)
                     }}
@@ -235,6 +361,14 @@ export default function TaskBoardPage() {
           )
         })}
       </div>
+
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          onSave={(id, data) => updateMutation.mutate({ id, data })}
+          onCancel={() => setEditingTask(null)}
+        />
+      )}
 
       {completingTask && (
         <CompleteModal
