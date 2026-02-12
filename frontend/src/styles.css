@@ -56,6 +56,37 @@ body {
   padding: 16px;
 }
 
+.create-form {
+  margin-bottom: 16px;
+}
+
+.create-form h2 {
+  margin-top: 0;
+}
+
+.create-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(4, 1fr) 100px;
+  gap: 8px;
+}
+
+.create-grid input,
+.create-grid select,
+.create-grid button,
+.task-actions button {
+  border: 1px solid #cfd9e6;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.create-grid button,
+.task-actions button {
+  background: #0f4c75;
+  color: #fff;
+  cursor: pointer;
+}
+
 .board-grid {
   display: grid;
   gap: 16px;
@@ -109,6 +140,13 @@ body {
   color: #445;
 }
 
+.task-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .tone-q1 {
   border-left: 6px solid #d62828;
 }
@@ -133,5 +171,8 @@ body {
   .board-grid {
     grid-template-columns: 1fr;
   }
-}
 
+  .create-grid {
+    grid-template-columns: 1fr;
+  }
+}
