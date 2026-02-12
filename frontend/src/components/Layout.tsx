@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+癤퓁mport { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   KanbanSquare,
@@ -12,15 +12,15 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { to: '/tasks', label: '작업 보드', icon: KanbanSquare },
-  { to: '/workflows', label: '워크플로우', icon: GitBranch },
-  { to: '/worklogs', label: '업무일지', icon: BookOpen },
-  { to: '/funds', label: '펀드 관리', icon: Building2 },
-  { to: '/investments', label: '투자 관리', icon: PieChart },
-  { to: '/checklists', label: '체크리스트', icon: CheckSquare },
-  { to: '/documents', label: '서류 현황', icon: Files },
-  { to: '/calendar', label: '캘린더', icon: CalendarDays },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/tasks', label: 'Task Board', icon: KanbanSquare },
+  { to: '/workflows', label: 'Workflows', icon: GitBranch },
+  { to: '/worklogs', label: 'Work Logs', icon: BookOpen },
+  { to: '/funds', label: 'Funds', icon: Building2 },
+  { to: '/investments', label: 'Investments', icon: PieChart },
+  { to: '/checklists', label: 'Checklists', icon: CheckSquare },
+  { to: '/documents', label: 'Documents', icon: Files },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
 ]
 
 export default function Layout() {
@@ -29,7 +29,7 @@ export default function Layout() {
       <aside className="w-56 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-5 py-4 border-b border-slate-700">
           <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
-          <p className="text-xs text-slate-400 mt-0.5">트리거투자파트너스</p>
+          <p className="text-xs text-slate-400 mt-0.5">Trigger Investment Partners</p>
         </div>
         <nav className="flex-1 py-3 overflow-auto">
           {NAV.map(({ to, label, icon: Icon }) => (
