@@ -54,6 +54,25 @@ export const createInvestmentDocument = (investmentId: number, data: InvestmentD
 export const updateInvestmentDocument = (investmentId: number, documentId: number, data: Partial<InvestmentDocumentInput>) => api.put(`/investments/${investmentId}/documents/${documentId}`, data).then(r => r.data)
 export const deleteInvestmentDocument = (investmentId: number, documentId: number) => api.delete(`/investments/${investmentId}/documents/${documentId}`)
 
+// -- Checklist --
+export const fetchChecklists = () => api.get('/checklists').then(r => r.data)
+export const fetchChecklist = (id: number) => api.get(`/checklists/${id}`).then(r => r.data)
+export const createChecklist = (data: ChecklistInput) => api.post('/checklists', data).then(r => r.data)
+export const updateChecklist = (id: number, data: Partial<ChecklistInput>) => api.put(`/checklists/${id}`, data).then(r => r.data)
+export const deleteChecklist = (id: number) => api.delete(`/checklists/${id}`)
+export const createChecklistItem = (checklistId: number, data: ChecklistItemInput) => api.post(`/checklists/${checklistId}/items`, data).then(r => r.data)
+export const updateChecklistItem = (checklistId: number, itemId: number, data: Partial<ChecklistItemInput>) => api.put(`/checklists/${checklistId}/items/${itemId}`, data).then(r => r.data)
+export const deleteChecklistItem = (checklistId: number, itemId: number) => api.delete(`/checklists/${checklistId}/items/${itemId}`)
+
+// -- Document Status --
+export const fetchDocumentStatus = (params?: { status?: string; fund_id?: number; company_id?: number }) => api.get('/document-status', { params }).then(r => r.data)
+
+// -- Calendar --
+export const fetchCalendarEvents = (params?: { date_from?: string; date_to?: string; status?: string }) => api.get('/calendar-events', { params }).then(r => r.data)
+export const createCalendarEvent = (data: CalendarEventInput) => api.post('/calendar-events', data).then(r => r.data)
+export const updateCalendarEvent = (id: number, data: Partial<CalendarEventInput>) => api.put(`/calendar-events/${id}`, data).then(r => r.data)
+export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/${id}`)
+
 // -- WorkLogs --
 export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }) => api.get('/worklogs', { params }).then(r => r.data)
 export const fetchWorkLogCategories = () => api.get('/worklogs/categories').then(r => r.data)
@@ -172,4 +191,28 @@ export interface InvestmentDocumentInput {
   doc_type?: string | null
   status?: string
   note?: string | null
+}
+
+export interface ChecklistItemInput {
+  order: number
+  name: string
+  required?: boolean
+  checked?: boolean
+  notes?: string | null
+}
+
+export interface ChecklistInput {
+  name: string
+  category?: string | null
+  items: ChecklistItemInput[]
+}
+
+export interface CalendarEventInput {
+  title: string
+  date: string
+  time?: string | null
+  duration?: number | null
+  description?: string | null
+  status?: string
+  task_id?: number | null
 }

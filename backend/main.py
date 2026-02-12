@@ -3,7 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
 from models import *  # noqa: F401,F403 - import all models so tables are created
-from routers import tasks, workflows, worklogs, dashboard, funds, investments
+from routers import (
+    tasks,
+    workflows,
+    worklogs,
+    dashboard,
+    funds,
+    investments,
+    checklists,
+    calendar_events,
+    document_status,
+)
 
 app = FastAPI(title="VC ERP API", version="0.1.0")
 
@@ -21,6 +31,9 @@ app.include_router(worklogs.router)
 app.include_router(dashboard.router)
 app.include_router(funds.router)
 app.include_router(investments.router)
+app.include_router(checklists.router)
+app.include_router(calendar_events.router)
+app.include_router(document_status.router)
 
 
 @app.on_event("startup")

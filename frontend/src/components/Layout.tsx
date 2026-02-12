@@ -1,5 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, KanbanSquare, GitBranch, BookOpen, Building2, PieChart } from 'lucide-react'
+import {
+  LayoutDashboard,
+  KanbanSquare,
+  GitBranch,
+  BookOpen,
+  Building2,
+  PieChart,
+  CheckSquare,
+  Files,
+  CalendarDays,
+} from 'lucide-react'
 
 const NAV = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -8,6 +18,9 @@ const NAV = [
   { to: '/worklogs', label: '업무일지', icon: BookOpen },
   { to: '/funds', label: '펀드 관리', icon: Building2 },
   { to: '/investments', label: '투자 관리', icon: PieChart },
+  { to: '/checklists', label: '체크리스트', icon: CheckSquare },
+  { to: '/documents', label: '서류 현황', icon: Files },
+  { to: '/calendar', label: '캘린더', icon: CalendarDays },
 ]
 
 export default function Layout() {
@@ -18,7 +31,7 @@ export default function Layout() {
           <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
           <p className="text-xs text-slate-400 mt-0.5">트리거투자파트너스</p>
         </div>
-        <nav className="flex-1 py-3">
+        <nav className="flex-1 py-3 overflow-auto">
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}

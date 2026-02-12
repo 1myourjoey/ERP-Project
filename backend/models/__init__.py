@@ -4,6 +4,8 @@ from .workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from .workflow_instance import WorkflowInstance, WorkflowStepInstance
 from .fund import Fund, LP
 from .investment import PortfolioCompany, Investment, InvestmentDocument
+from .checklist import Checklist, ChecklistItem
+from .calendar_event import CalendarEvent
 
 __all__ = [
     "Task",
@@ -12,4 +14,6 @@ __all__ = [
     "WorkflowInstance", "WorkflowStepInstance",
     "Fund", "LP",
     "PortfolioCompany", "Investment", "InvestmentDocument",
+    "Checklist", "ChecklistItem",
+    "CalendarEvent",
 ]

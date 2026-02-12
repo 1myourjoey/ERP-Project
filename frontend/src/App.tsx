@@ -6,6 +6,9 @@ import WorkflowsPage from './pages/WorkflowsPage'
 import WorkLogsPage from './pages/WorkLogsPage'
 import FundsPage from './pages/FundsPage'
 import InvestmentsPage from './pages/InvestmentsPage'
+import ChecklistsPage from './pages/ChecklistsPage'
+import DocumentsPage from './pages/DocumentsPage'
+import CalendarPage from './pages/CalendarPage'
 
 export default function App() {
   return (
@@ -18,6 +21,9 @@ export default function App() {
         <Route path="/worklogs" element={<WorkLogsPage />} />
         <Route path="/funds" element={<FundsPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
+        <Route path="/checklists" element={<ChecklistsPage />} />
+        <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
       </Route>
     </Routes>
   )
