@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from typing import Optional
 
@@ -38,9 +38,9 @@ class WorkflowResponse(BaseModel):
     trigger_description: Optional[str] = None
     category: Optional[str] = None
     total_duration: Optional[str] = None
-    steps: list[WorkflowStepResponse] = []
-    documents: list[WorkflowDocumentResponse] = []
-    warnings: list[WorkflowWarningResponse] = []
+    steps: list[WorkflowStepResponse] = Field(default_factory=list)
+    documents: list[WorkflowDocumentResponse] = Field(default_factory=list)
+    warnings: list[WorkflowWarningResponse] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -88,7 +88,7 @@ class WorkflowInstanceResponse(BaseModel):
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     memo: Optional[str] = None
-    step_instances: list[WorkflowStepInstanceResponse] = []
+    step_instances: list[WorkflowStepInstanceResponse] = Field(default_factory=list)
     progress: str = ""  # e.g. "3/7"
     model_config = {"from_attributes": True}
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from typing import Optional
 
@@ -29,9 +29,9 @@ class WorkLogCreate(BaseModel):
     actual_time: Optional[str] = None
     time_diff: Optional[str] = None
     task_id: Optional[int] = None
-    details: list[WorkLogDetailItem] = []
-    lessons: list[WorkLogLessonItem] = []
-    follow_ups: list[WorkLogFollowUpItem] = []
+    details: list[WorkLogDetailItem] = Field(default_factory=list)
+    lessons: list[WorkLogLessonItem] = Field(default_factory=list)
+    follow_ups: list[WorkLogFollowUpItem] = Field(default_factory=list)
 
 
 class WorkLogUpdate(BaseModel):
@@ -82,9 +82,9 @@ class WorkLogResponse(BaseModel):
     time_diff: Optional[str] = None
     created_at: Optional[datetime] = None
     task_id: Optional[int] = None
-    details: list[WorkLogDetailResponse] = []
-    lessons: list[WorkLogLessonResponse] = []
-    follow_ups: list[WorkLogFollowUpResponse] = []
+    details: list[WorkLogDetailResponse] = Field(default_factory=list)
+    lessons: list[WorkLogLessonResponse] = Field(default_factory=list)
+    follow_ups: list[WorkLogFollowUpResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
