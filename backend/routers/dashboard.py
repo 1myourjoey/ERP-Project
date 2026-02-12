@@ -1,25 +1,29 @@
-import re
+﻿import re
+from datetime import date, timedelta, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from datetime import date, timedelta, datetime
 
 from database import get_db
 from models.task import Task
 from models.workflow_instance import WorkflowInstance
+from models.fund import Fund
+from models.investment import Investment, PortfolioCompany, InvestmentDocument
 from schemas.task import TaskResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-WEEKDAYS_KR = ["월", "화", "수", "목", "금", "토", "일"]
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
     if not memo:
         return []
-    dates = []
-    for m in re.finditer(r"(\d{1,2})/(\d{1,2})", memo):
+
+    dates: list[date] = []
+    for match in re.finditer(r"(\d{1,2})/(\d{1,2})", memo):
         try:
-            month, day = int(m.group(1)), int(m.group(2))
+            month, day = int(match.group(1)), int(match.group(2))
             dates.append(date(year, month, day))
         except ValueError:
             pass
@@ -30,10 +34,10 @@ def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
 def get_today_dashboard(db: Session = Depends(get_db)):
     today = date.today()
     tomorrow = today + timedelta(days=1)
-    # 이번 주 일요일까지
+
     days_until_sunday = 6 - today.weekday()
     week_end = today + timedelta(days=days_until_sunday)
-    # 다음 달 말
+
     if today.month == 12:
         upcoming_end = date(today.year + 1, 2, 28)
     else:
@@ -51,57 +55,99 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         .all()
     )
 
-    today_tasks = []
-    tomorrow_tasks = []
-    week_tasks = []
-    upcoming_tasks = []
+    today_tasks: list[TaskResponse] = []
+    tomorrow_tasks: list[TaskResponse] = []
+    week_tasks: list[TaskResponse] = []
+    upcoming_tasks: list[TaskResponse] = []
 
-    for t in pending_tasks:
-        task_resp = TaskResponse.model_validate(t)
-        dl = t.deadline.date() if isinstance(t.deadline, datetime) else t.deadline
+    for task in pending_tasks:
+        task_resp = TaskResponse.model_validate(task)
+        deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
 
-        if dl == today:
+        if deadline == today:
             today_tasks.append(task_resp)
-        elif dl == tomorrow:
+        elif deadline == tomorrow:
             tomorrow_tasks.append(task_resp)
-        elif dl and today < dl <= week_end:
+        elif deadline and today < deadline <= week_end:
             week_tasks.append(task_resp)
-        elif dl and week_end < dl <= upcoming_end:
+        elif deadline and week_end < deadline <= upcoming_end:
             upcoming_tasks.append(task_resp)
 
-        # 메모에 이번 주 날짜가 있는 경우도 이번 주에 포함
-        if t.memo:
-            memo_dates = _parse_memo_dates(t.memo, today.year)
-            for md in memo_dates:
-                if today <= md <= week_end and task_resp not in week_tasks and dl != today and dl != tomorrow:
+        if task.memo:
+            memo_dates = _parse_memo_dates(task.memo, today.year)
+            for memo_date in memo_dates:
+                if today <= memo_date <= week_end and task_resp not in week_tasks and deadline != today and deadline != tomorrow:
                     week_tasks.append(task_resp)
                     break
 
-    # 활성 워크플로우
     active_instances = (
         db.query(WorkflowInstance)
         .filter(WorkflowInstance.status == "active")
         .all()
     )
+
     active_workflows = []
-    for inst in active_instances:
-        total = len(inst.step_instances)
-        done = sum(1 for s in inst.step_instances if s.status in ("completed", "skipped"))
+    for instance in active_instances:
+        total = len(instance.step_instances)
+        done = sum(1 for step in instance.step_instances if step.status in ("completed", "skipped"))
+
         next_step = None
-        for s in inst.step_instances:
-            if s.status == "pending":
-                next_step = s.step.name if s.step else None
+        for step_instance in instance.step_instances:
+            if step_instance.status == "pending":
+                next_step = step_instance.step.name if step_instance.step else None
                 break
+
         active_workflows.append({
-            "id": inst.id,
-            "name": inst.name,
+            "id": instance.id,
+            "name": instance.name,
             "progress": f"{done}/{total}",
             "next_step": next_step,
         })
 
+    fund_summary = []
+    funds = db.query(Fund).order_by(Fund.id.desc()).all()
+    for fund in funds:
+        investment_count = db.query(Investment).filter(Investment.fund_id == fund.id).count()
+        fund_summary.append({
+            "id": fund.id,
+            "name": fund.name,
+            "type": fund.type,
+            "status": fund.status,
+            "commitment_total": fund.commitment_total,
+            "aum": fund.aum,
+            "lp_count": len(fund.lps),
+            "investment_count": investment_count,
+        })
+
+    missing_documents = []
+    docs = (
+        db.query(InvestmentDocument)
+        .filter(InvestmentDocument.status != "collected")
+        .order_by(InvestmentDocument.id.desc())
+        .limit(20)
+        .all()
+    )
+    for doc in docs:
+        investment = db.get(Investment, doc.investment_id)
+        if not investment:
+            continue
+
+        company = db.get(PortfolioCompany, investment.company_id)
+        fund = db.get(Fund, investment.fund_id)
+
+        missing_documents.append({
+            "id": doc.id,
+            "investment_id": investment.id,
+            "document_name": doc.name,
+            "document_type": doc.doc_type,
+            "status": doc.status,
+            "company_name": company.name if company else "",
+            "fund_name": fund.name if fund else "",
+        })
+
     return {
         "date": today.isoformat(),
-        "day_of_week": WEEKDAYS_KR[today.weekday()],
+        "day_of_week": WEEKDAYS[today.weekday()],
         "today": {
             "tasks": today_tasks,
             "total_estimated_time": _sum_time(today_tasks),
@@ -113,39 +159,45 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         "this_week": week_tasks,
         "upcoming": upcoming_tasks,
         "active_workflows": active_workflows,
+        "fund_summary": fund_summary,
+        "missing_documents": missing_documents,
     }
 
 
 def _sum_time(tasks: list[TaskResponse]) -> str:
     total_minutes = 0
-    for t in tasks:
-        total_minutes += _parse_time_to_minutes(t.estimated_time)
+    for task in tasks:
+        total_minutes += _parse_time_to_minutes(task.estimated_time)
+
     if total_minutes == 0:
         return "0m"
+
     hours = total_minutes // 60
     mins = total_minutes % 60
+
     if hours and mins:
         return f"{hours}h {mins}m"
-    elif hours:
+    if hours:
         return f"{hours}h"
     return f"{mins}m"
 
 
-def _parse_time_to_minutes(s: str | None) -> int:
-    if not s:
+def _parse_time_to_minutes(value: str | None) -> int:
+    if not value:
         return 0
+
     total = 0
-    # "2h", "30m", "1h30m", "2h 30m", "1~2h" (하한값 사용)
-    s = s.split("~")[0] if "~" in s else s
-    h_match = re.search(r"(\d+)h", s)
-    m_match = re.search(r"(\d+)m", s)
-    d_match = re.search(r"(\d+)일", s)
+    normalized = value.split("~")[0] if "~" in value else value
+
+    h_match = re.search(r"(\d+)h", normalized)
+    m_match = re.search(r"(\d+)m", normalized)
+    d_match = re.search(r"(\d+)d", normalized)
+
     if h_match:
         total += int(h_match.group(1)) * 60
     if m_match:
         total += int(m_match.group(1))
     if d_match:
-        total += int(d_match.group(1)) * 480  # 8시간/일
+        total += int(d_match.group(1)) * 480
+
     return total
-
-
