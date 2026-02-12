@@ -5,6 +5,7 @@ import TaskBoardPage from './pages/TaskBoardPage'
 import WorkflowsPage from './pages/WorkflowsPage'
 import WorkLogsPage from './pages/WorkLogsPage'
 import FundsPage from './pages/FundsPage'
+import InvestmentsPage from './pages/InvestmentsPage'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/workflows" element={<WorkflowsPage />} />
         <Route path="/worklogs" element={<WorkLogsPage />} />
         <Route path="/funds" element={<FundsPage />} />
+        <Route path="/investments" element={<InvestmentsPage />} />
       </Route>
     </Routes>
   )

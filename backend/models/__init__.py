@@ -3,6 +3,7 @@ from .worklog import WorkLog, WorkLogDetail, WorkLogLesson, WorkLogFollowUp
 from .workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from .workflow_instance import WorkflowInstance, WorkflowStepInstance
 from .fund import Fund, LP
+from .investment import PortfolioCompany, Investment, InvestmentDocument
 
 __all__ = [
     "Task",
@@ -10,4 +11,5 @@ __all__ = [
     "Workflow", "WorkflowStep", "WorkflowDocument", "WorkflowWarning",
     "WorkflowInstance", "WorkflowStepInstance",
     "Fund", "LP",
+    "PortfolioCompany", "Investment", "InvestmentDocument",
 ]

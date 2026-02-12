@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, KanbanSquare, GitBranch, BookOpen, Building2 } from 'lucide-react'
+import { LayoutDashboard, KanbanSquare, GitBranch, BookOpen, Building2, PieChart } from 'lucide-react'
 
 const NAV = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -7,6 +7,7 @@ const NAV = [
   { to: '/workflows', label: '워크플로우', icon: GitBranch },
   { to: '/worklogs', label: '업무일지', icon: BookOpen },
   { to: '/funds', label: '펀드 관리', icon: Building2 },
+  { to: '/investments', label: '투자 관리', icon: PieChart },
 ]
 
 export default function Layout() {
