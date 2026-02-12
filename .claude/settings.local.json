@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b /ad \"c:\\\\Users\\\\Trigger\\\\Desktop\\\\ERP Project\")"
+    ]
+  }
+}
