@@ -27,7 +27,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Play, ChevronRight, Check, X, FileText, AlertTriangle, Clock, Plus, Pencil, Trash2, Lightbulb, Info } from 'lucide-react'
+import { Play, ChevronRight, ChevronDown, Check, X, FileText, AlertTriangle, Clock, Plus, Pencil, Trash2, Lightbulb, Info } from 'lucide-react'
 
 const EMPTY_TEMPLATE: WorkflowTemplateInput = {
   name: '',
@@ -101,59 +101,118 @@ function WorkflowTemplateList({
   onCreate,
   onEdit,
   onDelete,
+  onStart,
 }: {
   onSelect: (id: number) => void
   onCreate: () => void
   onEdit: (id: number) => void
   onDelete: (id: number) => void
+  onStart: (id: number) => void
 }) {
   const { data: workflows, isLoading } = useQuery({
     queryKey: ['workflows'],
     queryFn: fetchWorkflows,
   })
 
+  const groupedWorkflows = useMemo(() => {
+    const map = new Map<string, WorkflowListItem[]>()
+    for (const workflow of workflows ?? []) {
+      const category = workflow.category?.trim() || '기타'
+      const list = map.get(category) ?? []
+      list.push(workflow)
+      map.set(category, list)
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'ko'))
+  }, [workflows])
+
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!groupedWorkflows.length) return
+    setOpenCategories((prev) => {
+      const next = { ...prev }
+      for (const [category] of groupedWorkflows) {
+        if (!(category in next)) next[category] = true
+      }
+      return next
+    })
+  }, [groupedWorkflows])
+
   if (isLoading) return <div className="text-sm text-gray-500">불러오는 중...</div>
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
       <button
         onClick={onCreate}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm text-white transition-colors hover:bg-blue-700"
       >
         <Plus size={16} /> 새 템플릿
       </button>
 
-      <div className="space-y-2">
-        {workflows?.map((wf: WorkflowListItem) => (
-          <div key={wf.id} className="bg-white rounded-lg border border-gray-200 p-3">
-            <button onClick={() => onSelect(wf.id)} className="w-full text-left group">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-gray-800">{wf.name}</h4>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500" />
+      {!groupedWorkflows.length ? (
+        <p className="text-sm text-gray-400">등록된 워크플로우 템플릿이 없습니다.</p>
+      ) : (
+        <div className="space-y-3">
+          {groupedWorkflows.map(([category, categoryWorkflows]) => {
+            const isOpen = openCategories[category] ?? true
+            return (
+              <div key={category} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <button
+                  onClick={() => setOpenCategories((prev) => ({ ...prev, [category]: !isOpen }))}
+                  className="mb-2 flex w-full items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    {isOpen ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />}
+                    <h4 className="text-sm font-semibold text-gray-700">{category}</h4>
+                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] text-gray-600">{categoryWorkflows.length}</span>
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="flex flex-wrap gap-2">
+                    {categoryWorkflows.map((workflow) => (
+                      <div key={workflow.id} className="w-full rounded-xl border border-gray-200 bg-white p-3 sm:w-[calc(50%-0.25rem)] xl:w-[calc(33.333%-0.375rem)]">
+                        <button onClick={() => onSelect(workflow.id)} className="group w-full text-left">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-sm font-medium text-gray-800">{workflow.name}</h5>
+                            <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500" />
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {workflow.step_count}단계{workflow.total_duration ? ` · ${workflow.total_duration}` : ''}
+                          </p>
+                        </button>
+                        <div className="mt-2 flex items-center gap-1">
+                          <button
+                            onClick={() => onStart(workflow.id)}
+                            className="rounded bg-blue-100 p-1.5 text-blue-700 hover:bg-blue-200"
+                            title="시작"
+                          >
+                            <Play size={13} />
+                          </button>
+                          <button
+                            onClick={() => onEdit(workflow.id)}
+                            className="rounded bg-gray-100 p-1.5 text-gray-700 hover:bg-gray-200"
+                            title="수정"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => onDelete(workflow.id)}
+                            className="rounded bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
+                            title="삭제"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                <span>{wf.category || '-'}</span>
-                <span>{wf.step_count} 단계</span>
-                <span>{wf.total_duration || '-'}</span>
-              </div>
-            </button>
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={() => onEdit(wf.id)}
-                className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1"
-              >
-                <Pencil size={12} /> 수정
-              </button>
-              <button
-                onClick={() => onDelete(wf.id)}
-                className="px-2 py-1 text-xs rounded bg-red-50 hover:bg-red-100 text-red-700 flex items-center gap-1"
-              >
-                <Trash2 size={12} /> 삭제
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -600,14 +659,60 @@ function ActiveInstances({ expandInstanceId }: { expandInstanceId: number | null
   )
 }
 
+function CompletedInstances() {
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  const { data: instances, isLoading } = useQuery({
+    queryKey: ['workflowInstances', { status: 'completed' }],
+    queryFn: () => fetchWorkflowInstances({ status: 'completed' }),
+  })
+
+  if (isLoading) return <div className="text-sm text-gray-500">불러오는 중...</div>
+  if (!instances?.length) return <p className="text-sm text-gray-400">완료된 워크플로우 인스턴스가 없습니다.</p>
+
+  return (
+    <div className="space-y-3">
+      {instances.map((inst: WorkflowInstance) => (
+        <div key={inst.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <button onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)} className="flex w-full items-center justify-between p-4 text-left hover:bg-gray-50">
+            <div>
+              <h4 className="text-sm font-medium text-gray-800">{inst.name}</h4>
+              <p className="mt-0.5 text-xs text-gray-500">{inst.workflow_name} | 시작 {inst.trigger_date}</p>
+              <p className="mt-0.5 text-xs text-emerald-600">완료일 {inst.completed_at ? inst.completed_at.slice(0, 10) : '-'}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{inst.progress}</span>
+              <ChevronRight size={16} className={`text-gray-400 transition-transform ${expandedId === inst.id ? 'rotate-90' : ''}`} />
+            </div>
+          </button>
+
+          {expandedId === inst.id && (
+            <div className="space-y-1.5 border-t border-gray-100 px-4 py-3">
+              {inst.step_instances.map((step: WorkflowStepInstance) => (
+                <div key={step.id} className="flex items-center gap-3 rounded bg-gray-50 p-2 text-sm">
+                  <Check size={14} className={step.status === 'completed' ? 'text-emerald-600' : 'text-gray-300'} />
+                  <span className="flex-1 text-gray-700">{step.step_name}</span>
+                  <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
+                  <span className="text-xs text-gray-500">{step.calculated_date}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function WorkflowsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const location = useLocation()
   const locationState = (location.state as WorkflowLocationState | null) ?? null
 
+  const [tab, setTab] = useState<'templates' | 'active' | 'completed'>('templates')
   const [selectedWfId, setSelectedWfId] = useState<number | null>(null)
-  const [mode, setMode] = useState<'list' | 'view' | 'create' | 'edit'>('list')
+  const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null)
 
   const { data: selectedWorkflow } = useQuery({
     queryKey: ['workflow', selectedWfId],
@@ -615,12 +720,18 @@ export default function WorkflowsPage() {
     enabled: !!selectedWfId,
   })
 
+  useEffect(() => {
+    if (locationState?.expandInstanceId) {
+      setTab('active')
+    }
+  }, [locationState?.expandInstanceId])
+
   const createMut = useMutation({
     mutationFn: createWorkflowTemplate,
     onSuccess: (created: WorkflowTemplate) => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       setSelectedWfId(created.id)
-      setMode('view')
+      setEditorMode(null)
       addToast('success', '워크플로우 템플릿이 생성되었습니다.')
     },
   })
@@ -630,7 +741,7 @@ export default function WorkflowsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', selectedWfId] })
-      setMode('view')
+      setEditorMode(null)
       addToast('success', '워크플로우 템플릿이 수정되었습니다.')
     },
   })
@@ -639,27 +750,23 @@ export default function WorkflowsPage() {
     mutationFn: deleteWorkflowTemplate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
-      if (mode !== 'list') {
-        setSelectedWfId(null)
-        setMode('list')
-      }
+      setSelectedWfId(null)
       addToast('success', '워크플로우 템플릿이 삭제되었습니다.')
     },
   })
 
   const openDetail = (id: number) => {
     setSelectedWfId(id)
-    setMode('view')
+    setTab('templates')
   }
 
   const startCreate = () => {
-    setSelectedWfId(null)
-    setMode('create')
+    setEditorMode('create')
   }
 
   const startEdit = (id: number) => {
     setSelectedWfId(id)
-    setMode('edit')
+    setEditorMode('edit')
   }
 
   const runDelete = (id: number) => {
@@ -667,36 +774,91 @@ export default function WorkflowsPage() {
     deleteMut.mutate(id)
   }
 
+  const runStart = (id: number) => {
+    openDetail(id)
+  }
+
   return (
-    <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-5">워크플로우 템플릿</h2>
+    <div className="p-6 max-w-7xl space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-900">워크플로우</h2>
+        <button
+          onClick={startCreate}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          <Plus size={16} /> 새 템플릿
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700">템플릿 관리</h3>
-
-          {mode === 'list' && (
-            <WorkflowTemplateList onSelect={openDetail} onCreate={startCreate} onEdit={startEdit} onDelete={runDelete} />
-          )}
-
-          {mode === 'view' && selectedWfId && (
-            <WorkflowDetail workflowId={selectedWfId} onClose={() => setMode('list')} onEdit={() => startEdit(selectedWfId)} />
-          )}
-
-          {mode === 'create' && (
-            <TemplateEditor title="템플릿 생성" initialData={EMPTY_TEMPLATE} submitLabel="생성" loading={createMut.isPending} onSubmit={data => createMut.mutate(data)} onCancel={() => setMode('list')} />
-          )}
-
-          {mode === 'edit' && selectedWfId && selectedWorkflow && (
-            <TemplateEditor title="템플릿 수정" initialData={normalizeTemplate(selectedWorkflow)} submitLabel="저장" loading={updateMut.isPending} onSubmit={data => updateMut.mutate({ id: selectedWfId, data })} onCancel={() => setMode('view')} />
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">활성 인스턴스</h3>
-          <ActiveInstances expandInstanceId={locationState?.expandInstanceId ?? null} />
+      <div className="border-b border-gray-200">
+        <div className="flex gap-6">
+          {[
+            { key: 'templates' as const, label: '템플릿' },
+            { key: 'active' as const, label: '활성 인스턴스' },
+            { key: 'completed' as const, label: '완료' },
+          ].map((tabItem) => (
+            <button
+              key={tabItem.key}
+              onClick={() => setTab(tabItem.key)}
+              className={`border-b-2 pb-2 text-sm ${tab === tabItem.key ? 'border-blue-600 font-medium text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+            >
+              {tabItem.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {tab === 'templates' && (
+        <div className="space-y-4">
+          <WorkflowTemplateList
+            onSelect={openDetail}
+            onCreate={startCreate}
+            onEdit={startEdit}
+            onDelete={runDelete}
+            onStart={runStart}
+          />
+          {selectedWfId && (
+            <WorkflowDetail
+              workflowId={selectedWfId}
+              onClose={() => setSelectedWfId(null)}
+              onEdit={() => startEdit(selectedWfId)}
+            />
+          )}
+        </div>
+      )}
+
+      {tab === 'active' && <ActiveInstances expandInstanceId={locationState?.expandInstanceId ?? null} />}
+      {tab === 'completed' && <CompletedInstances />}
+
+      {editorMode === 'create' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditorMode(null)}>
+          <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <TemplateEditor
+              title="템플릿 생성"
+              initialData={EMPTY_TEMPLATE}
+              submitLabel="생성"
+              loading={createMut.isPending}
+              onSubmit={(data) => createMut.mutate(data)}
+              onCancel={() => setEditorMode(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editorMode === 'edit' && selectedWfId && selectedWorkflow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditorMode(null)}>
+          <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <TemplateEditor
+              title="템플릿 수정"
+              initialData={normalizeTemplate(selectedWorkflow)}
+              submitLabel="저장"
+              loading={updateMut.isPending}
+              onSubmit={(data) => updateMut.mutate({ id: selectedWfId, data })}
+              onCancel={() => setEditorMode(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
