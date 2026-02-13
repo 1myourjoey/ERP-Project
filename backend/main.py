@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -22,7 +23,8 @@ from routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
+        Base.metadata.create_all(bind=engine)
     yield
 
 

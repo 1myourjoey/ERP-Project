@@ -1,0 +1,6 @@
+﻿Alembic migrations package.
+
+Usage:
+  1) Install dependencies: pip install -r requirements.txt
+  2) Create revision: alembic -c alembic.ini revision --autogenerate -m "message"
+  3) Upgrade: alembic -c alembic.ini upgrade head
