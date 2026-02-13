@@ -10,11 +10,23 @@ import {
   createInvestmentDocument,
   updateInvestmentDocument,
   deleteInvestmentDocument,
+  fetchVoteRecords,
+  createVoteRecord,
+  updateVoteRecord,
+  deleteVoteRecord,
+  fetchInvestmentValuations,
+  createValuation,
+  updateValuation,
+  deleteValuation,
   fetchWorkflowInstances,
   type Company,
   type Fund,
   type InvestmentDocumentInput,
   type InvestmentInput,
+  type VoteRecord,
+  type VoteRecordInput,
+  type Valuation,
+  type ValuationInput,
   type WorkflowInstance,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
@@ -46,6 +58,23 @@ interface InvestmentDetail {
 }
 
 const EMPTY_DOC: InvestmentDocumentInput = { name: '', doc_type: '', status: 'pending', note: '', due_date: null }
+const EMPTY_VALUATION: ValuationInput = {
+  investment_id: 0,
+  fund_id: 0,
+  company_id: 0,
+  as_of_date: '',
+  evaluator: '',
+  method: '',
+  instrument: '',
+  value: 0,
+  prev_value: null,
+  change_amount: null,
+  change_pct: null,
+  basis: '',
+}
+
+const VOTE_TYPE_OPTIONS = ['주주총회', '이사회', '서면결의']
+const VOTE_DECISION_OPTIONS = ['찬성', '반대', '기권', '미행사']
 
 function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
   return {
@@ -67,6 +96,11 @@ function formatDate(value: string | null | undefined): string {
   return new Date(value).toLocaleDateString('ko-KR')
 }
 
+function formatNumber(value: number | null | undefined): string {
+  if (value == null) return '-'
+  return value.toLocaleString()
+}
+
 export default function InvestmentDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -77,6 +111,10 @@ export default function InvestmentDetailPage() {
   const [editingInvestment, setEditingInvestment] = useState(false)
   const [showDocForm, setShowDocForm] = useState(false)
   const [editingDocId, setEditingDocId] = useState<number | null>(null)
+  const [showValuationForm, setShowValuationForm] = useState(false)
+  const [editingValuationId, setEditingValuationId] = useState<number | null>(null)
+  const [showVoteForm, setShowVoteForm] = useState(false)
+  const [editingVoteId, setEditingVoteId] = useState<number | null>(null)
 
   const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
   const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
@@ -90,6 +128,18 @@ export default function InvestmentDetailPage() {
   const { data: linkedWorkflows } = useQuery<WorkflowInstance[]>({
     queryKey: ['workflowInstances', { status: 'all', investment_id: investmentId }],
     queryFn: () => fetchWorkflowInstances({ status: 'all', investment_id: investmentId }),
+    enabled: Number.isFinite(investmentId) && investmentId > 0,
+  })
+
+  const { data: valuations } = useQuery<Valuation[]>({
+    queryKey: ['valuations', { investment_id: investmentId }],
+    queryFn: () => fetchInvestmentValuations(investmentId),
+    enabled: Number.isFinite(investmentId) && investmentId > 0,
+  })
+
+  const { data: voteRecords } = useQuery<VoteRecord[]>({
+    queryKey: ['voteRecords', { investment_id: investmentId }],
+    queryFn: () => fetchVoteRecords({ investment_id: investmentId }),
     enabled: Number.isFinite(investmentId) && investmentId > 0,
   })
 
@@ -150,6 +200,57 @@ export default function InvestmentDetailPage() {
     },
   })
 
+  const createValuationMut = useMutation({
+    mutationFn: (data: ValuationInput) => createValuation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
+      setShowValuationForm(false)
+      addToast('success', 'Valuation created.')
+    },
+  })
+
+  const updateValuationMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ValuationInput> }) => updateValuation(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
+      setEditingValuationId(null)
+      addToast('success', 'Valuation updated.')
+    },
+  })
+
+  const deleteValuationMut = useMutation({
+    mutationFn: (id: number) => deleteValuation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
+      addToast('success', 'Valuation deleted.')
+    },
+  })
+
+  const createVoteRecordMut = useMutation({
+    mutationFn: (data: VoteRecordInput) => createVoteRecord(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['voteRecords', { investment_id: investmentId }] })
+      setShowVoteForm(false)
+      addToast('success', '의결권 행사 이력을 등록했습니다.')
+    },
+  })
+
+  const updateVoteRecordMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<VoteRecordInput> }) => updateVoteRecord(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['voteRecords', { investment_id: investmentId }] })
+      setEditingVoteId(null)
+      addToast('success', '의결권 행사 이력을 수정했습니다.')
+    },
+  })
+
+  const deleteVoteRecordMut = useMutation({
+    mutationFn: (id: number) => deleteVoteRecord(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['voteRecords', { investment_id: investmentId }] })
+      addToast('success', '의결권 행사 이력을 삭제했습니다.')
+    },
+  })
   if (!Number.isFinite(investmentId) || investmentId <= 0) {
     return <div className="p-6 text-sm text-red-600">유효하지 않은 투자 ID입니다.</div>
   }
@@ -251,6 +352,164 @@ export default function InvestmentDetailPage() {
               )) : <p className="text-sm text-slate-400">서류가 없습니다.</p>}
             </div>
           </div>
+          <div className="bg-white border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-700">Valuations</h3>
+              <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ Valuation</button>
+            </div>
+
+            {showValuationForm && selectedInvestment && (
+              <ValuationForm
+                initial={{
+                  ...EMPTY_VALUATION,
+                  investment_id: selectedInvestment.id,
+                  fund_id: selectedInvestment.fund_id,
+                  company_id: selectedInvestment.company_id,
+                }}
+                onSubmit={d => createValuationMut.mutate(d)}
+                onCancel={() => setShowValuationForm(false)}
+              />
+            )}
+
+            <div className="space-y-2">
+              {valuations?.length ? valuations.map((valuation) => (
+                <div key={valuation.id} className="border rounded p-2">
+                  {editingValuationId === valuation.id ? (
+                    <ValuationForm
+                      initial={{
+                        investment_id: valuation.investment_id,
+                        fund_id: valuation.fund_id,
+                        company_id: valuation.company_id,
+                        as_of_date: valuation.as_of_date,
+                        evaluator: valuation.evaluator || '',
+                        method: valuation.method || '',
+                        instrument: valuation.instrument || '',
+                        value: valuation.value,
+                        prev_value: valuation.prev_value,
+                        change_amount: valuation.change_amount,
+                        change_pct: valuation.change_pct,
+                        basis: valuation.basis || '',
+                      }}
+                      onSubmit={d => updateValuationMut.mutate({ id: valuation.id, data: d })}
+                      onCancel={() => setEditingValuationId(null)}
+                    />
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{formatDate(valuation.as_of_date)} | {valuation.method || '-'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Value {formatNumber(valuation.value)} | Prev {formatNumber(valuation.prev_value)} | Delta {formatNumber(valuation.change_amount)} ({valuation.change_pct != null ? `${valuation.change_pct}%` : '-'})</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingValuationId(valuation.id)}>Edit</button>
+                        <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('Delete this valuation?')) deleteValuationMut.mutate(valuation.id) }}>Delete</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )) : <p className="text-sm text-slate-400">No valuations yet.</p>}
+            </div>
+          </div>
+
+          <div className="bg-white border rounded-xl p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">의결권 행사 이력</h3>
+              <button
+                className="rounded bg-emerald-600 px-2 py-1 text-xs text-white"
+                onClick={() => setShowVoteForm(v => !v)}
+              >
+                + 이력 등록
+              </button>
+            </div>
+
+            {showVoteForm && selectedInvestment && (
+              <VoteRecordForm
+                initial={{
+                  company_id: selectedInvestment.company_id,
+                  investment_id: selectedInvestment.id,
+                  vote_type: VOTE_TYPE_OPTIONS[0],
+                  date: new Date().toISOString().slice(0, 10),
+                  agenda: '',
+                  decision: '',
+                  memo: '',
+                }}
+                onSubmit={d => createVoteRecordMut.mutate(d)}
+                onCancel={() => setShowVoteForm(false)}
+              />
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-slate-600">
+                    <th className="px-2 py-2">행사일</th>
+                    <th className="px-2 py-2">의결 유형</th>
+                    <th className="px-2 py-2">안건</th>
+                    <th className="px-2 py-2">의결 결과</th>
+                    <th className="px-2 py-2">비고</th>
+                    <th className="px-2 py-2">작업</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {voteRecords?.flatMap(record => [
+                    <tr key={`vote-row-${record.id}`} className="border-b">
+                      <td className="px-2 py-2">{formatDate(record.date)}</td>
+                      <td className="px-2 py-2">{record.vote_type}</td>
+                      <td className="px-2 py-2">{record.agenda || '-'}</td>
+                      <td className="px-2 py-2">{record.decision || '-'}</td>
+                      <td className="px-2 py-2">{record.memo || '-'}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex gap-1">
+                          <button
+                            className="rounded bg-slate-100 px-2 py-0.5 text-xs"
+                            onClick={() => setEditingVoteId(record.id)}
+                          >
+                            수정
+                          </button>
+                          <button
+                            className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                            onClick={() => {
+                              if (confirm('이 의결권 행사 이력을 삭제하시겠습니까?')) {
+                                deleteVoteRecordMut.mutate(record.id)
+                              }
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </td>
+                    </tr>,
+                    editingVoteId === record.id ? (
+                      <tr key={`vote-form-${record.id}`} className="border-b">
+                        <td colSpan={6} className="px-2 py-2">
+                          <VoteRecordForm
+                            initial={{
+                              company_id: record.company_id,
+                              investment_id: record.investment_id,
+                              vote_type: record.vote_type,
+                              date: record.date,
+                              agenda: record.agenda || '',
+                              decision: record.decision || '',
+                              memo: record.memo || '',
+                            }}
+                            onSubmit={d => updateVoteRecordMut.mutate({ id: record.id, data: d })}
+                            onCancel={() => setEditingVoteId(null)}
+                          />
+                        </td>
+                      </tr>
+                    ) : null,
+                  ])}
+                  {!voteRecords?.length && (
+                    <tr>
+                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-slate-400">
+                        의결권 행사 이력이 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -292,6 +551,128 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: InvestmentDocu
       <div className="md:col-span-5 flex gap-2">
         <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim(), due_date: form.due_date || null }) }}>저장</button>
         <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+      </div>
+    </div>
+  )
+}
+
+function VoteRecordForm({
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  initial: VoteRecordInput
+  onSubmit: (data: VoteRecordInput) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<VoteRecordInput>(initial)
+
+  return (
+    <div className="mb-2 grid grid-cols-1 gap-2 rounded border bg-slate-50 p-2 md:grid-cols-5">
+      <select
+        value={form.vote_type}
+        onChange={e => setForm(prev => ({ ...prev, vote_type: e.target.value }))}
+        className="rounded border px-2 py-1 text-sm"
+      >
+        {VOTE_TYPE_OPTIONS.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <input
+        type="date"
+        value={form.date || ''}
+        onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))}
+        className="rounded border px-2 py-1 text-sm"
+      />
+      <select
+        value={form.decision || ''}
+        onChange={e => setForm(prev => ({ ...prev, decision: e.target.value }))}
+        className="rounded border px-2 py-1 text-sm"
+      >
+        <option value="">의결 결과</option>
+        {VOTE_DECISION_OPTIONS.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <input
+        value={form.agenda || ''}
+        onChange={e => setForm(prev => ({ ...prev, agenda: e.target.value }))}
+        placeholder="안건"
+        className="rounded border px-2 py-1 text-sm"
+      />
+      <input
+        value={form.memo || ''}
+        onChange={e => setForm(prev => ({ ...prev, memo: e.target.value }))}
+        placeholder="비고"
+        className="rounded border px-2 py-1 text-sm"
+      />
+      <div className="flex gap-2 md:col-span-5">
+        <button
+          className="rounded bg-emerald-600 px-3 py-1 text-xs text-white"
+          onClick={() => {
+            if (!form.company_id || !form.vote_type || !form.date) return
+            onSubmit({
+              ...form,
+              investment_id: form.investment_id || null,
+              vote_type: form.vote_type.trim(),
+              agenda: form.agenda?.trim() || null,
+              decision: form.decision?.trim() || null,
+              memo: form.memo?.trim() || null,
+            })
+          }}
+        >
+          저장
+        </button>
+        <button className="rounded border bg-white px-3 py-1 text-xs" onClick={onCancel}>
+          취소
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ValuationForm({
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  initial: ValuationInput
+  onSubmit: (data: ValuationInput) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<ValuationInput>(initial)
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50 mb-2">
+      <input type="date" value={form.as_of_date || ''} onChange={e => setForm(prev => ({ ...prev, as_of_date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.value ?? ''} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="Value" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.prev_value ?? ''} onChange={e => setForm(prev => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="Previous value" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.method || ''} onChange={e => setForm(prev => ({ ...prev, method: e.target.value }))} placeholder="Method" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="Instrument" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.evaluator || ''} onChange={e => setForm(prev => ({ ...prev, evaluator: e.target.value }))} placeholder="Evaluator" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.change_amount ?? ''} onChange={e => setForm(prev => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="Change amount" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" step="0.01" value={form.change_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="Change %" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.basis || ''} onChange={e => setForm(prev => ({ ...prev, basis: e.target.value }))} placeholder="Basis" className="px-2 py-1 text-sm border rounded" />
+      <div className="md:col-span-3 flex gap-2">
+        <button
+          className="px-3 py-1 text-xs bg-indigo-600 text-white rounded"
+          onClick={() => {
+            if (!form.investment_id || !form.fund_id || !form.company_id || !form.as_of_date || !form.value) return
+            onSubmit({
+              ...form,
+              method: form.method?.trim() || null,
+              instrument: form.instrument?.trim() || null,
+              evaluator: form.evaluator?.trim() || null,
+              basis: form.basis?.trim() || null,
+              prev_value: form.prev_value ?? null,
+              change_amount: form.change_amount ?? null,
+              change_pct: form.change_pct ?? null,
+            })
+          }}
+        >
+          Save
+        </button>
+        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>Cancel</button>
       </div>
     </div>
   )

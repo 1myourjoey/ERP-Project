@@ -30,6 +30,7 @@ from routers import (
     biz_reports,
     regular_reports,
     accounting,
+    vote_records,
 )
 
 def ensure_sqlite_compat_columns():
@@ -104,6 +105,7 @@ app.include_router(performance.router)
 app.include_router(biz_reports.router)
 app.include_router(regular_reports.router)
 app.include_router(accounting.router)
+app.include_router(vote_records.router)
 
 
 @app.exception_handler(RequestValidationError)

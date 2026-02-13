@@ -79,6 +79,11 @@ export const fetchInvestmentDocuments = (investmentId: number) => api.get(`/inve
 export const createInvestmentDocument = (investmentId: number, data: InvestmentDocumentInput) => api.post(`/investments/${investmentId}/documents`, data).then(r => r.data)
 export const updateInvestmentDocument = (investmentId: number, documentId: number, data: Partial<InvestmentDocumentInput>) => api.put(`/investments/${investmentId}/documents/${documentId}`, data).then(r => r.data)
 export const deleteInvestmentDocument = (investmentId: number, documentId: number) => api.delete(`/investments/${investmentId}/documents/${documentId}`)
+export const fetchVoteRecords = (params?: { company_id?: number; investment_id?: number; vote_type?: string }): Promise<VoteRecord[]> =>
+  api.get('/vote-records', { params }).then(r => r.data)
+export const createVoteRecord = (data: VoteRecordInput): Promise<VoteRecord> => api.post('/vote-records', data).then(r => r.data)
+export const updateVoteRecord = (id: number, data: Partial<VoteRecordInput>): Promise<VoteRecord> => api.put(`/vote-records/${id}`, data).then(r => r.data)
+export const deleteVoteRecord = (id: number) => api.delete(`/vote-records/${id}`)
 export const fetchTransactions = (params?: { investment_id?: number; fund_id?: number; company_id?: number; type?: string }): Promise<Transaction[]> => api.get('/transactions', { params }).then(r => r.data)
 export const fetchInvestmentTransactions = (investmentId: number): Promise<Transaction[]> => api.get(`/investments/${investmentId}/transactions`).then(r => r.data)
 export const fetchTransaction = (id: number): Promise<Transaction> => api.get(`/transactions/${id}`).then(r => r.data)
@@ -477,6 +482,30 @@ export interface InvestmentDocumentInput {
   status?: string
   note?: string | null
   due_date?: string | null
+}
+
+export interface VoteRecordInput {
+  company_id: number
+  investment_id?: number | null
+  vote_type: string
+  date: string
+  agenda?: string | null
+  decision?: string | null
+  memo?: string | null
+}
+
+export interface VoteRecord {
+  id: number
+  company_id: number
+  investment_id: number | null
+  vote_type: string
+  date: string
+  agenda: string | null
+  decision: string | null
+  memo: string | null
+  created_at: string | null
+  company_name: string | null
+  investment_name: string | null
 }
 
 export interface TransactionInput {
