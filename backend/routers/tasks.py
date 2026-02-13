@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
+from models.calendar_event import CalendarEvent
 from models.task import Task
 from schemas.task import (
     TaskCreate, TaskUpdate, TaskComplete, TaskMove,
@@ -52,6 +53,18 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
 def create_task(data: TaskCreate, db: Session = Depends(get_db)):
     task = Task(**data.model_dump())
     db.add(task)
+    db.flush()
+
+    if task.deadline:
+        db.add(
+            CalendarEvent(
+                title=task.title,
+                date=task.deadline.date(),
+                status="pending",
+                task_id=task.id,
+            )
+        )
+
     db.commit()
     db.refresh(task)
     return task
@@ -62,8 +75,33 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
+
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(task, key, val)
+
+    linked_event = (
+        db.query(CalendarEvent)
+        .filter(CalendarEvent.task_id == task.id)
+        .order_by(CalendarEvent.id.asc())
+        .first()
+    )
+
+    if task.deadline:
+        if linked_event:
+            linked_event.title = task.title
+            linked_event.date = task.deadline.date()
+        else:
+            db.add(
+                CalendarEvent(
+                    title=task.title,
+                    date=task.deadline.date(),
+                    status="pending",
+                    task_id=task.id,
+                )
+            )
+    elif linked_event:
+        db.delete(linked_event)
+
     db.commit()
     db.refresh(task)
     return task
@@ -100,5 +138,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
+
+    db.query(CalendarEvent).filter(CalendarEvent.task_id == task.id).delete()
     db.delete(task)
     db.commit()

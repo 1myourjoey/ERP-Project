@@ -250,6 +250,7 @@ export default function CalendarPage() {
                     <div className="mt-1 space-y-1">
                       {dayEvents.slice(0, 2).map(event => (
                         <div key={event.id} className={`text-[11px] px-1.5 py-0.5 rounded truncate ${eventTone(event)}`}>
+                          {event.task_id && event.quadrant ? `[${event.quadrant}] ` : ''}
                           {event.title}
                         </div>
                       ))}
@@ -287,7 +288,14 @@ export default function CalendarPage() {
                     ) : (
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-slate-800">{event.title}</p>
+                          <div className="flex items-center gap-1.5">
+                            {event.task_id && (
+                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                                {event.quadrant || 'TASK'}
+                              </span>
+                            )}
+                            <p className="text-sm font-medium text-slate-800">{event.title}</p>
+                          </div>
                           <p className="text-xs text-slate-500 mt-0.5">
                             {event.time || '-'} | {event.duration ?? '-'}분 | {event.description || '-'}
                           </p>
@@ -296,11 +304,17 @@ export default function CalendarPage() {
                           </span>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
-                          {event.status !== 'completed' && (
-                            <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                          {event.task_id ? (
+                            <span className="text-xs text-slate-400">업무 보드에서 관리</span>
+                          ) : (
+                            <>
+                              <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              {event.status !== 'completed' && (
+                                <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                              )}
+                              <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                            </>
                           )}
-                          <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
                         </div>
                       </div>
                     )}
@@ -335,7 +349,14 @@ export default function CalendarPage() {
                         <EventForm initial={event} onSubmit={data => updateMut.mutate({ id: event.id, data })} onCancel={() => setEditingId(null)} compact />
                       ) : (
                         <div>
-                          <p className="font-medium text-slate-800">{event.title}</p>
+                          <div className="flex items-center gap-1.5">
+                            {event.task_id && (
+                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                                {event.quadrant || 'TASK'}
+                              </span>
+                            )}
+                            <p className="font-medium text-slate-800">{event.title}</p>
+                          </div>
                           <p className="text-xs text-slate-500">{event.description || '-'}</p>
                         </div>
                       )}
@@ -348,11 +369,17 @@ export default function CalendarPage() {
                     <td className="px-3 py-2">
                       {editingId !== event.id && (
                         <div className="flex gap-1">
-                          <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
-                          {event.status !== 'completed' && (
-                            <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                          {event.task_id ? (
+                            <span className="text-xs text-slate-400">업무 보드에서 관리</span>
+                          ) : (
+                            <>
+                              <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              {event.status !== 'completed' && (
+                                <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                              )}
+                              <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                            </>
                           )}
-                          <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
                         </div>
                       )}
                     </td>

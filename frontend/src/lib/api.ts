@@ -323,6 +323,7 @@ export interface CalendarEvent {
   description: string | null
   status: string
   task_id: number | null
+  quadrant: string | null
 }
 
 export interface WorkLogInput {

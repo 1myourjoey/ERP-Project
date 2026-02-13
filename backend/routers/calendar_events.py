@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.calendar_event import CalendarEvent
+from models.task import Task
 from schemas.calendar_event import CalendarEventCreate, CalendarEventUpdate, CalendarEventResponse
 
 router = APIRouter(tags=["calendar"])
@@ -25,7 +26,25 @@ def list_events(
     if status:
         query = query.filter(CalendarEvent.status == status)
 
-    return query.order_by(CalendarEvent.date.asc(), CalendarEvent.time.asc().nullslast(), CalendarEvent.id.asc()).all()
+    events = query.order_by(CalendarEvent.date.asc(), CalendarEvent.time.asc().nullslast(), CalendarEvent.id.asc()).all()
+    task_ids = [event.task_id for event in events if event.task_id is not None]
+    tasks = db.query(Task).filter(Task.id.in_(task_ids)).all() if task_ids else []
+    quadrant_by_task_id = {task.id: task.quadrant for task in tasks}
+
+    return [
+        {
+            "id": event.id,
+            "title": event.title,
+            "date": event.date,
+            "time": event.time,
+            "duration": event.duration,
+            "description": event.description,
+            "status": event.status,
+            "task_id": event.task_id,
+            "quadrant": quadrant_by_task_id.get(event.task_id) if event.task_id else None,
+        }
+        for event in events
+    ]
 
 
 @router.get("/api/calendar-events/{event_id}", response_model=CalendarEventResponse)

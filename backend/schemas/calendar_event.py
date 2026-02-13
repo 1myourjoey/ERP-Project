@@ -32,5 +32,6 @@ class CalendarEventResponse(BaseModel):
     description: Optional[str] = None
     status: Literal["pending", "completed"]
     task_id: Optional[int] = None
+    quadrant: Optional[str] = None
 
     model_config = {"from_attributes": True}
