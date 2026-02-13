@@ -184,6 +184,41 @@ export default function InvestmentsPage() {
     },
   })
 
+  const handleCreateInvestment = async (
+    investment: InvestmentInput,
+    newCompany?: { name: string; business_number?: string | null; ceo?: string | null },
+  ) => {
+    let companyId = investment.company_id
+
+    if (companyId === -1) {
+      const companyName = newCompany?.name?.trim() || ''
+      if (!companyName) return
+
+      const company = await createCompany({
+        name: companyName,
+        business_number: newCompany?.business_number?.trim() || null,
+        ceo: newCompany?.ceo?.trim() || null,
+        address: null,
+        industry: null,
+        vics_registered: false,
+        corp_number: null,
+        founded_date: null,
+        analyst: null,
+        contact_name: null,
+        contact_email: null,
+        contact_phone: null,
+        memo: null,
+      })
+      companyId = company.id
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+    }
+
+    await createInvestmentMut.mutateAsync({
+      ...investment,
+      company_id: companyId,
+    })
+  }
+
   return (
     <div className="p-6 max-w-7xl">
       <h2 className="text-2xl font-bold text-gray-900 mb-5">투자 관리</h2>
@@ -268,7 +303,8 @@ export default function InvestmentsPage() {
               funds={funds || []}
               companies={companies || []}
               initial={EMPTY_INVESTMENT}
-              onSubmit={data => createInvestmentMut.mutate(data)}
+              submitting={createInvestmentMut.isPending}
+              onSubmit={handleCreateInvestment}
               onCancel={() => setShowInvestmentForm(false)}
             />
           )}
@@ -310,14 +346,50 @@ export default function InvestmentsPage() {
   )
 }
 
-function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { funds: Fund[]; companies: Company[]; initial: InvestmentInput; onSubmit: (data: InvestmentInput) => void; onCancel: () => void }) {
+function InvestmentForm({
+  funds,
+  companies,
+  initial,
+  submitting,
+  onSubmit,
+  onCancel,
+}: {
+  funds: Fund[]
+  companies: Company[]
+  initial: InvestmentInput
+  submitting?: boolean
+  onSubmit: (
+    data: InvestmentInput,
+    newCompany?: { name: string; business_number?: string | null; ceo?: string | null },
+  ) => Promise<void> | void
+  onCancel: () => void
+}) {
   const [form, setForm] = useState<InvestmentInput>(initial)
+  const [newCompanyName, setNewCompanyName] = useState('')
+  const [newCompanyBizNum, setNewCompanyBizNum] = useState('')
+  const [newCompanyCeo, setNewCompanyCeo] = useState('')
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-gray-50">
+    <div className="grid grid-cols-1 gap-2 rounded border bg-gray-50 p-2 md:grid-cols-3">
       <select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">조합 선택</option>{funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select>
-      <select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">회사 선택</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select>
+      <select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded">
+        <option value="">회사 선택</option>
+        <option value={-1}>+ 새 회사 추가</option>
+        {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+      </select>
       <input type="date" value={form.investment_date || ''} onChange={e => setForm(prev => ({ ...prev, investment_date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
+
+      {form.company_id === -1 && (
+        <div className="md:col-span-3 rounded border border-blue-200 bg-blue-50 p-3">
+          <p className="text-xs font-medium text-blue-700 mb-2">새 회사 정보</p>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            <input value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} placeholder="회사명" className="px-2 py-1 text-sm border rounded" />
+            <input value={newCompanyBizNum} onChange={e => setNewCompanyBizNum(e.target.value)} placeholder="사업자번호" className="px-2 py-1 text-sm border rounded" />
+            <input value={newCompanyCeo} onChange={e => setNewCompanyCeo(e.target.value)} placeholder="대표자" className="px-2 py-1 text-sm border rounded" />
+          </div>
+        </div>
+      )}
+
       <input type="number" value={form.amount ?? ''} onChange={e => setForm(prev => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))} placeholder="투자금액" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="주식 수" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.share_price ?? ''} onChange={e => setForm(prev => ({ ...prev, share_price: e.target.value ? Number(e.target.value) : null }))} placeholder="주당 가격" className="px-2 py-1 text-sm border rounded" />
@@ -330,19 +402,31 @@ function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { fun
       <input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="기존 지분율" className="px-2 py-1 text-sm border rounded" />
       <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="투자수단" className="px-2 py-1 text-sm border rounded" />
       <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-2 py-1 text-sm border rounded" />
+
       <div className="md:col-span-3 flex gap-2">
         <button
-          className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
+          className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:bg-gray-300"
+          disabled={submitting}
           onClick={() => {
             if (!form.fund_id || !form.company_id) return
-            onSubmit({
-              ...form,
-              investment_date: form.investment_date || null,
-              round: form.round?.trim() || null,
-              board_seat: form.board_seat?.trim() || null,
-              contribution_rate: form.contribution_rate?.trim() || null,
-              instrument: form.instrument?.trim() || null,
-            })
+            if (form.company_id === -1 && !newCompanyName.trim()) return
+            onSubmit(
+              {
+                ...form,
+                investment_date: form.investment_date || null,
+                round: form.round?.trim() || null,
+                board_seat: form.board_seat?.trim() || null,
+                contribution_rate: form.contribution_rate?.trim() || null,
+                instrument: form.instrument?.trim() || null,
+              },
+              form.company_id === -1
+                ? {
+                    name: newCompanyName,
+                    business_number: newCompanyBizNum,
+                    ceo: newCompanyCeo,
+                  }
+                : undefined,
+            )
           }}
         >
           저장
