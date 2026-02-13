@@ -288,6 +288,79 @@ def seed_workflows():
     ]
     db.add(wf8)
 
+    # ===== 9. 조합 결성 =====
+    wf9 = Workflow(
+        name="조합 결성",
+        trigger_description="신규 조합 제안 시",
+        category="조합관리",
+        total_duration="약 1개월",
+    )
+    wf9.steps = [
+        WorkflowStep(order=1, name="고유번호증 발급 준비", timing="D-day", timing_offset_days=0, estimated_time="2h", quadrant="Q1"),
+        WorkflowStep(order=2, name="고유번호증 발급 신청", timing="D-day", timing_offset_days=0, estimated_time="1h", quadrant="Q1"),
+        WorkflowStep(order=3, name="수탁계약 서류 준비", timing="D+5", timing_offset_days=5, estimated_time="3h", quadrant="Q1"),
+        WorkflowStep(order=4, name="수탁계약 체결", timing="D+5", timing_offset_days=5, estimated_time="2h", quadrant="Q1"),
+        WorkflowStep(order=5, name="계좌개설", timing="D+5", timing_offset_days=5, estimated_time="1h", quadrant="Q1"),
+        WorkflowStep(order=6, name="결성총회 공문 발송", timing="D+10", timing_offset_days=10, estimated_time="1h", quadrant="Q2"),
+        WorkflowStep(order=7, name="LP 서류 취합", timing="D+10~24", timing_offset_days=10, estimated_time="4h", quadrant="Q1"),
+        WorkflowStep(order=8, name="운용지시서 작성", timing="D+24", timing_offset_days=24, estimated_time="1h", quadrant="Q1"),
+        WorkflowStep(order=9, name="결성총회 개최", timing="D+25", timing_offset_days=25, estimated_time="3h", quadrant="Q1"),
+        WorkflowStep(order=10, name="총회 회람서류 전달", timing="D+25", timing_offset_days=25, estimated_time="30m", quadrant="Q3"),
+        WorkflowStep(order=11, name="조합등록 신청", timing="D+26", timing_offset_days=26, estimated_time="2h", quadrant="Q1"),
+    ]
+    wf9.documents = [
+        WorkflowDocument(name="고유번호증", required=True, timing="D-day"),
+        WorkflowDocument(name="수탁계약서", required=True, timing="D+5"),
+        WorkflowDocument(name="계좌개설 확인서", required=True, timing="D+5"),
+        WorkflowDocument(name="결성총회 공문", required=True, timing="D+10"),
+        WorkflowDocument(name="LP 출자확약서", required=True, timing="D+10~24"),
+        WorkflowDocument(name="LP 서류 (KYC 등)", required=True, timing="D+10~24"),
+        WorkflowDocument(name="운용지시서", required=True, timing="D+24"),
+        WorkflowDocument(name="결성총회 의사록", required=True, timing="D+25"),
+        WorkflowDocument(name="조합등록 신청서", required=True, timing="D+26"),
+    ]
+    wf9.warnings = [
+        WorkflowWarning(content="고유번호증 발급은 세무서 방문 필요 (온라인 불가한 경우 있음)"),
+        WorkflowWarning(content="LP 서류 취합 기간이 길어질 수 있으므로 조기 안내 필요"),
+        WorkflowWarning(content="결성총회 7일 전 소집통지 발송 필수 (규약 확인)"),
+    ]
+    db.add(wf9)
+
+    # ===== 10. 정기 총회 =====
+    wf10 = Workflow(
+        name="정기 총회",
+        trigger_description="매년 3월 정기 총회 개최 시",
+        category="조합관리",
+        total_duration="약 3주",
+    )
+    wf10.steps = [
+        WorkflowStep(
+            order=1,
+            name="총회 서류 초안 작성",
+            timing="D-14",
+            timing_offset_days=-14,
+            estimated_time="4h",
+            quadrant="Q2",
+            memo="개최공문, 의안설명서, 영업보고서, 감사보고서",
+        ),
+        WorkflowStep(order=2, name="총회 소집 통지 발송", timing="D-7", timing_offset_days=-7, estimated_time="1h", quadrant="Q1"),
+        WorkflowStep(order=3, name="총회 개최", timing="D-day", timing_offset_days=0, estimated_time="3h", quadrant="Q1"),
+        WorkflowStep(order=4, name="의사록 작성", timing="D+2", timing_offset_days=2, estimated_time="2h", quadrant="Q1"),
+    ]
+    wf10.documents = [
+        WorkflowDocument(name="개최공문", required=True, timing="D-14"),
+        WorkflowDocument(name="의안설명서", required=True, timing="D-14"),
+        WorkflowDocument(name="영업보고서", required=True, timing="D-14"),
+        WorkflowDocument(name="감사보고서", required=True, timing="D-14"),
+        WorkflowDocument(name="소집 통지서", required=True, timing="D-7"),
+        WorkflowDocument(name="의사록", required=True, timing="D+2"),
+    ]
+    wf10.warnings = [
+        WorkflowWarning(content="소집통지는 총회 7일 전 필수 발송"),
+        WorkflowWarning(content="감사보고서는 회계법인 최종 확인 후 첨부"),
+    ]
+    db.add(wf10)
+
     db.commit()
     print(f"워크플로우 {db.query(Workflow).count()}개 시드 완료!")
     db.close()
