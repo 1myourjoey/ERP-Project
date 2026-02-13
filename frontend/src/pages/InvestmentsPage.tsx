@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import {
   fetchFunds,
   fetchCompanies,
@@ -7,42 +8,51 @@ import {
   updateCompany,
   deleteCompany,
   fetchInvestments,
-  fetchInvestment,
   createInvestment,
-  updateInvestment,
-  deleteInvestment,
-  createInvestmentDocument,
-  updateInvestmentDocument,
-  deleteInvestmentDocument,
+  type Company,
   type CompanyInput,
+  type Fund,
   type InvestmentInput,
-  type InvestmentDocumentInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 
+interface InvestmentListItem {
+  id: number
+  fund_name?: string
+  company_name?: string
+  investment_date?: string | null
+  amount?: number | null
+  instrument?: string | null
+  status?: string
+}
+
 const EMPTY_COMPANY: CompanyInput = { name: '', business_number: '', ceo: '', address: '', industry: '', vics_registered: false }
 const EMPTY_INVESTMENT: InvestmentInput = { fund_id: 0, company_id: 0, investment_date: '', amount: null, shares: null, share_price: null, valuation: null, contribution_rate: '', instrument: '', status: 'active' }
-const EMPTY_DOC: InvestmentDocumentInput = { name: '', doc_type: '', status: 'pending', note: '' }
 
 export default function InvestmentsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { addToast } = useToast()
-  const [selectedInvestmentId, setSelectedInvestmentId] = useState<number | null>(null)
+
   const [fundFilter, setFundFilter] = useState<number | ''>('')
   const [statusFilter, setStatusFilter] = useState('')
   const [showCompanyForm, setShowCompanyForm] = useState(false)
   const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null)
   const [showInvestmentForm, setShowInvestmentForm] = useState(false)
-  const [editingInvestment, setEditingInvestment] = useState(false)
-  const [showDocForm, setShowDocForm] = useState(false)
-  const [editingDocId, setEditingDocId] = useState<number | null>(null)
 
-  const { data: funds } = useQuery({ queryKey: ['funds'], queryFn: fetchFunds })
-  const { data: companies } = useQuery({ queryKey: ['companies'], queryFn: fetchCompanies })
-  const investmentParams = useMemo(() => ({ fund_id: fundFilter === '' ? undefined : fundFilter, status: statusFilter || undefined }), [fundFilter, statusFilter])
-  const { data: investments, isLoading: invLoading } = useQuery({ queryKey: ['investments', investmentParams], queryFn: () => fetchInvestments(investmentParams) })
-  const { data: selectedInvestment } = useQuery({ queryKey: ['investment', selectedInvestmentId], queryFn: () => fetchInvestment(selectedInvestmentId as number), enabled: !!selectedInvestmentId })
+  const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
+  const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
+
+  const investmentParams = useMemo(
+    () => ({ fund_id: fundFilter === '' ? undefined : fundFilter, status: statusFilter || undefined }),
+    [fundFilter, statusFilter],
+  )
+
+  const { data: investments, isLoading: invLoading } = useQuery<InvestmentListItem[]>({
+    queryKey: ['investments', investmentParams],
+    queryFn: () => fetchInvestments(investmentParams),
+  })
 
   const createCompanyMut = useMutation({
     mutationFn: createCompany,
@@ -52,6 +62,7 @@ export default function InvestmentsPage() {
       addToast('success', '회사가 추가되었습니다.')
     },
   })
+
   const updateCompanyMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CompanyInput> }) => updateCompany(id, data),
     onSuccess: () => {
@@ -60,6 +71,7 @@ export default function InvestmentsPage() {
       addToast('success', '회사 정보가 수정되었습니다.')
     },
   })
+
   const deleteCompanyMut = useMutation({
     mutationFn: deleteCompany,
     onSuccess: () => {
@@ -67,53 +79,14 @@ export default function InvestmentsPage() {
       addToast('success', '회사가 삭제되었습니다.')
     },
   })
+
   const createInvestmentMut = useMutation({
     mutationFn: createInvestment,
-    onSuccess: (created: any) => {
+    onSuccess: (created: { id: number }) => {
       queryClient.invalidateQueries({ queryKey: ['investments'] })
-      setSelectedInvestmentId(created.id)
       setShowInvestmentForm(false)
       addToast('success', '투자가 등록되었습니다.')
-    },
-  })
-  const updateInvestmentMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InvestmentInput> }) => updateInvestment(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] })
-      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
-      setEditingInvestment(false)
-      addToast('success', '투자 정보가 수정되었습니다.')
-    },
-  })
-  const deleteInvestmentMut = useMutation({
-    mutationFn: deleteInvestment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] })
-      setSelectedInvestmentId(null)
-      addToast('success', '투자가 삭제되었습니다.')
-    },
-  })
-  const createDocMut = useMutation({
-    mutationFn: ({ investmentId, data }: { investmentId: number; data: InvestmentDocumentInput }) => createInvestmentDocument(investmentId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
-      setShowDocForm(false)
-      addToast('success', '서류가 추가되었습니다.')
-    },
-  })
-  const updateDocMut = useMutation({
-    mutationFn: ({ investmentId, docId, data }: { investmentId: number; docId: number; data: Partial<InvestmentDocumentInput> }) => updateInvestmentDocument(investmentId, docId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
-      setEditingDocId(null)
-      addToast('success', '서류가 수정되었습니다.')
-    },
-  })
-  const deleteDocMut = useMutation({
-    mutationFn: ({ investmentId, docId }: { investmentId: number; docId: number }) => deleteInvestmentDocument(investmentId, docId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
-      addToast('success', '서류가 삭제되었습니다.')
+      navigate(`/investments/${created.id}`)
     },
   })
 
@@ -158,7 +131,7 @@ export default function InvestmentsPage() {
             </div>
             {showCompanyForm && companyForm(EMPTY_COMPANY, d => createCompanyMut.mutate(d), () => setShowCompanyForm(false))}
             <div className="space-y-2 max-h-72 overflow-auto">
-              {companies?.map((c: any) => (
+              {companies?.map((c) => (
                 <div key={c.id} className="p-2 border rounded">
                   {editingCompanyId === c.id ? (
                     companyForm(c, d => updateCompanyMut.mutate({ id: c.id, data: d }), () => setEditingCompanyId(null))
@@ -178,99 +151,52 @@ export default function InvestmentsPage() {
               ))}
             </div>
           </div>
-
-          <div className="bg-white border rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800">투자 목록</h3>
-              <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowInvestmentForm(v => !v)}>+ 투자</button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <select value={fundFilter} onChange={e => setFundFilter(e.target.value ? Number(e.target.value) : '')} className="px-2 py-1 text-sm border rounded">
-                <option value="">전체 조합</option>
-                {funds?.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1 text-sm border rounded">
-                <option value="">전체 상태</option>
-                <option value="active">{labelStatus('active')}</option>
-                <option value="exited">{labelStatus('exited')}</option>
-                <option value="written_off">{labelStatus('written_off')}</option>
-              </select>
-            </div>
-
-            {showInvestmentForm && <InvestmentForm funds={funds || []} companies={companies || []} initial={EMPTY_INVESTMENT} onSubmit={d => createInvestmentMut.mutate(d)} onCancel={() => setShowInvestmentForm(false)} />}
-
-            {invLoading ? <p className="text-sm text-slate-500">불러오는 중...</p> : (
-              <div className="space-y-2 max-h-96 overflow-auto">
-                {investments?.map((inv: any) => (
-                  <button key={inv.id} onClick={() => { setSelectedInvestmentId(inv.id); setEditingInvestment(false) }} className={`w-full text-left p-2 border rounded ${selectedInvestmentId === inv.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
-                    <p className="text-sm font-medium text-slate-800">{inv.company_name}</p>
-                    <p className="text-xs text-slate-500">{inv.fund_name} | {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="xl:col-span-2">
-          {!selectedInvestment || !selectedInvestmentId ? (
-            <div className="bg-white border rounded-xl p-4 text-sm text-slate-500">투자를 선택하세요.</div>
-          ) : (
-            <div className="bg-white border rounded-xl p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-800">투자 #{selectedInvestment.id}</h3>
-                <div className="flex gap-2">
-                  <button className="text-xs px-2 py-1 bg-slate-100 rounded" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
-                  <button className="text-xs px-2 py-1 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(selectedInvestmentId) }}>삭제</button>
-                </div>
-              </div>
+        <div className="xl:col-span-2 bg-white border rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-800">투자 목록</h3>
+            <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowInvestmentForm(v => !v)}>+ 투자</button>
+          </div>
 
-              {editingInvestment ? (
-                <InvestmentForm funds={funds || []} companies={companies || []} initial={{ ...selectedInvestment, investment_date: selectedInvestment.investment_date || '' }} onSubmit={d => updateInvestmentMut.mutate({ id: selectedInvestmentId, data: d })} onCancel={() => setEditingInvestment(false)} />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                  <div className="p-2 bg-slate-50 rounded">조합 ID: {selectedInvestment.fund_id}</div>
-                  <div className="p-2 bg-slate-50 rounded">회사 ID: {selectedInvestment.company_id}</div>
-                  <div className="p-2 bg-slate-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">지분율: {selectedInvestment.contribution_rate || '-'}</div>
-                  <div className="p-2 bg-slate-50 rounded">투자수단: {selectedInvestment.instrument || '-'}</div>
-                </div>
-              )}
+          <div className="grid grid-cols-2 gap-2">
+            <select value={fundFilter} onChange={e => setFundFilter(e.target.value ? Number(e.target.value) : '')} className="px-2 py-1 text-sm border rounded">
+              <option value="">전체 조합</option>
+              {funds?.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1 text-sm border rounded">
+              <option value="">전체 상태</option>
+              <option value="active">{labelStatus('active')}</option>
+              <option value="exited">{labelStatus('exited')}</option>
+              <option value="written_off">{labelStatus('written_off')}</option>
+            </select>
+          </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-slate-700">서류</h4>
-                  <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
-                </div>
+          {showInvestmentForm && (
+            <InvestmentForm
+              funds={funds || []}
+              companies={companies || []}
+              initial={EMPTY_INVESTMENT}
+              onSubmit={d => createInvestmentMut.mutate(d)}
+              onCancel={() => setShowInvestmentForm(false)}
+            />
+          )}
 
-                {showDocForm && <DocumentForm initial={EMPTY_DOC} onSubmit={d => createDocMut.mutate({ investmentId: selectedInvestmentId, data: d })} onCancel={() => setShowDocForm(false)} />}
-
-                <div className="space-y-2">
-                  {selectedInvestment.documents?.length ? selectedInvestment.documents.map((doc: any) => (
-                    <div key={doc.id} className="border rounded p-2">
-                      {editingDocId === doc.id ? (
-                        <DocumentForm initial={doc} onSubmit={d => updateDocMut.mutate({ investmentId: selectedInvestmentId, docId: doc.id, data: d })} onCancel={() => setEditingDocId(null)} />
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-800">{doc.name}</p>
-                            <p className="text-xs text-slate-500">{doc.doc_type || '-'} | {labelStatus(doc.status)} | {doc.note || '-'}</p>
-                          </div>
-                          <div className="flex gap-1">
-                            <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingDocId(doc.id)}>수정</button>
-                            <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 서류를 삭제하시겠습니까?')) deleteDocMut.mutate({ investmentId: selectedInvestmentId, docId: doc.id }) }}>삭제</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )) : <p className="text-sm text-slate-400">서류가 없습니다.</p>}
-                </div>
-              </div>
+          {invLoading ? <p className="text-sm text-slate-500">불러오는 중...</p> : (
+            <div className="space-y-2 max-h-[38rem] overflow-auto">
+              {investments?.map((inv) => (
+                <button
+                  key={inv.id}
+                  onClick={() => navigate(`/investments/${inv.id}`)}
+                  className="w-full text-left p-3 border rounded hover:bg-slate-50"
+                >
+                  <p className="text-sm font-medium text-slate-800">{inv.company_name || `투자 #${inv.id}`}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {inv.fund_name || '-'} | {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} | {labelStatus(inv.status || 'active')}
+                  </p>
+                </button>
+              ))}
+              {!investments?.length && <p className="text-sm text-slate-400">투자 건이 없습니다.</p>}
             </div>
           )}
         </div>
@@ -279,12 +205,13 @@ export default function InvestmentsPage() {
   )
 }
 
-function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { funds: any[]; companies: any[]; initial: any; onSubmit: (data: InvestmentInput) => void; onCancel: () => void }) {
+function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { funds: Fund[]; companies: Company[]; initial: InvestmentInput; onSubmit: (data: InvestmentInput) => void; onCancel: () => void }) {
   const [form, setForm] = useState<InvestmentInput>(initial)
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50">
-      <select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">조합 선택</option>{funds.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
-      <select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">회사 선택</option>{companies.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+      <select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">조합 선택</option>{funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
+      <select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">회사 선택</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
       <input type="date" value={form.investment_date || ''} onChange={e => setForm(prev => ({ ...prev, investment_date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.amount ?? ''} onChange={e => setForm(prev => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))} placeholder="투자금액" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="주식 수" className="px-2 py-1 text-sm border rounded" />
@@ -300,20 +227,3 @@ function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { fun
     </div>
   )
 }
-
-function DocumentForm({ initial, onSubmit, onCancel }: { initial: any; onSubmit: (data: InvestmentDocumentInput) => void; onCancel: () => void }) {
-  const [form, setForm] = useState<InvestmentDocumentInput>(initial)
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 border rounded p-2 bg-slate-50 mb-2">
-      <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="서류명" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.doc_type || ''} onChange={e => setForm(prev => ({ ...prev, doc_type: e.target.value }))} placeholder="유형" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: pending)" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.note || ''} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="비고" className="px-2 py-1 text-sm border rounded" />
-      <div className="md:col-span-4 flex gap-2">
-        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim() }) }}>저장</button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
-      </div>
-    </div>
-  )
-}
-

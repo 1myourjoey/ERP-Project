@@ -7,6 +7,7 @@ import WorkLogsPage from './pages/WorkLogsPage'
 import FundsPage from './pages/FundsPage'
 import FundDetailPage from './pages/FundDetailPage'
 import InvestmentsPage from './pages/InvestmentsPage'
+import InvestmentDetailPage from './pages/InvestmentDetailPage'
 import ChecklistsPage from './pages/ChecklistsPage'
 import DocumentsPage from './pages/DocumentsPage'
 import CalendarPage from './pages/CalendarPage'
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/funds" element={<FundsPage />} />
         <Route path="/funds/:id" element={<FundDetailPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
+        <Route path="/investments/:id" element={<InvestmentDetailPage />} />
         <Route path="/checklists" element={<ChecklistsPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
