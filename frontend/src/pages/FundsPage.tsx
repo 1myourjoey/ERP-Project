@@ -12,11 +12,12 @@ import {
   type FundInput,
   type LPInput,
 } from '../lib/api'
+import { labelStatus } from '../lib/labels'
 import { Building2, Plus, Pencil, Trash2, X } from 'lucide-react'
 
 const EMPTY_FUND: FundInput = {
   name: '',
-  type: 'Venture Fund',
+  type: '투자조합',
   formation_date: '',
   status: 'active',
   gp: '',
@@ -28,7 +29,7 @@ const EMPTY_FUND: FundInput = {
 
 const EMPTY_LP: LPInput = {
   name: '',
-  type: 'Institution',
+  type: '기관투자자',
   commitment: null,
   paid_in: null,
   contact: '',
@@ -45,14 +46,14 @@ function FundForm({ title, initial, loading, onSubmit, onCancel }: { title: stri
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="Fund name" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="Fund type" className="px-3 py-2 text-sm border rounded-lg" />
+        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="px-3 py-2 text-sm border rounded-lg" />
+        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="조합 유형" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="Status" className="px-3 py-2 text-sm border rounded-lg" />
+        <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-3 py-2 text-sm border rounded-lg" />
         <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="px-3 py-2 text-sm border rounded-lg" />
         <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="Trustee" className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="Total commitment" className="px-3 py-2 text-sm border rounded-lg" />
+        <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="px-3 py-2 text-sm border rounded-lg" />
+        <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="총 약정액" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" value={form.aum ?? ''} onChange={e => setForm(prev => ({ ...prev, aum: e.target.value ? Number(e.target.value) : null }))} placeholder="AUM" className="px-3 py-2 text-sm border rounded-lg" />
       </div>
 
@@ -70,9 +71,9 @@ function FundForm({ title, initial, loading, onSubmit, onCancel }: { title: stri
           disabled={loading || !form.name.trim()}
           className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300"
         >
-          Save
+          저장
         </button>
-        <button onClick={onCancel} className="px-4 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
+        <button onClick={onCancel} className="px-4 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">취소</button>
       </div>
     </div>
   )
@@ -84,11 +85,11 @@ function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; lo
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP name" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="LP type" className="px-2 py-1 text-sm border rounded" />
-        <input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="Commitment" className="px-2 py-1 text-sm border rounded" />
-        <input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="Paid in" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="Contact" className="px-2 py-1 text-sm border rounded" />
+        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="px-2 py-1 text-sm border rounded" />
+        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="LP 유형" className="px-2 py-1 text-sm border rounded" />
+        <input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="약정액" className="px-2 py-1 text-sm border rounded" />
+        <input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입액" className="px-2 py-1 text-sm border rounded" />
+        <input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="px-2 py-1 text-sm border rounded" />
       </div>
       <div className="flex gap-2">
         <button
@@ -96,9 +97,9 @@ function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; lo
           disabled={loading || !form.name.trim() || !form.type.trim()}
           className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-slate-300"
         >
-          Save
+          저장
         </button>
-        <button onClick={onCancel} className="px-3 py-1 text-xs bg-white border rounded hover:bg-slate-100">Cancel</button>
+        <button onClick={onCancel} className="px-3 py-1 text-xs bg-white border rounded hover:bg-slate-100">취소</button>
       </div>
     </div>
   )
@@ -124,17 +125,17 @@ export default function FundsPage() {
 
   return (
     <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-slate-900 mb-5">Funds</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-5">조합 관리</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-700">Fund List</h3>
-            <button onClick={() => setShowCreateFund(true)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"><Plus size={14} /> Add Fund</button>
+            <h3 className="text-sm font-semibold text-slate-700">조합 목록</h3>
+            <button onClick={() => setShowCreateFund(true)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"><Plus size={14} /> 조합 추가</button>
           </div>
 
-          {showCreateFund && <div className="mb-3"><FundForm title="Create Fund" initial={EMPTY_FUND} loading={createFundMut.isPending} onSubmit={data => createFundMut.mutate(data)} onCancel={() => setShowCreateFund(false)} /></div>}
+          {showCreateFund && <div className="mb-3"><FundForm title="조합 생성" initial={EMPTY_FUND} loading={createFundMut.isPending} onSubmit={data => createFundMut.mutate(data)} onCancel={() => setShowCreateFund(false)} /></div>}
 
-          {isLoading ? <p className="text-sm text-slate-500">Loading...</p> : (
+          {isLoading ? <p className="text-sm text-slate-500">불러오는 중...</p> : (
             <div className="space-y-2">
               {funds?.map((f: any) => (
                 <button key={f.id} onClick={() => { setSelectedFundId(f.id); setEditingFund(false) }} className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedFundId === f.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
@@ -142,7 +143,7 @@ export default function FundsPage() {
                     <h4 className="font-medium text-slate-800 flex items-center gap-2"><Building2 size={15} />{f.name}</h4>
                     <span className="text-xs text-slate-500">LP {f.lp_count}</span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{f.type} | {f.status}</p>
+                  <p className="text-xs text-slate-500 mt-1">{f.type} | {labelStatus(f.status)}</p>
                 </button>
               ))}
             </div>
@@ -150,37 +151,37 @@ export default function FundsPage() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Fund Detail</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">조합 상세</h3>
           {!selectedFundId || !fundDetail ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-500">Select a fund.</div>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-500">조합을 선택하세요.</div>
           ) : editingFund ? (
-            <FundForm title="Edit Fund" initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }} loading={updateFundMut.isPending} onSubmit={data => updateFundMut.mutate({ id: selectedFundId, data })} onCancel={() => setEditingFund(false)} />
+            <FundForm title="조합 수정" initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }} loading={updateFundMut.isPending} onSubmit={data => updateFundMut.mutate({ id: selectedFundId, data })} onCancel={() => setEditingFund(false)} />
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="text-lg font-semibold text-slate-800">{fundDetail.name}</h4>
-                  <p className="text-sm text-slate-500">{fundDetail.type} | {fundDetail.status}</p>
+                  <p className="text-sm text-slate-500">{fundDetail.type} | {labelStatus(fundDetail.status)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"><Pencil size={12} />Edit</button>
-                  <button onClick={() => { if (confirm('Delete this fund?')) deleteFundMut.mutate(selectedFundId) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 flex items-center gap-1"><Trash2 size={12} />Delete</button>
+                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"><Pencil size={12} />수정</button>
+                  <button onClick={() => { if (confirm('이 조합을 삭제하시겠습니까?')) deleteFundMut.mutate(selectedFundId) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 flex items-center gap-1"><Trash2 size={12} />삭제</button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div className="p-2 bg-slate-50 rounded">Formation date: {fundDetail.formation_date || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">결성일: {fundDetail.formation_date || '-'}</div>
                 <div className="p-2 bg-slate-50 rounded">GP: {fundDetail.gp || '-'}</div>
                 <div className="p-2 bg-slate-50 rounded">Co-GP: {fundDetail.co_gp || '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">Trustee: {fundDetail.trustee || '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">Commitment: {fundDetail.commitment_total?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">신탁사: {fundDetail.trustee || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">약정액: {fundDetail.commitment_total?.toLocaleString?.() ?? '-'}</div>
                 <div className="p-2 bg-slate-50 rounded">AUM: {fundDetail.aum?.toLocaleString?.() ?? '-'}</div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h5 className="text-sm font-semibold text-slate-700">LPs</h5>
-                  <button onClick={() => setShowCreateLP(true)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ Add LP</button>
+                  <h5 className="text-sm font-semibold text-slate-700">LP 목록</h5>
+                  <button onClick={() => setShowCreateLP(true)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ LP 추가</button>
                 </div>
 
                 {showCreateLP && <div className="mb-2"><LPForm initial={EMPTY_LP} loading={createLPMut.isPending} onSubmit={data => createLPMut.mutate({ fundId: selectedFundId, data })} onCancel={() => setShowCreateLP(false)} /></div>}
@@ -195,18 +196,18 @@ export default function FundsPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-800">{lp.name}</p>
-                              <p className="text-xs text-slate-500">{lp.type} | Contact: {lp.contact || '-'}</p>
+                              <p className="text-xs text-slate-500">{lp.type} | 연락처: {lp.contact || '-'}</p>
                             </div>
                             <div className="flex gap-1">
-                              <button onClick={() => setEditingLPId(lp.id)} className="px-2 py-1 text-xs bg-slate-100 rounded hover:bg-slate-200">Edit</button>
-                              <button onClick={() => { if (confirm('Delete this LP?')) deleteLPMut.mutate({ fundId: selectedFundId, lpId: lp.id }) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">Delete</button>
+                              <button onClick={() => setEditingLPId(lp.id)} className="px-2 py-1 text-xs bg-slate-100 rounded hover:bg-slate-200">수정</button>
+                              <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate({ fundId: selectedFundId, lpId: lp.id }) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
                             </div>
                           </div>
-                          <p className="text-xs text-slate-600 mt-1">Commitment: {lp.commitment?.toLocaleString?.() ?? '-'} | Paid in: {lp.paid_in?.toLocaleString?.() ?? '-'}</p>
+                          <p className="text-xs text-slate-600 mt-1">약정액: {lp.commitment?.toLocaleString?.() ?? '-'} | 납입액: {lp.paid_in?.toLocaleString?.() ?? '-'}</p>
                         </>
                       )}
                     </div>
-                  )) : <p className="text-sm text-slate-400">No LPs yet.</p>}
+                  )) : <p className="text-sm text-slate-400">등록된 LP가 없습니다.</p>}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 
 class PortfolioCompanyCreate(BaseModel):
@@ -36,14 +36,14 @@ class PortfolioCompanyResponse(BaseModel):
 class InvestmentDocumentCreate(BaseModel):
     name: str
     doc_type: Optional[str] = None
-    status: str = "pending"
+    status: Literal["pending", "requested", "reviewing", "collected"] = "pending"
     note: Optional[str] = None
 
 
 class InvestmentDocumentUpdate(BaseModel):
     name: Optional[str] = None
     doc_type: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Literal["pending", "requested", "reviewing", "collected"]] = None
     note: Optional[str] = None
 
 
@@ -52,7 +52,7 @@ class InvestmentDocumentResponse(BaseModel):
     investment_id: int
     name: str
     doc_type: Optional[str] = None
-    status: str
+    status: Literal["pending", "requested", "reviewing", "collected"]
     note: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -62,26 +62,26 @@ class InvestmentCreate(BaseModel):
     fund_id: int
     company_id: int
     investment_date: Optional[date] = None
-    amount: Optional[int] = None
-    shares: Optional[int] = None
-    share_price: Optional[int] = None
-    valuation: Optional[int] = None
+    amount: Optional[float] = Field(default=None, ge=0)
+    shares: Optional[int] = Field(default=None, ge=0)
+    share_price: Optional[float] = Field(default=None, ge=0)
+    valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: str = "active"
+    status: Literal["active", "exited", "written_off"] = "active"
 
 
 class InvestmentUpdate(BaseModel):
     fund_id: Optional[int] = None
     company_id: Optional[int] = None
     investment_date: Optional[date] = None
-    amount: Optional[int] = None
-    shares: Optional[int] = None
-    share_price: Optional[int] = None
-    valuation: Optional[int] = None
+    amount: Optional[float] = Field(default=None, ge=0)
+    shares: Optional[int] = Field(default=None, ge=0)
+    share_price: Optional[float] = Field(default=None, ge=0)
+    valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Literal["active", "exited", "written_off"]] = None
 
 
 class InvestmentListItem(BaseModel):
@@ -91,9 +91,9 @@ class InvestmentListItem(BaseModel):
     fund_name: str
     company_name: str
     investment_date: Optional[date] = None
-    amount: Optional[int] = None
+    amount: Optional[float] = Field(default=None, ge=0)
     instrument: Optional[str] = None
-    status: str
+    status: Literal["active", "exited", "written_off"]
 
 
 class InvestmentResponse(BaseModel):
@@ -101,13 +101,13 @@ class InvestmentResponse(BaseModel):
     fund_id: int
     company_id: int
     investment_date: Optional[date] = None
-    amount: Optional[int] = None
-    shares: Optional[int] = None
-    share_price: Optional[int] = None
-    valuation: Optional[int] = None
+    amount: Optional[float] = Field(default=None, ge=0)
+    shares: Optional[int] = Field(default=None, ge=0)
+    share_price: Optional[float] = Field(default=None, ge=0)
+    valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: str
+    status: Literal["active", "exited", "written_off"]
     documents: list[InvestmentDocumentResponse] = []
 
     model_config = {"from_attributes": True}

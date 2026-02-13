@@ -1,5 +1,9 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from database import engine, Base
 from models import *  # noqa: F401,F403 - import all models so tables are created
@@ -15,7 +19,14 @@ from routers import (
     document_status,
 )
 
-app = FastAPI(title="VC ERP API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="VC ERP API", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,9 +47,12 @@ app.include_router(calendar_events.router)
 app.include_router(document_status.router)
 
 
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "입력값 검증 실패", "errors": str(exc.errors())},
+    )
 
 
 @app.get("/api/health")

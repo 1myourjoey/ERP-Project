@@ -2,13 +2,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask } from '../lib/api'
 import type { Task, TaskBoard, TaskCreate } from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
 import { Plus, Clock, Trash2, Check, Pencil } from 'lucide-react'
 
 const QUADRANTS = [
-  { key: 'Q1', label: 'Q1: Urgent & Important', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
-  { key: 'Q2', label: 'Q2: Important, Not Urgent', color: 'border-blue-400', bg: 'bg-blue-50', badge: 'bg-blue-500' },
-  { key: 'Q3', label: 'Q3: Urgent, Not Important', color: 'border-amber-400', bg: 'bg-amber-50', badge: 'bg-amber-500' },
-  { key: 'Q4', label: 'Q4: Not Urgent, Not Important', color: 'border-gray-300', bg: 'bg-gray-50', badge: 'bg-gray-400' },
+  { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
+  { key: 'Q2', label: '중요·비긴급 (Q2)', color: 'border-blue-400', bg: 'bg-blue-50', badge: 'bg-blue-500' },
+  { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-amber-400', bg: 'bg-amber-50', badge: 'bg-amber-500' },
+  { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-gray-300', bg: 'bg-gray-50', badge: 'bg-gray-400' },
 ]
 
 function TaskItem({ task, onComplete, onDelete, onEdit }: {
@@ -26,7 +27,7 @@ function TaskItem({ task, onComplete, onDelete, onEdit }: {
       <button
         onClick={() => onComplete(task.id)}
         className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
-        title="Complete"
+        title="완료"
       />
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEdit(task)}>
         <p className="text-sm text-slate-800 leading-snug">{task.title}</p>
@@ -43,10 +44,10 @@ function TaskItem({ task, onComplete, onDelete, onEdit }: {
         </div>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-        <button onClick={() => onEdit(task)} className="text-slate-400 hover:text-blue-500" title="Edit">
+        <button onClick={() => onEdit(task)} className="text-slate-400 hover:text-blue-500" title="수정">
           <Pencil size={14} />
         </button>
-        <button onClick={() => onDelete(task.id)} className="text-slate-400 hover:text-red-500" title="Delete">
+        <button onClick={() => onDelete(task.id)} className="text-slate-400 hover:text-red-500" title="삭제">
           <Trash2 size={14} />
         </button>
       </div>
@@ -80,7 +81,7 @@ function AddTaskForm({ quadrant, onAdd }: { quadrant: string; onAdd: (data: Task
         onClick={() => setOpen(true)}
         className="w-full flex items-center justify-center gap-1 py-2 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
       >
-        <Plus size={14} /> Add
+        <Plus size={14} /> 추가
       </button>
     )
   }
@@ -92,7 +93,7 @@ function AddTaskForm({ quadrant, onAdd }: { quadrant: string; onAdd: (data: Task
         value={title}
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && submit()}
-        placeholder="Task title"
+        placeholder="작업 제목"
         className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
       />
       <div className="flex gap-2">
@@ -105,16 +106,16 @@ function AddTaskForm({ quadrant, onAdd }: { quadrant: string; onAdd: (data: Task
         <input
           value={estimatedTime}
           onChange={e => setEstimatedTime(e.target.value)}
-          placeholder="ex) 1h, 30m"
+          placeholder="예) 1h, 30m"
           className="w-24 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       </div>
       <div className="flex gap-2">
         <button onClick={submit} className="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-          Add
+          추가
         </button>
         <button onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded transition-colors">
-          Cancel
+          취소
         </button>
       </div>
     </div>
@@ -148,11 +149,11 @@ function EditTaskModal({ task, onSave, onCancel }: {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
       <div className="bg-white rounded-xl p-5 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-base font-semibold text-slate-800 mb-4">Edit Task</h3>
+        <h3 className="text-base font-semibold text-slate-800 mb-4">작업 수정</h3>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Title</label>
+            <label className="block text-xs text-slate-500 mb-1">제목</label>
             <input
               autoFocus
               value={title}
@@ -163,7 +164,7 @@ function EditTaskModal({ task, onSave, onCancel }: {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Deadline</label>
+              <label className="block text-xs text-slate-500 mb-1">마감일</label>
               <input
                 type="date"
                 value={deadline}
@@ -172,11 +173,11 @@ function EditTaskModal({ task, onSave, onCancel }: {
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Estimated</label>
+              <label className="block text-xs text-slate-500 mb-1">예상 시간</label>
               <input
                 value={estimatedTime}
                 onChange={e => setEstimatedTime(e.target.value)}
-                placeholder="ex) 2h, 30m"
+                placeholder="예) 2h, 30m"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
@@ -184,31 +185,31 @@ function EditTaskModal({ task, onSave, onCancel }: {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Quadrant</label>
+              <label className="block text-xs text-slate-500 mb-1">사분면</label>
               <select
                 value={quadrant}
                 onChange={e => setQuadrant(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <option value="Q1">Q1: Urgent & Important</option>
-                <option value="Q2">Q2: Important, Not Urgent</option>
-                <option value="Q3">Q3: Urgent, Not Important</option>
-                <option value="Q4">Q4: Not Urgent, Not Important</option>
+                <option value="Q1">긴급·중요 (Q1)</option>
+                <option value="Q2">중요·비긴급 (Q2)</option>
+                <option value="Q3">긴급·비중요 (Q3)</option>
+                <option value="Q4">비긴급·비중요 (Q4)</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Delegate</label>
+              <label className="block text-xs text-slate-500 mb-1">담당자</label>
               <input
                 value={delegateTo}
                 onChange={e => setDelegateTo(e.target.value)}
-                placeholder="optional"
+                placeholder="선택 입력"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Memo</label>
+            <label className="block text-xs text-slate-500 mb-1">메모</label>
             <textarea
               value={memo}
               onChange={e => setMemo(e.target.value)}
@@ -223,10 +224,10 @@ function EditTaskModal({ task, onSave, onCancel }: {
             onClick={submit}
             className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Save
+            저장
           </button>
           <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-            Cancel
+            취소
           </button>
         </div>
       </div>
@@ -244,15 +245,15 @@ function CompleteModal({ task, onConfirm, onCancel }: {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
       <div className="bg-white rounded-xl p-5 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-base font-semibold text-slate-800 mb-1">Complete Task</h3>
+        <h3 className="text-base font-semibold text-slate-800 mb-1">작업 완료</h3>
         <p className="text-sm text-slate-600 mb-4">{task.title}</p>
-        <label className="block text-xs text-slate-500 mb-1">Actual time</label>
+        <label className="block text-xs text-slate-500 mb-1">실제 소요 시간</label>
         <input
           autoFocus
           value={actualTime}
           onChange={e => setActualTime(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && actualTime && onConfirm(actualTime)}
-          placeholder="ex) 1h30m"
+          placeholder="예) 1h30m"
           className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
         />
         <div className="flex gap-2">
@@ -260,10 +261,10 @@ function CompleteModal({ task, onConfirm, onCancel }: {
             onClick={() => actualTime && onConfirm(actualTime)}
             className="flex-1 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
           >
-            <Check size={16} /> Complete
+            <Check size={16} /> 완료
           </button>
           <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-            Cancel
+            취소
           </button>
         </div>
       </div>
@@ -273,6 +274,7 @@ function CompleteModal({ task, onConfirm, onCancel }: {
 
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
@@ -284,7 +286,10 @@ export default function TaskBoardPage() {
 
   const addMutation = useMutation({
     mutationFn: createTask,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['taskBoard'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      addToast('success', '작업이 추가되었습니다.')
+    },
   })
 
   const updateMutation = useMutation({
@@ -293,6 +298,7 @@ export default function TaskBoardPage() {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setEditingTask(null)
+      addToast('success', '작업이 수정되었습니다.')
     },
   })
 
@@ -302,20 +308,24 @@ export default function TaskBoardPage() {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setCompletingTask(null)
+      addToast('success', '작업이 완료 처리되었습니다.')
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: deleteTask,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['taskBoard'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      addToast('success', '작업이 삭제되었습니다.')
+    },
   })
 
-  if (isLoading) return <div className="p-8 text-slate-500">Loading...</div>
+  if (isLoading) return <div className="p-8 text-slate-500">불러오는 중...</div>
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-2xl font-bold text-slate-900">Task Board</h2>
+        <h2 className="text-2xl font-bold text-slate-900">업무 보드</h2>
         <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
           {['pending', 'all', 'completed'].map(s => (
             <button
@@ -325,7 +335,7 @@ export default function TaskBoardPage() {
                 statusFilter === s ? 'bg-white shadow text-slate-800 font-medium' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              {s === 'pending' ? 'In Progress' : s === 'all' ? 'All' : 'Completed'}
+              {s === 'pending' ? '진행 중' : s === 'all' ? '전체' : '완료'}
             </button>
           ))}
         </div>
@@ -349,7 +359,7 @@ export default function TaskBoardPage() {
                     onComplete={() => setCompletingTask(t)}
                     onEdit={(task) => setEditingTask(task)}
                     onDelete={(id) => {
-                      if (confirm('Delete this task?')) deleteMutation.mutate(id)
+                      if (confirm('이 작업을 삭제하시겠습니까?')) deleteMutation.mutate(id)
                     }}
                   />
                 ))}

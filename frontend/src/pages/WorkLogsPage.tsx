@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchWorkLogs, fetchWorkLogCategories, createWorkLog, updateWorkLog, deleteWorkLog } from '../lib/api'
+import { labelStatus } from '../lib/labels'
 import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 
 function DynamicList({ label, items, onChange, color = 'slate' }: {
@@ -17,7 +18,7 @@ function DynamicList({ label, items, onChange, color = 'slate' }: {
           onClick={() => onChange([...items, { content: '' }])}
           className="text-xs text-blue-600 hover:text-blue-800"
         >
-          + Add
+          + 추가
         </button>
       </div>
       {items.map((item, i) => (
@@ -93,27 +94,27 @@ function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }:
       <input
         value={form.title}
         onChange={set('title')}
-        placeholder="Title"
+        placeholder="제목"
         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
 
       <textarea
         value={form.content}
         onChange={set('content')}
-        placeholder="Content (optional)"
+        placeholder="내용 (선택)"
         rows={2}
         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
       />
 
       <div className="grid grid-cols-3 gap-2">
-        <input value={form.estimated_time} onChange={set('estimated_time')} placeholder="Estimated" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <input value={form.actual_time} onChange={set('actual_time')} placeholder="Actual" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <input value={form.time_diff} onChange={set('time_diff')} placeholder="Diff" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input value={form.estimated_time} onChange={set('estimated_time')} placeholder="예상" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input value={form.actual_time} onChange={set('actual_time')} placeholder="실제" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <input value={form.time_diff} onChange={set('time_diff')} placeholder="차이" className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
 
-      <DynamicList label="Details" items={details} onChange={setDetails} />
-      <DynamicList label="Lessons" items={lessons} onChange={setLessons} color="amber" />
-      <DynamicList label="Follow-ups" items={followUps} onChange={setFollowUps} color="blue" />
+      <DynamicList label="세부 내용" items={details} onChange={setDetails} />
+      <DynamicList label="교훈" items={lessons} onChange={setLessons} color="amber" />
+      <DynamicList label="후속 조치" items={followUps} onChange={setFollowUps} color="blue" />
 
       <div className="flex gap-2">
         <button
@@ -121,10 +122,10 @@ function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }:
           disabled={!form.title}
           className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 transition-colors"
         >
-          Save
+          저장
         </button>
         <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-          Cancel
+          취소
         </button>
       </div>
     </div>
@@ -151,7 +152,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
           <span className={`px-1.5 py-0.5 rounded text-xs ${
             log.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
           }`}>
-            {log.status}
+            {labelStatus(log.status)}
           </span>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>
@@ -165,15 +166,15 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
 
           {log.estimated_time && log.actual_time && (
             <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
-              <span>Estimated: {log.estimated_time}</span>
-              <span>Actual: {log.actual_time}</span>
-              {log.time_diff && <span className="font-medium text-slate-700">Diff: {log.time_diff}</span>}
+              <span>예상: {log.estimated_time}</span>
+              <span>실제: {log.actual_time}</span>
+              {log.time_diff && <span className="font-medium text-slate-700">차이: {log.time_diff}</span>}
             </div>
           )}
 
           {log.details?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1">Details</p>
+              <p className="text-xs font-semibold text-slate-600 mb-1">세부 내용</p>
               <ul className="space-y-0.5">
                 {log.details.map((d: any) => (
                   <li key={d.id} className="text-xs text-slate-600 pl-3 border-l-2 border-slate-200">{d.content}</li>
@@ -184,7 +185,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
 
           {log.lessons?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-amber-700 mb-1">Lessons</p>
+              <p className="text-xs font-semibold text-amber-700 mb-1">교훈</p>
               <ul className="space-y-0.5">
                 {log.lessons.map((l: any) => (
                   <li key={l.id} className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">{l.content}</li>
@@ -195,7 +196,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
 
           {log.follow_ups?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-blue-700 mb-1">Follow-ups</p>
+              <p className="text-xs font-semibold text-blue-700 mb-1">후속 조치</p>
               <ul className="space-y-0.5">
                 {log.follow_ups.map((f: any) => (
                   <li key={f.id} className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
@@ -212,13 +213,13 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
               onClick={() => onEdit(log)}
               className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
             >
-              <Pencil size={12} /> Edit
+              <Pencil size={12} /> 수정
             </button>
             <button
-              onClick={() => { if (confirm('Delete this log?')) onDelete(log.id) }}
+              onClick={() => { if (confirm('이 기록을 삭제하시겠습니까?')) onDelete(log.id) }}
               className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
             >
-              <Trash2 size={12} /> Delete
+              <Trash2 size={12} /> 삭제
             </button>
           </div>
         </div>
@@ -277,13 +278,13 @@ export default function WorkLogsPage() {
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <BookOpen size={24} /> Work Logs
+          <BookOpen size={24} /> 업무 기록
         </h2>
         <button
           onClick={() => { setShowAdd(!showAdd); setEditingLog(null) }}
           className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <Plus size={16} /> Add Log
+          <Plus size={16} /> 기록 추가
         </button>
       </div>
 
@@ -294,7 +295,7 @@ export default function WorkLogsPage() {
             !categoryFilter ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          All
+          전체
         </button>
         {categories?.map((c: string) => (
           <button
@@ -313,7 +314,7 @@ export default function WorkLogsPage() {
         <div className="mb-4">
           <WorkLogForm
             categories={categories}
-            title="Add Work Log"
+            title="업무 기록 추가"
             onSave={(data) => createMut.mutate(data)}
             onClose={() => setShowAdd(false)}
           />
@@ -325,7 +326,7 @@ export default function WorkLogsPage() {
           <WorkLogForm
             categories={categories}
             initial={editingLog}
-            title="Edit Work Log"
+            title="업무 기록 수정"
             onSave={(data) => updateMut.mutate({ id: editingLog.id, data })}
             onClose={() => setEditingLog(null)}
           />
@@ -333,9 +334,9 @@ export default function WorkLogsPage() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-500">불러오는 중...</p>
       ) : Object.keys(grouped).length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-12">No logs yet.</p>
+        <p className="text-sm text-slate-400 text-center py-12">기록이 없습니다.</p>
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([date, items]) => (

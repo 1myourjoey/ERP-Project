@@ -199,6 +199,9 @@ def complete_step(
             task.actual_time = data.actual_time
 
     instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(404, "Instance not found")
+
     all_done = all(
         s.status in ("completed", "skipped")
         for s in instance.step_instances

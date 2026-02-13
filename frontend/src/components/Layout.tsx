@@ -12,15 +12,15 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/tasks', label: 'Task Board', icon: KanbanSquare },
-  { to: '/workflows', label: 'Workflows', icon: GitBranch },
-  { to: '/worklogs', label: 'Work Logs', icon: BookOpen },
-  { to: '/funds', label: 'Funds', icon: Building2 },
-  { to: '/investments', label: 'Investments', icon: PieChart },
-  { to: '/checklists', label: 'Checklists', icon: CheckSquare },
-  { to: '/documents', label: 'Documents', icon: Files },
-  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
+  { to: '/tasks', label: '업무 보드', icon: KanbanSquare },
+  { to: '/workflows', label: '워크플로우', icon: GitBranch },
+  { to: '/worklogs', label: '업무 기록', icon: BookOpen },
+  { to: '/funds', label: '조합 관리', icon: Building2 },
+  { to: '/investments', label: '투자 관리', icon: PieChart },
+  { to: '/checklists', label: '체크리스트', icon: CheckSquare },
+  { to: '/documents', label: '서류 현황', icon: Files },
+  { to: '/calendar', label: '캘린더', icon: CalendarDays },
 ]
 
 export default function Layout() {

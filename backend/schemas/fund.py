@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import date
 from typing import Optional
 
@@ -6,17 +6,35 @@ from typing import Optional
 class LPCreate(BaseModel):
     name: str
     type: str
-    commitment: Optional[int] = None
-    paid_in: Optional[int] = None
+    commitment: Optional[float] = Field(default=None, ge=0)
+    paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("type must not be empty")
+        return value
 
 
 class LPUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
-    commitment: Optional[int] = None
-    paid_in: Optional[int] = None
+    commitment: Optional[float] = Field(default=None, ge=0)
+    paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("type must not be empty")
+        return value
 
 
 class LPResponse(BaseModel):
@@ -24,8 +42,8 @@ class LPResponse(BaseModel):
     fund_id: int
     name: str
     type: str
-    commitment: Optional[int] = None
-    paid_in: Optional[int] = None
+    commitment: Optional[float] = Field(default=None, ge=0)
+    paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -39,8 +57,16 @@ class FundCreate(BaseModel):
     gp: Optional[str] = None
     co_gp: Optional[str] = None
     trustee: Optional[str] = None
-    commitment_total: Optional[int] = None
-    aum: Optional[int] = None
+    commitment_total: Optional[float] = Field(default=None, ge=0)
+    aum: Optional[float] = Field(default=None, ge=0)
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("type must not be empty")
+        return value
 
 
 class FundUpdate(BaseModel):
@@ -51,8 +77,18 @@ class FundUpdate(BaseModel):
     gp: Optional[str] = None
     co_gp: Optional[str] = None
     trustee: Optional[str] = None
-    commitment_total: Optional[int] = None
-    aum: Optional[int] = None
+    commitment_total: Optional[float] = Field(default=None, ge=0)
+    aum: Optional[float] = Field(default=None, ge=0)
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("type must not be empty")
+        return value
 
 
 class FundListItem(BaseModel):
@@ -60,8 +96,8 @@ class FundListItem(BaseModel):
     name: str
     type: str
     status: str
-    commitment_total: Optional[int] = None
-    aum: Optional[int] = None
+    commitment_total: Optional[float] = Field(default=None, ge=0)
+    aum: Optional[float] = Field(default=None, ge=0)
     lp_count: int = 0
 
     model_config = {"from_attributes": True}
@@ -76,8 +112,8 @@ class FundResponse(BaseModel):
     gp: Optional[str] = None
     co_gp: Optional[str] = None
     trustee: Optional[str] = None
-    commitment_total: Optional[int] = None
-    aum: Optional[int] = None
+    commitment_total: Optional[float] = Field(default=None, ge=0)
+    aum: Optional[float] = Field(default=None, ge=0)
     lps: list[LPResponse] = []
 
     model_config = {"from_attributes": True}

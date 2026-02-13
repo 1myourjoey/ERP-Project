@@ -1,6 +1,16 @@
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
+import { pushToast } from './toastBridge'
 
 const api = axios.create({ baseURL: '/api' })
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ detail?: string }>) => {
+    const message = error.response?.data?.detail || '오류가 발생했습니다.'
+    pushToast('error', message)
+    return Promise.reject(new Error(message))
+  },
+)
 
 // -- Tasks --
 export const fetchTaskBoard = (status = 'pending') => api.get('/tasks/board', { params: { status } }).then(r => r.data)
@@ -12,7 +22,7 @@ export const completeTask = (id: number, actual_time: string) => api.patch(`/tas
 export const deleteTask = (id: number) => api.delete(`/tasks/${id}`)
 
 // -- Dashboard --
-export const fetchDashboard = () => api.get('/dashboard/today').then(r => r.data)
+export const fetchDashboard = (): Promise<DashboardResponse> => api.get('/dashboard/today').then(r => r.data)
 
 // -- Workflows --
 export const fetchWorkflows = () => api.get('/workflows').then(r => r.data)
@@ -27,18 +37,18 @@ export const completeWorkflowStep = (instanceId: number, stepId: number, data: {
 export const cancelWorkflowInstance = (id: number) => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
 
 // -- Funds --
-export const fetchFunds = () => api.get('/funds').then(r => r.data)
-export const fetchFund = (id: number) => api.get(`/funds/${id}`).then(r => r.data)
+export const fetchFunds = (): Promise<Fund[]> => api.get('/funds').then(r => r.data)
+export const fetchFund = (id: number): Promise<Fund> => api.get(`/funds/${id}`).then(r => r.data)
 export const createFund = (data: FundInput) => api.post('/funds', data).then(r => r.data)
 export const updateFund = (id: number, data: Partial<FundInput>) => api.put(`/funds/${id}`, data).then(r => r.data)
 export const deleteFund = (id: number) => api.delete(`/funds/${id}`)
-export const fetchFundLPs = (fundId: number) => api.get(`/funds/${fundId}/lps`).then(r => r.data)
+export const fetchFundLPs = (fundId: number): Promise<LP[]> => api.get(`/funds/${fundId}/lps`).then(r => r.data)
 export const createFundLP = (fundId: number, data: LPInput) => api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
 export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) => api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
 export const deleteFundLP = (fundId: number, lpId: number) => api.delete(`/funds/${fundId}/lps/${lpId}`)
 
 // -- Investments --
-export const fetchCompanies = () => api.get('/companies').then(r => r.data)
+export const fetchCompanies = (): Promise<Company[]> => api.get('/companies').then(r => r.data)
 export const createCompany = (data: CompanyInput) => api.post('/companies', data).then(r => r.data)
 export const updateCompany = (id: number, data: Partial<CompanyInput>) => api.put(`/companies/${id}`, data).then(r => r.data)
 export const deleteCompany = (id: number) => api.delete(`/companies/${id}`)
@@ -65,10 +75,10 @@ export const updateChecklistItem = (checklistId: number, itemId: number, data: P
 export const deleteChecklistItem = (checklistId: number, itemId: number) => api.delete(`/checklists/${checklistId}/items/${itemId}`)
 
 // -- Document Status --
-export const fetchDocumentStatus = (params?: { status?: string; fund_id?: number; company_id?: number }) => api.get('/document-status', { params }).then(r => r.data)
+export const fetchDocumentStatus = (params?: { status?: string; fund_id?: number; company_id?: number }): Promise<DocumentStatusItem[]> => api.get('/document-status', { params }).then(r => r.data)
 
 // -- Calendar --
-export const fetchCalendarEvents = (params?: { date_from?: string; date_to?: string; status?: string }) => api.get('/calendar-events', { params }).then(r => r.data)
+export const fetchCalendarEvents = (params?: { date_from?: string; date_to?: string; status?: string }): Promise<CalendarEvent[]> => api.get('/calendar-events', { params }).then(r => r.data)
 export const createCalendarEvent = (data: CalendarEventInput) => api.post('/calendar-events', data).then(r => r.data)
 export const updateCalendarEvent = (id: number, data: Partial<CalendarEventInput>) => api.put(`/calendar-events/${id}`, data).then(r => r.data)
 export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/${id}`)
@@ -76,11 +86,51 @@ export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/
 // -- WorkLogs --
 export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }) => api.get('/worklogs', { params }).then(r => r.data)
 export const fetchWorkLogCategories = () => api.get('/worklogs/categories').then(r => r.data)
-export const createWorkLog = (data: any) => api.post('/worklogs', data).then(r => r.data)
-export const updateWorkLog = (id: number, data: any) => api.put(`/worklogs/${id}`, data).then(r => r.data)
+export const createWorkLog = (data: WorkLogInput) => api.post('/worklogs', data).then(r => r.data)
+export const updateWorkLog = (id: number, data: Partial<WorkLogInput>) => api.put(`/worklogs/${id}`, data).then(r => r.data)
 export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
 
 // -- Types --
+export interface DashboardResponse {
+  date: string
+  day_of_week: string
+  today: { tasks: Task[]; total_estimated_time: string }
+  tomorrow: { tasks: Task[]; total_estimated_time: string }
+  this_week: Task[]
+  upcoming: Task[]
+  active_workflows: ActiveWorkflow[]
+  fund_summary: FundSummary[]
+  missing_documents: MissingDocument[]
+}
+
+export interface ActiveWorkflow {
+  id: number
+  name: string
+  progress: string
+  next_step: string | null
+}
+
+export interface FundSummary {
+  id: number
+  name: string
+  type: string
+  status: string
+  commitment_total: number | null
+  aum: number | null
+  lp_count: number
+  investment_count: number
+}
+
+export interface MissingDocument {
+  id: number
+  investment_id: number
+  document_name: string
+  document_type: string | null
+  status: string
+  company_name: string
+  fund_name: string
+}
+
 export interface TaskCreate {
   title: string
   deadline?: string | null
@@ -144,6 +194,22 @@ export interface WorkflowTemplateInput {
   warnings: WorkflowWarningInput[]
 }
 
+export interface Fund {
+  id: number
+  name: string
+  type: string
+  formation_date: string | null
+  status: string
+  gp: string | null
+  co_gp: string | null
+  trustee: string | null
+  commitment_total: number | null
+  aum: number | null
+  lp_count?: number
+  investment_count?: number
+  lps?: LP[]
+}
+
 export interface FundInput {
   name: string
   type: string
@@ -162,6 +228,26 @@ export interface LPInput {
   commitment?: number | null
   paid_in?: number | null
   contact?: string | null
+}
+
+export interface LP {
+  id: number
+  fund_id: number
+  name: string
+  type: string
+  commitment: number | null
+  paid_in: number | null
+  contact: string | null
+}
+
+export interface Company {
+  id: number
+  name: string
+  business_number: string | null
+  ceo: string | null
+  address: string | null
+  industry: string | null
+  vics_registered: boolean
 }
 
 export interface CompanyInput {
@@ -207,6 +293,17 @@ export interface ChecklistInput {
   items: ChecklistItemInput[]
 }
 
+export interface DocumentStatusItem {
+  id: number
+  investment_id: number
+  document_name: string
+  document_type: string | null
+  status: string
+  note: string | null
+  company_name: string
+  fund_name: string
+}
+
 export interface CalendarEventInput {
   title: string
   date: string
@@ -216,3 +313,30 @@ export interface CalendarEventInput {
   status?: string
   task_id?: number | null
 }
+
+export interface CalendarEvent {
+  id: number
+  title: string
+  date: string
+  time: string | null
+  duration: number | null
+  description: string | null
+  status: string
+  task_id: number | null
+}
+
+export interface WorkLogInput {
+  date: string
+  category: string
+  title: string
+  content?: string | null
+  status?: string
+  estimated_time?: string | null
+  actual_time?: string | null
+  time_diff?: string | null
+  task_id?: number | null
+  details?: { content: string; order?: number }[]
+  lessons?: { content: string; order?: number }[]
+  follow_ups?: { content: string; target_date?: string | null; order?: number }[]
+}
+

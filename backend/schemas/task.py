@@ -1,25 +1,47 @@
-from pydantic import BaseModel
+import re
+
+from pydantic import BaseModel, field_validator
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
+
+ESTIMATED_TIME_PATTERN = re.compile(r"^(\d+[hdm]|\d+h\s?\d+m)$")
 
 
 class TaskCreate(BaseModel):
     title: str
     deadline: Optional[datetime] = None
     estimated_time: Optional[str] = None
-    quadrant: str = "Q1"
+    quadrant: Literal["Q1", "Q2", "Q3", "Q4"] = "Q1"
     memo: Optional[str] = None
     delegate_to: Optional[str] = None
+
+    @field_validator("estimated_time")
+    @classmethod
+    def validate_estimated_time(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        if not ESTIMATED_TIME_PATTERN.fullmatch(value):
+            raise ValueError("estimated_time must be like 2h, 30m, 1d, or 1h 30m")
+        return value
 
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     deadline: Optional[datetime] = None
     estimated_time: Optional[str] = None
-    quadrant: Optional[str] = None
+    quadrant: Optional[Literal["Q1", "Q2", "Q3", "Q4"]] = None
     memo: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Literal["pending", "in_progress", "completed"]] = None
     delegate_to: Optional[str] = None
+
+    @field_validator("estimated_time")
+    @classmethod
+    def validate_estimated_time(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        if not ESTIMATED_TIME_PATTERN.fullmatch(value):
+            raise ValueError("estimated_time must be like 2h, 30m, 1d, or 1h 30m")
+        return value
 
 
 class TaskComplete(BaseModel):
@@ -27,7 +49,7 @@ class TaskComplete(BaseModel):
 
 
 class TaskMove(BaseModel):
-    quadrant: str
+    quadrant: Literal["Q1", "Q2", "Q3", "Q4"]
 
 
 class TaskResponse(BaseModel):
@@ -35,9 +57,9 @@ class TaskResponse(BaseModel):
     title: str
     deadline: Optional[datetime] = None
     estimated_time: Optional[str] = None
-    quadrant: str
+    quadrant: Literal["Q1", "Q2", "Q3", "Q4"]
     memo: Optional[str] = None
-    status: str
+    status: Literal["pending", "in_progress", "completed"]
     delegate_to: Optional[str] = None
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
