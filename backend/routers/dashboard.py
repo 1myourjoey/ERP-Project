@@ -34,6 +34,13 @@ def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
 def get_today_dashboard(db: Session = Depends(get_db)):
     today = date.today()
     tomorrow = today + timedelta(days=1)
+    current_year_month = today.strftime("%Y-%m")
+    monthly_titles = [
+        f"농금원 월보고 ({current_year_month})",
+        f"벤처협회 VICS 월보고 ({current_year_month})",
+    ]
+    monthly_task_count = db.query(Task).filter(Task.title.in_(monthly_titles)).count()
+    monthly_reminder = monthly_task_count < len(monthly_titles)
 
     days_until_sunday = 6 - today.weekday()
     week_end = today + timedelta(days=days_until_sunday)
@@ -148,6 +155,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     return {
         "date": today.isoformat(),
         "day_of_week": WEEKDAYS[today.weekday()],
+        "monthly_reminder": monthly_reminder,
         "today": {
             "tasks": today_tasks,
             "total_estimated_time": _sum_time(today_tasks),

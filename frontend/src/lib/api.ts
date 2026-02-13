@@ -20,6 +20,8 @@ export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/t
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
 export const completeTask = (id: number, actual_time: string) => api.patch(`/tasks/${id}/complete`, { actual_time }).then(r => r.data)
 export const deleteTask = (id: number) => api.delete(`/tasks/${id}`)
+export const generateMonthlyReminders = (yearMonth: string) =>
+  api.post('/tasks/generate-monthly-reminders', null, { params: { year_month: yearMonth } }).then(r => r.data)
 
 // -- Dashboard --
 export const fetchDashboard = (): Promise<DashboardResponse> => api.get('/dashboard/today').then(r => r.data)
@@ -94,6 +96,7 @@ export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
 export interface DashboardResponse {
   date: string
   day_of_week: string
+  monthly_reminder: boolean
   today: { tasks: Task[]; total_estimated_time: string }
   tomorrow: { tasks: Task[]; total_estimated_time: string }
   this_week: Task[]

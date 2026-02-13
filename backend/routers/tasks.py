@@ -1,16 +1,27 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+﻿import re
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from database import get_db
 from models.calendar_event import CalendarEvent
 from models.task import Task
 from schemas.task import (
-    TaskCreate, TaskUpdate, TaskComplete, TaskMove,
-    TaskResponse, TaskBoardResponse,
+    TaskCreate,
+    TaskUpdate,
+    TaskComplete,
+    TaskMove,
+    TaskResponse,
+    TaskBoardResponse,
 )
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
+
+MONTHLY_REMINDER_TITLES = (
+    "농금원 월보고 ({year_month})",
+    "벤처협회 VICS 월보고 ({year_month})",
+)
 
 
 @router.get("/board", response_model=TaskBoardResponse)
@@ -47,6 +58,49 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     return task
+
+
+@router.post("/generate-monthly-reminders")
+def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
+    if not re.fullmatch(r"\d{4}-\d{2}", year_month):
+        raise HTTPException(status_code=400, detail="year_month는 YYYY-MM 형식이어야 합니다")
+
+    year, month = map(int, year_month.split("-"))
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="유효하지 않은 월입니다")
+
+    deadline = datetime(year, month, 5)
+    created: list[str] = []
+    skipped: list[str] = []
+
+    for title_template in MONTHLY_REMINDER_TITLES:
+        title = title_template.format(year_month=year_month)
+        existing = db.query(Task).filter(Task.title == title).first()
+        if existing:
+            skipped.append(title)
+            continue
+
+        task = Task(
+            title=title,
+            deadline=deadline,
+            estimated_time="2h",
+            quadrant="Q1",
+            status="pending",
+        )
+        db.add(task)
+        db.flush()
+        db.add(
+            CalendarEvent(
+                title=title,
+                date=deadline.date(),
+                status="pending",
+                task_id=task.id,
+            )
+        )
+        created.append(title)
+
+    db.commit()
+    return {"year_month": year_month, "created": created, "skipped": skipped}
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
@@ -142,5 +196,3 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.query(CalendarEvent).filter(CalendarEvent.task_id == task.id).delete()
     db.delete(task)
     db.commit()
-
-

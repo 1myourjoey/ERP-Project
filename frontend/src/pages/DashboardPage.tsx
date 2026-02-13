@@ -1,9 +1,10 @@
 ﻿import type { ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { fetchDashboard } from '../lib/api'
+import { fetchDashboard, generateMonthlyReminders } from '../lib/api'
 import type { Task, DashboardResponse, ActiveWorkflow, FundSummary, MissingDocument } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { useToast } from '../contexts/ToastContext'
 import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning } from 'lucide-react'
 
 const QUADRANT_COLORS: Record<string, string> = {
@@ -132,16 +133,30 @@ function StatCard({
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
   const { data, isLoading, error } = useQuery<DashboardResponse>({
     queryKey: ['dashboard'],
     queryFn: fetchDashboard,
+  })
+
+  const monthlyReminderMut = useMutation({
+    mutationFn: generateMonthlyReminders,
+    onSuccess: (result: { created?: string[]; skipped?: string[] }) => {
+      const createdCount = result.created?.length ?? 0
+      const skippedCount = result.skipped?.length ?? 0
+      addToast('success', `월보고 Task 생성 ${createdCount}건, 중복 건너뜀 ${skippedCount}건`)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+    },
   })
 
   if (isLoading) return <div className="p-8 text-slate-500">불러오는 중...</div>
   if (error) return <div className="p-8 text-red-500">대시보드 데이터를 불러오지 못했습니다.</div>
   if (!data) return null
 
-  const { date, day_of_week, today, tomorrow, this_week, upcoming, active_workflows, fund_summary, missing_documents } = data
+  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, active_workflows, fund_summary, missing_documents } = data
 
   return (
     <div className="p-6 max-w-6xl">
@@ -151,6 +166,19 @@ export default function DashboardPage() {
         </h2>
         <p className="text-sm text-slate-500 mt-1">일일 개요</p>
       </div>
+
+      {monthly_reminder && (
+        <div className="mb-6 p-3 rounded-xl border border-amber-300 bg-amber-50 flex items-center justify-between gap-3">
+          <p className="text-sm text-amber-900">이번 달 월보고 Task가 아직 등록되지 않았습니다.</p>
+          <button
+            onClick={() => monthlyReminderMut.mutate(date.slice(0, 7))}
+            disabled={monthlyReminderMut.isPending}
+            className="text-xs px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-amber-300"
+          >
+            {monthlyReminderMut.isPending ? '등록 중...' : '등록하기'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard icon={<AlertTriangle size={14} />} label="오늘 작업" value={today.tasks.length} tone="red" />
