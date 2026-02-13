@@ -2,5 +2,6 @@
 
 Usage:
   1) Install dependencies: pip install -r requirements.txt
-  2) Create revision: alembic -c alembic.ini revision --autogenerate -m "message"
-  3) Upgrade: alembic -c alembic.ini upgrade head
+  2) Create revision: python -m alembic -c alembic.ini revision --autogenerate -m "message"
+  3) Upgrade (new DB): python -m alembic -c alembic.ini upgrade head
+  4) Existing DB baseline: python -m alembic -c alembic.ini stamp head
