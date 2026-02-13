@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+ï»¿import axios, { AxiosError } from 'axios'
 import { pushToast } from './toastBridge'
 
 const api = axios.create({ baseURL: '/api' })
@@ -6,7 +6,7 @@ const api = axios.create({ baseURL: '/api' })
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ detail?: string }>) => {
-    const message = error.response?.data?.detail || '¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù.'
+    const message = error.response?.data?.detail || 'ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.'
     pushToast('error', message)
     return Promise.reject(new Error(message))
   },
@@ -339,4 +339,5 @@ export interface WorkLogInput {
   lessons?: { content: string; order?: number }[]
   follow_ups?: { content: string; target_date?: string | null; order?: number }[]
 }
+
 

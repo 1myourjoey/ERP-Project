@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorkflows,
@@ -13,6 +13,7 @@ import {
   type WorkflowTemplateInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { useToast } from '../contexts/ToastContext'
 import { Play, ChevronRight, Check, X, FileText, AlertTriangle, Clock, Plus, Pencil, Trash2 } from 'lucide-react'
 
 const EMPTY_TEMPLATE: WorkflowTemplateInput = {
@@ -248,7 +249,7 @@ function TemplateEditor({
                   type="number"
                   value={step.timing_offset_days}
                   onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((s, i) => i === idx ? { ...s, timing_offset_days: Number(e.target.value || 0) } : s) }))}
-                  placeholder="오프셋(일)"
+                  placeholder="오프셋 일수"
                   className="px-2 py-1 text-sm border border-slate-200 rounded"
                 />
                 <input
@@ -266,7 +267,7 @@ function TemplateEditor({
                 <input
                   value={step.memo || ''}
                   onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((s, i) => i === idx ? { ...s, memo: e.target.value } : s) }))}
-                  placeholder="메모"
+                  placeholder="硫붾え"
                   className="md:col-span-2 px-2 py-1 text-sm border border-slate-200 rounded"
                 />
               </div>
@@ -390,6 +391,7 @@ function WorkflowDetail({
   onEdit: () => void
 }) {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showInstantiate, setShowInstantiate] = useState(false)
   const [instName, setInstName] = useState('')
   const [instDate, setInstDate] = useState('')
@@ -410,6 +412,7 @@ function WorkflowDetail({
       setInstName('')
       setInstDate('')
       setInstMemo('')
+      addToast('success', '워크플로우 인스턴스가 시작되었습니다.')
     },
   })
 
@@ -531,6 +534,7 @@ function WorkflowDetail({
 
 function ActiveInstances() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const { data: instances, isLoading } = useQuery({
@@ -544,6 +548,7 @@ function ActiveInstances() {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      addToast('success', '단계가 완료되었습니다.')
     },
   })
 
@@ -552,6 +557,7 @@ function ActiveInstances() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      addToast('success', '워크플로우 인스턴스가 취소되었습니다.')
     },
   })
 
@@ -568,7 +574,7 @@ function ActiveInstances() {
           >
             <div>
               <h4 className="text-sm font-medium text-slate-800">{inst.name}</h4>
-              <p className="text-xs text-slate-500 mt-0.5">{inst.workflow_name} | 시작일: {inst.trigger_date}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{inst.workflow_name} | 시작일 {inst.trigger_date}</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">{inst.progress}</span>
@@ -624,6 +630,7 @@ function ActiveInstances() {
 
 export default function WorkflowsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [selectedWfId, setSelectedWfId] = useState<number | null>(null)
   const [mode, setMode] = useState<'list' | 'view' | 'create' | 'edit'>('list')
 
@@ -639,6 +646,7 @@ export default function WorkflowsPage() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       setSelectedWfId(created.id)
       setMode('view')
+      addToast('success', '워크플로우 템플릿이 생성되었습니다.')
     },
   })
 
@@ -648,6 +656,7 @@ export default function WorkflowsPage() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', selectedWfId] })
       setMode('view')
+      addToast('success', '워크플로우 템플릿이 수정되었습니다.')
     },
   })
 
@@ -659,6 +668,7 @@ export default function WorkflowsPage() {
         setSelectedWfId(null)
         setMode('list')
       }
+      addToast('success', '워크플로우 템플릿이 삭제되었습니다.')
     },
   })
 
@@ -738,3 +748,4 @@ export default function WorkflowsPage() {
     </div>
   )
 }
+

@@ -13,6 +13,7 @@ import {
   type LPInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { useToast } from '../contexts/ToastContext'
 import { Building2, Plus, Pencil, Trash2, X } from 'lucide-react'
 
 const EMPTY_FUND: FundInput = {
@@ -107,6 +108,7 @@ function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; lo
 
 export default function FundsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [selectedFundId, setSelectedFundId] = useState<number | null>(null)
   const [showCreateFund, setShowCreateFund] = useState(false)
   const [editingFund, setEditingFund] = useState(false)
@@ -116,12 +118,58 @@ export default function FundsPage() {
   const { data: funds, isLoading } = useQuery({ queryKey: ['funds'], queryFn: fetchFunds })
   const { data: fundDetail } = useQuery({ queryKey: ['fund', selectedFundId], queryFn: () => fetchFund(selectedFundId as number), enabled: !!selectedFundId })
 
-  const createFundMut = useMutation({ mutationFn: createFund, onSuccess: (created: any) => { queryClient.invalidateQueries({ queryKey: ['funds'] }); setSelectedFundId(created.id); setShowCreateFund(false) } })
-  const updateFundMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<FundInput> }) => updateFund(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['funds'] }); queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] }); setEditingFund(false) } })
-  const deleteFundMut = useMutation({ mutationFn: deleteFund, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['funds'] }); setSelectedFundId(null); setEditingFund(false) } })
-  const createLPMut = useMutation({ mutationFn: ({ fundId, data }: { fundId: number; data: LPInput }) => createFundLP(fundId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['funds'] }); setShowCreateLP(false) } })
-  const updateLPMut = useMutation({ mutationFn: ({ fundId, lpId, data }: { fundId: number; lpId: number; data: Partial<LPInput> }) => updateFundLP(fundId, lpId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] }); setEditingLPId(null) } })
-  const deleteLPMut = useMutation({ mutationFn: ({ fundId, lpId }: { fundId: number; lpId: number }) => deleteFundLP(fundId, lpId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['funds'] }) } })
+  const createFundMut = useMutation({
+    mutationFn: createFund,
+    onSuccess: (created: any) => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      setSelectedFundId(created.id)
+      setShowCreateFund(false)
+      addToast('success', '조합이 생성되었습니다.')
+    },
+  })
+  const updateFundMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<FundInput> }) => updateFund(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      setEditingFund(false)
+      addToast('success', '조합이 수정되었습니다.')
+    },
+  })
+  const deleteFundMut = useMutation({
+    mutationFn: deleteFund,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      setSelectedFundId(null)
+      setEditingFund(false)
+      addToast('success', '조합이 삭제되었습니다.')
+    },
+  })
+  const createLPMut = useMutation({
+    mutationFn: ({ fundId, data }: { fundId: number; data: LPInput }) => createFundLP(fundId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      setShowCreateLP(false)
+      addToast('success', 'LP가 추가되었습니다.')
+    },
+  })
+  const updateLPMut = useMutation({
+    mutationFn: ({ fundId, lpId, data }: { fundId: number; lpId: number; data: Partial<LPInput> }) => updateFundLP(fundId, lpId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      setEditingLPId(null)
+      addToast('success', 'LP가 수정되었습니다.')
+    },
+  })
+  const deleteLPMut = useMutation({
+    mutationFn: ({ fundId, lpId }: { fundId: number; lpId: number }) => deleteFundLP(fundId, lpId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      addToast('success', 'LP가 삭제되었습니다.')
+    },
+  })
 
   return (
     <div className="p-6 max-w-6xl">
@@ -217,3 +265,4 @@ export default function FundsPage() {
     </div>
   )
 }
+

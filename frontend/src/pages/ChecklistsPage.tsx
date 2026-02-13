@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchChecklists,
@@ -12,6 +12,7 @@ import {
   type ChecklistInput,
   type ChecklistItemInput,
 } from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
 
 const EMPTY_CHECKLIST: ChecklistInput = {
   name: '',
@@ -29,6 +30,7 @@ const EMPTY_ITEM: ChecklistItemInput = {
 
 export default function ChecklistsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editingChecklist, setEditingChecklist] = useState(false)
@@ -54,6 +56,7 @@ export default function ChecklistsPage() {
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       setSelectedId(created.id)
       setShowCreate(false)
+      addToast('success', '체크리스트가 생성되었습니다.')
     },
   })
 
@@ -63,6 +66,7 @@ export default function ChecklistsPage() {
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
       setEditingChecklist(false)
+      addToast('success', '체크리스트가 수정되었습니다.')
     },
   })
 
@@ -71,6 +75,7 @@ export default function ChecklistsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       setSelectedId(null)
+      addToast('success', '체크리스트가 삭제되었습니다.')
     },
   })
 
@@ -80,6 +85,7 @@ export default function ChecklistsPage() {
       queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       setShowItemCreate(false)
+      addToast('success', '체크리스트 항목이 추가되었습니다.')
     },
   })
 
@@ -89,6 +95,7 @@ export default function ChecklistsPage() {
       queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       setEditingItemId(null)
+      addToast('success', '체크리스트 항목이 수정되었습니다.')
     },
   })
 
@@ -97,6 +104,7 @@ export default function ChecklistsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      addToast('success', '체크리스트 항목이 삭제되었습니다.')
     },
   })
 
@@ -263,3 +271,4 @@ function ItemForm({
     </div>
   )
 }
+

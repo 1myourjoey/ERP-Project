@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchWorkLogs, fetchWorkLogCategories, createWorkLog, updateWorkLog, deleteWorkLog } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { useToast } from '../contexts/ToastContext'
 import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 
 function DynamicList({ label, items, onChange, color = 'slate' }: {
@@ -230,6 +231,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
 
 export default function WorkLogsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
   const [editingLog, setEditingLog] = useState<any | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('')
@@ -249,6 +251,7 @@ export default function WorkLogsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] })
       setShowAdd(false)
+      addToast('success', '업무 기록이 추가되었습니다.')
     },
   })
 
@@ -257,12 +260,16 @@ export default function WorkLogsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] })
       setEditingLog(null)
+      addToast('success', '업무 기록이 수정되었습니다.')
     },
   })
 
   const deleteMut = useMutation({
     mutationFn: deleteWorkLog,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['worklogs'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
+      addToast('success', '업무 기록이 삭제되었습니다.')
+    },
   })
 
   const grouped: Record<string, any[]> = {}
@@ -361,3 +368,4 @@ export default function WorkLogsPage() {
     </div>
   )
 }
+

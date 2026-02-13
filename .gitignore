@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -30,3 +30,7 @@ frontend/.vite/
 # Environment
 .env
 .env.local
+
+# Logs
+*.log
+

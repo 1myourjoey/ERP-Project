@@ -19,6 +19,7 @@ import {
   type InvestmentDocumentInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { useToast } from '../contexts/ToastContext'
 
 const EMPTY_COMPANY: CompanyInput = { name: '', business_number: '', ceo: '', address: '', industry: '', vics_registered: false }
 const EMPTY_INVESTMENT: InvestmentInput = { fund_id: 0, company_id: 0, investment_date: '', amount: null, shares: null, share_price: null, valuation: null, contribution_rate: '', instrument: '', status: 'active' }
@@ -26,6 +27,7 @@ const EMPTY_DOC: InvestmentDocumentInput = { name: '', doc_type: '', status: 'pe
 
 export default function InvestmentsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [selectedInvestmentId, setSelectedInvestmentId] = useState<number | null>(null)
   const [fundFilter, setFundFilter] = useState<number | ''>('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -42,15 +44,78 @@ export default function InvestmentsPage() {
   const { data: investments, isLoading: invLoading } = useQuery({ queryKey: ['investments', investmentParams], queryFn: () => fetchInvestments(investmentParams) })
   const { data: selectedInvestment } = useQuery({ queryKey: ['investment', selectedInvestmentId], queryFn: () => fetchInvestment(selectedInvestmentId as number), enabled: !!selectedInvestmentId })
 
-  const createCompanyMut = useMutation({ mutationFn: createCompany, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['companies'] }); setShowCompanyForm(false) } })
-  const updateCompanyMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<CompanyInput> }) => updateCompany(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['companies'] }); setEditingCompanyId(null) } })
-  const deleteCompanyMut = useMutation({ mutationFn: deleteCompany, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companies'] }) })
-  const createInvestmentMut = useMutation({ mutationFn: createInvestment, onSuccess: (created: any) => { queryClient.invalidateQueries({ queryKey: ['investments'] }); setSelectedInvestmentId(created.id); setShowInvestmentForm(false) } })
-  const updateInvestmentMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<InvestmentInput> }) => updateInvestment(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['investments'] }); queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] }); setEditingInvestment(false) } })
-  const deleteInvestmentMut = useMutation({ mutationFn: deleteInvestment, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['investments'] }); setSelectedInvestmentId(null) } })
-  const createDocMut = useMutation({ mutationFn: ({ investmentId, data }: { investmentId: number; data: InvestmentDocumentInput }) => createInvestmentDocument(investmentId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] }); setShowDocForm(false) } })
-  const updateDocMut = useMutation({ mutationFn: ({ investmentId, docId, data }: { investmentId: number; docId: number; data: Partial<InvestmentDocumentInput> }) => updateInvestmentDocument(investmentId, docId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] }); setEditingDocId(null) } })
-  const deleteDocMut = useMutation({ mutationFn: ({ investmentId, docId }: { investmentId: number; docId: number }) => deleteInvestmentDocument(investmentId, docId), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] }) })
+  const createCompanyMut = useMutation({
+    mutationFn: createCompany,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      setShowCompanyForm(false)
+      addToast('success', '회사가 추가되었습니다.')
+    },
+  })
+  const updateCompanyMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CompanyInput> }) => updateCompany(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      setEditingCompanyId(null)
+      addToast('success', '회사 정보가 수정되었습니다.')
+    },
+  })
+  const deleteCompanyMut = useMutation({
+    mutationFn: deleteCompany,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      addToast('success', '회사가 삭제되었습니다.')
+    },
+  })
+  const createInvestmentMut = useMutation({
+    mutationFn: createInvestment,
+    onSuccess: (created: any) => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] })
+      setSelectedInvestmentId(created.id)
+      setShowInvestmentForm(false)
+      addToast('success', '투자가 등록되었습니다.')
+    },
+  })
+  const updateInvestmentMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InvestmentInput> }) => updateInvestment(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] })
+      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
+      setEditingInvestment(false)
+      addToast('success', '투자 정보가 수정되었습니다.')
+    },
+  })
+  const deleteInvestmentMut = useMutation({
+    mutationFn: deleteInvestment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] })
+      setSelectedInvestmentId(null)
+      addToast('success', '투자가 삭제되었습니다.')
+    },
+  })
+  const createDocMut = useMutation({
+    mutationFn: ({ investmentId, data }: { investmentId: number; data: InvestmentDocumentInput }) => createInvestmentDocument(investmentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
+      setShowDocForm(false)
+      addToast('success', '서류가 추가되었습니다.')
+    },
+  })
+  const updateDocMut = useMutation({
+    mutationFn: ({ investmentId, docId, data }: { investmentId: number; docId: number; data: Partial<InvestmentDocumentInput> }) => updateInvestmentDocument(investmentId, docId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
+      setEditingDocId(null)
+      addToast('success', '서류가 수정되었습니다.')
+    },
+  })
+  const deleteDocMut = useMutation({
+    mutationFn: ({ investmentId, docId }: { investmentId: number; docId: number }) => deleteInvestmentDocument(investmentId, docId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investment', selectedInvestmentId] })
+      addToast('success', '서류가 삭제되었습니다.')
+    },
+  })
 
   const companyForm = (initial: CompanyInput, onSubmit: (data: CompanyInput) => void, onCancel: () => void) => {
     const state = initial
@@ -251,3 +316,4 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: any; onSubmit:
     </div>
   )
 }
+
