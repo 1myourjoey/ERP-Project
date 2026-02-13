@@ -99,16 +99,48 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         done = sum(1 for step in instance.step_instances if step.status in ("completed", "skipped"))
 
         next_step = None
+        next_step_date = None
         for step_instance in instance.step_instances:
             if step_instance.status == "pending":
                 next_step = step_instance.step.name if step_instance.step else None
+                next_step_date = (
+                    step_instance.calculated_date.isoformat()
+                    if step_instance.calculated_date is not None
+                    else None
+                )
                 break
+
+        company_name = None
+        fund_name = None
+
+        if instance.investment_id is not None:
+            inv = db.get(Investment, instance.investment_id)
+            if inv:
+                company = db.get(PortfolioCompany, inv.company_id)
+                fund = db.get(Fund, inv.fund_id)
+                if company:
+                    company_name = company.name
+                if fund:
+                    fund_name = fund.name
+
+        if company_name is None and instance.company_id is not None:
+            company = db.get(PortfolioCompany, instance.company_id)
+            if company:
+                company_name = company.name
+
+        if fund_name is None and instance.fund_id is not None:
+            fund = db.get(Fund, instance.fund_id)
+            if fund:
+                fund_name = fund.name
 
         active_workflows.append({
             "id": instance.id,
             "name": instance.name,
             "progress": f"{done}/{total}",
             "next_step": next_step,
+            "next_step_date": next_step_date,
+            "company_name": company_name,
+            "fund_name": fund_name,
         })
 
     fund_summary = []
@@ -150,6 +182,8 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             "status": doc.status,
             "company_name": company.name if company else "",
             "fund_name": fund.name if fund else "",
+            "due_date": doc.due_date.isoformat() if doc.due_date else None,
+            "days_remaining": (doc.due_date - today).days if doc.due_date else None,
         })
 
     return {

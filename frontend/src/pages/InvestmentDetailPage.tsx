@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -10,10 +10,12 @@ import {
   createInvestmentDocument,
   updateInvestmentDocument,
   deleteInvestmentDocument,
+  fetchWorkflowInstances,
   type Company,
   type Fund,
   type InvestmentDocumentInput,
   type InvestmentInput,
+  type WorkflowInstance,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -25,6 +27,7 @@ interface InvestmentDocument {
   doc_type?: string | null
   status?: string
   note?: string | null
+  due_date?: string | null
 }
 
 interface InvestmentDetail {
@@ -42,7 +45,7 @@ interface InvestmentDetail {
   documents?: InvestmentDocument[]
 }
 
-const EMPTY_DOC: InvestmentDocumentInput = { name: '', doc_type: '', status: 'pending', note: '' }
+const EMPTY_DOC: InvestmentDocumentInput = { name: '', doc_type: '', status: 'pending', note: '', due_date: null }
 
 function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
   return {
@@ -57,6 +60,11 @@ function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
     instrument: detail.instrument || '',
     status: detail.status || 'active',
   }
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('ko-KR')
 }
 
 export default function InvestmentDetailPage() {
@@ -76,6 +84,12 @@ export default function InvestmentDetailPage() {
   const { data: selectedInvestment, isLoading } = useQuery<InvestmentDetail>({
     queryKey: ['investment', investmentId],
     queryFn: () => fetchInvestment(investmentId),
+    enabled: Number.isFinite(investmentId) && investmentId > 0,
+  })
+
+  const { data: linkedWorkflows } = useQuery<WorkflowInstance[]>({
+    queryKey: ['workflowInstances', { status: 'all', investment_id: investmentId }],
+    queryFn: () => fetchWorkflowInstances({ status: 'all', investment_id: investmentId }),
     enabled: Number.isFinite(investmentId) && investmentId > 0,
   })
 
@@ -111,6 +125,7 @@ export default function InvestmentDetailPage() {
     mutationFn: (data: InvestmentDocumentInput) => createInvestmentDocument(investmentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', investmentId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setShowDocForm(false)
       addToast('success', '서류가 추가되었습니다.')
     },
@@ -120,6 +135,7 @@ export default function InvestmentDetailPage() {
     mutationFn: ({ docId, data }: { docId: number; data: Partial<InvestmentDocumentInput> }) => updateInvestmentDocument(investmentId, docId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', investmentId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setEditingDocId(null)
       addToast('success', '서류가 수정되었습니다.')
     },
@@ -129,6 +145,7 @@ export default function InvestmentDetailPage() {
     mutationFn: (docId: number) => deleteInvestmentDocument(investmentId, docId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', investmentId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       addToast('success', '서류가 삭제되었습니다.')
     },
   })
@@ -183,6 +200,29 @@ export default function InvestmentDetailPage() {
           </div>
 
           <div className="bg-white border rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-slate-700 mb-2">연결된 워크플로우</h3>
+            {!linkedWorkflows?.length ? (
+              <p className="text-sm text-slate-400">연결된 워크플로우 인스턴스가 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {linkedWorkflows.map((instance) => (
+                  <button
+                    key={instance.id}
+                    onClick={() => navigate('/workflows', { state: { expandInstanceId: instance.id } })}
+                    className="w-full text-left border border-indigo-200 bg-indigo-50 rounded-lg p-2 hover:bg-indigo-100"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-indigo-900">{instance.name}</p>
+                      <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{instance.progress}</span>
+                    </div>
+                    <p className="text-xs text-indigo-700 mt-0.5">{instance.workflow_name} | {labelStatus(instance.status)} | 시작일 {formatDate(instance.trigger_date)}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-slate-700">서류</h3>
               <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
@@ -196,10 +236,10 @@ export default function InvestmentDetailPage() {
                   {editingDocId === doc.id ? (
                     <DocumentForm initial={doc} onSubmit={d => updateDocMut.mutate({ docId: doc.id, data: d })} onCancel={() => setEditingDocId(null)} />
                   ) : (
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium text-slate-800">{doc.name}</p>
-                        <p className="text-xs text-slate-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | {doc.note || '-'}</p>
+                        <p className="text-xs text-slate-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
                       </div>
                       <div className="flex gap-1">
                         <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingDocId(doc.id)}>수정</button>
@@ -243,13 +283,14 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: InvestmentDocu
   const [form, setForm] = useState<InvestmentDocumentInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 border rounded p-2 bg-slate-50 mb-2">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-2 bg-slate-50 mb-2">
       <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="서류명" className="px-2 py-1 text-sm border rounded" />
       <input value={form.doc_type || ''} onChange={e => setForm(prev => ({ ...prev, doc_type: e.target.value }))} placeholder="유형" className="px-2 py-1 text-sm border rounded" />
       <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: pending)" className="px-2 py-1 text-sm border rounded" />
+      <input type="date" value={form.due_date || ''} onChange={e => setForm(prev => ({ ...prev, due_date: e.target.value || null }))} className="px-2 py-1 text-sm border rounded" />
       <input value={form.note || ''} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="비고" className="px-2 py-1 text-sm border rounded" />
-      <div className="md:col-span-4 flex gap-2">
-        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim() }) }}>저장</button>
+      <div className="md:col-span-5 flex gap-2">
+        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim(), due_date: form.due_date || null }) }}>저장</button>
         <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
       </div>
     </div>

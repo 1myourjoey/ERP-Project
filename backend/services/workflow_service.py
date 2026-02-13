@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
+from models.investment import InvestmentDocument
 from models.task import Task
 from models.workflow import Workflow
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
@@ -24,12 +25,18 @@ def instantiate_workflow(
     name: str,
     trigger_date: date,
     memo: str | None = None,
+    investment_id: int | None = None,
+    company_id: int | None = None,
+    fund_id: int | None = None,
 ) -> WorkflowInstance:
     instance = WorkflowInstance(
         workflow_id=workflow.id,
         name=name,
         trigger_date=trigger_date,
         memo=memo,
+        investment_id=investment_id,
+        company_id=company_id,
+        fund_id=fund_id,
     )
     db.add(instance)
     db.flush()  # ID 확보
@@ -58,6 +65,28 @@ def instantiate_workflow(
             task_id=task.id,
         )
         db.add(step_instance)
+
+    if investment_id:
+        for doc in workflow.documents:
+            existing = (
+                db.query(InvestmentDocument)
+                .filter(
+                    InvestmentDocument.investment_id == investment_id,
+                    InvestmentDocument.name == doc.name,
+                )
+                .first()
+            )
+            if existing:
+                continue
+            db.add(
+                InvestmentDocument(
+                    investment_id=investment_id,
+                    name=doc.name,
+                    doc_type=doc.timing or None,
+                    status="pending",
+                    note=f"워크플로우 자동생성: {workflow.name}",
+                )
+            )
 
     db.commit()
     db.refresh(instance)

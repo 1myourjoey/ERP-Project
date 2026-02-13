@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -15,7 +15,7 @@ import {
   type FundInput,
   type LPInput,
 } from '../lib/api'
-import { labelStatus } from '../lib/labels'
+import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { ArrowLeft, Pencil, Plus, Trash2, X } from 'lucide-react'
 
@@ -34,6 +34,21 @@ const EMPTY_LP: LPInput = {
   commitment: null,
   paid_in: null,
   contact: '',
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-slate-200 bg-slate-50 rounded-xl p-3">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-lg font-bold text-slate-800 mt-1">{value}</p>
+    </div>
+  )
+}
+
+function dueText(doc: DocumentStatusItem): string | null {
+  if (doc.days_remaining == null) return null
+  if (doc.days_remaining < 0) return `지연 ${Math.abs(doc.days_remaining)}일`
+  return `D-${doc.days_remaining}`
 }
 
 function FundForm({
@@ -145,6 +160,11 @@ export default function FundDetailPage() {
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
 
+  const totalInvestmentAmount = useMemo(
+    () => (investments ?? []).reduce((sum, inv) => sum + (inv.amount ?? 0), 0),
+    [investments],
+  )
+
   const updateFundMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<FundInput> }) => updateFund(targetId, data),
     onSuccess: () => {
@@ -208,6 +228,13 @@ export default function FundDetailPage() {
         <p className="text-sm text-slate-500">조합을 찾을 수 없습니다.</p>
       ) : (
         <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <SummaryCard label="총 약정" value={formatKRW(fundDetail.commitment_total ?? null)} />
+            <SummaryCard label="운용규모(AUM)" value={formatKRW(fundDetail.aum ?? null)} />
+            <SummaryCard label="투자 건수" value={`${investments?.length ?? 0}건`} />
+            <SummaryCard label="투자 금액 합계" value={formatKRW(totalInvestmentAmount)} />
+          </div>
+
           {editingFund ? (
             <FundForm
               initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }}
@@ -233,8 +260,8 @@ export default function FundDetailPage() {
                 <div className="p-2 bg-slate-50 rounded">GP: {fundDetail.gp || '-'}</div>
                 <div className="p-2 bg-slate-50 rounded">Co-GP: {fundDetail.co_gp || '-'}</div>
                 <div className="p-2 bg-slate-50 rounded">신탁사: {fundDetail.trustee || '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">약정액: {fundDetail.commitment_total?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">AUM: {fundDetail.aum?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">약정액: {formatKRW(fundDetail.commitment_total ?? null)}</div>
+                <div className="p-2 bg-slate-50 rounded">AUM: {formatKRW(fundDetail.aum ?? null)}</div>
               </div>
             </div>
           )}
@@ -264,7 +291,7 @@ export default function FundDetailPage() {
                           <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate(lp.id) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-600 mt-1">약정액: {lp.commitment?.toLocaleString?.() ?? '-'} | 납입액: {lp.paid_in?.toLocaleString?.() ?? '-'}</p>
+                      <p className="text-xs text-slate-600 mt-1">약정액: {formatKRW(lp.commitment ?? null)} | 납입액: {formatKRW(lp.paid_in ?? null)}</p>
                     </>
                   )}
                 </div>
@@ -283,7 +310,7 @@ export default function FundDetailPage() {
                     <div key={inv.id} className="border border-slate-100 rounded p-2">
                       <p className="text-sm font-medium text-slate-800">{inv.company_name || `투자 #${inv.id}`}</p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {inv.investment_date || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} | {inv.instrument || '-'} | {labelStatus(inv.status || 'pending')}
+                        {inv.investment_date || '-'} | {formatKRW(inv.amount ?? null)} | {inv.instrument || '-'} | {labelStatus(inv.status || 'pending')}
                       </p>
                     </div>
                   ))}
@@ -299,7 +326,14 @@ export default function FundDetailPage() {
                 <div className="space-y-2">
                   {missingDocs.map((doc) => (
                     <div key={doc.id} className="border border-slate-100 rounded p-2">
-                      <p className="text-sm font-medium text-slate-800">{doc.document_name}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-800">{doc.document_name}</p>
+                        {dueText(doc) && (
+                          <span className={`text-[11px] px-1.5 py-0.5 rounded ${doc.days_remaining != null && doc.days_remaining < 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {dueText(doc)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
                     </div>
                   ))}

@@ -14,8 +14,14 @@ class WorkflowInstance(Base):
     created_at = Column(DateTime, default=func.now())
     completed_at = Column(DateTime, nullable=True)
     memo = Column(Text, nullable=True)
+    investment_id = Column(Integer, ForeignKey("investments.id"), nullable=True)
+    company_id = Column(Integer, ForeignKey("portfolio_companies.id"), nullable=True)
+    fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
 
     workflow = relationship("Workflow")
+    investment = relationship("Investment")
+    company = relationship("PortfolioCompany")
+    fund = relationship("Fund")
     step_instances = relationship("WorkflowStepInstance", back_populates="instance",
                                   cascade="all, delete-orphan",
                                   order_by="WorkflowStepInstance.calculated_date")

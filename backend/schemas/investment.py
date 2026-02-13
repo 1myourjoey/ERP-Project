@@ -38,6 +38,7 @@ class InvestmentDocumentCreate(BaseModel):
     doc_type: Optional[str] = None
     status: Literal["pending", "requested", "reviewing", "collected"] = "pending"
     note: Optional[str] = None
+    due_date: Optional[date] = None
 
 
 class InvestmentDocumentUpdate(BaseModel):
@@ -45,6 +46,7 @@ class InvestmentDocumentUpdate(BaseModel):
     doc_type: Optional[str] = None
     status: Optional[Literal["pending", "requested", "reviewing", "collected"]] = None
     note: Optional[str] = None
+    due_date: Optional[date] = None
 
 
 class InvestmentDocumentResponse(BaseModel):
@@ -54,6 +56,7 @@ class InvestmentDocumentResponse(BaseModel):
     doc_type: Optional[str] = None
     status: Literal["pending", "requested", "reviewing", "collected"]
     note: Optional[str] = None
+    due_date: Optional[date] = None
 
     model_config = {"from_attributes": True}
 

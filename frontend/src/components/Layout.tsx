@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -11,8 +11,11 @@ import {
   Files,
   CalendarDays,
   Menu,
+  Search,
   X,
 } from 'lucide-react'
+
+import SearchModal from './SearchModal'
 
 const NAV = [
   { to: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -28,6 +31,21 @@ const NAV = [
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'
+      if (isSearchShortcut) {
+        event.preventDefault()
+        setSearchOpen(true)
+      } else if (event.key === 'Escape') {
+        setSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <div className="flex h-screen">
@@ -78,17 +96,29 @@ export default function Layout() {
       </aside>
 
       <div className="flex-1 flex flex-col">
-        <header className="md:hidden flex items-center px-4 py-3 border-b border-slate-200 bg-white">
-          <button onClick={() => setSidebarOpen(true)} className="text-slate-700">
-            <Menu size={22} />
+        <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+          <div className="flex items-center">
+            <button onClick={() => setSidebarOpen(true)} className="text-slate-700 md:hidden">
+              <Menu size={22} />
+            </button>
+            <span className="ml-3 font-semibold text-slate-800">VC ERP</span>
+          </div>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+          >
+            <Search size={14} />
+            <span>검색</span>
+            <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">Ctrl+K</kbd>
           </button>
-          <span className="ml-3 font-semibold text-slate-800">VC ERP</span>
         </header>
 
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>
+
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )
 }

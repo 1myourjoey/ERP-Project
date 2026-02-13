@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from datetime import date
 
 from database import get_db
 from models.fund import Fund
@@ -43,6 +44,8 @@ def list_document_status(
             document_type=doc.doc_type,
             status=doc.status,
             note=doc.note,
+            due_date=doc.due_date,
+            days_remaining=(doc.due_date - date.today()).days if doc.due_date else None,
             fund_id=investment.fund_id,
             fund_name=fund.name if fund else "",
             company_id=investment.company_id,

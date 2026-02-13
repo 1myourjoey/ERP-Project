@@ -1,11 +1,11 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { fetchDashboard, generateMonthlyReminders } from '../lib/api'
+import { completeTask, fetchDashboard, generateMonthlyReminders } from '../lib/api'
 import type { Task, DashboardResponse, ActiveWorkflow, FundSummary, MissingDocument } from '../lib/api'
-import { labelStatus } from '../lib/labels'
+import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning } from 'lucide-react'
+import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning, Check } from 'lucide-react'
 
 const QUADRANT_COLORS: Record<string, string> = {
   Q1: 'bg-red-100 text-red-700',
@@ -24,7 +24,48 @@ const DAY_LABEL: Record<string, string> = {
   Sun: '일',
 }
 
-function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+function formatShortDate(value: string | null): string | null {
+  if (!value) return null
+  return new Date(value).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+}
+
+function dueBadge(doc: MissingDocument): { text: string; className: string } | null {
+  if (doc.days_remaining == null) return null
+  if (doc.days_remaining < 0) {
+    return {
+      text: `지연 ${Math.abs(doc.days_remaining)}일`,
+      className: 'bg-red-100 text-red-700',
+    }
+  }
+  if (doc.days_remaining <= 3) {
+    return {
+      text: `D-${doc.days_remaining}`,
+      className: 'bg-red-100 text-red-700',
+    }
+  }
+  if (doc.days_remaining <= 7) {
+    return {
+      text: `D-${doc.days_remaining}`,
+      className: 'bg-amber-100 text-amber-700',
+    }
+  }
+  return {
+    text: `D-${doc.days_remaining}`,
+    className: 'bg-slate-100 text-slate-600',
+  }
+}
+
+function TaskCard({
+  task,
+  onClick,
+  onComplete,
+  completing,
+}: {
+  task: Task
+  onClick: () => void
+  onComplete: (task: Task) => void
+  completing: boolean
+}) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : null
@@ -42,6 +83,17 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
           : 'bg-white border-slate-200 hover:shadow-sm hover:border-blue-300'
       }`}
     >
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onComplete(task)
+        }}
+        disabled={completing}
+        className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 disabled:opacity-50 shrink-0 flex items-center justify-center"
+        aria-label={`${task.title} 완료 처리`}
+      >
+        {completing && <Check size={10} className="text-green-600" />}
+      </button>
       <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${QUADRANT_COLORS[task.quadrant] || ''}`}>
         {task.quadrant}
       </span>
@@ -68,12 +120,16 @@ function TaskSection({
   totalTime,
   icon,
   onTaskClick,
+  onTaskComplete,
+  completingTaskId,
 }: {
   title: string
   tasks: Task[]
   totalTime?: string
   icon?: ReactNode
   onTaskClick: () => void
+  onTaskComplete: (task: Task) => void
+  completingTaskId: number | null
 }) {
   return (
     <div>
@@ -95,7 +151,15 @@ function TaskSection({
         </p>
       ) : (
         <div className="space-y-2">
-          {tasks.map((t) => <TaskCard key={t.id} task={t} onClick={onTaskClick} />)}
+          {tasks.map(t => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              onClick={onTaskClick}
+              onComplete={onTaskComplete}
+              completing={completingTaskId === t.id}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -141,6 +205,15 @@ export default function DashboardPage() {
     queryFn: fetchDashboard,
   })
 
+  const completeTaskMut = useMutation({
+    mutationFn: ({ id, actual_time }: { id: number; actual_time: string }) => completeTask(id, actual_time),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      addToast('success', '작업이 완료되었습니다.')
+    },
+  })
+
   const monthlyReminderMut = useMutation({
     mutationFn: generateMonthlyReminders,
     onSuccess: (result: { created?: string[]; skipped?: string[] }) => {
@@ -151,6 +224,14 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
     },
   })
+
+  const handleQuickComplete = (task: Task) => {
+    if (completeTaskMut.isPending) return
+    completeTaskMut.mutate({
+      id: task.id,
+      actual_time: task.estimated_time || '0m',
+    })
+  }
 
   if (isLoading) return <div className="p-8 text-slate-500">불러오는 중...</div>
   if (error) return <div className="p-8 text-red-500">대시보드 데이터를 불러오지 못했습니다.</div>
@@ -201,11 +282,21 @@ export default function DashboardPage() {
                     onClick={() => navigate('/workflows', { state: { expandInstanceId: wf.id } })}
                     className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg hover:shadow-sm hover:border-indigo-400 transition-all cursor-pointer"
                   >
-                    <p className="text-sm font-medium text-indigo-800">{wf.name}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-indigo-600">진행률: {wf.progress}</span>
-                      {wf.next_step && <span className="text-xs text-indigo-500">다음: {wf.next_step}</span>}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-indigo-800">{wf.name}</p>
+                      <span className="text-xs text-indigo-600">{wf.progress}</span>
                     </div>
+                    {(wf.fund_name || wf.company_name) && (
+                      <p className="text-xs text-indigo-500 mt-0.5">
+                        {wf.fund_name || '-'} · {wf.company_name || '-'}
+                      </p>
+                    )}
+                    {wf.next_step && (
+                      <p className="text-xs text-indigo-700 mt-1.5 font-medium">
+                        다음: {wf.next_step}
+                        {wf.next_step_date && <span className="text-indigo-500 ml-1">({formatShortDate(wf.next_step_date)})</span>}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -218,6 +309,8 @@ export default function DashboardPage() {
             totalTime={today.total_estimated_time}
             icon={<AlertTriangle size={16} className="text-red-500" />}
             onTaskClick={() => navigate('/tasks')}
+            onTaskComplete={handleQuickComplete}
+            completingTaskId={completeTaskMut.variables?.id ?? null}
           />
           <TaskSection
             title="내일"
@@ -225,18 +318,24 @@ export default function DashboardPage() {
             totalTime={tomorrow.total_estimated_time}
             icon={<Clock size={16} className="text-amber-500" />}
             onTaskClick={() => navigate('/tasks')}
+            onTaskComplete={handleQuickComplete}
+            completingTaskId={completeTaskMut.variables?.id ?? null}
           />
           <TaskSection
             title="이번 주"
             tasks={this_week}
             icon={<CheckCircle2 size={16} className="text-blue-500" />}
             onTaskClick={() => navigate('/tasks')}
+            onTaskComplete={handleQuickComplete}
+            completingTaskId={completeTaskMut.variables?.id ?? null}
           />
           <TaskSection
             title="예정"
             tasks={upcoming}
             icon={<CheckCircle2 size={16} className="text-slate-400" />}
             onTaskClick={() => navigate('/tasks')}
+            onTaskComplete={handleQuickComplete}
+            completingTaskId={completeTaskMut.variables?.id ?? null}
           />
         </div>
 
@@ -254,7 +353,7 @@ export default function DashboardPage() {
                     className="w-full text-left p-2 rounded border border-slate-200 hover:bg-slate-50"
                   >
                     <p className="text-sm font-medium text-slate-800">{fund.name}</p>
-                    <p className="text-xs text-slate-500">LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {fund.commitment_total?.toLocaleString?.() ?? '-'}</p>
+                    <p className="text-xs text-slate-500">LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}</p>
                   </button>
                 ))}
               </div>
@@ -269,16 +368,23 @@ export default function DashboardPage() {
             </h3>
             {missing_documents?.length ? (
               <div className="space-y-2 max-h-80 overflow-auto">
-                {missing_documents.slice(0, 12).map((doc: MissingDocument) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => navigate('/investments')}
-                    className="w-full text-left p-2 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100"
-                  >
-                    <p className="text-sm font-medium text-amber-900">{doc.document_name}</p>
-                    <p className="text-xs text-amber-700">{doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}</p>
-                  </button>
-                ))}
+                {missing_documents.slice(0, 12).map((doc: MissingDocument) => {
+                  const badge = dueBadge(doc)
+                  return (
+                    <button
+                      key={doc.id}
+                      onClick={() => navigate(`/investments/${doc.investment_id}`)}
+                      className="w-full text-left p-2 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-amber-900">{doc.document_name}</p>
+                        {badge && <span className={`text-[11px] px-1.5 py-0.5 rounded ${badge.className}`}>{badge.text}</span>}
+                      </div>
+                      <p className="text-xs text-amber-700 mt-0.5">{doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}</p>
+                      {doc.due_date && <p className="text-[11px] text-amber-600 mt-0.5">마감일 {formatShortDate(doc.due_date)}</p>}
+                    </button>
+                  )
+                })}
               </div>
             ) : (
               <p className="text-sm text-slate-400">미수집 서류가 없습니다.</p>

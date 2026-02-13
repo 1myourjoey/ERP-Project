@@ -103,6 +103,9 @@ class WorkflowInstantiateRequest(BaseModel):
     name: str
     trigger_date: date
     memo: Optional[str] = None
+    investment_id: Optional[int] = None
+    company_id: Optional[int] = None
+    fund_id: Optional[int] = None
 
 
 class WorkflowStepInstanceResponse(BaseModel):
@@ -131,6 +134,12 @@ class WorkflowInstanceResponse(BaseModel):
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     memo: Optional[str] = None
+    investment_id: Optional[int] = None
+    company_id: Optional[int] = None
+    fund_id: Optional[int] = None
+    investment_name: Optional[str] = None
+    company_name: Optional[str] = None
+    fund_name: Optional[str] = None
     step_instances: list[WorkflowStepInstanceResponse] = []
     progress: str = ""  # e.g. "3/7"
     model_config = {"from_attributes": True}

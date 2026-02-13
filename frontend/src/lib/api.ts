@@ -33,10 +33,24 @@ export const createWorkflowTemplate = (data: WorkflowTemplateInput): Promise<Wor
 export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput): Promise<WorkflowTemplate> => api.put(`/workflows/${id}`, data).then(r => r.data)
 export const deleteWorkflowTemplate = (id: number): Promise<{ ok: boolean }> => api.delete(`/workflows/${id}`).then(r => r.data)
 export const instantiateWorkflow = (id: number, data: WorkflowInstantiateInput): Promise<WorkflowInstance> => api.post(`/workflows/${id}/instantiate`, data).then(r => r.data)
-export const fetchWorkflowInstances = (status = 'active'): Promise<WorkflowInstance[]> => api.get('/workflow-instances', { params: { status } }).then(r => r.data)
+export const fetchWorkflowInstances = (
+  params?: { status?: string; investment_id?: number; company_id?: number; fund_id?: number },
+): Promise<WorkflowInstance[]> =>
+  api.get('/workflow-instances', {
+    params: {
+      status: params?.status ?? 'active',
+      investment_id: params?.investment_id,
+      company_id: params?.company_id,
+      fund_id: params?.fund_id,
+    },
+  }).then(r => r.data)
 export const fetchWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.get(`/workflow-instances/${id}`).then(r => r.data)
 export const completeWorkflowStep = (instanceId: number, stepId: number, data: WorkflowStepCompleteInput): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/complete`, data).then(r => r.data)
 export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
+
+// -- Search --
+export const searchGlobal = (q: string): Promise<SearchResult[]> =>
+  api.get('/search', { params: { q } }).then(r => r.data)
 
 // -- Funds --
 export const fetchFunds = (): Promise<Fund[]> => api.get('/funds').then(r => r.data)
@@ -111,6 +125,9 @@ export interface ActiveWorkflow {
   name: string
   progress: string
   next_step: string | null
+  next_step_date: string | null
+  company_name: string | null
+  fund_name: string | null
 }
 
 export interface FundSummary {
@@ -132,6 +149,8 @@ export interface MissingDocument {
   status: string
   company_name: string
   fund_name: string
+  due_date: string | null
+  days_remaining: number | null
 }
 
 export interface TaskCreate {
@@ -236,6 +255,12 @@ export interface WorkflowInstance {
   created_at: string | null
   completed_at: string | null
   memo: string | null
+  investment_id: number | null
+  company_id: number | null
+  fund_id: number | null
+  investment_name: string | null
+  company_name: string | null
+  fund_name: string | null
   step_instances: WorkflowStepInstance[]
   progress: string
 }
@@ -244,6 +269,9 @@ export interface WorkflowInstantiateInput {
   name: string
   trigger_date: string
   memo?: string
+  investment_id?: number
+  company_id?: number
+  fund_id?: number
 }
 
 export interface WorkflowStepCompleteInput {
@@ -366,6 +394,7 @@ export interface InvestmentDocumentInput {
   doc_type?: string | null
   status?: string
   note?: string | null
+  due_date?: string | null
 }
 
 export interface ChecklistItemInput {
@@ -414,8 +443,18 @@ export interface DocumentStatusItem {
   document_type: string | null
   status: string
   note: string | null
+  due_date: string | null
+  days_remaining: number | null
   company_name: string
   fund_name: string
+}
+
+export interface SearchResult {
+  type: 'task' | 'fund' | 'company' | 'investment' | 'workflow' | string
+  id: number
+  title: string
+  subtitle?: string | null
+  url: string
 }
 
 export interface CalendarEventInput {

@@ -18,22 +18,36 @@ from routers import (
     checklists,
     calendar_events,
     document_status,
+    search,
 )
 
 def ensure_sqlite_compat_columns():
     if engine.dialect.name != "sqlite":
         return
 
-    with engine.begin() as conn:
-        cols = conn.exec_driver_sql("PRAGMA table_info('workflow_warnings')").fetchall()
+    def has_column(table: str, col: str) -> bool:
+        cols = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").fetchall()
         col_names = {row[1] for row in cols}
-        if "category" not in col_names:
+        return col in col_names
+
+    with engine.begin() as conn:
+        if not has_column("workflow_warnings", "category"):
             conn.exec_driver_sql(
                 "ALTER TABLE workflow_warnings ADD COLUMN category VARCHAR DEFAULT 'warning'"
             )
             conn.exec_driver_sql(
                 "UPDATE workflow_warnings SET category = 'warning' WHERE category IS NULL"
             )
+
+        if not has_column("workflow_instances", "investment_id"):
+            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN investment_id INTEGER")
+        if not has_column("workflow_instances", "company_id"):
+            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN company_id INTEGER")
+        if not has_column("workflow_instances", "fund_id"):
+            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN fund_id INTEGER")
+
+        if not has_column("investment_documents", "due_date"):
+            conn.exec_driver_sql("ALTER TABLE investment_documents ADD COLUMN due_date DATE")
 
 
 @asynccontextmanager
@@ -63,6 +77,7 @@ app.include_router(investments.router)
 app.include_router(checklists.router)
 app.include_router(calendar_events.router)
 app.include_router(document_status.router)
+app.include_router(search.router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -46,5 +46,6 @@ class InvestmentDocument(Base):
     doc_type = Column(String, nullable=True)
     status = Column(String, nullable=False, default="pending")
     note = Column(String, nullable=True)
+    due_date = Column(Date, nullable=True)
 
     investment = relationship("Investment", back_populates="documents")

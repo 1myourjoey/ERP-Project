@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
+from models.fund import Fund
+from models.investment import Investment, PortfolioCompany
 from models.workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from models.task import Task
@@ -162,19 +164,60 @@ def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session 
     if not wf:
         raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
 
-    instance = instantiate_workflow(db, wf, data.name, data.trigger_date, data.memo)
-    return _build_instance_response(instance)
+    investment_id = data.investment_id
+    company_id = data.company_id
+    fund_id = data.fund_id
+
+    if investment_id is not None:
+        investment = db.get(Investment, investment_id)
+        if not investment:
+            raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
+        if company_id is not None and company_id != investment.company_id:
+            raise HTTPException(status_code=400, detail="선택한 회사가 투자 정보와 일치하지 않습니다")
+        if fund_id is not None and fund_id != investment.fund_id:
+            raise HTTPException(status_code=400, detail="선택한 조합이 투자 정보와 일치하지 않습니다")
+        company_id = investment.company_id
+        fund_id = investment.fund_id
+    else:
+        if company_id is not None and not db.get(PortfolioCompany, company_id):
+            raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
+        if fund_id is not None and not db.get(Fund, fund_id):
+            raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+
+    instance = instantiate_workflow(
+        db,
+        wf,
+        data.name,
+        data.trigger_date,
+        data.memo,
+        investment_id=investment_id,
+        company_id=company_id,
+        fund_id=fund_id,
+    )
+    return _build_instance_response(instance, db)
 
 
 # --- Instances ---
 
 @router.get("/api/workflow-instances", response_model=list[WorkflowInstanceResponse])
-def list_instances(status: str = "active", db: Session = Depends(get_db)):
+def list_instances(
+    status: str = "active",
+    investment_id: int | None = None,
+    company_id: int | None = None,
+    fund_id: int | None = None,
+    db: Session = Depends(get_db),
+):
     query = db.query(WorkflowInstance)
     if status != "all":
         query = query.filter(WorkflowInstance.status == status)
+    if investment_id is not None:
+        query = query.filter(WorkflowInstance.investment_id == investment_id)
+    if company_id is not None:
+        query = query.filter(WorkflowInstance.company_id == company_id)
+    if fund_id is not None:
+        query = query.filter(WorkflowInstance.fund_id == fund_id)
     instances = query.order_by(WorkflowInstance.created_at.desc()).all()
-    return [_build_instance_response(i) for i in instances]
+    return [_build_instance_response(i, db) for i in instances]
 
 
 @router.get("/api/workflow-instances/{instance_id}", response_model=WorkflowInstanceResponse)
@@ -182,7 +225,7 @@ def get_instance(instance_id: int, db: Session = Depends(get_db)):
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
         raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
-    return _build_instance_response(instance)
+    return _build_instance_response(instance, db)
 
 
 @router.patch("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/complete")
@@ -244,7 +287,7 @@ def complete_step(
 
     db.commit()
     db.refresh(instance)
-    return _build_instance_response(instance)
+    return _build_instance_response(instance, db)
 
 
 @router.patch("/api/workflow-instances/{instance_id}/cancel")
@@ -262,10 +305,10 @@ def cancel_instance(instance_id: int, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(instance)
-    return _build_instance_response(instance)
+    return _build_instance_response(instance, db)
 
 
-def _build_instance_response(instance: WorkflowInstance) -> WorkflowInstanceResponse:
+def _build_instance_response(instance: WorkflowInstance, db: Session) -> WorkflowInstanceResponse:
     total = len(instance.step_instances)
     completed = sum(1 for s in instance.step_instances if s.status in ("completed", "skipped"))
 
@@ -286,6 +329,31 @@ def _build_instance_response(instance: WorkflowInstance) -> WorkflowInstanceResp
             memo=si.step.memo if si.step else None,
         ))
 
+    investment_name = None
+    company_name = None
+    fund_name = None
+
+    if instance.investment_id is not None:
+        investment = db.get(Investment, instance.investment_id)
+        if investment:
+            company = db.get(PortfolioCompany, investment.company_id)
+            fund = db.get(Fund, investment.fund_id)
+            investment_name = f"{company.name} 투자건" if company else f"투자 #{investment.id}"
+            if company:
+                company_name = company.name
+            if fund:
+                fund_name = fund.name
+
+    if company_name is None and instance.company_id is not None:
+        company = db.get(PortfolioCompany, instance.company_id)
+        if company:
+            company_name = company.name
+
+    if fund_name is None and instance.fund_id is not None:
+        fund = db.get(Fund, instance.fund_id)
+        if fund:
+            fund_name = fund.name
+
     return WorkflowInstanceResponse(
         id=instance.id,
         workflow_id=instance.workflow_id,
@@ -296,6 +364,12 @@ def _build_instance_response(instance: WorkflowInstance) -> WorkflowInstanceResp
         created_at=instance.created_at,
         completed_at=instance.completed_at,
         memo=instance.memo,
+        investment_id=instance.investment_id,
+        company_id=instance.company_id,
+        fund_id=instance.fund_id,
+        investment_name=investment_name,
+        company_name=company_name,
+        fund_name=fund_name,
         step_instances=step_responses,
         progress=f"{completed}/{total}",
     )
