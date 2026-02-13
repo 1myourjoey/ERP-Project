@@ -14,6 +14,7 @@ def skip_weekends(d: date) -> date:
 
 def calculate_step_date(trigger_date: date, offset_days: int) -> date:
     result = trigger_date + timedelta(days=offset_days)
+    # TODO: 공휴일(국경일/대체공휴일) 제외 로직 추가
     return skip_weekends(result)
 
 

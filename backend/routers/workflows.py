@@ -202,6 +202,23 @@ def complete_step(
     if not instance:
         raise HTTPException(404, "Instance not found")
 
+    next_step = (
+        db.query(WorkflowStepInstance)
+        .join(WorkflowStep, WorkflowStep.id == WorkflowStepInstance.workflow_step_id)
+        .filter(
+            WorkflowStepInstance.instance_id == instance_id,
+            WorkflowStepInstance.status == "pending",
+        )
+        .order_by(WorkflowStep.order.asc(), WorkflowStepInstance.id.asc())
+        .first()
+    )
+    if next_step:
+        next_step.status = "in_progress"
+        if next_step.task_id:
+            next_task = db.get(Task, next_step.task_id)
+            if next_task and next_task.status == "pending":
+                next_task.status = "in_progress"
+
     all_done = all(
         s.status in ("completed", "skipped")
         for s in instance.step_instances
