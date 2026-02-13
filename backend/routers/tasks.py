@@ -2,6 +2,7 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import extract
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -25,10 +26,21 @@ MONTHLY_REMINDER_TITLES = (
 
 
 @router.get("/board", response_model=TaskBoardResponse)
-def get_task_board(status: str = "pending", db: Session = Depends(get_db)):
+def get_task_board(
+    status: str = "pending",
+    year: int | None = None,
+    month: int | None = None,
+    db: Session = Depends(get_db),
+):
     query = db.query(Task)
     if status != "all":
         query = query.filter(Task.status == status)
+    if status == "completed" and (year or month):
+        query = query.filter(Task.completed_at.isnot(None))
+        if year:
+            query = query.filter(extract("year", Task.completed_at) == year)
+        if month:
+            query = query.filter(extract("month", Task.completed_at) == month)
     tasks = query.order_by(Task.deadline.asc().nullslast(), Task.created_at.asc()).all()
 
     board = {"Q1": [], "Q2": [], "Q3": [], "Q4": []}

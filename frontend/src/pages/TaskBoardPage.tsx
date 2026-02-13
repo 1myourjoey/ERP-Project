@@ -300,14 +300,24 @@ function CompleteModal({ task, onConfirm, onCancel }: {
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
+  const [completedYear, setCompletedYear] = useState(currentYear)
+  const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
+  const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
   const { data: board, isLoading } = useQuery<TaskBoard>({
-    queryKey: ['taskBoard', statusFilter],
-    queryFn: () => fetchTaskBoard(statusFilter),
+    queryKey: ['taskBoard', statusFilter, completedYear, completedMonth],
+    queryFn: () => fetchTaskBoard(
+      statusFilter,
+      statusFilter === 'completed' ? completedYear : undefined,
+      statusFilter === 'completed' && completedMonth !== '' ? completedMonth : undefined,
+    ),
   })
 
   const addMutation = useMutation({
@@ -360,20 +370,45 @@ export default function TaskBoardPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <h2 className="text-2xl font-bold text-gray-900">업무 보드</h2>
-        <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-          {['pending', 'all', 'completed'].map(s => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                statusFilter === s ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {s === 'pending' ? '진행 중' : s === 'all' ? '전체' : '완료'}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+            {['pending', 'all', 'completed'].map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  statusFilter === s ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {s === 'pending' ? '진행 중' : s === 'all' ? '전체' : '완료'}
+              </button>
+            ))}
+          </div>
+          {statusFilter === 'completed' && (
+            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1">
+              <select
+                value={completedYear}
+                onChange={(e) => setCompletedYear(Number(e.target.value))}
+                className="rounded border border-gray-200 px-2 py-1 text-xs"
+              >
+                {completedYearOptions.map((year) => (
+                  <option key={year} value={year}>{year}년</option>
+                ))}
+              </select>
+              <select
+                value={completedMonth}
+                onChange={(e) => setCompletedMonth(e.target.value ? Number(e.target.value) : '')}
+                className="rounded border border-gray-200 px-2 py-1 text-xs"
+              >
+                <option value="">전체 월</option>
+                {Array.from({ length: 12 }, (_, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{idx + 1}월</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
