@@ -4,6 +4,19 @@ from .workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from .workflow_instance import WorkflowInstance, WorkflowStepInstance
 from .fund import Fund, LP
 from .investment import PortfolioCompany, Investment, InvestmentDocument
+from .transaction import Transaction
+from .valuation import Valuation
+from .biz_report import BizReport
+from .phase3 import (
+    CapitalCall,
+    CapitalCallItem,
+    Distribution,
+    DistributionItem,
+    Assembly,
+    ExitCommittee,
+    ExitCommitteeFund,
+    ExitTrade,
+)
 from .checklist import Checklist, ChecklistItem
 from .calendar_event import CalendarEvent
 
@@ -14,6 +27,13 @@ __all__ = [
     "WorkflowInstance", "WorkflowStepInstance",
     "Fund", "LP",
     "PortfolioCompany", "Investment", "InvestmentDocument",
+    "Transaction",
+    "Valuation",
+    "BizReport",
+    "CapitalCall", "CapitalCallItem",
+    "Distribution", "DistributionItem",
+    "Assembly",
+    "ExitCommittee", "ExitCommitteeFund", "ExitTrade",
     "Checklist", "ChecklistItem",
     "CalendarEvent",
 ]

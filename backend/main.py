@@ -19,6 +19,14 @@ from routers import (
     calendar_events,
     document_status,
     search,
+    transactions,
+    valuations,
+    capital_calls,
+    distributions,
+    assemblies,
+    exits,
+    performance,
+    biz_reports,
 )
 
 def ensure_sqlite_compat_columns():
@@ -78,6 +86,14 @@ app.include_router(checklists.router)
 app.include_router(calendar_events.router)
 app.include_router(document_status.router)
 app.include_router(search.router)
+app.include_router(transactions.router)
+app.include_router(valuations.router)
+app.include_router(capital_calls.router)
+app.include_router(distributions.router)
+app.include_router(assemblies.router)
+app.include_router(exits.router)
+app.include_router(performance.router)
+app.include_router(biz_reports.router)
 
 
 @app.exception_handler(RequestValidationError)

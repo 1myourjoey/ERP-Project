@@ -21,6 +21,10 @@ export const STATUS_LABEL: Record<string, string> = {
   심의중: '심의중',
   가결: '가결',
   부결: '부결',
+  요청전: '요청전',
+  요청중: '요청중',
+  수신: '수신',
+  검수완료: '검수완료',
 }
 
 export const labelStatus = (status?: string | null): string => {

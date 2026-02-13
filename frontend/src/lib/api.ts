@@ -79,6 +79,70 @@ export const fetchInvestmentDocuments = (investmentId: number) => api.get(`/inve
 export const createInvestmentDocument = (investmentId: number, data: InvestmentDocumentInput) => api.post(`/investments/${investmentId}/documents`, data).then(r => r.data)
 export const updateInvestmentDocument = (investmentId: number, documentId: number, data: Partial<InvestmentDocumentInput>) => api.put(`/investments/${investmentId}/documents/${documentId}`, data).then(r => r.data)
 export const deleteInvestmentDocument = (investmentId: number, documentId: number) => api.delete(`/investments/${investmentId}/documents/${documentId}`)
+export const fetchTransactions = (params?: { investment_id?: number; fund_id?: number; company_id?: number; type?: string }): Promise<Transaction[]> => api.get('/transactions', { params }).then(r => r.data)
+export const fetchInvestmentTransactions = (investmentId: number): Promise<Transaction[]> => api.get(`/investments/${investmentId}/transactions`).then(r => r.data)
+export const fetchTransaction = (id: number): Promise<Transaction> => api.get(`/transactions/${id}`).then(r => r.data)
+export const createTransaction = (data: TransactionInput): Promise<Transaction> => api.post('/transactions', data).then(r => r.data)
+export const updateTransaction = (id: number, data: Partial<TransactionInput>): Promise<Transaction> => api.put(`/transactions/${id}`, data).then(r => r.data)
+export const deleteTransaction = (id: number) => api.delete(`/transactions/${id}`)
+export const fetchValuations = (params?: { investment_id?: number; fund_id?: number; company_id?: number; method?: string }): Promise<Valuation[]> => api.get('/valuations', { params }).then(r => r.data)
+export const fetchInvestmentValuations = (investmentId: number): Promise<Valuation[]> => api.get(`/investments/${investmentId}/valuations`).then(r => r.data)
+export const fetchValuation = (id: number): Promise<Valuation> => api.get(`/valuations/${id}`).then(r => r.data)
+export const createValuation = (data: ValuationInput): Promise<Valuation> => api.post('/valuations', data).then(r => r.data)
+export const updateValuation = (id: number, data: Partial<ValuationInput>): Promise<Valuation> => api.put(`/valuations/${id}`, data).then(r => r.data)
+export const deleteValuation = (id: number) => api.delete(`/valuations/${id}`)
+export const fetchBizReports = (params?: { company_id?: number; report_type?: string; status?: string }): Promise<BizReport[]> =>
+  api.get('/biz-reports', { params }).then(r => r.data)
+export const fetchBizReport = (id: number): Promise<BizReport> => api.get(`/biz-reports/${id}`).then(r => r.data)
+export const createBizReport = (data: BizReportInput): Promise<BizReport> => api.post('/biz-reports', data).then(r => r.data)
+export const updateBizReport = (id: number, data: Partial<BizReportInput>): Promise<BizReport> => api.put(`/biz-reports/${id}`, data).then(r => r.data)
+export const deleteBizReport = (id: number) => api.delete(`/biz-reports/${id}`)
+export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: string }): Promise<CapitalCall[]> => api.get('/capital-calls', { params }).then(r => r.data)
+export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
+export const createCapitalCall = (data: CapitalCallInput): Promise<CapitalCall> => api.post('/capital-calls', data).then(r => r.data)
+export const updateCapitalCall = (id: number, data: Partial<CapitalCallInput>): Promise<CapitalCall> => api.put(`/capital-calls/${id}`, data).then(r => r.data)
+export const deleteCapitalCall = (id: number) => api.delete(`/capital-calls/${id}`)
+export const fetchCapitalCallItems = (capitalCallId: number): Promise<CapitalCallItem[]> => api.get(`/capital-calls/${capitalCallId}/items`).then(r => r.data)
+export const createCapitalCallItem = (capitalCallId: number, data: CapitalCallItemInput): Promise<CapitalCallItem> => api.post(`/capital-calls/${capitalCallId}/items`, data).then(r => r.data)
+export const updateCapitalCallItem = (capitalCallId: number, itemId: number, data: Partial<CapitalCallItemInput>): Promise<CapitalCallItem> => api.put(`/capital-calls/${capitalCallId}/items/${itemId}`, data).then(r => r.data)
+export const deleteCapitalCallItem = (capitalCallId: number, itemId: number) => api.delete(`/capital-calls/${capitalCallId}/items/${itemId}`)
+
+export const fetchDistributions = (params?: { fund_id?: number; dist_type?: string }): Promise<Distribution[]> => api.get('/distributions', { params }).then(r => r.data)
+export const fetchDistribution = (id: number): Promise<Distribution> => api.get(`/distributions/${id}`).then(r => r.data)
+export const createDistribution = (data: DistributionInput): Promise<Distribution> => api.post('/distributions', data).then(r => r.data)
+export const updateDistribution = (id: number, data: Partial<DistributionInput>): Promise<Distribution> => api.put(`/distributions/${id}`, data).then(r => r.data)
+export const deleteDistribution = (id: number) => api.delete(`/distributions/${id}`)
+export const fetchDistributionItems = (distributionId: number): Promise<DistributionItem[]> => api.get(`/distributions/${distributionId}/items`).then(r => r.data)
+export const createDistributionItem = (distributionId: number, data: DistributionItemInput): Promise<DistributionItem> => api.post(`/distributions/${distributionId}/items`, data).then(r => r.data)
+export const updateDistributionItem = (distributionId: number, itemId: number, data: Partial<DistributionItemInput>): Promise<DistributionItem> => api.put(`/distributions/${distributionId}/items/${itemId}`, data).then(r => r.data)
+export const deleteDistributionItem = (distributionId: number, itemId: number) => api.delete(`/distributions/${distributionId}/items/${itemId}`)
+
+export const fetchAssemblies = (params?: { fund_id?: number; type?: string; status?: string }): Promise<Assembly[]> => api.get('/assemblies', { params }).then(r => r.data)
+export const fetchAssembly = (id: number): Promise<Assembly> => api.get(`/assemblies/${id}`).then(r => r.data)
+export const createAssembly = (data: AssemblyInput): Promise<Assembly> => api.post('/assemblies', data).then(r => r.data)
+export const updateAssembly = (id: number, data: Partial<AssemblyInput>): Promise<Assembly> => api.put(`/assemblies/${id}`, data).then(r => r.data)
+export const deleteAssembly = (id: number) => api.delete(`/assemblies/${id}`)
+
+export const fetchExitCommittees = (params?: { company_id?: number; status?: string }): Promise<ExitCommittee[]> => api.get('/exit-committees', { params }).then(r => r.data)
+export const fetchExitCommittee = (id: number): Promise<ExitCommittee> => api.get(`/exit-committees/${id}`).then(r => r.data)
+export const createExitCommittee = (data: ExitCommitteeInput): Promise<ExitCommittee> => api.post('/exit-committees', data).then(r => r.data)
+export const updateExitCommittee = (id: number, data: Partial<ExitCommitteeInput>): Promise<ExitCommittee> => api.put(`/exit-committees/${id}`, data).then(r => r.data)
+export const deleteExitCommittee = (id: number) => api.delete(`/exit-committees/${id}`)
+export const fetchExitCommitteeFunds = (committeeId: number): Promise<ExitCommitteeFund[]> => api.get(`/exit-committees/${committeeId}/funds`).then(r => r.data)
+export const createExitCommitteeFund = (committeeId: number, data: ExitCommitteeFundInput): Promise<ExitCommitteeFund> => api.post(`/exit-committees/${committeeId}/funds`, data).then(r => r.data)
+export const updateExitCommitteeFund = (committeeId: number, itemId: number, data: Partial<ExitCommitteeFundInput>): Promise<ExitCommitteeFund> => api.put(`/exit-committees/${committeeId}/funds/${itemId}`, data).then(r => r.data)
+export const deleteExitCommitteeFund = (committeeId: number, itemId: number) => api.delete(`/exit-committees/${committeeId}/funds/${itemId}`)
+
+export const fetchExitTrades = (
+  params?: { fund_id?: number; company_id?: number; investment_id?: number; exit_committee_id?: number; exit_type?: string },
+): Promise<ExitTrade[]> => api.get('/exit-trades', { params }).then(r => r.data)
+export const fetchExitTrade = (id: number): Promise<ExitTrade> => api.get(`/exit-trades/${id}`).then(r => r.data)
+export const createExitTrade = (data: ExitTradeInput): Promise<ExitTrade> => api.post('/exit-trades', data).then(r => r.data)
+export const updateExitTrade = (id: number, data: Partial<ExitTradeInput>): Promise<ExitTrade> => api.put(`/exit-trades/${id}`, data).then(r => r.data)
+export const deleteExitTrade = (id: number) => api.delete(`/exit-trades/${id}`)
+
+export const fetchFundPerformance = (fundId: number, params?: { as_of_date?: string }): Promise<FundPerformance> =>
+  api.get(`/funds/${fundId}/performance`, { params }).then(r => r.data)
 
 // -- Checklist --
 export const fetchChecklists = (): Promise<ChecklistListItem[]> => api.get('/checklists').then(r => r.data)
@@ -395,6 +459,300 @@ export interface InvestmentDocumentInput {
   status?: string
   note?: string | null
   due_date?: string | null
+}
+
+export interface TransactionInput {
+  investment_id: number
+  fund_id: number
+  company_id: number
+  transaction_date: string
+  type: string
+  amount: number
+  shares_change?: number | null
+  balance_before?: number | null
+  balance_after?: number | null
+  realized_gain?: number | null
+  cumulative_gain?: number | null
+  memo?: string | null
+}
+
+export interface Transaction {
+  id: number
+  investment_id: number
+  fund_id: number
+  company_id: number
+  transaction_date: string
+  type: string
+  amount: number
+  shares_change: number | null
+  balance_before: number | null
+  balance_after: number | null
+  realized_gain: number | null
+  cumulative_gain: number | null
+  memo: string | null
+  created_at: string
+  fund_name?: string
+  company_name?: string
+}
+
+export interface ValuationInput {
+  investment_id: number
+  fund_id: number
+  company_id: number
+  as_of_date: string
+  evaluator?: string | null
+  method?: string | null
+  instrument?: string | null
+  value: number
+  prev_value?: number | null
+  change_amount?: number | null
+  change_pct?: number | null
+  basis?: string | null
+}
+
+export interface Valuation {
+  id: number
+  investment_id: number
+  fund_id: number
+  company_id: number
+  as_of_date: string
+  evaluator: string | null
+  method: string | null
+  instrument: string | null
+  value: number
+  prev_value: number | null
+  change_amount: number | null
+  change_pct: number | null
+  basis: string | null
+  created_at: string
+  fund_name?: string
+  company_name?: string
+}
+
+export interface BizReportInput {
+  company_id: number
+  report_type: string
+  period: string
+  status?: string
+  requested_date?: string | null
+  received_date?: string | null
+  reviewed_date?: string | null
+  analyst_comment?: string | null
+  revenue?: number | null
+  operating_income?: number | null
+  net_income?: number | null
+  total_assets?: number | null
+  total_liabilities?: number | null
+  employees?: number | null
+  memo?: string | null
+}
+
+export interface BizReport {
+  id: number
+  company_id: number
+  report_type: string
+  period: string
+  status: string
+  requested_date: string | null
+  received_date: string | null
+  reviewed_date: string | null
+  analyst_comment: string | null
+  revenue: number | null
+  operating_income: number | null
+  net_income: number | null
+  total_assets: number | null
+  total_liabilities: number | null
+  employees: number | null
+  memo: string | null
+  created_at: string | null
+  company_name: string | null
+}
+
+export interface CapitalCallInput {
+  fund_id: number
+  call_date: string
+  call_type: string
+  total_amount?: number
+  memo?: string | null
+}
+
+export interface CapitalCall {
+  id: number
+  fund_id: number
+  call_date: string
+  call_type: string
+  total_amount: number
+  memo: string | null
+  created_at: string
+  fund_name?: string
+}
+
+export interface CapitalCallItemInput {
+  lp_id: number
+  amount?: number
+  paid?: boolean
+  paid_date?: string | null
+}
+
+export interface CapitalCallItem {
+  id: number
+  capital_call_id: number
+  lp_id: number
+  amount: number
+  paid: boolean
+  paid_date: string | null
+  lp_name?: string
+}
+
+export interface DistributionInput {
+  fund_id: number
+  dist_date: string
+  dist_type: string
+  principal_total?: number
+  profit_total?: number
+  performance_fee?: number
+  memo?: string | null
+}
+
+export interface Distribution {
+  id: number
+  fund_id: number
+  dist_date: string
+  dist_type: string
+  principal_total: number
+  profit_total: number
+  performance_fee: number
+  memo: string | null
+  created_at: string
+  fund_name?: string
+}
+
+export interface DistributionItemInput {
+  lp_id: number
+  principal?: number
+  profit?: number
+}
+
+export interface DistributionItem {
+  id: number
+  distribution_id: number
+  lp_id: number
+  principal: number
+  profit: number
+  lp_name?: string
+}
+
+export interface AssemblyInput {
+  fund_id: number
+  type: string
+  date: string
+  agenda?: string | null
+  status?: string
+  minutes_completed?: boolean
+  memo?: string | null
+}
+
+export interface Assembly {
+  id: number
+  fund_id: number
+  type: string
+  date: string
+  agenda: string | null
+  status: string
+  minutes_completed: boolean
+  memo: string | null
+  created_at: string
+  fund_name?: string
+}
+
+export interface ExitCommitteeInput {
+  company_id: number
+  status?: string
+  meeting_date: string
+  location?: string | null
+  agenda?: string | null
+  exit_strategy?: string | null
+  analyst_opinion?: string | null
+  vote_result?: string | null
+  memo?: string | null
+}
+
+export interface ExitCommittee {
+  id: number
+  company_id: number
+  status: string
+  meeting_date: string
+  location: string | null
+  agenda: string | null
+  exit_strategy: string | null
+  analyst_opinion: string | null
+  vote_result: string | null
+  memo: string | null
+  created_at: string
+  company_name?: string
+}
+
+export interface ExitCommitteeFundInput {
+  fund_id: number
+  investment_id: number
+}
+
+export interface ExitCommitteeFund {
+  id: number
+  exit_committee_id: number
+  fund_id: number
+  investment_id: number
+  fund_name?: string
+}
+
+export interface ExitTradeInput {
+  exit_committee_id?: number | null
+  investment_id: number
+  fund_id: number
+  company_id: number
+  exit_type: string
+  trade_date: string
+  amount: number
+  shares_sold?: number | null
+  price_per_share?: number | null
+  fees?: number
+  net_amount?: number | null
+  realized_gain?: number | null
+  memo?: string | null
+}
+
+export interface ExitTrade {
+  id: number
+  exit_committee_id: number | null
+  investment_id: number
+  fund_id: number
+  company_id: number
+  exit_type: string
+  trade_date: string
+  amount: number
+  shares_sold: number | null
+  price_per_share: number | null
+  fees: number
+  net_amount: number | null
+  realized_gain: number | null
+  memo: string | null
+  created_at: string
+  fund_name?: string
+  company_name?: string
+}
+
+export interface FundPerformance {
+  fund_id: number
+  fund_name: string
+  paid_in_total: number
+  total_invested: number
+  total_distributed: number
+  residual_value: number
+  total_value: number
+  irr: number | null
+  tvpi: number | null
+  dpi: number | null
+  rvpi: number | null
 }
 
 export interface ChecklistItemInput {
