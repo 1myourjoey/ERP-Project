@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask } from '../lib/api'
+import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask, moveTask } from '../lib/api'
 import type { Task, TaskBoard, TaskCreate } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 import { Plus, Clock, Trash2, Check, Pencil } from 'lucide-react'
@@ -23,7 +23,14 @@ function TaskItem({ task, onComplete, onDelete, onEdit }: {
     : null
 
   return (
-    <div className="group flex items-start gap-2 p-2.5 bg-white rounded-md border border-slate-200 hover:shadow-sm transition-shadow">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('taskId', String(task.id))
+        e.dataTransfer.setData('fromQuadrant', task.quadrant)
+      }}
+      className="group flex items-start gap-2 p-2.5 bg-white rounded-md border border-slate-200 hover:shadow-sm transition-shadow cursor-grab active:cursor-grabbing"
+    >
       <button
         onClick={() => onComplete(task.id)}
         className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0"
@@ -278,6 +285,7 @@ export default function TaskBoardPage() {
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
+  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
 
   const { data: board, isLoading } = useQuery<TaskBoard>({
     queryKey: ['taskBoard', statusFilter],
@@ -320,6 +328,15 @@ export default function TaskBoardPage() {
     },
   })
 
+  const moveMutation = useMutation({
+    mutationFn: ({ id, quadrant }: { id: number; quadrant: string }) => moveTask(id, quadrant),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      addToast('success', '작업 위치가 변경되었습니다.')
+    },
+  })
+
   if (isLoading) return <div className="p-8 text-slate-500">불러오는 중...</div>
 
   return (
@@ -345,7 +362,25 @@ export default function TaskBoardPage() {
         {QUADRANTS.map(q => {
           const tasks = board?.[q.key as keyof TaskBoard] || []
           return (
-            <div key={q.key} className={`rounded-xl border-2 ${q.color} ${q.bg} p-4`}>
+            <div
+              key={q.key}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setDragOverQuadrant(q.key)
+              }}
+              onDragLeave={() => setDragOverQuadrant(prev => (prev === q.key ? null : prev))}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOverQuadrant(null)
+                const taskId = Number(e.dataTransfer.getData('taskId'))
+                const fromQuadrant = e.dataTransfer.getData('fromQuadrant')
+                if (!taskId || !fromQuadrant || fromQuadrant === q.key) return
+                moveMutation.mutate({ id: taskId, quadrant: q.key })
+              }}
+              className={`rounded-xl border-2 ${q.color} ${q.bg} p-4 ${
+                dragOverQuadrant === q.key ? 'ring-2 ring-blue-300 ring-inset border-dashed' : ''
+              }`}
+            >
               <div className="flex items-center gap-2 mb-3">
                 <span className={`w-2.5 h-2.5 rounded-full ${q.badge}`} />
                 <h3 className="text-sm font-semibold text-slate-700">{q.label}</h3>
