@@ -208,6 +208,10 @@ def complete_step(
             task.completed_at = datetime.now()
             task.actual_time = data.actual_time
 
+    # Session autoflush is disabled globally, so persist current-step completion
+    # before querying for the next pending step.
+    db.flush()
+
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
         raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
@@ -218,6 +222,7 @@ def complete_step(
         .filter(
             WorkflowStepInstance.instance_id == instance_id,
             WorkflowStepInstance.status == "pending",
+            WorkflowStepInstance.id != step_instance_id,
         )
         .order_by(WorkflowStep.order.asc(), WorkflowStepInstance.id.asc())
         .first()
