@@ -1,4 +1,5 @@
-﻿import { NavLink, Outlet } from 'react-router-dom'
+﻿import { useState } from 'react'
+import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   KanbanSquare,
@@ -9,6 +10,8 @@ import {
   CheckSquare,
   Files,
   CalendarDays,
+  Menu,
+  X,
 } from 'lucide-react'
 
 const NAV = [
@@ -24,18 +27,41 @@ const NAV = [
 ]
 
 export default function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="flex h-screen">
-      <aside className="w-56 bg-slate-900 text-white flex flex-col shrink-0">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Trigger Investment Partners</p>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 text-white
+          flex flex-col shrink-0 transform transition-transform duration-200
+          md:relative md:translate-x-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Trigger Investment Partners</p>
+          </div>
+          <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
+
         <nav className="flex-1 py-3 overflow-auto">
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                   isActive
@@ -51,9 +77,18 @@ export default function Layout() {
         </nav>
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col">
+        <header className="md:hidden flex items-center px-4 py-3 border-b border-slate-200 bg-white">
+          <button onClick={() => setSidebarOpen(true)} className="text-slate-700">
+            <Menu size={22} />
+          </button>
+          <span className="ml-3 font-semibold text-slate-800">VC ERP</span>
+        </header>
+
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
