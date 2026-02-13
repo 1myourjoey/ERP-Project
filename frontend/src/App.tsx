@@ -12,6 +12,7 @@ import BizReportsPage from './pages/BizReportsPage'
 import TransactionsPage from './pages/TransactionsPage'
 import ValuationsPage from './pages/ValuationsPage'
 import FundOperationsPage from './pages/FundOperationsPage'
+import AccountingPage from './pages/AccountingPage'
 import ExitsPage from './pages/ExitsPage'
 import ReportsPage from './pages/ReportsPage'
 import ChecklistsPage from './pages/ChecklistsPage'
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/valuations" element={<ValuationsPage />} />
         <Route path="/fund-operations" element={<FundOperationsPage />} />
+        <Route path="/accounting" element={<AccountingPage />} />
         <Route path="/exits" element={<ExitsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/checklists" element={<ChecklistsPage />} />

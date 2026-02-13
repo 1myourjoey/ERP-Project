@@ -8,6 +8,7 @@ from .transaction import Transaction
 from .valuation import Valuation
 from .biz_report import BizReport
 from .regular_report import RegularReport
+from .accounting import Account, JournalEntry, JournalEntryLine
 from .phase3 import (
     CapitalCall,
     CapitalCallItem,
@@ -32,6 +33,7 @@ __all__ = [
     "Valuation",
     "BizReport",
     "RegularReport",
+    "Account", "JournalEntry", "JournalEntryLine",
     "CapitalCall", "CapitalCallItem",
     "Distribution", "DistributionItem",
     "Assembly",

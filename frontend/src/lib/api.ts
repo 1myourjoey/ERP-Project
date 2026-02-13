@@ -102,6 +102,19 @@ export const fetchRegularReports = (params?: { report_target?: string; fund_id?:
 export const createRegularReport = (data: RegularReportInput): Promise<RegularReport> => api.post('/regular-reports', data).then(r => r.data)
 export const updateRegularReport = (id: number, data: Partial<RegularReportInput>): Promise<RegularReport> => api.put(`/regular-reports/${id}`, data).then(r => r.data)
 export const deleteRegularReport = (id: number) => api.delete(`/regular-reports/${id}`)
+export const fetchAccounts = (params?: { fund_id?: number; category?: string }): Promise<Account[]> =>
+  api.get('/accounts', { params }).then(r => r.data)
+export const createAccount = (data: AccountInput): Promise<Account> => api.post('/accounts', data).then(r => r.data)
+export const updateAccount = (id: number, data: Partial<AccountInput>): Promise<Account> => api.put(`/accounts/${id}`, data).then(r => r.data)
+export const deleteAccount = (id: number) => api.delete(`/accounts/${id}`)
+export const fetchJournalEntries = (params?: { fund_id?: number; entry_date_from?: string; entry_date_to?: string; status?: string }): Promise<JournalEntry[]> =>
+  api.get('/journal-entries', { params }).then(r => r.data)
+export const fetchJournalEntry = (id: number): Promise<JournalEntry> => api.get(`/journal-entries/${id}`).then(r => r.data)
+export const createJournalEntry = (data: JournalEntryInput): Promise<JournalEntry> => api.post('/journal-entries', data).then(r => r.data)
+export const updateJournalEntry = (id: number, data: Partial<JournalEntryInput>): Promise<JournalEntry> => api.put(`/journal-entries/${id}`, data).then(r => r.data)
+export const deleteJournalEntry = (id: number) => api.delete(`/journal-entries/${id}`)
+export const fetchTrialBalance = (fund_id: number, as_of_date?: string): Promise<TrialBalanceItem[]> =>
+  api.get('/accounts/trial-balance', { params: { fund_id, as_of_date } }).then(r => r.data)
 export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: string }): Promise<CapitalCall[]> => api.get('/capital-calls', { params }).then(r => r.data)
 export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
 export const createCapitalCall = (data: CapitalCallInput): Promise<CapitalCall> => api.post('/capital-calls', data).then(r => r.data)
@@ -597,6 +610,82 @@ export interface RegularReport {
   created_at: string | null
   fund_name: string | null
   days_remaining: number | null
+}
+
+export interface AccountInput {
+  fund_id?: number | null
+  code: string
+  name: string
+  category: string
+  sub_category?: string | null
+  normal_side?: string | null
+  is_active?: string
+  display_order?: number
+}
+
+export interface Account {
+  id: number
+  fund_id: number | null
+  code: string
+  name: string
+  category: string
+  sub_category: string | null
+  normal_side: string | null
+  is_active: string
+  display_order: number
+}
+
+export interface JournalEntryLineInput {
+  account_id: number
+  debit?: number | null
+  credit?: number | null
+  memo?: string | null
+}
+
+export interface JournalEntryInput {
+  fund_id: number
+  entry_date: string
+  entry_type?: string
+  description?: string | null
+  status?: string
+  source_type?: string | null
+  source_id?: number | null
+  lines: JournalEntryLineInput[]
+}
+
+export interface JournalEntryLine {
+  id: number
+  journal_entry_id: number
+  account_id: number
+  debit: number
+  credit: number
+  memo: string | null
+  account_name: string | null
+}
+
+export interface JournalEntry {
+  id: number
+  fund_id: number
+  entry_date: string
+  entry_type: string
+  description: string | null
+  status: string
+  source_type: string | null
+  source_id: number | null
+  created_at: string | null
+  fund_name: string | null
+  lines: JournalEntryLine[]
+}
+
+export interface TrialBalanceItem {
+  account_id: number
+  code: string
+  name: string
+  category: string
+  sub_category: string | null
+  debit_total: number
+  credit_total: number
+  balance: number
 }
 
 export interface CapitalCallInput {

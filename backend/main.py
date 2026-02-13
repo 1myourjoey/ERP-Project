@@ -6,8 +6,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from database import engine, Base
+from database import engine, Base, SessionLocal
 from models import *  # noqa: F401,F403 - import all models so tables are created
+from seed.seed_accounts import seed_accounts
 from routers import (
     tasks,
     workflows,
@@ -28,6 +29,7 @@ from routers import (
     performance,
     biz_reports,
     regular_reports,
+    accounting,
 )
 
 def ensure_sqlite_compat_columns():
@@ -64,6 +66,11 @@ async def lifespan(app: FastAPI):
     if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
         Base.metadata.create_all(bind=engine)
         ensure_sqlite_compat_columns()
+        db = SessionLocal()
+        try:
+            seed_accounts(db)
+        finally:
+            db.close()
     yield
 
 
@@ -96,6 +103,7 @@ app.include_router(exits.router)
 app.include_router(performance.router)
 app.include_router(biz_reports.router)
 app.include_router(regular_reports.router)
+app.include_router(accounting.router)
 
 
 @app.exception_handler(RequestValidationError)
