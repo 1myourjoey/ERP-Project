@@ -11,6 +11,17 @@ from schemas.regular_report import RegularReportCreate, RegularReportUpdate
 router = APIRouter(prefix="/api/regular-reports", tags=["regular-reports"])
 
 DATE_FIELDS = ["due_date", "submitted_date", "created_at"]
+STATUS_COMPAT_MAP: dict[str, list[str]] = {
+    "예정": ["예정", "미작성"],
+    "준비중": ["준비중", "작성중", "검수중"],
+    "제출완료": ["제출완료", "전송완료"],
+    "확인완료": ["확인완료"],
+    "미작성": ["미작성", "예정"],
+    "작성중": ["작성중", "준비중"],
+    "검수중": ["검수중", "준비중"],
+    "전송완료": ["전송완료", "제출완료"],
+    "실패": ["실패"],
+}
 
 
 def _to_primitive(value):
@@ -43,7 +54,8 @@ def list_regular_reports(
     if fund_id:
         query = query.filter(RegularReport.fund_id == fund_id)
     if status:
-        query = query.filter(RegularReport.status == status)
+        status_values = STATUS_COMPAT_MAP.get(status, [status])
+        query = query.filter(RegularReport.status.in_(status_values))
     if period:
         query = query.filter(RegularReport.period == period)
 

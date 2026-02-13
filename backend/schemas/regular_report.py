@@ -8,7 +8,7 @@ class RegularReportCreate(BaseModel):
     fund_id: int | None = None
     period: str
     due_date: date | None = None
-    status: str | None = "미작성"
+    status: str | None = "예정"
     submitted_date: date | None = None
     task_id: int | None = None
     memo: str | None = None

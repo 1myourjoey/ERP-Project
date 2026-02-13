@@ -13,7 +13,7 @@ class RegularReport(Base):
     fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
     period = Column(String, nullable=False, default="")
     due_date = Column(Date, nullable=True)
-    status = Column(String, nullable=False, default="미작성")
+    status = Column(String, nullable=False, default="예정")
     submitted_date = Column(Date, nullable=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     memo = Column(Text, nullable=True)
