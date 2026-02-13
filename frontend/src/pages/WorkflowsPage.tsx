@@ -10,6 +10,13 @@ import {
   instantiateWorkflow,
   completeWorkflowStep,
   cancelWorkflowInstance,
+  type WorkflowDocument,
+  type WorkflowInstance,
+  type WorkflowListItem,
+  type WorkflowStep,
+  type WorkflowStepCompleteInput,
+  type WorkflowStepInstance,
+  type WorkflowTemplate,
   type WorkflowTemplateInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
@@ -43,13 +50,13 @@ function normalizeWarningCategory(category: unknown): WarningCategory {
   return 'warning'
 }
 
-function normalizeTemplate(wf: any): WorkflowTemplateInput {
+function normalizeTemplate(wf: WorkflowTemplate | null | undefined): WorkflowTemplateInput {
   return {
     name: wf?.name ?? '',
     trigger_description: wf?.trigger_description ?? '',
     category: wf?.category ?? '',
     total_duration: wf?.total_duration ?? '',
-    steps: (wf?.steps ?? []).map((s: any, idx: number) => ({
+    steps: (wf?.steps ?? []).map((s: WorkflowStep, idx: number) => ({
       order: s.order ?? idx + 1,
       name: s.name ?? '',
       timing: s.timing ?? 'D-day',
@@ -58,13 +65,13 @@ function normalizeTemplate(wf: any): WorkflowTemplateInput {
       quadrant: s.quadrant ?? 'Q1',
       memo: s.memo ?? '',
     })),
-    documents: (wf?.documents ?? []).map((d: any) => ({
+    documents: (wf?.documents ?? []).map((d: WorkflowDocument) => ({
       name: d.name ?? '',
       required: d.required ?? true,
       timing: d.timing ?? '',
       notes: d.notes ?? '',
     })),
-    warnings: (wf?.warnings ?? []).map((w: any) => ({
+    warnings: (wf?.warnings ?? []).map((w) => ({
       content: w.content ?? '',
       category: normalizeWarningCategory(w.category),
     })),
@@ -99,7 +106,7 @@ function WorkflowTemplateList({
       </button>
 
       <div className="space-y-2">
-        {workflows?.map((wf: any) => (
+        {workflows?.map((wf: WorkflowListItem) => (
           <div key={wf.id} className="bg-white rounded-lg border border-slate-200 p-3">
             <button onClick={() => onSelect(wf.id)} className="w-full text-left group">
               <div className="flex items-center justify-between">
@@ -464,7 +471,7 @@ function WorkflowDetail({
 
       <h4 className="text-sm font-semibold text-slate-700 mb-2">단계 ({wf.steps.length})</h4>
       <div className="space-y-1 mb-4">
-        {wf.steps.map((s: any) => (
+        {wf.steps.map((s: WorkflowStep) => (
           <div key={s.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded text-sm">
             <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-medium">
               {s.order}
@@ -486,7 +493,7 @@ function WorkflowDetail({
             <FileText size={14} /> 서류
           </h4>
           <div className="flex flex-wrap gap-1.5">
-            {wf.documents.map((d: any) => (
+            {wf.documents.map((d: WorkflowDocument) => (
               <span key={d.id} className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">
                 {d.name}
               </span>
@@ -501,7 +508,7 @@ function WorkflowDetail({
             <AlertTriangle size={14} /> 주의사항
           </h4>
           <ul className="space-y-1">
-            {wf.warnings.map((w: any) => {
+            {wf.warnings.map((w) => {
               const category = normalizeWarningCategory(w.category)
               const tone = category === 'lesson'
                 ? 'text-blue-700 bg-blue-50'
@@ -573,6 +580,12 @@ function WorkflowDetail({
   )
 }
 
+type CompleteStepMutationInput = {
+  instanceId: number
+  stepId: number
+  data: WorkflowStepCompleteInput
+}
+
 function ActiveInstances() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -584,7 +597,7 @@ function ActiveInstances() {
   })
 
   const completeStepMut = useMutation({
-    mutationFn: ({ instanceId, stepId, data }: any) => completeWorkflowStep(instanceId, stepId, data),
+    mutationFn: ({ instanceId, stepId, data }: CompleteStepMutationInput) => completeWorkflowStep(instanceId, stepId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
@@ -607,7 +620,7 @@ function ActiveInstances() {
 
   return (
     <div className="space-y-3">
-      {instances.map((inst: any) => (
+      {instances.map((inst: WorkflowInstance) => (
         <div key={inst.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <button
             onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
@@ -626,7 +639,7 @@ function ActiveInstances() {
           {expandedId === inst.id && (
             <div className="px-4 pb-4 border-t border-slate-100">
               <div className="space-y-1.5 mt-3">
-                {inst.step_instances.map((si: any) => (
+                {inst.step_instances.map((si: WorkflowStepInstance) => (
                   <div
                     key={si.id}
                     className={`flex items-center gap-3 p-2 rounded text-sm ${
@@ -640,7 +653,7 @@ function ActiveInstances() {
                         onClick={() => completeStepMut.mutate({
                           instanceId: inst.id,
                           stepId: si.id,
-                          data: { actual_time: si.estimated_time },
+                          data: { actual_time: si.estimated_time ?? undefined },
                         })}
                         className="w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 shrink-0"
                       />
@@ -683,7 +696,7 @@ export default function WorkflowsPage() {
 
   const createMut = useMutation({
     mutationFn: createWorkflowTemplate,
-    onSuccess: (created: any) => {
+    onSuccess: (created: WorkflowTemplate) => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       setSelectedWfId(created.id)
       setMode('view')
@@ -789,4 +802,3 @@ export default function WorkflowsPage() {
     </div>
   )
 }
-

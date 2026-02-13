@@ -9,8 +9,11 @@ import {
   createChecklistItem,
   updateChecklistItem,
   deleteChecklistItem,
+  type Checklist,
+  type ChecklistItem,
   type ChecklistInput,
   type ChecklistItemInput,
+  type ChecklistListItem,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 
@@ -46,13 +49,13 @@ export default function ChecklistsPage() {
 
   const progress = useMemo(() => {
     const total = checklist?.items?.length ?? 0
-    const done = checklist?.items?.filter((item: any) => item.checked).length ?? 0
+    const done = checklist?.items?.filter((item: ChecklistItem) => item.checked).length ?? 0
     return `${done}/${total}`
   }, [checklist])
 
   const createMut = useMutation({
     mutationFn: createChecklist,
-    onSuccess: (created: any) => {
+    onSuccess: (created: Checklist) => {
       queryClient.invalidateQueries({ queryKey: ['checklists'] })
       setSelectedId(created.id)
       setShowCreate(false)
@@ -128,7 +131,7 @@ export default function ChecklistsPage() {
 
           {isLoading ? <p className="text-sm text-slate-500">불러오는 중...</p> : (
             <div className="space-y-2">
-              {checklists?.map((cl: any) => (
+              {checklists?.map((cl: ChecklistListItem) => (
                 <button
                   key={cl.id}
                   onClick={() => { setSelectedId(cl.id); setEditingChecklist(false) }}
@@ -182,7 +185,7 @@ export default function ChecklistsPage() {
                 )}
 
                 <div className="space-y-2">
-                  {checklist.items?.map((item: any) => (
+                  {checklist.items?.map((item: ChecklistItem) => (
                     <div key={item.id} className="border rounded p-2">
                       {editingItemId === item.id ? (
                         <ItemForm

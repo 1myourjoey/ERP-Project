@@ -27,16 +27,16 @@ export const generateMonthlyReminders = (yearMonth: string) =>
 export const fetchDashboard = (): Promise<DashboardResponse> => api.get('/dashboard/today').then(r => r.data)
 
 // -- Workflows --
-export const fetchWorkflows = () => api.get('/workflows').then(r => r.data)
-export const fetchWorkflow = (id: number) => api.get(`/workflows/${id}`).then(r => r.data)
-export const createWorkflowTemplate = (data: WorkflowTemplateInput) => api.post('/workflows', data).then(r => r.data)
-export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput) => api.put(`/workflows/${id}`, data).then(r => r.data)
-export const deleteWorkflowTemplate = (id: number) => api.delete(`/workflows/${id}`).then(r => r.data)
-export const instantiateWorkflow = (id: number, data: { name: string; trigger_date: string; memo?: string }) => api.post(`/workflows/${id}/instantiate`, data).then(r => r.data)
-export const fetchWorkflowInstances = (status = 'active') => api.get('/workflow-instances', { params: { status } }).then(r => r.data)
-export const fetchWorkflowInstance = (id: number) => api.get(`/workflow-instances/${id}`).then(r => r.data)
-export const completeWorkflowStep = (instanceId: number, stepId: number, data: { actual_time?: string; notes?: string }) => api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/complete`, data).then(r => r.data)
-export const cancelWorkflowInstance = (id: number) => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
+export const fetchWorkflows = (): Promise<WorkflowListItem[]> => api.get('/workflows').then(r => r.data)
+export const fetchWorkflow = (id: number): Promise<WorkflowTemplate> => api.get(`/workflows/${id}`).then(r => r.data)
+export const createWorkflowTemplate = (data: WorkflowTemplateInput): Promise<WorkflowTemplate> => api.post('/workflows', data).then(r => r.data)
+export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput): Promise<WorkflowTemplate> => api.put(`/workflows/${id}`, data).then(r => r.data)
+export const deleteWorkflowTemplate = (id: number): Promise<{ ok: boolean }> => api.delete(`/workflows/${id}`).then(r => r.data)
+export const instantiateWorkflow = (id: number, data: WorkflowInstantiateInput): Promise<WorkflowInstance> => api.post(`/workflows/${id}/instantiate`, data).then(r => r.data)
+export const fetchWorkflowInstances = (status = 'active'): Promise<WorkflowInstance[]> => api.get('/workflow-instances', { params: { status } }).then(r => r.data)
+export const fetchWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.get(`/workflow-instances/${id}`).then(r => r.data)
+export const completeWorkflowStep = (instanceId: number, stepId: number, data: WorkflowStepCompleteInput): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/complete`, data).then(r => r.data)
+export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
 
 // -- Funds --
 export const fetchFunds = (): Promise<Fund[]> => api.get('/funds').then(r => r.data)
@@ -67,13 +67,13 @@ export const updateInvestmentDocument = (investmentId: number, documentId: numbe
 export const deleteInvestmentDocument = (investmentId: number, documentId: number) => api.delete(`/investments/${investmentId}/documents/${documentId}`)
 
 // -- Checklist --
-export const fetchChecklists = () => api.get('/checklists').then(r => r.data)
-export const fetchChecklist = (id: number) => api.get(`/checklists/${id}`).then(r => r.data)
-export const createChecklist = (data: ChecklistInput) => api.post('/checklists', data).then(r => r.data)
-export const updateChecklist = (id: number, data: Partial<ChecklistInput>) => api.put(`/checklists/${id}`, data).then(r => r.data)
+export const fetchChecklists = (): Promise<ChecklistListItem[]> => api.get('/checklists').then(r => r.data)
+export const fetchChecklist = (id: number): Promise<Checklist> => api.get(`/checklists/${id}`).then(r => r.data)
+export const createChecklist = (data: ChecklistInput): Promise<Checklist> => api.post('/checklists', data).then(r => r.data)
+export const updateChecklist = (id: number, data: Partial<ChecklistInput>): Promise<Checklist> => api.put(`/checklists/${id}`, data).then(r => r.data)
 export const deleteChecklist = (id: number) => api.delete(`/checklists/${id}`)
-export const createChecklistItem = (checklistId: number, data: ChecklistItemInput) => api.post(`/checklists/${checklistId}/items`, data).then(r => r.data)
-export const updateChecklistItem = (checklistId: number, itemId: number, data: Partial<ChecklistItemInput>) => api.put(`/checklists/${checklistId}/items/${itemId}`, data).then(r => r.data)
+export const createChecklistItem = (checklistId: number, data: ChecklistItemInput): Promise<ChecklistItem> => api.post(`/checklists/${checklistId}/items`, data).then(r => r.data)
+export const updateChecklistItem = (checklistId: number, itemId: number, data: Partial<ChecklistItemInput>): Promise<ChecklistItem> => api.put(`/checklists/${checklistId}/items/${itemId}`, data).then(r => r.data)
 export const deleteChecklistItem = (checklistId: number, itemId: number) => api.delete(`/checklists/${checklistId}/items/${itemId}`)
 
 // -- Document Status --
@@ -86,10 +86,10 @@ export const updateCalendarEvent = (id: number, data: Partial<CalendarEventInput
 export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/${id}`)
 
 // -- WorkLogs --
-export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }) => api.get('/worklogs', { params }).then(r => r.data)
-export const fetchWorkLogCategories = () => api.get('/worklogs/categories').then(r => r.data)
-export const createWorkLog = (data: WorkLogInput) => api.post('/worklogs', data).then(r => r.data)
-export const updateWorkLog = (id: number, data: Partial<WorkLogInput>) => api.put(`/worklogs/${id}`, data).then(r => r.data)
+export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }): Promise<WorkLog[]> => api.get('/worklogs', { params }).then(r => r.data)
+export const fetchWorkLogCategories = (): Promise<string[]> => api.get('/worklogs/categories').then(r => r.data)
+export const createWorkLog = (data: WorkLogInput): Promise<WorkLog> => api.post('/worklogs', data).then(r => r.data)
+export const updateWorkLog = (id: number, data: Partial<WorkLogInput>): Promise<WorkLog> => api.put(`/worklogs/${id}`, data).then(r => r.data)
 export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
 
 // -- Types --
@@ -164,6 +164,91 @@ export interface TaskBoard {
   Q2: Task[]
   Q3: Task[]
   Q4: Task[]
+}
+
+export interface WorkflowListItem {
+  id: number
+  name: string
+  trigger_description: string | null
+  category: string | null
+  total_duration: string | null
+  step_count: number
+}
+
+export interface WorkflowStep {
+  id: number
+  order: number
+  name: string
+  timing: string
+  timing_offset_days: number
+  estimated_time: string | null
+  quadrant: string
+  memo: string | null
+}
+
+export interface WorkflowDocument {
+  id: number
+  name: string
+  required: boolean
+  timing: string | null
+  notes: string | null
+}
+
+export interface WorkflowWarning {
+  id: number
+  content: string
+  category: 'warning' | 'lesson' | 'tip'
+}
+
+export interface WorkflowTemplate {
+  id: number
+  name: string
+  trigger_description: string | null
+  category: string | null
+  total_duration: string | null
+  steps: WorkflowStep[]
+  documents: WorkflowDocument[]
+  warnings: WorkflowWarning[]
+}
+
+export interface WorkflowStepInstance {
+  id: number
+  workflow_step_id: number
+  step_name: string
+  step_timing: string
+  calculated_date: string
+  status: string
+  completed_at: string | null
+  actual_time: string | null
+  notes: string | null
+  task_id: number | null
+  estimated_time: string | null
+  memo: string | null
+}
+
+export interface WorkflowInstance {
+  id: number
+  workflow_id: number
+  workflow_name: string
+  name: string
+  trigger_date: string
+  status: string
+  created_at: string | null
+  completed_at: string | null
+  memo: string | null
+  step_instances: WorkflowStepInstance[]
+  progress: string
+}
+
+export interface WorkflowInstantiateInput {
+  name: string
+  trigger_date: string
+  memo?: string
+}
+
+export interface WorkflowStepCompleteInput {
+  actual_time?: string
+  notes?: string
 }
 
 export interface WorkflowStepInput {
@@ -291,6 +376,31 @@ export interface ChecklistItemInput {
   notes?: string | null
 }
 
+export interface ChecklistItem {
+  id: number
+  checklist_id: number
+  order: number
+  name: string
+  required: boolean
+  checked: boolean
+  notes: string | null
+}
+
+export interface ChecklistListItem {
+  id: number
+  name: string
+  category: string | null
+  total_items: number
+  checked_items: number
+}
+
+export interface Checklist {
+  id: number
+  name: string
+  category: string | null
+  items: ChecklistItem[]
+}
+
 export interface ChecklistInput {
   name: string
   category?: string | null
@@ -343,6 +453,42 @@ export interface WorkLogInput {
   details?: { content: string; order?: number }[]
   lessons?: { content: string; order?: number }[]
   follow_ups?: { content: string; target_date?: string | null; order?: number }[]
+}
+
+export interface WorkLogDetail {
+  id: number
+  content: string
+  order: number
+}
+
+export interface WorkLogLesson {
+  id: number
+  content: string
+  order: number
+}
+
+export interface WorkLogFollowUp {
+  id: number
+  content: string
+  target_date: string | null
+  order: number
+}
+
+export interface WorkLog {
+  id: number
+  date: string
+  category: string
+  title: string
+  content: string | null
+  status: string
+  estimated_time: string | null
+  actual_time: string | null
+  time_diff: string | null
+  created_at: string | null
+  task_id: number | null
+  details: WorkLogDetail[]
+  lessons: WorkLogLesson[]
+  follow_ups: WorkLogFollowUp[]
 }
 
 

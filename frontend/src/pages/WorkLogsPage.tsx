@@ -1,6 +1,14 @@
-﻿import { useState } from 'react'
+﻿import { useState, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchWorkLogs, fetchWorkLogCategories, createWorkLog, updateWorkLog, deleteWorkLog } from '../lib/api'
+import {
+  fetchWorkLogs,
+  fetchWorkLogCategories,
+  createWorkLog,
+  updateWorkLog,
+  deleteWorkLog,
+  type WorkLog,
+  type WorkLogInput,
+} from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
@@ -44,8 +52,8 @@ function DynamicList({ label, items, onChange, color = 'slate' }: {
 
 function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }: {
   categories: string[]
-  initial?: any
-  onSave: (data: any) => void
+  initial?: WorkLog
+  onSave: (data: WorkLogInput) => void
   onClose: () => void
   title: string
 }) {
@@ -60,16 +68,17 @@ function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }:
     time_diff: initial?.time_diff || '',
   })
   const [details, setDetails] = useState<{ content: string }[]>(
-    initial?.details?.map((d: any) => ({ content: d.content })) || []
+    initial?.details?.map(d => ({ content: d.content })) || []
   )
   const [lessons, setLessons] = useState<{ content: string }[]>(
-    initial?.lessons?.map((l: any) => ({ content: l.content })) || []
+    initial?.lessons?.map(l => ({ content: l.content })) || []
   )
   const [followUps, setFollowUps] = useState<{ content: string }[]>(
-    initial?.follow_ups?.map((f: any) => ({ content: f.content })) || []
+    initial?.follow_ups?.map(f => ({ content: f.content })) || []
   )
 
-  const set = (key: string) => (e: any) => setForm({ ...form, [key]: e.target.value })
+  const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [key]: e.target.value }))
 
   const submit = () => {
     if (!form.title) return
@@ -133,7 +142,7 @@ function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }:
   )
 }
 
-function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: number) => void; onEdit: (log: any) => void }) {
+function WorkLogEntry({ log, onDelete, onEdit }: { log: WorkLog; onDelete: (id: number) => void; onEdit: (log: WorkLog) => void }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -177,7 +186,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
             <div>
               <p className="text-xs font-semibold text-slate-600 mb-1">세부 내용</p>
               <ul className="space-y-0.5">
-                {log.details.map((d: any) => (
+                {log.details.map(d => (
                   <li key={d.id} className="text-xs text-slate-600 pl-3 border-l-2 border-slate-200">{d.content}</li>
                 ))}
               </ul>
@@ -188,7 +197,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
             <div>
               <p className="text-xs font-semibold text-amber-700 mb-1">교훈</p>
               <ul className="space-y-0.5">
-                {log.lessons.map((l: any) => (
+                {log.lessons.map(l => (
                   <li key={l.id} className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">{l.content}</li>
                 ))}
               </ul>
@@ -199,7 +208,7 @@ function WorkLogEntry({ log, onDelete, onEdit }: { log: any; onDelete: (id: numb
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-1">후속 조치</p>
               <ul className="space-y-0.5">
-                {log.follow_ups.map((f: any) => (
+                {log.follow_ups.map(f => (
                   <li key={f.id} className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
                     {f.content}
                     {f.target_date && <span className="ml-2 text-blue-500">({f.target_date})</span>}
@@ -233,7 +242,7 @@ export default function WorkLogsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [showAdd, setShowAdd] = useState(false)
-  const [editingLog, setEditingLog] = useState<any | null>(null)
+  const [editingLog, setEditingLog] = useState<WorkLog | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('')
 
   const { data: logs, isLoading } = useQuery({
@@ -256,7 +265,7 @@ export default function WorkLogsPage() {
   })
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => updateWorkLog(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<WorkLogInput> }) => updateWorkLog(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] })
       setEditingLog(null)
@@ -272,7 +281,7 @@ export default function WorkLogsPage() {
     },
   })
 
-  const grouped: Record<string, any[]> = {}
+  const grouped: Record<string, WorkLog[]> = {}
   if (logs) {
     for (const log of logs) {
       const key = log.date
@@ -352,7 +361,7 @@ export default function WorkLogsPage() {
                 {new Date(date + 'T00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
               </h3>
               <div className="space-y-2">
-                {items.map((log: any) => (
+                {items.map((log: WorkLog) => (
                   <WorkLogEntry
                     key={log.id}
                     log={log}
