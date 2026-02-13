@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -45,7 +45,7 @@ def list_tasks(
 def get_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     return task
 
 
@@ -74,7 +74,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db)):
 def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(task, key, val)
@@ -111,9 +111,9 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
 def move_task(task_id: int, data: TaskMove, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     if data.quadrant not in ("Q1", "Q2", "Q3", "Q4"):
-        raise HTTPException(400, "Invalid quadrant")
+        raise HTTPException(status_code=400, detail="유효하지 않은 사분면입니다")
     task.quadrant = data.quadrant
     db.commit()
     db.refresh(task)
@@ -124,7 +124,7 @@ def move_task(task_id: int, data: TaskMove, db: Session = Depends(get_db)):
 def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     task.status = "completed"
     task.completed_at = datetime.now()
     task.actual_time = data.actual_time
@@ -137,8 +137,10 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
 
     db.query(CalendarEvent).filter(CalendarEvent.task_id == task.id).delete()
     db.delete(task)
     db.commit()
+
+

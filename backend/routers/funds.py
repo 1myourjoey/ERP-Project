@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -37,7 +37,7 @@ def list_funds(db: Session = Depends(get_db)):
 def get_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     return fund
 
 
@@ -54,7 +54,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
 def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(fund, key, val)
@@ -68,7 +68,7 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
 def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     db.delete(fund)
     db.commit()
 
@@ -77,7 +77,7 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
 def list_lps(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     return db.query(LP).filter(LP.fund_id == fund_id).order_by(LP.id.desc()).all()
 
 
@@ -85,7 +85,7 @@ def list_lps(fund_id: int, db: Session = Depends(get_db)):
 def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     lp = LP(fund_id=fund_id, **data.model_dump())
     db.add(lp)
@@ -98,7 +98,7 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
 def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(404, "LP not found")
+        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(lp, key, val)
@@ -112,7 +112,9 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
 def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(404, "LP not found")
+        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
     db.delete(lp)
     db.commit()
+
+

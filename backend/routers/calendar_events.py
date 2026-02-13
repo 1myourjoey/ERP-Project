@@ -1,4 +1,4 @@
-from datetime import date
+﻿from datetime import date
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -52,7 +52,7 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     event = db.get(CalendarEvent, event_id)
     if not event:
         from fastapi import HTTPException
-        raise HTTPException(404, "Calendar event not found")
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다")
     return event
 
 
@@ -70,7 +70,7 @@ def update_event(event_id: int, data: CalendarEventUpdate, db: Session = Depends
     event = db.get(CalendarEvent, event_id)
     if not event:
         from fastapi import HTTPException
-        raise HTTPException(404, "Calendar event not found")
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(event, key, val)
@@ -85,7 +85,9 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
     event = db.get(CalendarEvent, event_id)
     if not event:
         from fastapi import HTTPException
-        raise HTTPException(404, "Calendar event not found")
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다")
 
     db.delete(event)
     db.commit()
+
+

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -35,7 +35,7 @@ def list_checklists(db: Session = Depends(get_db)):
 def get_checklist(checklist_id: int, db: Session = Depends(get_db)):
     checklist = db.get(Checklist, checklist_id)
     if not checklist:
-        raise HTTPException(404, "Checklist not found")
+        raise HTTPException(status_code=404, detail="체크리스트를 찾을 수 없습니다")
     return checklist
 
 
@@ -61,7 +61,7 @@ def create_checklist(data: ChecklistCreate, db: Session = Depends(get_db)):
 def update_checklist(checklist_id: int, data: ChecklistUpdate, db: Session = Depends(get_db)):
     checklist = db.get(Checklist, checklist_id)
     if not checklist:
-        raise HTTPException(404, "Checklist not found")
+        raise HTTPException(status_code=404, detail="체크리스트를 찾을 수 없습니다")
 
     payload = data.model_dump(exclude_unset=True)
     if "name" in payload:
@@ -89,7 +89,7 @@ def update_checklist(checklist_id: int, data: ChecklistUpdate, db: Session = Dep
 def delete_checklist(checklist_id: int, db: Session = Depends(get_db)):
     checklist = db.get(Checklist, checklist_id)
     if not checklist:
-        raise HTTPException(404, "Checklist not found")
+        raise HTTPException(status_code=404, detail="체크리스트를 찾을 수 없습니다")
 
     db.delete(checklist)
     db.commit()
@@ -99,7 +99,7 @@ def delete_checklist(checklist_id: int, db: Session = Depends(get_db)):
 def create_checklist_item(checklist_id: int, data: ChecklistItemCreate, db: Session = Depends(get_db)):
     checklist = db.get(Checklist, checklist_id)
     if not checklist:
-        raise HTTPException(404, "Checklist not found")
+        raise HTTPException(status_code=404, detail="체크리스트를 찾을 수 없습니다")
 
     item = ChecklistItem(checklist_id=checklist_id, **data.model_dump())
     db.add(item)
@@ -112,7 +112,7 @@ def create_checklist_item(checklist_id: int, data: ChecklistItemCreate, db: Sess
 def update_checklist_item(checklist_id: int, item_id: int, data: ChecklistItemUpdate, db: Session = Depends(get_db)):
     item = db.get(ChecklistItem, item_id)
     if not item or item.checklist_id != checklist_id:
-        raise HTTPException(404, "Checklist item not found")
+        raise HTTPException(status_code=404, detail="체크리스트 항목을 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(item, key, val)
@@ -126,7 +126,9 @@ def update_checklist_item(checklist_id: int, item_id: int, data: ChecklistItemUp
 def delete_checklist_item(checklist_id: int, item_id: int, db: Session = Depends(get_db)):
     item = db.get(ChecklistItem, item_id)
     if not item or item.checklist_id != checklist_id:
-        raise HTTPException(404, "Checklist item not found")
+        raise HTTPException(status_code=404, detail="체크리스트 항목을 찾을 수 없습니다")
 
     db.delete(item)
     db.commit()
+
+

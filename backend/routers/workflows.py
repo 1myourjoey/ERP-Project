@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -44,7 +44,7 @@ def list_workflows(db: Session = Depends(get_db)):
 def get_workflow(workflow_id: int, db: Session = Depends(get_db)):
     wf = db.get(Workflow, workflow_id)
     if not wf:
-        raise HTTPException(404, "Workflow not found")
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
     return wf
 
 
@@ -89,7 +89,7 @@ def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
 def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session = Depends(get_db)):
     wf = db.get(Workflow, workflow_id)
     if not wf:
-        raise HTTPException(404, "Workflow not found")
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
 
     wf.name = data.name
     wf.trigger_description = data.trigger_description
@@ -130,7 +130,7 @@ def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session =
 def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
     wf = db.get(Workflow, workflow_id)
     if not wf:
-        raise HTTPException(404, "Workflow not found")
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
 
     has_instances = (
         db.query(WorkflowInstance)
@@ -139,7 +139,7 @@ def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
         > 0
     )
     if has_instances:
-        raise HTTPException(409, "Cannot delete workflow template with instances")
+        raise HTTPException(status_code=409, detail="인스턴스가 있는 워크플로우 템플릿은 삭제할 수 없습니다")
 
     db.delete(wf)
     db.commit()
@@ -150,7 +150,7 @@ def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
 def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session = Depends(get_db)):
     wf = db.get(Workflow, workflow_id)
     if not wf:
-        raise HTTPException(404, "Workflow not found")
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
 
     instance = instantiate_workflow(db, wf, data.name, data.trigger_date, data.memo)
     return _build_instance_response(instance)
@@ -171,7 +171,7 @@ def list_instances(status: str = "active", db: Session = Depends(get_db)):
 def get_instance(instance_id: int, db: Session = Depends(get_db)):
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
-        raise HTTPException(404, "Instance not found")
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
     return _build_instance_response(instance)
 
 
@@ -184,7 +184,7 @@ def complete_step(
 ):
     si = db.get(WorkflowStepInstance, step_instance_id)
     if not si or si.instance_id != instance_id:
-        raise HTTPException(404, "Step instance not found")
+        raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
 
     si.status = "completed"
     si.completed_at = datetime.now()
@@ -200,7 +200,7 @@ def complete_step(
 
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
-        raise HTTPException(404, "Instance not found")
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
 
     next_step = (
         db.query(WorkflowStepInstance)
@@ -236,7 +236,7 @@ def complete_step(
 def cancel_instance(instance_id: int, db: Session = Depends(get_db)):
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
-        raise HTTPException(404, "Instance not found")
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
     instance.status = "cancelled"
 
     for si in instance.step_instances:
@@ -284,3 +284,5 @@ def _build_instance_response(instance: WorkflowInstance) -> WorkflowInstanceResp
         step_instances=step_responses,
         progress=f"{completed}/{total}",
     )
+
+

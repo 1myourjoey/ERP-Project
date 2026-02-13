@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import date
 
@@ -55,7 +55,7 @@ def list_worklogs(
 def get_worklog(worklog_id: int, db: Session = Depends(get_db)):
     wl = db.get(WorkLog, worklog_id)
     if not wl:
-        raise HTTPException(404, "WorkLog not found")
+        raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
     return wl
 
 
@@ -88,7 +88,7 @@ def create_worklog(data: WorkLogCreate, db: Session = Depends(get_db)):
 def update_worklog(worklog_id: int, data: WorkLogUpdate, db: Session = Depends(get_db)):
     wl = db.get(WorkLog, worklog_id)
     if not wl:
-        raise HTTPException(404, "WorkLog not found")
+        raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True, exclude={"details", "lessons", "follow_ups"}).items():
         setattr(wl, key, val)
@@ -117,6 +117,8 @@ def update_worklog(worklog_id: int, data: WorkLogUpdate, db: Session = Depends(g
 def delete_worklog(worklog_id: int, db: Session = Depends(get_db)):
     wl = db.get(WorkLog, worklog_id)
     if not wl:
-        raise HTTPException(404, "WorkLog not found")
+        raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
     db.delete(wl)
     db.commit()
+
+

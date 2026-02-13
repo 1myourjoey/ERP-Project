@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -39,7 +39,7 @@ def create_company(data: PortfolioCompanyCreate, db: Session = Depends(get_db)):
 def update_company(company_id: int, data: PortfolioCompanyUpdate, db: Session = Depends(get_db)):
     company = db.get(PortfolioCompany, company_id)
     if not company:
-        raise HTTPException(404, "Company not found")
+        raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(company, key, val)
@@ -53,11 +53,11 @@ def update_company(company_id: int, data: PortfolioCompanyUpdate, db: Session = 
 def delete_company(company_id: int, db: Session = Depends(get_db)):
     company = db.get(PortfolioCompany, company_id)
     if not company:
-        raise HTTPException(404, "Company not found")
+        raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
     has_investments = db.query(Investment).filter(Investment.company_id == company_id).count() > 0
     if has_investments:
-        raise HTTPException(409, "Cannot delete company with investments")
+        raise HTTPException(status_code=409, detail="투자 내역이 있어 회사를 삭제할 수 없습니다")
 
     db.delete(company)
     db.commit()
@@ -103,7 +103,7 @@ def list_investments(
 def get_investment(investment_id: int, db: Session = Depends(get_db)):
     investment = db.get(Investment, investment_id)
     if not investment:
-        raise HTTPException(404, "Investment not found")
+        raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
     return investment
 
 
@@ -111,11 +111,11 @@ def get_investment(investment_id: int, db: Session = Depends(get_db)):
 def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
     fund = db.get(Fund, data.fund_id)
     if not fund:
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     company = db.get(PortfolioCompany, data.company_id)
     if not company:
-        raise HTTPException(404, "Company not found")
+        raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
     investment = Investment(**data.model_dump())
     db.add(investment)
@@ -128,13 +128,13 @@ def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
 def update_investment(investment_id: int, data: InvestmentUpdate, db: Session = Depends(get_db)):
     investment = db.get(Investment, investment_id)
     if not investment:
-        raise HTTPException(404, "Investment not found")
+        raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
 
     payload = data.model_dump(exclude_unset=True)
     if "fund_id" in payload and payload["fund_id"] is not None and not db.get(Fund, payload["fund_id"]):
-        raise HTTPException(404, "Fund not found")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     if "company_id" in payload and payload["company_id"] is not None and not db.get(PortfolioCompany, payload["company_id"]):
-        raise HTTPException(404, "Company not found")
+        raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
     for key, val in payload.items():
         setattr(investment, key, val)
@@ -148,7 +148,7 @@ def update_investment(investment_id: int, data: InvestmentUpdate, db: Session = 
 def delete_investment(investment_id: int, db: Session = Depends(get_db)):
     investment = db.get(Investment, investment_id)
     if not investment:
-        raise HTTPException(404, "Investment not found")
+        raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
 
     db.delete(investment)
     db.commit()
@@ -159,7 +159,7 @@ def delete_investment(investment_id: int, db: Session = Depends(get_db)):
 def list_investment_documents(investment_id: int, db: Session = Depends(get_db)):
     inv = db.get(Investment, investment_id)
     if not inv:
-        raise HTTPException(404, "Investment not found")
+        raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
     return db.query(InvestmentDocument).filter(InvestmentDocument.investment_id == investment_id).order_by(InvestmentDocument.id.desc()).all()
 
 
@@ -167,7 +167,7 @@ def list_investment_documents(investment_id: int, db: Session = Depends(get_db))
 def create_investment_document(investment_id: int, data: InvestmentDocumentCreate, db: Session = Depends(get_db)):
     inv = db.get(Investment, investment_id)
     if not inv:
-        raise HTTPException(404, "Investment not found")
+        raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
 
     doc = InvestmentDocument(investment_id=investment_id, **data.model_dump())
     db.add(doc)
@@ -180,7 +180,7 @@ def create_investment_document(investment_id: int, data: InvestmentDocumentCreat
 def update_investment_document(investment_id: int, document_id: int, data: InvestmentDocumentUpdate, db: Session = Depends(get_db)):
     doc = db.get(InvestmentDocument, document_id)
     if not doc or doc.investment_id != investment_id:
-        raise HTTPException(404, "Document not found")
+        raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(doc, key, val)
@@ -194,7 +194,9 @@ def update_investment_document(investment_id: int, document_id: int, data: Inves
 def delete_investment_document(investment_id: int, document_id: int, db: Session = Depends(get_db)):
     doc = db.get(InvestmentDocument, document_id)
     if not doc or doc.investment_id != investment_id:
-        raise HTTPException(404, "Document not found")
+        raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
 
     db.delete(doc)
     db.commit()
+
+
