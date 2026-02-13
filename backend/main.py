@@ -20,11 +20,27 @@ from routers import (
     document_status,
 )
 
+def ensure_sqlite_compat_columns():
+    if engine.dialect.name != "sqlite":
+        return
+
+    with engine.begin() as conn:
+        cols = conn.exec_driver_sql("PRAGMA table_info('workflow_warnings')").fetchall()
+        col_names = {row[1] for row in cols}
+        if "category" not in col_names:
+            conn.exec_driver_sql(
+                "ALTER TABLE workflow_warnings ADD COLUMN category VARCHAR DEFAULT 'warning'"
+            )
+            conn.exec_driver_sql(
+                "UPDATE workflow_warnings SET category = 'warning' WHERE category IS NULL"
+            )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
         Base.metadata.create_all(bind=engine)
+        ensure_sqlite_compat_columns()
     yield
 
 

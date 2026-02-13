@@ -14,7 +14,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Play, ChevronRight, Check, X, FileText, AlertTriangle, Clock, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Play, ChevronRight, Check, X, FileText, AlertTriangle, Clock, Plus, Pencil, Trash2, Lightbulb, Info } from 'lucide-react'
 
 const EMPTY_TEMPLATE: WorkflowTemplateInput = {
   name: '',
@@ -34,6 +34,13 @@ const EMPTY_TEMPLATE: WorkflowTemplateInput = {
   ],
   documents: [],
   warnings: [],
+}
+
+type WarningCategory = 'warning' | 'lesson' | 'tip'
+
+function normalizeWarningCategory(category: unknown): WarningCategory {
+  if (category === 'lesson' || category === 'tip') return category
+  return 'warning'
 }
 
 function normalizeTemplate(wf: any): WorkflowTemplateInput {
@@ -57,7 +64,10 @@ function normalizeTemplate(wf: any): WorkflowTemplateInput {
       timing: d.timing ?? '',
       notes: d.notes ?? '',
     })),
-    warnings: (wf?.warnings ?? []).map((w: any) => ({ content: w.content ?? '' })),
+    warnings: (wf?.warnings ?? []).map((w: any) => ({
+      content: w.content ?? '',
+      category: normalizeWarningCategory(w.category),
+    })),
   }
 }
 
@@ -175,7 +185,10 @@ function TemplateEditor({
         })),
       warnings: form.warnings
         .filter(w => w.content.trim())
-        .map(w => ({ content: w.content.trim() })),
+        .map(w => ({
+          content: w.content.trim(),
+          category: normalizeWarningCategory(w.category),
+        })),
     }
 
     if (!payload.name || payload.steps.length === 0) return
@@ -337,9 +350,9 @@ function TemplateEditor({
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold text-slate-700">주의사항</h4>
+          <h4 className="text-sm font-semibold text-slate-700">주의사항 / 교훈</h4>
           <button
-            onClick={() => setForm(prev => ({ ...prev, warnings: [...prev.warnings, { content: '' }] }))}
+            onClick={() => setForm(prev => ({ ...prev, warnings: [...prev.warnings, { content: '', category: 'warning' }] }))}
             className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"
           >
             + 주의사항 추가
@@ -348,10 +361,22 @@ function TemplateEditor({
         <div className="space-y-2">
           {form.warnings.map((warning, idx) => (
             <div key={idx} className="flex items-center gap-2 border border-slate-200 rounded-lg p-2">
+              <select
+                value={normalizeWarningCategory(warning.category)}
+                onChange={e => setForm(prev => ({
+                  ...prev,
+                  warnings: prev.warnings.map((w, i) => i === idx ? { ...w, category: normalizeWarningCategory(e.target.value) } : w),
+                }))}
+                className="px-2 py-1 text-sm border border-slate-200 rounded"
+              >
+                <option value="warning">주의</option>
+                <option value="lesson">교훈</option>
+                <option value="tip">팁</option>
+              </select>
               <input
                 value={warning.content}
                 onChange={e => setForm(prev => ({ ...prev, warnings: prev.warnings.map((w, i) => i === idx ? { ...w, content: e.target.value } : w) }))}
-                placeholder="주의사항 내용"
+                placeholder="내용"
                 className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded"
               />
               <button
@@ -472,15 +497,31 @@ function WorkflowDetail({
 
       {wf.warnings.length > 0 && (
         <div className="mb-4">
-          <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-1">
+          <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
             <AlertTriangle size={14} /> 주의사항
           </h4>
           <ul className="space-y-1">
-            {wf.warnings.map((w: any) => (
-              <li key={w.id} className="text-xs text-amber-700 bg-amber-50 px-2 py-1.5 rounded">
-                {w.content}
-              </li>
-            ))}
+            {wf.warnings.map((w: any) => {
+              const category = normalizeWarningCategory(w.category)
+              const tone = category === 'lesson'
+                ? 'text-blue-700 bg-blue-50'
+                : category === 'tip'
+                  ? 'text-emerald-700 bg-emerald-50'
+                  : 'text-amber-700 bg-amber-50'
+
+              return (
+                <li key={w.id} className={`text-xs px-2 py-1.5 rounded flex items-center gap-1.5 ${tone}`}>
+                  {category === 'lesson' ? (
+                    <Lightbulb size={12} />
+                  ) : category === 'tip' ? (
+                    <Info size={12} />
+                  ) : (
+                    <AlertTriangle size={12} />
+                  )}
+                  <span>{w.content}</span>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

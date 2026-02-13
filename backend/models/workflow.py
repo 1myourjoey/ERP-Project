@@ -55,5 +55,6 @@ class WorkflowWarning(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
     content = Column(Text, nullable=False)
+    category = Column(String, nullable=True, default="warning")
 
     workflow = relationship("Workflow", back_populates="warnings")

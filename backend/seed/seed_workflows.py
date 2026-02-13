@@ -106,7 +106,7 @@ def seed_workflows():
         WorkflowDocument(name="주주명부 (투자 전)", required=True, timing="D+1"),
     ]
     wf2.warnings = [
-        WorkflowWarning(content="간인 순서: 조합 인감 → 피투자사 → 이해관계인"),
+        WorkflowWarning(content="간인 순서: 조합 인감 → 피투자사 → 이해관계인", category="lesson"),
         WorkflowWarning(content="배부: 가운데 양옆 날인(피투자사), 맨 오른쪽(이해관계인)"),
         WorkflowWarning(content="피투자사 법인계좌 사전 확보 권장"),
         WorkflowWarning(content="은행명 정확히 기입 (실수 시 재작성 필요)"),
@@ -149,11 +149,11 @@ def seed_workflows():
         WorkflowDocument(name="법인인감증명서 (3개월 이내)", required=True),
     ]
     wf3.warnings = [
-        WorkflowWarning(content="등기부등본 확인 후 주식 수와 계약서 일치 여부 검증 필수"),
+        WorkflowWarning(content="등기부등본 확인 후 주식 수와 계약서 일치 여부 검증 필수", category="lesson"),
         WorkflowWarning(content="주주명부 비교: 투자 전/후 지분율 투심위 기반 비교"),
         WorkflowWarning(content="3개월 이내 발급본: 법인인감증명서, 법인등기부등본"),
         WorkflowWarning(content="주민번호 뒷자리 블러처리 필수"),
-        WorkflowWarning(content="투자 당일 서류 취합 리스트 사전 확인"),
+        WorkflowWarning(content="투자 당일 서류 취합 리스트 사전 확인", category="lesson"),
     ]
     db.add(wf3)
 

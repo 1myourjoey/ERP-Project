@@ -185,6 +185,7 @@ export interface WorkflowDocumentInput {
 
 export interface WorkflowWarningInput {
   content: string
+  category?: 'warning' | 'lesson' | 'tip' | null
 }
 
 export interface WorkflowTemplateInput {

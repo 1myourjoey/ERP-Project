@@ -77,7 +77,12 @@ def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
         ))
 
     for warning in data.warnings:
-        wf.warnings.append(WorkflowWarning(content=warning.content))
+        wf.warnings.append(
+            WorkflowWarning(
+                content=warning.content,
+                category=warning.category or "warning",
+            )
+        )
 
     db.add(wf)
     db.commit()
@@ -119,7 +124,12 @@ def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session =
 
     wf.warnings.clear()
     for warning in data.warnings:
-        wf.warnings.append(WorkflowWarning(content=warning.content))
+        wf.warnings.append(
+            WorkflowWarning(
+                content=warning.content,
+                category=warning.category or "warning",
+            )
+        )
 
     db.commit()
     db.refresh(wf)

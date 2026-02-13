@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 
 # --- Template schemas ---
@@ -24,6 +24,7 @@ class WorkflowDocumentCreate(BaseModel):
 
 class WorkflowWarningCreate(BaseModel):
     content: str
+    category: Optional[Literal["warning", "lesson", "tip"]] = "warning"
 
 
 class WorkflowCreateRequest(BaseModel):
@@ -70,6 +71,7 @@ class WorkflowDocumentResponse(BaseModel):
 class WorkflowWarningResponse(BaseModel):
     id: int
     content: str
+    category: str = "warning"
     model_config = {"from_attributes": True}
 
 
