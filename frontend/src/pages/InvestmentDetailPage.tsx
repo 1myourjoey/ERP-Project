@@ -296,7 +296,19 @@ export default function InvestmentDetailPage() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                <div className="p-2 bg-gray-50 rounded">조합: {fundName}</div>
+                <div className="p-2 bg-gray-50 rounded">
+                  조합:{' '}
+                  {selectedInvestment.fund_id ? (
+                    <button
+                      onClick={() => navigate(`/funds/${selectedInvestment.fund_id}`)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {fundName || `조합 #${selectedInvestment.fund_id}`} →
+                    </button>
+                  ) : (
+                    '-'
+                  )}
+                </div>
                 <div className="p-2 bg-gray-50 rounded">회사: {companyName}</div>
                 <div className="p-2 bg-gray-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
                 <div className="p-2 bg-gray-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>

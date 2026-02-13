@@ -19,6 +19,7 @@ import { useToast } from '../contexts/ToastContext'
 
 interface InvestmentListItem {
   id: number
+  fund_id?: number
   fund_name?: string
   company_name?: string
   investment_date?: string | null
@@ -275,16 +276,30 @@ export default function InvestmentsPage() {
           {invLoading ? <p className="text-sm text-gray-500">불러오는 중...</p> : (
             <div className="space-y-2 max-h-[38rem] overflow-auto">
               {investments?.map((inv) => (
-                <button
-                  key={inv.id}
-                  onClick={() => navigate(`/investments/${inv.id}`)}
-                  className="w-full text-left p-3 border rounded hover:bg-gray-50"
-                >
-                  <p className="text-sm font-medium text-gray-800">{inv.company_name || `투자 #${inv.id}`}</p>
+                <div key={inv.id} className="w-full rounded border p-3 text-left hover:bg-gray-50">
+                  <div className="flex items-center gap-1 text-sm">
+                    {inv.fund_id ? (
+                      <button
+                        onClick={() => navigate(`/funds/${inv.fund_id}`)}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {inv.fund_name || `조합 #${inv.fund_id}`}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-gray-700">{inv.fund_name || '-'}</span>
+                    )}
+                    <span className="text-gray-400">|</span>
+                    <button
+                      onClick={() => navigate(`/investments/${inv.id}`)}
+                      className="font-medium text-gray-800 hover:text-blue-600"
+                    >
+                      {inv.company_name || `투자 #${inv.id}`}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {inv.fund_name || '-'} | {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} | {labelStatus(inv.status || 'active')}
+                    {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} | {labelStatus(inv.status || 'active')}
                   </p>
-                </button>
+                </div>
               ))}
               {!investments?.length && <p className="text-sm text-gray-400">투자 건이 없습니다.</p>}
             </div>

@@ -17,7 +17,7 @@ import {
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { ArrowLeft, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 
 interface FundInvestmentListItem {
   id: number
@@ -319,12 +319,21 @@ export default function FundDetailPage() {
               ) : (
                 <div className="space-y-2">
                   {investments.map((inv) => (
-                    <div key={inv.id} className="border border-gray-100 rounded p-2">
-                      <p className="text-sm font-medium text-gray-800">{inv.company_name || `투자 #${inv.id}`}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {inv.investment_date || '-'} | {formatKRW(inv.amount ?? null)} | {inv.instrument || '-'} | {labelStatus(inv.status || 'pending')}
+                    <button
+                      key={inv.id}
+                      onClick={() => navigate(`/investments/${inv.id}`)}
+                      className="w-full rounded-xl border border-gray-100 p-3 text-left hover:bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-800">{inv.company_name || `투자 #${inv.id}`}</span>
+                        <ChevronRight size={16} className="text-gray-400" />
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {inv.investment_date ? new Date(inv.investment_date).toLocaleDateString('ko-KR') : '-'} |
+                        {' '}{formatKRW(inv.amount ?? null)} |
+                        {' '}{labelStatus(inv.status || 'pending')}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
