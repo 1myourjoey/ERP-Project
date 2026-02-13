@@ -1,19 +1,29 @@
-﻿import { Fragment, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createBizReport,
   deleteBizReport,
   fetchBizReports,
-  fetchCompanies,
+  fetchFund,
+  fetchFunds,
+  fetchInvestments,
   updateBizReport,
   type BizReport,
   type BizReportInput,
-  type Company,
+  type Fund,
 } from '../lib/api'
+import { formatKRW } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 
+interface InvestmentListItem {
+  id: number
+  fund_id: number
+  company_id: number
+  company_name: string
+}
+
 interface FilterState {
-  company_id: number | null
+  fund_id: number | null
   report_type: string
   status: string
 }
@@ -28,13 +38,14 @@ const STATUS_CLASS: Record<string, string> = {
 }
 
 const EMPTY_FILTERS: FilterState = {
-  company_id: null,
+  fund_id: null,
   report_type: '',
   status: '',
 }
 
 const EMPTY_INPUT: BizReportInput = {
   company_id: 0,
+  fund_id: null,
   report_type: '분기보고',
   period: '',
   status: '요청전',
@@ -51,11 +62,6 @@ const EMPTY_INPUT: BizReportInput = {
   memo: '',
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '-'
-  return new Date(value).toLocaleDateString('ko-KR')
-}
-
 function formatNumber(value: number | null | undefined): string {
   if (value == null) return '-'
   return value.toLocaleString()
@@ -64,38 +70,60 @@ function formatNumber(value: number | null | undefined): string {
 export default function BizReportsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
-
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [showCreate, setShowCreate] = useState(false)
   const [newReport, setNewReport] = useState<BizReportInput>(EMPTY_INPUT)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<BizReportInput | null>(null)
 
+  const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
+
+  const { data: selectedFund } = useQuery({
+    queryKey: ['fund', filters.fund_id],
+    queryFn: () => fetchFund(filters.fund_id as number),
+    enabled: !!filters.fund_id,
+  })
+
+  const { data: fundInvestments } = useQuery<InvestmentListItem[]>({
+    queryKey: ['investments', { fund_id: filters.fund_id }],
+    queryFn: () => fetchInvestments({ fund_id: filters.fund_id as number }),
+    enabled: !!filters.fund_id,
+  })
+
   const params = useMemo(
     () => ({
-      company_id: filters.company_id || undefined,
+      fund_id: filters.fund_id || undefined,
       report_type: filters.report_type || undefined,
       status: filters.status || undefined,
     }),
     [filters],
   )
 
-  const { data: companies } = useQuery<Company[]>({
-    queryKey: ['companies'],
-    queryFn: fetchCompanies,
-  })
-
-  const { data: rows, isLoading } = useQuery<BizReport[]>({
+  const { data: reports, isLoading } = useQuery<BizReport[]>({
     queryKey: ['bizReports', params],
     queryFn: () => fetchBizReports(params),
   })
+
+  useEffect(() => {
+    setNewReport((prev) => ({ ...prev, fund_id: filters.fund_id }))
+  }, [filters.fund_id])
+
+  const latestReportByCompany = useMemo(() => {
+    const map = new Map<number, BizReport>()
+    for (const report of reports ?? []) {
+      if (!map.has(report.company_id)) {
+        map.set(report.company_id, report)
+      }
+    }
+    return map
+  }, [reports])
 
   const createMut = useMutation({
     mutationFn: (data: BizReportInput) => createBizReport(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bizReports'] })
       setShowCreate(false)
-      setNewReport(EMPTY_INPUT)
+      setNewReport({ ...EMPTY_INPUT, fund_id: filters.fund_id })
       addToast('success', '영업보고를 등록했습니다.')
     },
   })
@@ -118,48 +146,57 @@ export default function BizReportsPage() {
     },
   })
 
-  const companyMap = useMemo(() => new Map((companies || []).map((company) => [company.id, company.name])), [companies])
-
   return (
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">영업보고 관리</h2>
-          <p className="mt-1 text-sm text-gray-500">피투자사 정기/수시 경영현황 수집</p>
+          <h2 className="text-xl font-semibold text-gray-900">영업보고</h2>
+          <p className="mt-1 text-sm text-gray-500">조합 단위로 피투자사 영업보고를 관리합니다.</p>
         </div>
-        <button onClick={() => setShowCreate((prev) => !prev)} className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">
-          + 신규 등록
+        <button onClick={() => setShowCreate((prev) => !prev)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">
+          + 보고서 작성
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-2">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <select value={filters.company_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))} className="rounded border px-2 py-1 text-sm">
-            <option value="">전체 피투자사</option>
-            {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
+            <option value="">대상 조합 선택</option>
+            {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
           </select>
-          <select value={filters.report_type} onChange={(e) => setFilters((prev) => ({ ...prev, report_type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-            <option value="">전체 유형</option>
+          <select value={filters.report_type} onChange={(e) => setFilters((prev) => ({ ...prev, report_type: e.target.value }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
+            <option value="">전체 보고유형</option>
             {REPORT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
           </select>
-          <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="rounded border px-2 py-1 text-sm">
+          <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
             <option value="">전체 상태</option>
             {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </div>
-        <button onClick={() => setFilters(EMPTY_FILTERS)} className="mt-2 rounded border px-2 py-1 text-xs hover:bg-gray-100">
+        <button onClick={() => setFilters(EMPTY_FILTERS)} className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100">
           필터 초기화
         </button>
       </div>
 
+      {filters.fund_id && selectedFund && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">선택 조합 재무 요약</h3>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-4 text-sm">
+            <div className="rounded bg-gray-50 p-2">조합명: {selectedFund.name}</div>
+            <div className="rounded bg-gray-50 p-2">약정총액: {formatKRW(selectedFund.commitment_total ?? null)}</div>
+            <div className="rounded bg-gray-50 p-2">AUM: {formatKRW(selectedFund.aum ?? null)}</div>
+            <div className="rounded bg-gray-50 p-2">투자건수: {fundInvestments?.length ?? 0}건</div>
+          </div>
+        </div>
+      )}
+
       {showCreate && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 영업보고 등록</h3>
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">영업보고 작성</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <select value={newReport.company_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
               <option value="">피투자사 선택</option>
-              {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+              {(fundInvestments ?? []).map((item) => <option key={item.id} value={item.company_id}>{item.company_name}</option>)}
             </select>
             <select value={newReport.report_type} onChange={(e) => setNewReport((prev) => ({ ...prev, report_type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
               {REPORT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -171,9 +208,10 @@ export default function BizReportsPage() {
           <div className="mt-2 flex gap-2">
             <button
               onClick={() => {
-                if (!newReport.company_id || !newReport.report_type || !newReport.period.trim()) return
+                if (!newReport.company_id || !newReport.period.trim()) return
                 createMut.mutate({
                   ...newReport,
+                  fund_id: filters.fund_id || null,
                   period: newReport.period.trim(),
                   memo: newReport.memo?.trim() || null,
                 })
@@ -190,131 +228,110 @@ export default function BizReportsPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
-        {isLoading ? (
-          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
-        ) : !rows?.length ? (
-          <p className="p-2 text-sm text-gray-400">영업보고가 없습니다.</p>
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">피투자사 현황</h3>
+        {!filters.fund_id ? (
+          <p className="text-sm text-gray-400">조합을 먼저 선택하세요.</p>
+        ) : isLoading ? (
+          <p className="text-sm text-gray-500">불러오는 중...</p>
+        ) : !(fundInvestments?.length) ? (
+          <p className="text-sm text-gray-400">선택한 조합의 투자건이 없습니다.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-gray-600">
-                  <th className="px-2 py-2">피투자사</th>
-                  <th className="px-2 py-2">유형</th>
+                  <th className="px-2 py-2">회사명</th>
+                  <th className="px-2 py-2">보고유형</th>
                   <th className="px-2 py-2">기간</th>
                   <th className="px-2 py-2">상태</th>
-                  <th className="px-2 py-2">요청일</th>
-                  <th className="px-2 py-2">수신일</th>
-                  <th className="px-2 py-2">검수일</th>
-                  <th className="px-2 py-2">재무요약</th>
+                  <th className="px-2 py-2">재무</th>
                   <th className="px-2 py-2">작업</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <Fragment key={row.id}>
-                    <tr className="cursor-pointer border-b hover:bg-gray-50" onClick={() => {
-                      setEditingId(row.id)
-                      setEditForm({
-                        company_id: row.company_id,
-                        report_type: row.report_type,
-                        period: row.period,
-                        status: row.status,
-                        requested_date: row.requested_date,
-                        received_date: row.received_date,
-                        reviewed_date: row.reviewed_date,
-                        analyst_comment: row.analyst_comment,
-                        revenue: row.revenue,
-                        operating_income: row.operating_income,
-                        net_income: row.net_income,
-                        total_assets: row.total_assets,
-                        total_liabilities: row.total_liabilities,
-                        employees: row.employees,
-                        memo: row.memo,
-                      })
-                    }}>
-                      <td className="px-2 py-2">{row.company_name || companyMap.get(row.company_id) || row.company_id}</td>
-                      <td className="px-2 py-2">{row.report_type}</td>
-                      <td className="px-2 py-2">{row.period}</td>
+                {fundInvestments.map((item) => {
+                  const report = latestReportByCompany.get(item.company_id)
+                  const isEditing = !!report && editingId === report.id && !!editForm
+                  return (
+                    <tr key={item.id} className="border-b">
+                      <td className="px-2 py-2 font-medium text-gray-800">{item.company_name}</td>
                       <td className="px-2 py-2">
-                        <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[row.status] || 'bg-gray-100 text-gray-700'}`}>
-                          {row.status}
-                        </span>
+                        {isEditing && editForm ? (
+                          <select value={editForm.report_type} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_type: e.target.value } : prev)} className="rounded border px-2 py-1 text-xs">
+                            {REPORT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
+                        ) : (
+                          report?.report_type || '-'
+                        )}
                       </td>
-                      <td className="px-2 py-2">{formatDate(row.requested_date)}</td>
-                      <td className="px-2 py-2">{formatDate(row.received_date)}</td>
-                      <td className="px-2 py-2">{formatDate(row.reviewed_date)}</td>
+                      <td className="px-2 py-2">
+                        {isEditing && editForm ? (
+                          <input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="rounded border px-2 py-1 text-xs" />
+                        ) : (
+                          report?.period || '-'
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {isEditing && editForm ? (
+                          <select value={editForm.status || '요청전'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="rounded border px-2 py-1 text-xs">
+                            {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+                          </select>
+                        ) : report ? (
+                          <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[report.status] || 'bg-gray-100 text-gray-700'}`}>{report.status}</span>
+                        ) : '-'}
+                      </td>
                       <td className="px-2 py-2 text-xs text-gray-600">
-                        매출 {formatNumber(row.revenue)} / 영업이익 {formatNumber(row.operating_income)}
+                        {isEditing && editForm ? (
+                          <div className="flex gap-1">
+                            <input type="number" value={editForm.revenue ?? ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, revenue: e.target.value ? Number(e.target.value) : null } : prev)} placeholder="매출" className="w-20 rounded border px-1 py-1 text-[11px]" />
+                            <input type="number" value={editForm.operating_income ?? ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, operating_income: e.target.value ? Number(e.target.value) : null } : prev)} placeholder="영업이익" className="w-20 rounded border px-1 py-1 text-[11px]" />
+                          </div>
+                        ) : report ? `매출 ${formatNumber(report.revenue)} / 영업이익 ${formatNumber(report.operating_income)}` : '-'}
                       </td>
                       <td className="px-2 py-2">
-                        <div className="flex gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingId(row.id)
-                            }}
-                            className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (confirm('이 영업보고를 삭제하시겠습니까?')) deleteMut.mutate(row.id)
-                            }}
-                            className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {editingId === row.id && editForm && (
-                      <tr className="border-b bg-gray-50">
-                        <td className="px-2 py-2" colSpan={9}>
-                          <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                            <select value={editForm.status || '요청전'} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, status: e.target.value } : prev))} className="rounded border px-2 py-1 text-sm">
-                              {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-                            </select>
-                            <input type="date" value={editForm.received_date || ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, received_date: e.target.value || null } : prev))} className="rounded border px-2 py-1 text-sm" />
-                            <input type="date" value={editForm.reviewed_date || ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, reviewed_date: e.target.value || null } : prev))} className="rounded border px-2 py-1 text-sm" />
-                            <input type="number" value={editForm.revenue ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, revenue: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="매출" />
-                            <input type="number" value={editForm.operating_income ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, operating_income: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="영업이익" />
-                            <input type="number" value={editForm.net_income ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, net_income: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="당기순이익" />
-                            <input type="number" value={editForm.total_assets ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, total_assets: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="총자산" />
-                            <input type="number" value={editForm.total_liabilities ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, total_liabilities: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="총부채" />
-                            <input type="number" value={editForm.employees ?? ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, employees: e.target.value ? Number(e.target.value) : null } : prev))} className="rounded border px-2 py-1 text-sm" placeholder="종업원 수" />
-                            <input value={editForm.analyst_comment || ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, analyst_comment: e.target.value } : prev))} className="rounded border px-2 py-1 text-sm md:col-span-2" placeholder="심사역 의견" />
-                            <input value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, memo: e.target.value } : prev))} className="rounded border px-2 py-1 text-sm md:col-span-2" placeholder="비고" />
+                        {!report ? (
+                          <span className="text-xs text-gray-400">보고서 없음</span>
+                        ) : isEditing && editForm ? (
+                          <div className="flex gap-1">
+                            <button onClick={() => updateMut.mutate({ id: report.id, data: editForm })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
+                            <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">취소</button>
                           </div>
-                          <div className="mt-2 flex gap-2">
+                        ) : (
+                          <div className="flex gap-1">
                             <button
                               onClick={() => {
-                                updateMut.mutate({
-                                  id: row.id,
-                                  data: {
-                                    ...editForm,
-                                    memo: editForm.memo?.trim() || null,
-                                    analyst_comment: editForm.analyst_comment?.trim() || null,
-                                  },
+                                setEditingId(report.id)
+                                setEditForm({
+                                  company_id: report.company_id,
+                                  fund_id: report.fund_id,
+                                  report_type: report.report_type,
+                                  period: report.period,
+                                  status: report.status,
+                                  requested_date: report.requested_date,
+                                  received_date: report.received_date,
+                                  reviewed_date: report.reviewed_date,
+                                  analyst_comment: report.analyst_comment,
+                                  revenue: report.revenue,
+                                  operating_income: report.operating_income,
+                                  net_income: report.net_income,
+                                  total_assets: report.total_assets,
+                                  total_liabilities: report.total_liabilities,
+                                  employees: report.employees,
+                                  memo: report.memo,
                                 })
                               }}
-                              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-                              disabled={updateMut.isPending}
+                              className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
                             >
-                              저장
+                              수정
                             </button>
-                            <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
-                              취소
-                            </button>
+                            <button onClick={() => { if (confirm('이 영업보고를 삭제하시겠습니까?')) deleteMut.mutate(report.id) }} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -323,5 +340,3 @@ export default function BizReportsPage() {
     </div>
   )
 }
-
-

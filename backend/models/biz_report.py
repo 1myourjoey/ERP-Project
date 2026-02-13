@@ -10,6 +10,7 @@ class BizReport(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("portfolio_companies.id"), nullable=False)
+    fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
     report_type = Column(String, nullable=False, default="분기보고")
     period = Column(String, nullable=False, default="")
     status = Column(String, nullable=False, default="요청전")

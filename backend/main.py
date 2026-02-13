@@ -61,6 +61,30 @@ def ensure_sqlite_compat_columns():
         if not has_column("investment_documents", "due_date"):
             conn.exec_driver_sql("ALTER TABLE investment_documents ADD COLUMN due_date DATE")
 
+        for table, column, sql_type in [
+            ("funds", "maturity_date", "DATE"),
+            ("funds", "mgmt_fee_rate", "REAL"),
+            ("funds", "performance_fee_rate", "REAL"),
+            ("funds", "hurdle_rate", "REAL"),
+            ("funds", "account_number", "TEXT"),
+            ("portfolio_companies", "corp_number", "TEXT"),
+            ("portfolio_companies", "founded_date", "DATE"),
+            ("portfolio_companies", "analyst", "TEXT"),
+            ("portfolio_companies", "contact_name", "TEXT"),
+            ("portfolio_companies", "contact_email", "TEXT"),
+            ("portfolio_companies", "contact_phone", "TEXT"),
+            ("portfolio_companies", "memo", "TEXT"),
+            ("investments", "round", "TEXT"),
+            ("investments", "valuation_pre", "REAL"),
+            ("investments", "valuation_post", "REAL"),
+            ("investments", "ownership_pct", "REAL"),
+            ("investments", "board_seat", "TEXT"),
+            ("exit_committees", "performance_fee", "REAL"),
+            ("biz_reports", "fund_id", "INTEGER"),
+        ]:
+            if not has_column(table, column):
+                conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

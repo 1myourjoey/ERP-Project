@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.fund import Fund
 from models.biz_report import BizReport
 from models.investment import PortfolioCompany
 from schemas.biz_report import BizReportCreate, BizReportUpdate
@@ -29,9 +30,14 @@ def _to_primitive(value):
     return value
 
 
-def _serialize_report(report: BizReport, company_name: str | None = None) -> dict:
+def _serialize_report(
+    report: BizReport,
+    company_name: str | None = None,
+    fund_name: str | None = None,
+) -> dict:
     data = {column.name: _to_primitive(getattr(report, column.name)) for column in report.__table__.columns}
     data["company_name"] = company_name
+    data["fund_name"] = fund_name
     for field in NUMERIC_FIELDS:
         value = data.get(field)
         if value is not None:
@@ -45,6 +51,7 @@ def _serialize_report(report: BizReport, company_name: str | None = None) -> dic
 @router.get("")
 def list_biz_reports(
     company_id: int | None = None,
+    fund_id: int | None = None,
     report_type: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
@@ -52,6 +59,8 @@ def list_biz_reports(
     query = db.query(BizReport)
     if company_id:
         query = query.filter(BizReport.company_id == company_id)
+    if fund_id:
+        query = query.filter(BizReport.fund_id == fund_id)
     if report_type:
         query = query.filter(BizReport.report_type == report_type)
     if status:
@@ -61,7 +70,8 @@ def list_biz_reports(
     result = []
     for report in reports:
         company = db.get(PortfolioCompany, report.company_id)
-        result.append(_serialize_report(report, company.name if company else None))
+        fund = db.get(Fund, report.fund_id) if report.fund_id else None
+        result.append(_serialize_report(report, company.name if company else None, fund.name if fund else None))
     return result
 
 
@@ -71,7 +81,8 @@ def get_biz_report(report_id: int, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="영업보고를 찾을 수 없습니다")
     company = db.get(PortfolioCompany, report.company_id)
-    return _serialize_report(report, company.name if company else None)
+    fund = db.get(Fund, report.fund_id) if report.fund_id else None
+    return _serialize_report(report, company.name if company else None, fund.name if fund else None)
 
 
 @router.post("", status_code=201)
@@ -79,12 +90,15 @@ def create_biz_report(data: BizReportCreate, db: Session = Depends(get_db)):
     company = db.get(PortfolioCompany, data.company_id)
     if not company:
         raise HTTPException(status_code=404, detail="피투자사를 찾을 수 없습니다")
+    if data.fund_id and not db.get(Fund, data.fund_id):
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     report = BizReport(**data.model_dump())
     db.add(report)
     db.commit()
     db.refresh(report)
-    return _serialize_report(report, company.name)
+    fund = db.get(Fund, report.fund_id) if report.fund_id else None
+    return _serialize_report(report, company.name, fund.name if fund else None)
 
 
 @router.put("/{report_id}")
@@ -94,13 +108,17 @@ def update_biz_report(report_id: int, data: BizReportUpdate, db: Session = Depen
         raise HTTPException(status_code=404, detail="영업보고를 찾을 수 없습니다")
 
     payload = data.model_dump(exclude_unset=True)
+    next_fund_id = payload.get("fund_id", report.fund_id)
+    if next_fund_id and not db.get(Fund, next_fund_id):
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     for key, value in payload.items():
         setattr(report, key, value)
 
     db.commit()
     db.refresh(report)
     company = db.get(PortfolioCompany, report.company_id)
-    return _serialize_report(report, company.name if company else None)
+    fund = db.get(Fund, report.fund_id) if report.fund_id else None
+    return _serialize_report(report, company.name if company else None, fund.name if fund else None)
 
 
 @router.delete("/{report_id}")

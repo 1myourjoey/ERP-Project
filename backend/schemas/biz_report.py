@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class BizReportCreate(BaseModel):
     company_id: int
+    fund_id: int | None = None
     report_type: Literal["분기보고", "월보고", "일반보고"]
     period: str
     status: str | None = "요청전"
@@ -23,6 +24,7 @@ class BizReportCreate(BaseModel):
 
 
 class BizReportUpdate(BaseModel):
+    fund_id: int | None = None
     report_type: str | None = None
     period: str | None = None
     status: str | None = None
@@ -42,6 +44,7 @@ class BizReportUpdate(BaseModel):
 class BizReportResponse(BaseModel):
     id: int
     company_id: int
+    fund_id: int | None
     report_type: str
     period: str
     status: str
@@ -58,5 +61,6 @@ class BizReportResponse(BaseModel):
     memo: str | None
     created_at: datetime | None
     company_name: str | None = None
+    fund_name: str | None = None
 
     model_config = {"from_attributes": True}

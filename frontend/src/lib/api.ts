@@ -98,7 +98,7 @@ export const fetchValuation = (id: number): Promise<Valuation> => api.get(`/valu
 export const createValuation = (data: ValuationInput): Promise<Valuation> => api.post('/valuations', data).then(r => r.data)
 export const updateValuation = (id: number, data: Partial<ValuationInput>): Promise<Valuation> => api.put(`/valuations/${id}`, data).then(r => r.data)
 export const deleteValuation = (id: number) => api.delete(`/valuations/${id}`)
-export const fetchBizReports = (params?: { company_id?: number; report_type?: string; status?: string }): Promise<BizReport[]> =>
+export const fetchBizReports = (params?: { company_id?: number; fund_id?: number; report_type?: string; status?: string }): Promise<BizReport[]> =>
   api.get('/biz-reports', { params }).then(r => r.data)
 export const fetchBizReport = (id: number): Promise<BizReport> => api.get(`/biz-reports/${id}`).then(r => r.data)
 export const createBizReport = (data: BizReportInput): Promise<BizReport> => api.post('/biz-reports', data).then(r => r.data)
@@ -613,6 +613,7 @@ export interface Valuation {
 
 export interface BizReportInput {
   company_id: number
+  fund_id?: number | null
   report_type: string
   period: string
   status?: string
@@ -632,6 +633,7 @@ export interface BizReportInput {
 export interface BizReport {
   id: number
   company_id: number
+  fund_id: number | null
   report_type: string
   period: string
   status: string
@@ -648,6 +650,7 @@ export interface BizReport {
   memo: string | null
   created_at: string | null
   company_name: string | null
+  fund_name: string | null
 }
 
 export interface RegularReportInput {
