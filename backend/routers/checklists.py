@@ -17,13 +17,20 @@ router = APIRouter(tags=["checklists"])
 
 
 @router.get("/api/checklists", response_model=list[ChecklistListItem])
-def list_checklists(db: Session = Depends(get_db)):
-    checklists = db.query(Checklist).order_by(Checklist.id.desc()).all()
+def list_checklists(
+    investment_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Checklist)
+    if investment_id:
+        query = query.filter(Checklist.investment_id == investment_id)
+    checklists = query.order_by(Checklist.id.desc()).all()
     return [
         ChecklistListItem(
             id=cl.id,
             name=cl.name,
             category=cl.category,
+            investment_id=cl.investment_id,
             total_items=len(cl.items),
             checked_items=sum(1 for item in cl.items if item.checked),
         )
@@ -41,7 +48,11 @@ def get_checklist(checklist_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/checklists", response_model=ChecklistResponse, status_code=201)
 def create_checklist(data: ChecklistCreate, db: Session = Depends(get_db)):
-    checklist = Checklist(name=data.name, category=data.category)
+    checklist = Checklist(
+        name=data.name,
+        category=data.category,
+        investment_id=data.investment_id,
+    )
     for item in data.items:
         checklist.items.append(ChecklistItem(
             order=item.order,
@@ -68,6 +79,8 @@ def update_checklist(checklist_id: int, data: ChecklistUpdate, db: Session = Dep
         checklist.name = payload["name"]
     if "category" in payload:
         checklist.category = payload["category"]
+    if "investment_id" in payload:
+        checklist.investment_id = payload["investment_id"]
 
     if "items" in payload and payload["items"] is not None:
         checklist.items.clear()

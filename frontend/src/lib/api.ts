@@ -170,7 +170,8 @@ export const fetchFundPerformance = (fundId: number, params?: { as_of_date?: str
   api.get(`/funds/${fundId}/performance`, { params }).then(r => r.data)
 
 // -- Checklist --
-export const fetchChecklists = (): Promise<ChecklistListItem[]> => api.get('/checklists').then(r => r.data)
+export const fetchChecklists = (params?: { investment_id?: number }): Promise<ChecklistListItem[]> =>
+  api.get('/checklists', { params }).then(r => r.data)
 export const fetchChecklist = (id: number): Promise<Checklist> => api.get(`/checklists/${id}`).then(r => r.data)
 export const createChecklist = (data: ChecklistInput): Promise<Checklist> => api.post('/checklists', data).then(r => r.data)
 export const updateChecklist = (id: number, data: Partial<ChecklistInput>): Promise<Checklist> => api.put(`/checklists/${id}`, data).then(r => r.data)
@@ -975,6 +976,7 @@ export interface ChecklistListItem {
   id: number
   name: string
   category: string | null
+  investment_id: number | null
   total_items: number
   checked_items: number
 }
@@ -983,12 +985,14 @@ export interface Checklist {
   id: number
   name: string
   category: string | null
+  investment_id: number | null
   items: ChecklistItem[]
 }
 
 export interface ChecklistInput {
   name: string
   category?: string | null
+  investment_id?: number | null
   items: ChecklistItemInput[]
 }
 

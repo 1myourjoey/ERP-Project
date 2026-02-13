@@ -10,6 +10,7 @@ class Checklist(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     category = Column(String, nullable=True)
+    investment_id = Column(Integer, ForeignKey("investments.id"), nullable=True)
 
     items = relationship(
         "ChecklistItem",

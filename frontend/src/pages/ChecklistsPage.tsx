@@ -1,6 +1,7 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  fetchInvestments,
   fetchChecklists,
   fetchChecklist,
   createChecklist,
@@ -20,6 +21,7 @@ import { useToast } from '../contexts/ToastContext'
 const EMPTY_CHECKLIST: ChecklistInput = {
   name: '',
   category: '',
+  investment_id: null,
   items: [],
 }
 
@@ -40,7 +42,14 @@ export default function ChecklistsPage() {
   const [showItemCreate, setShowItemCreate] = useState(false)
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
 
-  const { data: checklists, isLoading } = useQuery({ queryKey: ['checklists'], queryFn: fetchChecklists })
+  const { data: checklists, isLoading } = useQuery<ChecklistListItem[]>({
+    queryKey: ['checklists'],
+    queryFn: () => fetchChecklists(),
+  })
+  const { data: investments } = useQuery<{ id: number; company_name?: string }[]>({
+    queryKey: ['investments'],
+    queryFn: () => fetchInvestments() as Promise<{ id: number; company_name?: string }[]>,
+  })
   const { data: checklist } = useQuery({
     queryKey: ['checklist', selectedId],
     queryFn: () => fetchChecklist(selectedId as number),
@@ -52,6 +61,7 @@ export default function ChecklistsPage() {
     const done = checklist?.items?.filter((item: ChecklistItem) => item.checked).length ?? 0
     return `${done}/${total}`
   }, [checklist])
+  const investmentOptions = (investments ?? []) as { id: number; company_name?: string }[]
 
   const createMut = useMutation({
     mutationFn: createChecklist,
@@ -113,7 +123,8 @@ export default function ChecklistsPage() {
 
   return (
     <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-5">체크리스트</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-1">체크리스트</h2>
+      <p className="text-sm text-gray-500 mb-4">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -123,6 +134,7 @@ export default function ChecklistsPage() {
 
           {showCreate && (
             <ChecklistForm
+              investments={investmentOptions}
               initial={EMPTY_CHECKLIST}
               onSubmit={data => createMut.mutate(data)}
               onCancel={() => setShowCreate(false)}
@@ -138,7 +150,7 @@ export default function ChecklistsPage() {
                   className={`w-full text-left p-3 border rounded ${selectedId === cl.id ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
                 >
                   <p className="text-sm font-medium text-gray-800">{cl.name}</p>
-                  <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items}</p>
+                  <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
                 </button>
               ))}
             </div>
@@ -150,8 +162,9 @@ export default function ChecklistsPage() {
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-sm text-gray-500">체크리스트를 선택하세요.</div>
           ) : editingChecklist ? (
             <ChecklistForm
-              initial={{ name: checklist.name, category: checklist.category || '', items: [] }}
-              onSubmit={data => updateMut.mutate({ id: selectedId, data: { name: data.name, category: data.category } })}
+              investments={investmentOptions}
+              initial={{ name: checklist.name, category: checklist.category || '', investment_id: checklist.investment_id || null, items: [] }}
+              onSubmit={data => updateMut.mutate({ id: selectedId, data: { name: data.name, category: data.category, investment_id: data.investment_id } })}
               onCancel={() => setEditingChecklist(false)}
             />
           ) : (
@@ -159,7 +172,7 @@ export default function ChecklistsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{checklist.name}</h3>
-                  <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress}</p>
+                  <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
                 </div>
                 <div className="flex gap-2">
                   <button className="text-xs px-2 py-1 bg-gray-100 rounded" onClick={() => setEditingChecklist(true)}>수정</button>
@@ -225,25 +238,34 @@ export default function ChecklistsPage() {
 }
 
 function ChecklistForm({
+  investments,
   initial,
   onSubmit,
   onCancel,
 }: {
+  investments: { id: number; company_name?: string }[]
   initial: ChecklistInput
   onSubmit: (data: ChecklistInput) => void
   onCancel: () => void
 }) {
   const [name, setName] = useState(initial.name)
   const [category, setCategory] = useState(initial.category || '')
+  const [investmentId, setInvestmentId] = useState<number | ''>(initial.investment_id || '')
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input value={name} onChange={e => setName(e.target.value)} placeholder="체크리스트 이름" className="px-2 py-1 text-sm border rounded" />
         <input value={category} onChange={e => setCategory(e.target.value)} placeholder="카테고리" className="px-2 py-1 text-sm border rounded" />
+        <select value={investmentId} onChange={e => setInvestmentId(e.target.value ? Number(e.target.value) : '')} className="px-2 py-1 text-sm border rounded">
+          <option value="">투자 연결 없음</option>
+          {investments.map((investment) => (
+            <option key={investment.id} value={investment.id}>#{investment.id} {investment.company_name || '-'}</option>
+          ))}
+        </select>
       </div>
       <div className="flex gap-2 mt-2">
-        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => name.trim() && onSubmit({ name: name.trim(), category: category.trim() || null, items: [] })}>저장</button>
+        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => name.trim() && onSubmit({ name: name.trim(), category: category.trim() || null, investment_id: investmentId === '' ? null : investmentId, items: [] })}>저장</button>
         <button className="text-xs px-3 py-1 bg-white border rounded" onClick={onCancel}>취소</button>
       </div>
     </div>

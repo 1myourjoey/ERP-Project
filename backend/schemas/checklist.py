@@ -33,12 +33,14 @@ class ChecklistItemResponse(BaseModel):
 class ChecklistCreate(BaseModel):
     name: str
     category: Optional[str] = None
+    investment_id: Optional[int] = None
     items: list[ChecklistItemCreate] = []
 
 
 class ChecklistUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
+    investment_id: Optional[int] = None
     items: Optional[list[ChecklistItemCreate]] = None
 
 
@@ -46,6 +48,7 @@ class ChecklistListItem(BaseModel):
     id: int
     name: str
     category: Optional[str] = None
+    investment_id: Optional[int] = None
     total_items: int = 0
     checked_items: int = 0
 
@@ -54,6 +57,7 @@ class ChecklistResponse(BaseModel):
     id: int
     name: str
     category: Optional[str] = None
+    investment_id: Optional[int] = None
     items: list[ChecklistItemResponse] = []
 
     model_config = {"from_attributes": True}

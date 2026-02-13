@@ -14,6 +14,7 @@ import {
   createVoteRecord,
   updateVoteRecord,
   deleteVoteRecord,
+  fetchChecklists,
   fetchInvestmentValuations,
   createValuation,
   updateValuation,
@@ -28,6 +29,7 @@ import {
   type Valuation,
   type ValuationInput,
   type WorkflowInstance,
+  type ChecklistListItem,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -150,6 +152,12 @@ export default function InvestmentDetailPage() {
   const { data: voteRecords } = useQuery<VoteRecord[]>({
     queryKey: ['voteRecords', { investment_id: investmentId }],
     queryFn: () => fetchVoteRecords({ investment_id: investmentId }),
+    enabled: Number.isFinite(investmentId) && investmentId > 0,
+  })
+
+  const { data: linkedChecklists } = useQuery<ChecklistListItem[]>({
+    queryKey: ['checklists', { investment_id: investmentId }],
+    queryFn: () => fetchChecklists({ investment_id: investmentId }),
     enabled: Number.isFinite(investmentId) && investmentId > 0,
   })
 
@@ -346,6 +354,36 @@ export default function InvestmentDetailPage() {
                     <p className="text-xs text-indigo-700 mt-0.5">{instance.workflow_name} | {labelStatus(instance.status)} | 시작일 {formatDate(instance.trigger_date)}</p>
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">체크리스트</h3>
+            {!linkedChecklists?.length ? (
+              <p className="text-sm text-gray-400">연결된 체크리스트가 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {linkedChecklists.map((checklist) => {
+                  const progress = checklist.total_items > 0
+                    ? Math.round((checklist.checked_items / checklist.total_items) * 100)
+                    : 0
+                  return (
+                    <button
+                      key={checklist.id}
+                      onClick={() => navigate('/checklists')}
+                      className="w-full text-left rounded border border-gray-200 p-2 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-800">{checklist.name}</p>
+                        <span className="text-xs text-gray-500">{checklist.checked_items}/{checklist.total_items}</span>
+                      </div>
+                      <div className="mt-1 h-2 w-full rounded-full bg-gray-100">
+                        <div className="h-2 rounded-full bg-blue-500" style={{ width: `${progress}%` }} />
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

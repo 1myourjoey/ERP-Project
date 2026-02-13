@@ -81,6 +81,7 @@ def ensure_sqlite_compat_columns():
             ("investments", "board_seat", "TEXT"),
             ("exit_committees", "performance_fee", "REAL"),
             ("biz_reports", "fund_id", "INTEGER"),
+            ("checklists", "investment_id", "INTEGER"),
         ]:
             if not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
