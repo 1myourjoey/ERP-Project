@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+﻿import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createAssembly,
@@ -108,9 +108,9 @@ function labelAssemblyType(value: string | null | undefined): string {
 
 function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
         {right}
       </div>
       {children}
@@ -300,23 +300,23 @@ export default function FundOperationsPage() {
   return (
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">조합 운영</h2>
+        <h2 className="text-2xl font-bold text-gray-900">조합 운영</h2>
         <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
           {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
         </select>
       </div>
 
       <Section title="성과지표" right={<input type="date" value={performanceDate} onChange={(e) => setPerformanceDate(e.target.value)} className="rounded border px-2 py-1 text-xs" />}>
-        {!performance ? <p className="text-sm text-slate-400">데이터가 없습니다.</p> : (
+        {!performance ? <p className="text-sm text-gray-400">데이터가 없습니다.</p> : (
           <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-            <div className="rounded bg-slate-50 p-2">납입 총액: {formatKRW(performance.paid_in_total)}</div>
-            <div className="rounded bg-slate-50 p-2">투자 총액: {formatKRW(performance.total_invested)}</div>
-            <div className="rounded bg-slate-50 p-2">배분 총액: {formatKRW(performance.total_distributed)}</div>
-            <div className="rounded bg-slate-50 p-2">잔여 가치: {formatKRW(performance.residual_value)}</div>
-            <div className="rounded bg-slate-50 p-2">TVPI: {performance.tvpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-slate-50 p-2">DPI: {performance.dpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-slate-50 p-2">RVPI: {performance.rvpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-slate-50 p-2">IRR: {toRatio(performance.irr)}</div>
+            <div className="rounded bg-gray-50 p-2">납입 총액: {formatKRW(performance.paid_in_total)}</div>
+            <div className="rounded bg-gray-50 p-2">투자 총액: {formatKRW(performance.total_invested)}</div>
+            <div className="rounded bg-gray-50 p-2">배분 총액: {formatKRW(performance.total_distributed)}</div>
+            <div className="rounded bg-gray-50 p-2">잔여 가치: {formatKRW(performance.residual_value)}</div>
+            <div className="rounded bg-gray-50 p-2">TVPI: {performance.tvpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">DPI: {performance.dpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">RVPI: {performance.rvpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">IRR: {toRatio(performance.irr)}</div>
           </div>
         )}
       </Section>
@@ -332,12 +332,12 @@ export default function FundOperationsPage() {
         </div>
         <div className="space-y-2">
           {calls?.map((row) => (
-            <div key={row.id} className="rounded border border-slate-200 p-2">
+            <div key={row.id} className="rounded border border-gray-200 p-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-slate-800">{toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}</p>
+                <p className="text-sm text-gray-800">{toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setCallExpandedId(callExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
-                  <button onClick={() => toggleCallEdit(row)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">수정</button>
+                  <button onClick={() => toggleCallEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
                   <button onClick={() => deleteCallMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                 </div>
               </div>
@@ -350,12 +350,12 @@ export default function FundOperationsPage() {
                   <input type="number" value={editCall.total_amount} onChange={(e) => setEditCall((p) => (p ? { ...p, total_amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
                     <button onClick={() => updateCallMut.mutate({ id: row.id, data: { call_date: editCall.call_date, call_type: editCall.call_type, total_amount: editCall.total_amount, memo: editCall.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingCallId(null); setEditCall(null) }} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">취소</button>
+                    <button onClick={() => { setEditingCallId(null); setEditCall(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
                   </div>
                 </div>
               )}
               {callExpandedId === row.id && (
-                <div className="mt-2 rounded bg-slate-50 p-2 space-y-2">
+                <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                     <select value={newCallItem.lp_id || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
                       <option value="">LP</option>
@@ -368,20 +368,20 @@ export default function FundOperationsPage() {
                   </div>
                   <div className="space-y-1">
                     {callItems?.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded border border-slate-200 bg-white p-2">
+                      <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
                         {editingCallItemId === item.id && editCallItem ? (
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-5">
                             <input type="number" value={editCallItem.amount} onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                             <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
                             <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="rounded border px-2 py-1 text-sm" />
                             <button onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                            <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">취소</button>
+                            <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
                           </div>
                         ) : (
                           <>
-                            <p className="text-xs text-slate-600">LP {item.lp_name || item.lp_id} | {formatKRW(item.amount)} | {item.paid ? '납입' : '미납'} | {toDate(item.paid_date)}</p>
+                            <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | {formatKRW(item.amount)} | {item.paid ? '납입' : '미납'} | {toDate(item.paid_date)}</p>
                             <div className="flex gap-1">
-                              <button onClick={() => toggleCallItemEdit(item)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">수정</button>
+                              <button onClick={() => toggleCallItemEdit(item)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
                               <button onClick={() => deleteCallItemMut.mutate({ callId: row.id, itemId: item.id })} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                             </div>
                           </>
@@ -408,12 +408,12 @@ export default function FundOperationsPage() {
         </div>
         <div className="space-y-2">
           {distributions?.map((row) => (
-            <div key={row.id} className="rounded border border-slate-200 p-2">
+            <div key={row.id} className="rounded border border-gray-200 p-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-slate-800">{toDate(row.dist_date)} | {labelDistributionType(row.dist_type)} | 원금 총액 {formatKRW(row.principal_total)} | 수익 총액 {formatKRW(row.profit_total)}</p>
+                <p className="text-sm text-gray-800">{toDate(row.dist_date)} | {labelDistributionType(row.dist_type)} | 원금 총액 {formatKRW(row.principal_total)} | 수익 총액 {formatKRW(row.profit_total)}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setDistExpandedId(distExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
-                  <button onClick={() => toggleDistributionEdit(row)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">수정</button>
+                  <button onClick={() => toggleDistributionEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
                   <button onClick={() => deleteDistMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                 </div>
               </div>
@@ -427,12 +427,12 @@ export default function FundOperationsPage() {
                   <input type="number" value={editDistribution.profit_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, profit_total: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
                     <button onClick={() => updateDistMut.mutate({ id: row.id, data: { dist_date: editDistribution.dist_date, dist_type: editDistribution.dist_type, principal_total: editDistribution.principal_total, profit_total: editDistribution.profit_total, performance_fee: editDistribution.performance_fee, memo: editDistribution.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingDistId(null); setEditDistribution(null) }} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">취소</button>
+                    <button onClick={() => { setEditingDistId(null); setEditDistribution(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
                   </div>
                 </div>
               )}
               {distExpandedId === row.id && (
-                <div className="mt-2 rounded bg-slate-50 p-2 space-y-2">
+                <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                     <select value={newDistributionItem.lp_id || ''} onChange={(e) => setNewDistributionItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
                       <option value="">LP</option>
@@ -444,19 +444,19 @@ export default function FundOperationsPage() {
                   </div>
                   <div className="space-y-1">
                     {distributionItems?.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded border border-slate-200 bg-white p-2">
+                      <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
                         {editingDistItemId === item.id && editDistributionItem ? (
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                             <input type="number" value={editDistributionItem.principal} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, principal: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                             <input type="number" value={editDistributionItem.profit} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, profit: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                             <button onClick={() => updateDistItemMut.mutate({ distributionId: row.id, itemId: item.id, data: { principal: editDistributionItem.principal, profit: editDistributionItem.profit } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                            <button onClick={() => { setEditingDistItemId(null); setEditDistributionItem(null) }} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">취소</button>
+                            <button onClick={() => { setEditingDistItemId(null); setEditDistributionItem(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
                           </div>
                         ) : (
                           <>
-                            <p className="text-xs text-slate-600">LP {item.lp_name || item.lp_id} | 원금 {formatKRW(item.principal)} | 수익 {formatKRW(item.profit)}</p>
+                            <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | 원금 {formatKRW(item.principal)} | 수익 {formatKRW(item.profit)}</p>
                             <div className="flex gap-1">
-                              <button onClick={() => toggleDistributionItemEdit(item)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">수정</button>
+                              <button onClick={() => toggleDistributionItemEdit(item)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
                               <button onClick={() => deleteDistItemMut.mutate({ distributionId: row.id, itemId: item.id })} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                             </div>
                           </>
@@ -485,11 +485,11 @@ export default function FundOperationsPage() {
         </div>
         <div className="space-y-1">
           {assemblies?.map((row) => (
-            <div key={row.id} className="rounded border border-slate-200 p-2">
+            <div key={row.id} className="rounded border border-gray-200 p-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-700">{toDate(row.date)} | {labelAssemblyType(row.type)} | {labelStatus(row.status)} | 의사록 {row.minutes_completed ? '작성 완료' : '미작성'}</p>
+                <p className="text-sm text-gray-700">{toDate(row.date)} | {labelAssemblyType(row.type)} | {labelStatus(row.status)} | 의사록 {row.minutes_completed ? '작성 완료' : '미작성'}</p>
                 <div className="flex gap-1">
-                  <button onClick={() => toggleAssemblyEdit(row)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">수정</button>
+                  <button onClick={() => toggleAssemblyEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
                   <button onClick={() => deleteAssemblyMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
                 </div>
               </div>
@@ -505,7 +505,7 @@ export default function FundOperationsPage() {
                   <input value={editAssembly.agenda} onChange={(e) => setEditAssembly((p) => (p ? { ...p, agenda: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
                     <button onClick={() => updateAssemblyMut.mutate({ id: row.id, data: { date: editAssembly.date, type: editAssembly.type, status: editAssembly.status, agenda: editAssembly.agenda.trim() || null, minutes_completed: editAssembly.minutes_completed, memo: editAssembly.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingAssemblyId(null); setEditAssembly(null) }} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">취소</button>
+                    <button onClick={() => { setEditingAssemblyId(null); setEditAssembly(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
                   </div>
                 </div>
               )}
@@ -516,3 +516,5 @@ export default function FundOperationsPage() {
     </div>
   )
 }
+
+

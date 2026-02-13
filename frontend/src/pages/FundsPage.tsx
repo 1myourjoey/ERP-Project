@@ -34,10 +34,10 @@ function FundForm({
   const [form, setForm] = useState<FundInput>(initial)
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-        <button onClick={onCancel} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+        <h3 className="font-semibold text-gray-800">{title}</h3>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -64,11 +64,11 @@ function FundForm({
             trustee: form.trustee?.trim() || null,
           })}
           disabled={loading || !form.name.trim()}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
         >
           저장
         </button>
-        <button onClick={onCancel} className="px-4 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200">취소</button>
+        <button onClick={onCancel} className="px-4 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">취소</button>
       </div>
     </div>
   )
@@ -95,7 +95,7 @@ export default function FundsPage() {
   return (
     <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-slate-900">조합 관리</h2>
+        <h2 className="text-2xl font-bold text-gray-900">조합 관리</h2>
         <button onClick={() => setShowCreateFund(v => !v)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"><Plus size={14} /> 조합 추가</button>
       </div>
 
@@ -105,29 +105,31 @@ export default function FundsPage() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-xl p-3">
-        <h3 className="text-sm font-semibold text-slate-700 mb-2">조합 목록</h3>
-        {isLoading ? <p className="text-sm text-slate-500 p-2">불러오는 중...</p> : (
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">조합 목록</h3>
+        {isLoading ? <p className="text-sm text-gray-500 p-2">불러오는 중...</p> : (
           <div className="space-y-2">
             {funds?.map((fund) => (
               <button
                 key={fund.id}
                 onClick={() => navigate(`/funds/${fund.id}`)}
-                className="w-full text-left p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                className="w-full text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-slate-800 flex items-center gap-2"><Building2 size={15} />{fund.name}</h4>
-                  <ChevronRight size={16} className="text-slate-400" />
+                  <h4 className="font-medium text-gray-800 flex items-center gap-2"><Building2 size={15} />{fund.name}</h4>
+                  <ChevronRight size={16} className="text-gray-400" />
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {fund.type} | {labelStatus(fund.status)} | LP {fund.lp_count ?? 0} | 투자 {fund.investment_count ?? 0}
                 </p>
               </button>
             ))}
-            {!funds?.length && <p className="text-sm text-slate-400 p-2">등록된 조합이 없습니다.</p>}
+            {!funds?.length && <p className="text-sm text-gray-400 p-2">등록된 조합이 없습니다.</p>}
           </div>
         )}
       </div>
     </div>
   )
 }
+
+

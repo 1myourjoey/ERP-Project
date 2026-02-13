@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+﻿import { Fragment, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createBizReport,
@@ -21,7 +21,7 @@ interface FilterState {
 const REPORT_TYPE_OPTIONS = ['분기보고', '월보고', '일반보고']
 const STATUS_OPTIONS = ['요청전', '요청중', '수신', '검수완료']
 const STATUS_CLASS: Record<string, string> = {
-  요청전: 'bg-slate-100 text-slate-700',
+  요청전: 'bg-gray-100 text-gray-700',
   요청중: 'bg-blue-100 text-blue-700',
   수신: 'bg-amber-100 text-amber-700',
   검수완료: 'bg-green-100 text-green-700',
@@ -124,16 +124,16 @@ export default function BizReportsPage() {
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">영업보고 관리</h2>
-          <p className="mt-1 text-sm text-slate-500">피투자사 정기/수시 경영현황 수집</p>
+          <h2 className="text-2xl font-bold text-gray-900">영업보고 관리</h2>
+          <p className="mt-1 text-sm text-gray-500">피투자사 정기/수시 경영현황 수집</p>
         </div>
         <button onClick={() => setShowCreate((prev) => !prev)} className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">
           + 신규 등록
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">필터</h3>
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <select value={filters.company_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))} className="rounded border px-2 py-1 text-sm">
             <option value="">전체 피투자사</option>
@@ -148,14 +148,14 @@ export default function BizReportsPage() {
             {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </div>
-        <button onClick={() => setFilters(EMPTY_FILTERS)} className="mt-2 rounded border px-2 py-1 text-xs hover:bg-slate-100">
+        <button onClick={() => setFilters(EMPTY_FILTERS)} className="mt-2 rounded border px-2 py-1 text-xs hover:bg-gray-100">
           필터 초기화
         </button>
       </div>
 
       {showCreate && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">신규 영업보고 등록</h3>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 영업보고 등록</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <select value={newReport.company_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
               <option value="">피투자사 선택</option>
@@ -179,27 +179,27 @@ export default function BizReportsPage() {
                 })
               }}
               disabled={createMut.isPending}
-              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-slate-300"
+              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
             >
               저장
             </button>
-            <button onClick={() => setShowCreate(false)} className="rounded border bg-white px-3 py-1 text-xs hover:bg-slate-100">
+            <button onClick={() => setShowCreate(false)} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
               취소
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
         {isLoading ? (
-          <p className="p-2 text-sm text-slate-500">불러오는 중...</p>
+          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
         ) : !rows?.length ? (
-          <p className="p-2 text-sm text-slate-400">영업보고가 없습니다.</p>
+          <p className="p-2 text-sm text-gray-400">영업보고가 없습니다.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-slate-600">
+                <tr className="border-b text-left text-gray-600">
                   <th className="px-2 py-2">피투자사</th>
                   <th className="px-2 py-2">유형</th>
                   <th className="px-2 py-2">기간</th>
@@ -214,7 +214,7 @@ export default function BizReportsPage() {
               <tbody>
                 {rows.map((row) => (
                   <Fragment key={row.id}>
-                    <tr className="cursor-pointer border-b hover:bg-slate-50" onClick={() => {
+                    <tr className="cursor-pointer border-b hover:bg-gray-50" onClick={() => {
                       setEditingId(row.id)
                       setEditForm({
                         company_id: row.company_id,
@@ -238,14 +238,14 @@ export default function BizReportsPage() {
                       <td className="px-2 py-2">{row.report_type}</td>
                       <td className="px-2 py-2">{row.period}</td>
                       <td className="px-2 py-2">
-                        <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[row.status] || 'bg-slate-100 text-slate-700'}`}>
+                        <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[row.status] || 'bg-gray-100 text-gray-700'}`}>
                           {row.status}
                         </span>
                       </td>
                       <td className="px-2 py-2">{formatDate(row.requested_date)}</td>
                       <td className="px-2 py-2">{formatDate(row.received_date)}</td>
                       <td className="px-2 py-2">{formatDate(row.reviewed_date)}</td>
-                      <td className="px-2 py-2 text-xs text-slate-600">
+                      <td className="px-2 py-2 text-xs text-gray-600">
                         매출 {formatNumber(row.revenue)} / 영업이익 {formatNumber(row.operating_income)}
                       </td>
                       <td className="px-2 py-2">
@@ -255,7 +255,7 @@ export default function BizReportsPage() {
                               e.stopPropagation()
                               setEditingId(row.id)
                             }}
-                            className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200"
+                            className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
                           >
                             수정
                           </button>
@@ -272,7 +272,7 @@ export default function BizReportsPage() {
                       </td>
                     </tr>
                     {editingId === row.id && editForm && (
-                      <tr className="border-b bg-slate-50">
+                      <tr className="border-b bg-gray-50">
                         <td className="px-2 py-2" colSpan={9}>
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                             <select value={editForm.status || '요청전'} onChange={(e) => setEditForm((prev) => (prev ? { ...prev, status: e.target.value } : prev))} className="rounded border px-2 py-1 text-sm">
@@ -306,7 +306,7 @@ export default function BizReportsPage() {
                             >
                               저장
                             </button>
-                            <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border bg-white px-3 py-1 text-xs hover:bg-slate-100">
+                            <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
                               취소
                             </button>
                           </div>
@@ -323,3 +323,5 @@ export default function BizReportsPage() {
     </div>
   )
 }
+
+

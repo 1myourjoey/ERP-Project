@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+﻿import { X } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
 
 const TOAST_COLOR = {
@@ -15,7 +15,7 @@ export default function ToastContainer() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border shadow-sm text-sm ${TOAST_COLOR[toast.type]}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm text-sm ${TOAST_COLOR[toast.type]}`}
         >
           <span>{toast.message}</span>
           <button onClick={() => removeToast(toast.id)}>
@@ -26,3 +26,6 @@ export default function ToastContainer() {
     </div>
   )
 }
+
+
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -54,6 +54,11 @@ interface InvestmentDetail {
   contribution_rate?: string | null
   instrument?: string | null
   status?: string
+  round?: string | null
+  valuation_pre?: number | null
+  valuation_post?: number | null
+  ownership_pct?: number | null
+  board_seat?: string | null
   documents?: InvestmentDocument[]
 }
 
@@ -88,6 +93,11 @@ function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
     contribution_rate: detail.contribution_rate || '',
     instrument: detail.instrument || '',
     status: detail.status || 'active',
+    round: detail.round || '',
+    valuation_pre: detail.valuation_pre ?? null,
+    valuation_post: detail.valuation_post ?? null,
+    ownership_pct: detail.ownership_pct ?? null,
+    board_seat: detail.board_seat || '',
   }
 }
 
@@ -205,7 +215,7 @@ export default function InvestmentDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
       setShowValuationForm(false)
-      addToast('success', 'Valuation created.')
+      addToast('success', '가치평가를 등록했습니다.')
     },
   })
 
@@ -214,7 +224,7 @@ export default function InvestmentDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
       setEditingValuationId(null)
-      addToast('success', 'Valuation updated.')
+      addToast('success', '가치평가를 수정했습니다.')
     },
   })
 
@@ -222,7 +232,7 @@ export default function InvestmentDetailPage() {
     mutationFn: (id: number) => deleteValuation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['valuations', { investment_id: investmentId }] })
-      addToast('success', 'Valuation deleted.')
+      addToast('success', '가치평가를 삭제했습니다.')
     },
   })
 
@@ -257,21 +267,21 @@ export default function InvestmentDetailPage() {
 
   return (
     <div className="p-6 max-w-6xl space-y-4">
-      <button onClick={() => navigate('/investments')} className="text-sm text-slate-600 hover:text-slate-800 flex items-center gap-1">
+      <button onClick={() => navigate('/investments')} className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
         <ArrowLeft size={16} /> 투자 목록으로
       </button>
 
       {isLoading ? (
-        <p className="text-sm text-slate-500">불러오는 중...</p>
+        <p className="text-sm text-gray-500">불러오는 중...</p>
       ) : !selectedInvestment ? (
-        <p className="text-sm text-slate-500">투자를 찾을 수 없습니다.</p>
+        <p className="text-sm text-gray-500">투자를 찾을 수 없습니다.</p>
       ) : (
         <>
-          <div className="bg-white border rounded-xl p-4 space-y-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">투자 #{selectedInvestment.id}</h2>
+              <h2 className="text-xl font-bold text-gray-900">투자 #{selectedInvestment.id}</h2>
               <div className="flex gap-2">
-                <button className="text-xs px-2 py-1 bg-slate-100 rounded" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
+                <button className="text-xs px-2 py-1 bg-gray-100 rounded" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
                 <button className="text-xs px-2 py-1 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(investmentId) }}>삭제</button>
               </div>
             </div>
@@ -286,24 +296,29 @@ export default function InvestmentDetailPage() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                <div className="p-2 bg-slate-50 rounded">조합: {fundName}</div>
-                <div className="p-2 bg-slate-50 rounded">회사: {companyName}</div>
-                <div className="p-2 bg-slate-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
-                <div className="p-2 bg-slate-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-slate-50 rounded">지분율: {selectedInvestment.contribution_rate || '-'}</div>
-                <div className="p-2 bg-slate-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">조합: {fundName}</div>
+                <div className="p-2 bg-gray-50 rounded">회사: {companyName}</div>
+                <div className="p-2 bg-gray-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
+                <div className="p-2 bg-gray-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">기존 지분율: {selectedInvestment.contribution_rate || '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">투자 라운드: {selectedInvestment.round || '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">프리머니 밸류: {selectedInvestment.valuation_pre?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">포스트머니 밸류: {selectedInvestment.valuation_post?.toLocaleString?.() ?? '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">지분율: {selectedInvestment.ownership_pct != null ? `${selectedInvestment.ownership_pct}%` : '-'}</div>
+                <div className="p-2 bg-gray-50 rounded">이사회 참여: {selectedInvestment.board_seat || '-'}</div>
+                <div className="p-2 bg-gray-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
               </div>
             )}
           </div>
 
-          <div className="bg-white border rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-2">연결된 워크플로우</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">연결된 워크플로우</h3>
             {!linkedWorkflows?.length ? (
-              <p className="text-sm text-slate-400">연결된 워크플로우 인스턴스가 없습니다.</p>
+              <p className="text-sm text-gray-400">연결된 워크플로우 인스턴스가 없습니다.</p>
             ) : (
               <div className="space-y-2">
                 {linkedWorkflows.map((instance) => (
@@ -323,9 +338,9 @@ export default function InvestmentDetailPage() {
             )}
           </div>
 
-          <div className="bg-white border rounded-xl p-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-700">서류</h3>
+              <h3 className="text-sm font-semibold text-gray-700">서류</h3>
               <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
             </div>
 
@@ -339,23 +354,23 @@ export default function InvestmentDetailPage() {
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{doc.name}</p>
-                        <p className="text-xs text-slate-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
+                        <p className="text-sm font-medium text-gray-800">{doc.name}</p>
+                        <p className="text-xs text-gray-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
                       </div>
                       <div className="flex gap-1">
-                        <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingDocId(doc.id)}>수정</button>
+                        <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingDocId(doc.id)}>수정</button>
                         <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 서류를 삭제하시겠습니까?')) deleteDocMut.mutate(doc.id) }}>삭제</button>
                       </div>
                     </div>
                   )}
                 </div>
-              )) : <p className="text-sm text-slate-400">서류가 없습니다.</p>}
+              )) : <p className="text-sm text-gray-400">서류가 없습니다.</p>}
             </div>
           </div>
-          <div className="bg-white border rounded-xl p-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-700">Valuations</h3>
-              <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ Valuation</button>
+              <h3 className="text-sm font-semibold text-gray-700">가치평가</h3>
+              <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ 가치평가</button>
             </div>
 
             {showValuationForm && selectedInvestment && (
@@ -396,24 +411,24 @@ export default function InvestmentDetailPage() {
                   ) : (
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{formatDate(valuation.as_of_date)} | {valuation.method || '-'}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Value {formatNumber(valuation.value)} | Prev {formatNumber(valuation.prev_value)} | Delta {formatNumber(valuation.change_amount)} ({valuation.change_pct != null ? `${valuation.change_pct}%` : '-'})</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
+                        <p className="text-sm font-medium text-gray-800">{formatDate(valuation.as_of_date)} | {valuation.method || '-'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">평가금액 {formatNumber(valuation.value)} | 전기 {formatNumber(valuation.prev_value)} | 증감 {formatNumber(valuation.change_amount)} ({valuation.change_pct != null ? `${valuation.change_pct}%` : '-'})</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
                       </div>
                       <div className="flex gap-1">
-                        <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingValuationId(valuation.id)}>Edit</button>
-                        <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('Delete this valuation?')) deleteValuationMut.mutate(valuation.id) }}>Delete</button>
+                        <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingValuationId(valuation.id)}>수정</button>
+                        <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 가치평가를 삭제하시겠습니까?')) deleteValuationMut.mutate(valuation.id) }}>삭제</button>
                       </div>
                     </div>
                   )}
                 </div>
-              )) : <p className="text-sm text-slate-400">No valuations yet.</p>}
+              )) : <p className="text-sm text-gray-400">등록된 가치평가가 없습니다.</p>}
             </div>
           </div>
 
-          <div className="bg-white border rounded-xl p-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">의결권 행사 이력</h3>
+              <h3 className="text-sm font-semibold text-gray-700">의결권 행사 이력</h3>
               <button
                 className="rounded bg-emerald-600 px-2 py-1 text-xs text-white"
                 onClick={() => setShowVoteForm(v => !v)}
@@ -441,7 +456,7 @@ export default function InvestmentDetailPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-gray-600">
                     <th className="px-2 py-2">행사일</th>
                     <th className="px-2 py-2">의결 유형</th>
                     <th className="px-2 py-2">안건</th>
@@ -461,7 +476,7 @@ export default function InvestmentDetailPage() {
                       <td className="px-2 py-2">
                         <div className="flex gap-1">
                           <button
-                            className="rounded bg-slate-100 px-2 py-0.5 text-xs"
+                            className="rounded bg-gray-100 px-2 py-0.5 text-xs"
                             onClick={() => setEditingVoteId(record.id)}
                           >
                             수정
@@ -501,7 +516,7 @@ export default function InvestmentDetailPage() {
                   ])}
                   {!voteRecords?.length && (
                     <tr>
-                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-slate-400">
+                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-gray-400">
                         의결권 행사 이력이 없습니다.
                       </td>
                     </tr>
@@ -519,7 +534,7 @@ export default function InvestmentDetailPage() {
 function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { funds: Fund[]; companies: Company[]; initial: InvestmentInput; onSubmit: (data: InvestmentInput) => void; onCancel: () => void }) {
   const [form, setForm] = useState<InvestmentInput>(initial)
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-gray-50">
       <select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">조합 선택</option>{funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
       <select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="px-2 py-1 text-sm border rounded"><option value="">회사 선택</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
       <input type="date" value={form.investment_date || ''} onChange={e => setForm(prev => ({ ...prev, investment_date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
@@ -527,11 +542,16 @@ function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { fun
       <input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="주식 수" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.share_price ?? ''} onChange={e => setForm(prev => ({ ...prev, share_price: e.target.value ? Number(e.target.value) : null }))} placeholder="주당 가격" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.valuation ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation: e.target.value ? Number(e.target.value) : null }))} placeholder="밸류에이션" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="지분율" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.round || ''} onChange={e => setForm(prev => ({ ...prev, round: e.target.value }))} placeholder="투자 라운드" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.valuation_pre ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_pre: e.target.value ? Number(e.target.value) : null }))} placeholder="프리머니 밸류" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.valuation_post ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_post: e.target.value ? Number(e.target.value) : null }))} placeholder="포스트머니 밸류" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" step="0.01" value={form.ownership_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, ownership_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="지분율(%)" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.board_seat || ''} onChange={e => setForm(prev => ({ ...prev, board_seat: e.target.value }))} placeholder="이사회 참여" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="기존 지분율" className="px-2 py-1 text-sm border rounded" />
       <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="투자수단" className="px-2 py-1 text-sm border rounded" />
       <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-2 py-1 text-sm border rounded" />
       <div className="md:col-span-3 flex gap-2">
-        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (!form.fund_id || !form.company_id) return; onSubmit({ ...form, investment_date: form.investment_date || null }) }}>저장</button>
+        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (!form.fund_id || !form.company_id) return; onSubmit({ ...form, investment_date: form.investment_date || null, round: form.round?.trim() || null, board_seat: form.board_seat?.trim() || null, contribution_rate: form.contribution_rate?.trim() || null, instrument: form.instrument?.trim() || null }) }}>저장</button>
         <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
       </div>
     </div>
@@ -542,7 +562,7 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: InvestmentDocu
   const [form, setForm] = useState<InvestmentDocumentInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-2 bg-slate-50 mb-2">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-2 bg-gray-50 mb-2">
       <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="서류명" className="px-2 py-1 text-sm border rounded" />
       <input value={form.doc_type || ''} onChange={e => setForm(prev => ({ ...prev, doc_type: e.target.value }))} placeholder="유형" className="px-2 py-1 text-sm border rounded" />
       <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: pending)" className="px-2 py-1 text-sm border rounded" />
@@ -568,7 +588,7 @@ function VoteRecordForm({
   const [form, setForm] = useState<VoteRecordInput>(initial)
 
   return (
-    <div className="mb-2 grid grid-cols-1 gap-2 rounded border bg-slate-50 p-2 md:grid-cols-5">
+    <div className="mb-2 grid grid-cols-1 gap-2 rounded border bg-gray-50 p-2 md:grid-cols-5">
       <select
         value={form.vote_type}
         onChange={e => setForm(prev => ({ ...prev, vote_type: e.target.value }))}
@@ -643,21 +663,21 @@ function ValuationForm({
   const [form, setForm] = useState<ValuationInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50 mb-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-gray-50 mb-2">
       <input type="date" value={form.as_of_date || ''} onChange={e => setForm(prev => ({ ...prev, as_of_date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
-      <input type="number" value={form.value ?? ''} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="Value" className="px-2 py-1 text-sm border rounded" />
-      <input type="number" value={form.prev_value ?? ''} onChange={e => setForm(prev => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="Previous value" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.method || ''} onChange={e => setForm(prev => ({ ...prev, method: e.target.value }))} placeholder="Method" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="Instrument" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.evaluator || ''} onChange={e => setForm(prev => ({ ...prev, evaluator: e.target.value }))} placeholder="Evaluator" className="px-2 py-1 text-sm border rounded" />
-      <input type="number" value={form.change_amount ?? ''} onChange={e => setForm(prev => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="Change amount" className="px-2 py-1 text-sm border rounded" />
-      <input type="number" step="0.01" value={form.change_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="Change %" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.basis || ''} onChange={e => setForm(prev => ({ ...prev, basis: e.target.value }))} placeholder="Basis" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.value ?? ''} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="평가금액" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.prev_value ?? ''} onChange={e => setForm(prev => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="전기 평가금액" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.method || ''} onChange={e => setForm(prev => ({ ...prev, method: e.target.value }))} placeholder="평가 방법" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="대상 증권" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.evaluator || ''} onChange={e => setForm(prev => ({ ...prev, evaluator: e.target.value }))} placeholder="평가기관" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" value={form.change_amount ?? ''} onChange={e => setForm(prev => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="증감액" className="px-2 py-1 text-sm border rounded" />
+      <input type="number" step="0.01" value={form.change_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="증감률(%)" className="px-2 py-1 text-sm border rounded" />
+      <input value={form.basis || ''} onChange={e => setForm(prev => ({ ...prev, basis: e.target.value }))} placeholder="산정 근거" className="px-2 py-1 text-sm border rounded" />
       <div className="md:col-span-3 flex gap-2">
         <button
           className="px-3 py-1 text-xs bg-indigo-600 text-white rounded"
           onClick={() => {
-            if (!form.investment_id || !form.fund_id || !form.company_id || !form.as_of_date || !form.value) return
+            if (!form.investment_id || !form.fund_id || !form.company_id || !form.as_of_date || form.value == null) return
             onSubmit({
               ...form,
               method: form.method?.trim() || null,
@@ -670,10 +690,12 @@ function ValuationForm({
             })
           }}
         >
-          Save
+          저장
         </button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>Cancel</button>
+        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
 }
+
+

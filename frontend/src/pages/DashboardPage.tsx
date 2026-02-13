@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+﻿import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { completeTask, fetchDashboard, generateMonthlyReminders } from '../lib/api'
@@ -51,7 +51,7 @@ function dueBadge(doc: MissingDocument): { text: string; className: string } | n
   }
   return {
     text: `D-${doc.days_remaining}`,
-    className: 'bg-slate-100 text-slate-600',
+    className: 'bg-gray-100 text-gray-600',
   }
 }
 
@@ -80,7 +80,7 @@ function reportDueBadge(report: UpcomingReport): { text: string; className: stri
   }
   return {
     text: `D-${report.days_remaining}`,
-    className: 'bg-slate-100 text-slate-600',
+    className: 'bg-gray-100 text-gray-600',
   }
 }
 
@@ -109,7 +109,7 @@ function TaskCard({
       className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
         isOverdue
           ? 'bg-red-50 border-red-300 hover:border-red-400'
-          : 'bg-white border-slate-200 hover:shadow-sm hover:border-blue-300'
+          : 'bg-white border-gray-200 hover:shadow-sm hover:border-blue-300'
       }`}
     >
       <button
@@ -118,7 +118,7 @@ function TaskCard({
           onComplete(task)
         }}
         disabled={completing}
-        className="mt-0.5 w-4 h-4 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 disabled:opacity-50 shrink-0 flex items-center justify-center"
+        className="mt-0.5 w-4 h-4 rounded-full border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 disabled:opacity-50 shrink-0 flex items-center justify-center"
         aria-label={`${task.title} 완료 처리`}
       >
         {completing && <Check size={10} className="text-green-600" />}
@@ -127,8 +127,8 @@ function TaskCard({
         {task.quadrant}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800 truncate">{task.title}</p>
-        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+        <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
           {deadlineStr && <span>{deadlineStr}</span>}
           {isOverdue && <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">지연</span>}
           {task.estimated_time && (
@@ -163,19 +163,19 @@ function TaskSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
           {icon}
           {title}
-          <span className="text-slate-400 font-normal">({tasks.length})</span>
+          <span className="text-gray-400 font-normal">({tasks.length})</span>
         </h3>
         {totalTime && (
-          <span className="text-xs text-slate-500 flex items-center gap-1">
+          <span className="text-xs text-gray-500 flex items-center gap-1">
             <Clock size={12} /> {totalTime}
           </span>
         )}
       </div>
       {tasks.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4 text-center bg-white rounded-lg border border-dashed border-slate-200">
+        <p className="text-sm text-gray-400 py-4 text-center bg-white rounded-lg border border-dashed border-gray-200">
           작업 없음
         </p>
       ) : (
@@ -262,19 +262,19 @@ export default function DashboardPage() {
     })
   }
 
-  if (isLoading) return <div className="p-8 text-slate-500">불러오는 중...</div>
+  if (isLoading) return <div className="p-8 text-gray-500">불러오는 중...</div>
   if (error) return <div className="p-8 text-red-500">대시보드 데이터를 불러오지 못했습니다.</div>
   if (!data) return null
 
-  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, active_workflows, fund_summary, missing_documents, upcoming_reports } = data
+  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, no_deadline, active_workflows, fund_summary, missing_documents, upcoming_reports } = data
 
   return (
     <div className="p-6 max-w-6xl">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900">
+        <h2 className="text-2xl font-bold text-gray-900">
           {new Date(date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ({DAY_LABEL[day_of_week] || day_of_week})
         </h2>
-        <p className="text-sm text-slate-500 mt-1">일일 개요</p>
+        <p className="text-sm text-gray-500 mt-1">일일 개요</p>
       </div>
 
       {monthly_reminder && (
@@ -302,7 +302,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           {active_workflows.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <ArrowRight size={16} /> 진행 중인 워크플로우
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -362,16 +362,26 @@ export default function DashboardPage() {
           <TaskSection
             title="예정"
             tasks={upcoming}
-            icon={<CheckCircle2 size={16} className="text-slate-400" />}
+            icon={<CheckCircle2 size={16} className="text-gray-400" />}
             onTaskClick={() => navigate('/tasks')}
             onTaskComplete={handleQuickComplete}
             completingTaskId={completeTaskMut.variables?.id ?? null}
           />
+          {no_deadline?.length > 0 && (
+            <TaskSection
+              title="기한 미설정"
+              tasks={no_deadline}
+              icon={<Clock size={16} className="text-gray-400" />}
+              onTaskClick={() => navigate('/tasks')}
+              onTaskComplete={handleQuickComplete}
+              completingTaskId={completeTaskMut.variables?.id ?? null}
+            />
+          )}
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Building2 size={16} /> 조합 요약
             </h3>
             {fund_summary?.length ? (
@@ -380,20 +390,20 @@ export default function DashboardPage() {
                   <button
                     key={fund.id}
                     onClick={() => navigate('/funds')}
-                    className="w-full text-left p-2 rounded border border-slate-200 hover:bg-slate-50"
+                    className="w-full text-left p-2 rounded border border-gray-200 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-medium text-slate-800">{fund.name}</p>
-                    <p className="text-xs text-slate-500">LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}</p>
+                    <p className="text-sm font-medium text-gray-800">{fund.name}</p>
+                    <p className="text-xs text-gray-500">LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}</p>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">등록된 조합이 없습니다.</p>
+              <p className="text-sm text-gray-400">등록된 조합이 없습니다.</p>
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Send size={16} /> 보고 마감
             </h3>
             {upcoming_reports?.length ? (
@@ -404,25 +414,25 @@ export default function DashboardPage() {
                     <button
                       key={report.id}
                       onClick={() => navigate('/reports')}
-                      className="w-full text-left p-2 rounded border border-slate-200 hover:bg-slate-50"
+                      className="w-full text-left p-2 rounded border border-gray-200 hover:bg-gray-50"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800">{report.report_target} | {report.period}</p>
+                        <p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p>
                         {badge && <span className={`text-[11px] px-1.5 py-0.5 rounded ${badge.className}`}>{badge.text}</span>}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
-                      {report.due_date && <p className="text-[11px] text-slate-500 mt-0.5">마감일 {formatShortDate(report.due_date)}</p>}
+                      <p className="text-xs text-gray-500 mt-0.5">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
+                      {report.due_date && <p className="text-[11px] text-gray-500 mt-0.5">마감일 {formatShortDate(report.due_date)}</p>}
                     </button>
                   )
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">임박한 보고 마감이 없습니다.</p>
+              <p className="text-sm text-gray-400">임박한 보고 마감이 없습니다.</p>
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <FileWarning size={16} /> 미수집 서류
             </h3>
             {missing_documents?.length ? (
@@ -446,7 +456,7 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">미수집 서류가 없습니다.</p>
+              <p className="text-sm text-gray-400">미수집 서류가 없습니다.</p>
             )}
           </div>
         </div>
@@ -454,3 +464,5 @@ export default function DashboardPage() {
     </div>
   )
 }
+
+

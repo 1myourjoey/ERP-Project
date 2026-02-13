@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createRegularReport,
@@ -64,7 +64,7 @@ function dueBadge(report: RegularReport): { text: string; className: string } | 
   if (report.days_remaining <= 7) {
     return { text: `D-${report.days_remaining}`, className: 'bg-yellow-100 text-yellow-700' }
   }
-  return { text: `D-${report.days_remaining}`, className: 'bg-slate-100 text-slate-700' }
+  return { text: `D-${report.days_remaining}`, className: 'bg-gray-100 text-gray-700' }
 }
 
 export default function ReportsPage() {
@@ -126,16 +126,16 @@ export default function ReportsPage() {
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">보고공시 관리</h2>
-          <p className="mt-1 text-sm text-slate-500">농금원/VICS 월보고, LP보고, 내부보고회 관리</p>
+          <h2 className="text-2xl font-bold text-gray-900">보고공시 관리</h2>
+          <p className="mt-1 text-sm text-gray-500">농금원/VICS 월보고, LP보고, 내부보고회 관리</p>
         </div>
         <button onClick={() => setShowCreate((prev) => !prev)} className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">
           + 신규 등록
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">필터</h3>
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded border px-2 py-1 text-sm">
             <option value="">전체 대상</option>
@@ -150,14 +150,14 @@ export default function ReportsPage() {
             {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </div>
-        <button onClick={() => setFilters(EMPTY_FILTERS)} className="mt-2 rounded border px-2 py-1 text-xs hover:bg-slate-100">
+        <button onClick={() => setFilters(EMPTY_FILTERS)} className="mt-2 rounded border px-2 py-1 text-xs hover:bg-gray-100">
           필터 초기화
         </button>
       </div>
 
       {showCreate && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">신규 보고공시 등록</h3>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 보고공시 등록</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded border px-2 py-1 text-sm">
               {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{REPORT_TARGET_LABEL[target] || target}</option>)}
@@ -181,27 +181,27 @@ export default function ReportsPage() {
                 })
               }}
               disabled={createMut.isPending}
-              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-slate-300"
+              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
             >
               저장
             </button>
-            <button onClick={() => setShowCreate(false)} className="rounded border bg-white px-3 py-1 text-xs hover:bg-slate-100">
+            <button onClick={() => setShowCreate(false)} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
               취소
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
         {isLoading ? (
-          <p className="p-2 text-sm text-slate-500">불러오는 중...</p>
+          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
         ) : !rows?.length ? (
-          <p className="p-2 text-sm text-slate-400">보고공시가 없습니다.</p>
+          <p className="p-2 text-sm text-gray-400">보고공시가 없습니다.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-slate-600">
+                <tr className="border-b text-left text-gray-600">
                   <th className="px-2 py-2">보고대상</th>
                   <th className="px-2 py-2">조합</th>
                   <th className="px-2 py-2">기간</th>
@@ -260,7 +260,7 @@ export default function ReportsPage() {
                               >
                                 저장
                               </button>
-                              <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-100">
+                              <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">
                                 취소
                               </button>
                             </div>
@@ -281,7 +281,7 @@ export default function ReportsPage() {
                                   memo: row.memo,
                                 })
                               }}
-                              className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200"
+                              className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
                             >
                               수정
                             </button>
@@ -307,3 +307,5 @@ export default function ReportsPage() {
     </div>
   )
 }
+
+

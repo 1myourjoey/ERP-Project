@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createAccount,
@@ -58,8 +58,8 @@ function JournalForm({
   const balanced = Math.round(debitTotal * 100) === Math.round(creditTotal * 100) && form.lines.length > 0
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">{title}</h3>
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <h3 className="mb-2 text-sm font-semibold text-gray-700">{title}</h3>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <select
           value={form.fund_id || ''}
@@ -163,7 +163,7 @@ function JournalForm({
       <div className="mt-2 flex items-center justify-between">
         <button
           onClick={() => setForm((prev) => ({ ...prev, lines: [...prev.lines, { account_id: 0, debit: 0, credit: 0, memo: '' }] }))}
-          className="rounded border px-2 py-1 text-xs hover:bg-slate-100"
+          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
         >
           + 라인 추가
         </button>
@@ -183,12 +183,12 @@ function JournalForm({
             })
           }}
           disabled={loading || !balanced}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-slate-300"
+          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
         >
           저장
         </button>
         {onCancel && (
-          <button onClick={onCancel} className="rounded border bg-white px-3 py-1 text-xs hover:bg-slate-100">
+          <button onClick={onCancel} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
             취소
           </button>
         )}
@@ -335,22 +335,22 @@ export default function AccountingPage() {
   return (
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">회계 관리</h2>
+        <h2 className="text-2xl font-bold text-gray-900">회계 관리</h2>
         <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
           {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
         </select>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>계정과목</button>
-        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>전표</button>
-        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>합계잔액</button>
+        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>계정과목</button>
+        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>전표</button>
+        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>합계잔액</button>
       </div>
 
       {tab === 'accounts' && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">계정과목 등록</h3>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">계정과목 등록</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
               <input value={newAccount.code} onChange={(e) => setNewAccount((prev) => ({ ...prev, code: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="코드" />
               <input value={newAccount.name} onChange={(e) => setNewAccount((prev) => ({ ...prev, name: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="계정명" />
@@ -375,18 +375,18 @@ export default function AccountingPage() {
                   })
                 }}
                 disabled={createAccountMut.isPending}
-                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-slate-300"
+                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
               >
                 등록
               </button>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-gray-600">
                     <th className="px-2 py-2">카테고리</th>
                     <th className="px-2 py-2">코드</th>
                     <th className="px-2 py-2">계정명</th>
@@ -430,7 +430,7 @@ export default function AccountingPage() {
                               >
                                 저장
                               </button>
-                              <button onClick={() => { setEditingAccountId(null); setEditAccount(null) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-100">취소</button>
+                              <button onClick={() => { setEditingAccountId(null); setEditAccount(null) }} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">취소</button>
                             </div>
                           </td>
                         </>
@@ -457,7 +457,7 @@ export default function AccountingPage() {
                                     display_order: account.display_order,
                                   })
                                 }}
-                                className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200"
+                                className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
                               >
                                 수정
                               </button>
@@ -508,22 +508,22 @@ export default function AccountingPage() {
             />
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">전표 목록</h3>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">전표 목록</h3>
             <div className="space-y-2">
               {entries?.map((entry) => (
-                <div key={entry.id} className="rounded border border-slate-200 p-2">
+                <div key={entry.id} className="rounded border border-gray-200 p-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{entry.entry_date} | {entry.status} | {entry.description || '-'}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="text-sm font-medium text-gray-800">{entry.entry_date} | {entry.status} | {entry.description || '-'}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">
                         라인 {entry.lines.length}개
                         {' / '}
                         차변 {formatNumber(entry.lines.reduce((sum, line) => sum + (line.debit || 0), 0))}
                         {' / '}
                         대변 {formatNumber(entry.lines.reduce((sum, line) => sum + (line.credit || 0), 0))}
                       </p>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="mt-1 text-xs text-gray-500">
                         {entry.lines.map((line) => (
                           <div key={line.id}>
                             {accountNameMap.get(line.account_id) || line.account_name || line.account_id} | 차변 {formatNumber(line.debit)} | 대변 {formatNumber(line.credit)}
@@ -551,7 +551,7 @@ export default function AccountingPage() {
                             })),
                           })
                         }}
-                        className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200"
+                        className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
                       >
                         수정
                       </button>
@@ -567,7 +567,7 @@ export default function AccountingPage() {
                   </div>
                 </div>
               ))}
-              {!entries?.length && <p className="text-sm text-slate-400">전표가 없습니다.</p>}
+              {!entries?.length && <p className="text-sm text-gray-400">전표가 없습니다.</p>}
             </div>
           </div>
         </div>
@@ -575,19 +575,19 @@ export default function AccountingPage() {
 
       {tab === 'trial' && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">조회 조건</h3>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">조회 조건</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="rounded border px-2 py-1 text-sm" />
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">합계잔액표</h3>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">합계잔액표</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-gray-600">
                     <th className="px-2 py-2">카테고리</th>
                     <th className="px-2 py-2">코드</th>
                     <th className="px-2 py-2">계정명</th>
@@ -609,7 +609,7 @@ export default function AccountingPage() {
                   ))}
                   {!trialBalance?.length && (
                     <tr>
-                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-slate-400">데이터가 없습니다.</td>
+                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-gray-400">데이터가 없습니다.</td>
                     </tr>
                   )}
                 </tbody>
@@ -621,3 +621,5 @@ export default function AccountingPage() {
     </div>
   )
 }
+
+

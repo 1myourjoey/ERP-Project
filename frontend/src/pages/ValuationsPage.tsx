@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createValuation,
@@ -117,7 +117,7 @@ function ValuationForm({
   )
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <select
           value={form.fund_id || ''}
@@ -233,11 +233,11 @@ function ValuationForm({
             })
           }}
           disabled={loading}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-slate-300"
+          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
         >
           {submitLabel}
         </button>
-        <button onClick={onCancel} className="rounded border bg-white px-3 py-1 text-xs hover:bg-slate-100">
+        <button onClick={onCancel} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
           취소
         </button>
       </div>
@@ -309,7 +309,7 @@ export default function ValuationsPage() {
   return (
     <div className="max-w-7xl p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">가치평가</h2>
+        <h2 className="text-2xl font-bold text-gray-900">가치평가</h2>
         <button
           onClick={() => setShowCreate((prev) => !prev)}
           className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
@@ -318,8 +318,8 @@ export default function ValuationsPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">필터</h3>
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <select
             value={filters.fund_id || ''}
@@ -366,7 +366,7 @@ export default function ValuationsPage() {
           </select>
         </div>
         <div className="mt-2">
-          <button onClick={() => setFilters(EMPTY_FILTERS)} className="rounded border px-2 py-1 text-xs hover:bg-slate-100">
+          <button onClick={() => setFilters(EMPTY_FILTERS)} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">
             필터 초기화
           </button>
         </div>
@@ -385,16 +385,16 @@ export default function ValuationsPage() {
         />
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">평가 이력</h3>
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-700">평가 이력</h3>
         {isLoading ? (
-          <p className="p-2 text-sm text-slate-500">불러오는 중...</p>
+          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
         ) : !rows?.length ? (
-          <p className="p-2 text-sm text-slate-400">가치평가 이력이 없습니다.</p>
+          <p className="p-2 text-sm text-gray-400">가치평가 이력이 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (
-              <div key={row.id} className="rounded-lg border border-slate-200 p-3">
+              <div key={row.id} className="rounded-lg border border-gray-200 p-3">
                 {editingId === row.id ? (
                   <ValuationForm
                     funds={funds || []}
@@ -422,22 +422,22 @@ export default function ValuationsPage() {
                 ) : (
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">
+                      <p className="text-sm font-medium text-gray-800">
                         {toDate(row.as_of_date)} | {labelMethod(row.method)} | {row.instrument || '-'}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-gray-500">
                         조합: {row.fund_name || fundNameMap.get(row.fund_id) || row.fund_id} | 투자사:{' '}
                         {row.company_name || companyNameMap.get(row.company_id) || row.company_id} | 투자건 #{row.investment_id}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-gray-500">
                         평가금액 {formatKRW(row.value)} | 전기 평가금액 {formatKRW(row.prev_value)} | 변동액 {formatKRW(row.change_amount)} ({toPercent(row.change_pct)})
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-gray-500">
                         평가 주체: {row.evaluator || '-'} | 산출 근거: {row.basis || '-'}
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => setEditingId(row.id)} className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">
+                      <button onClick={() => setEditingId(row.id)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">
                         수정
                       </button>
                       <button
@@ -459,3 +459,5 @@ export default function ValuationsPage() {
     </div>
   )
 }
+
+

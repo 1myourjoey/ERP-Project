@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchCalendarEvents,
@@ -70,9 +70,10 @@ function isUrgentDate(date: string) {
 }
 
 function eventTone(event: CalendarEvent) {
+  if (event.event_type === 'task') return 'bg-blue-100 text-blue-700'
   if (event.status === 'completed') return 'bg-green-100 text-green-700'
   if (event.status !== 'completed' && isUrgentDate(event.date)) return 'bg-red-100 text-red-700'
-  return 'bg-blue-100 text-blue-700'
+  return 'bg-indigo-100 text-indigo-700'
 }
 
 export default function CalendarPage() {
@@ -102,7 +103,7 @@ export default function CalendarPage() {
 
   const { data: events, isLoading } = useQuery<CalendarEvent[]>({
     queryKey: ['calendarEvents', status, monthStart, monthEnd],
-    queryFn: () => fetchCalendarEvents({ status: status || undefined, date_from: monthStart, date_to: monthEnd }),
+    queryFn: () => fetchCalendarEvents({ status: status || undefined, date_from: monthStart, date_to: monthEnd, include_tasks: true }),
   })
 
   const createMut = useMutation({
@@ -154,7 +155,7 @@ export default function CalendarPage() {
 
   return (
     <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-slate-900 mb-5">캘린더</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-5">캘린더</h2>
 
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -164,19 +165,26 @@ export default function CalendarPage() {
             <option value="completed">{labelStatus('completed')}</option>
           </select>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
             onClick={() => setView('calendar')}
           >
             월별
           </button>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
             onClick={() => setView('list')}
           >
             리스트
           </button>
         </div>
         <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-blue-700">업무 마감</span>
+        <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-1 text-indigo-700">일반 일정</span>
+        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">긴급 일정</span>
+        <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-green-700">완료 일정</span>
       </div>
 
       {showCreate && (
@@ -189,24 +197,24 @@ export default function CalendarPage() {
 
       {view === 'calendar' ? (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                className="px-2 py-1 text-sm bg-slate-100 rounded hover:bg-slate-200"
+                className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
               >
                 &lt;
               </button>
-              <h3 className="text-sm font-semibold text-slate-800">{monthLabel}</h3>
+              <h3 className="text-sm font-semibold text-gray-800">{monthLabel}</h3>
               <button
-                className="px-2 py-1 text-sm bg-slate-100 rounded hover:bg-slate-200"
+                className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
               >
                 &gt;
               </button>
             </div>
             <button
-              className="text-xs px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+              className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
               onClick={() => {
                 const now = new Date()
                 setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
@@ -217,15 +225,15 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-xl overflow-hidden">
             {WEEKDAY_LABELS.map(label => (
-              <div key={label} className="bg-slate-50 px-2 py-2 text-center text-xs font-medium text-slate-600">
+              <div key={label} className="bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-600">
                 {label}
               </div>
             ))}
 
             {isLoading ? (
-              <div className="col-span-7 bg-white p-6 text-sm text-slate-500 text-center">불러오는 중...</div>
+              <div className="col-span-7 bg-white p-6 text-sm text-gray-500 text-center">불러오는 중...</div>
             ) : (
               cells.map(({ date, inCurrentMonth }) => {
                 const dateKey = formatDate(date)
@@ -241,8 +249,8 @@ export default function CalendarPage() {
                       setEditingId(null)
                     }}
                     className={`bg-white p-2 min-h-[110px] text-left align-top transition-colors ${
-                      inCurrentMonth ? '' : 'text-slate-300 bg-slate-50'
-                    } ${isSelected ? 'ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}
+                      inCurrentMonth ? '' : 'text-gray-300 bg-gray-50'
+                    } ${isSelected ? 'ring-2 ring-inset ring-blue-400' : 'hover:bg-gray-50'}`}
                   >
                     <div className={`text-sm ${isToday ? 'bg-blue-50 font-bold text-blue-700 inline-block px-1.5 rounded' : ''}`}>
                       {date.getDate()}
@@ -254,7 +262,7 @@ export default function CalendarPage() {
                           {event.title}
                         </div>
                       ))}
-                      {dayEvents.length > 2 && <p className="text-[11px] text-slate-400">+{dayEvents.length - 2}개 더</p>}
+                      {dayEvents.length > 2 && <p className="text-[11px] text-gray-400">+{dayEvents.length - 2}개 더</p>}
                     </div>
                   </button>
                 )
@@ -262,9 +270,9 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-slate-700">
+              <h4 className="text-sm font-semibold text-gray-700">
                 {parseDate(selectedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
               </h4>
               <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => openCreateForDate(selectedDate)}>
@@ -273,11 +281,11 @@ export default function CalendarPage() {
             </div>
 
             {!selectedDateEvents.length ? (
-              <p className="text-sm text-slate-400">이 날짜의 일정이 없습니다.</p>
+              <p className="text-sm text-gray-400">이 날짜의 일정이 없습니다.</p>
             ) : (
               <div className="space-y-2">
                 {selectedDateEvents.map(event => (
-                  <div key={event.id} className="border border-slate-200 rounded-lg p-3">
+                  <div key={event.id} className="border border-gray-200 rounded-lg p-3">
                     {editingId === event.id ? (
                       <EventForm
                         initial={event}
@@ -294,10 +302,10 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className="text-sm font-medium text-slate-800">{event.title}</p>
+                            <p className="text-sm font-medium text-gray-800">{event.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {event.time || '-'} | {event.duration ?? '-'}분 | {event.description || '-'}
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {event.time || '-'} | {event.duration != null ? `${event.duration}분` : '-'} | {event.description || '-'}
                           </p>
                           <span className={`inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded ${eventTone(event)}`}>
                             {labelStatus(event.status)}
@@ -305,10 +313,10 @@ export default function CalendarPage() {
                         </div>
                         <div className="flex gap-1 shrink-0">
                           {event.task_id ? (
-                            <span className="text-xs text-slate-400">업무 보드에서 관리</span>
+                            <span className="text-xs text-gray-400">업무 보드에서 관리</span>
                           ) : (
                             <>
-                              <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
@@ -325,12 +333,12 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           {isLoading ? (
-            <p className="p-4 text-sm text-slate-500">불러오는 중...</p>
+            <p className="p-4 text-sm text-gray-500">불러오는 중...</p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs">
+              <thead className="bg-gray-50 text-gray-600 text-xs">
                 <tr>
                   <th className="px-3 py-2 text-left">날짜</th>
                   <th className="px-3 py-2 text-left">제목</th>
@@ -342,7 +350,7 @@ export default function CalendarPage() {
               </thead>
               <tbody>
                 {sortedEvents.map(event => (
-                  <tr key={event.id} className="border-t border-slate-100 align-top">
+                  <tr key={event.id} className="border-t border-gray-100 align-top">
                     <td className="px-3 py-2">{event.date}</td>
                     <td className="px-3 py-2">
                       {editingId === event.id ? (
@@ -355,14 +363,14 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className="font-medium text-slate-800">{event.title}</p>
+                            <p className="font-medium text-gray-800">{event.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500">{event.description || '-'}</p>
+                          <p className="text-xs text-gray-500">{event.description || '-'}</p>
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-2">{event.time || '-'}</td>
-                    <td className="px-3 py-2">{event.duration ?? '-'}분</td>
+                    <td className="px-3 py-2">{event.duration != null ? `${event.duration}분` : '-'}</td>
                     <td className="px-3 py-2">
                       <span className={`text-[11px] px-1.5 py-0.5 rounded ${eventTone(event)}`}>{labelStatus(event.status)}</span>
                     </td>
@@ -370,10 +378,10 @@ export default function CalendarPage() {
                       {editingId !== event.id && (
                         <div className="flex gap-1">
                           {event.task_id ? (
-                            <span className="text-xs text-slate-400">업무 보드에서 관리</span>
+                            <span className="text-xs text-gray-400">업무 보드에서 관리</span>
                           ) : (
                             <>
-                              <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
@@ -387,7 +395,7 @@ export default function CalendarPage() {
                 ))}
                 {!sortedEvents.length && (
                   <tr>
-                    <td className="px-3 py-4 text-slate-400" colSpan={6}>일정이 없습니다.</td>
+                    <td className="px-3 py-4 text-gray-400" colSpan={6}>일정이 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -416,7 +424,7 @@ function EventForm({
   })
 
   return (
-    <div className={`${compact ? '' : 'mb-3'} bg-slate-50 border border-slate-200 rounded p-2`}>
+    <div className={`${compact ? '' : 'mb-3'} bg-gray-50 border border-gray-200 rounded p-2`}>
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
         <input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="제목" className="px-2 py-1 text-sm border rounded" />
         <input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
@@ -443,3 +451,5 @@ function EventForm({
     </div>
   )
 }
+
+

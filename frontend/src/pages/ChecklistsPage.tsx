@@ -113,11 +113,11 @@ export default function ChecklistsPage() {
 
   return (
     <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-slate-900 mb-5">체크리스트</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-5">체크리스트</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-700">체크리스트 목록</h3>
+            <h3 className="text-sm font-semibold text-gray-700">체크리스트 목록</h3>
             <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowCreate(v => !v)}>+ 체크리스트</button>
           </div>
 
@@ -129,16 +129,16 @@ export default function ChecklistsPage() {
             />
           )}
 
-          {isLoading ? <p className="text-sm text-slate-500">불러오는 중...</p> : (
+          {isLoading ? <p className="text-sm text-gray-500">불러오는 중...</p> : (
             <div className="space-y-2">
               {checklists?.map((cl: ChecklistListItem) => (
                 <button
                   key={cl.id}
                   onClick={() => { setSelectedId(cl.id); setEditingChecklist(false) }}
-                  className={`w-full text-left p-3 border rounded ${selectedId === cl.id ? 'bg-blue-50 border-blue-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+                  className={`w-full text-left p-3 border rounded ${selectedId === cl.id ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
                 >
-                  <p className="text-sm font-medium text-slate-800">{cl.name}</p>
-                  <p className="text-xs text-slate-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items}</p>
+                  <p className="text-sm font-medium text-gray-800">{cl.name}</p>
+                  <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items}</p>
                 </button>
               ))}
             </div>
@@ -147,7 +147,7 @@ export default function ChecklistsPage() {
 
         <div>
           {!selectedId || !checklist ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-500">체크리스트를 선택하세요.</div>
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-sm text-gray-500">체크리스트를 선택하세요.</div>
           ) : editingChecklist ? (
             <ChecklistForm
               initial={{ name: checklist.name, category: checklist.category || '', items: [] }}
@@ -155,14 +155,14 @@ export default function ChecklistsPage() {
               onCancel={() => setEditingChecklist(false)}
             />
           ) : (
-            <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-800">{checklist.name}</h3>
-                  <p className="text-sm text-slate-500">{checklist.category || '-'} | 진행률 {progress}</p>
+                  <h3 className="text-lg font-semibold text-gray-800">{checklist.name}</h3>
+                  <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="text-xs px-2 py-1 bg-slate-100 rounded" onClick={() => setEditingChecklist(true)}>수정</button>
+                  <button className="text-xs px-2 py-1 bg-gray-100 rounded" onClick={() => setEditingChecklist(true)}>수정</button>
                   <button
                     className="text-xs px-2 py-1 bg-red-50 text-red-700 rounded"
                     onClick={() => { if (confirm('이 체크리스트를 삭제하시겠습니까?')) deleteMut.mutate(selectedId) }}
@@ -172,7 +172,7 @@ export default function ChecklistsPage() {
 
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-slate-700">항목</h4>
+                  <h4 className="text-sm font-semibold text-gray-700">항목</h4>
                   <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowItemCreate(v => !v)}>+ 항목</button>
                 </div>
 
@@ -201,10 +201,10 @@ export default function ChecklistsPage() {
                             onChange={e => updateItemMut.mutate({ checklistId: selectedId, itemId: item.id, data: { checked: e.target.checked } })}
                           />
                           <div className="flex-1">
-                            <p className={`text-sm ${item.checked ? 'line-through text-slate-400' : 'text-slate-800'}`}>{item.order}. {item.name}</p>
-                            <p className="text-xs text-slate-500">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
+                            <p className={`text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{item.order}. {item.name}</p>
+                            <p className="text-xs text-gray-500">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
                           </div>
-                          <button className="text-xs px-2 py-0.5 bg-slate-100 rounded" onClick={() => setEditingItemId(item.id)}>수정</button>
+                          <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingItemId(item.id)}>수정</button>
                           <button
                             className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded"
                             onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) deleteItemMut.mutate({ checklistId: selectedId, itemId: item.id }) }}
@@ -213,7 +213,7 @@ export default function ChecklistsPage() {
                       )}
                     </div>
                   ))}
-                  {!checklist.items?.length && <p className="text-sm text-slate-400">항목이 없습니다.</p>}
+                  {!checklist.items?.length && <p className="text-sm text-gray-400">항목이 없습니다.</p>}
                 </div>
               </div>
             </div>
@@ -237,7 +237,7 @@ function ChecklistForm({
   const [category, setCategory] = useState(initial.category || '')
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded p-3 mb-3">
+    <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <input value={name} onChange={e => setName(e.target.value)} placeholder="체크리스트 이름" className="px-2 py-1 text-sm border rounded" />
         <input value={category} onChange={e => setCategory(e.target.value)} placeholder="카테고리" className="px-2 py-1 text-sm border rounded" />
@@ -262,7 +262,7 @@ function ItemForm({
   const [form, setForm] = useState<ChecklistItemInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 bg-slate-50 border border-slate-200 rounded p-2">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 bg-gray-50 border border-gray-200 rounded p-2">
       <input type="number" value={form.order} onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))} className="px-2 py-1 text-sm border rounded" placeholder="순서" />
       <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} className="px-2 py-1 text-sm border rounded" placeholder="항목 이름" />
       <input value={form.notes || ''} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} className="px-2 py-1 text-sm border rounded" placeholder="비고" />
@@ -274,4 +274,6 @@ function ItemForm({
     </div>
   )
 }
+
+
 

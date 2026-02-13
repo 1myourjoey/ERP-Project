@@ -1,15 +1,28 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import {
+  Search,
+  X,
+  CheckSquare,
+  Building2,
+  PieChart,
+  GitBranch,
+  FileText,
+  Send,
+  BookOpen,
+} from 'lucide-react'
 
 import { searchGlobal, type SearchResult } from '../lib/api'
 
-const TYPE_LABEL: Record<string, string> = {
-  task: 'Task',
-  fund: 'Fund',
-  company: 'Company',
-  investment: 'Investment',
-  workflow: 'Workflow',
+const TYPE_META: Record<string, { label: string; icon: typeof Search }> = {
+  task: { label: '업무', icon: CheckSquare },
+  fund: { label: '조합', icon: Building2 },
+  company: { label: '회사', icon: Building2 },
+  investment: { label: '투자', icon: PieChart },
+  workflow: { label: '워크플로우', icon: GitBranch },
+  biz_report: { label: '영업보고', icon: FileText },
+  report: { label: '보고공시', icon: Send },
+  worklog: { label: '업무기록', icon: BookOpen },
 }
 
 function groupByType(items: SearchResult[]) {
@@ -89,54 +102,71 @@ export default function SearchModal({
   return (
     <div className="fixed inset-0 z-[110] bg-black/40 p-4 md:p-10" onClick={handleClose}>
       <div
-        className="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl"
+        className="mx-auto max-w-2xl rounded-2xl shadow-sm border border-gray-100 bg-white"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2">
-          <Search size={16} className="text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-gray-200 px-3 py-2">
+          <Search size={16} className="text-gray-400" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => onQueryChange(e.target.value)}
-            placeholder="Search funds, companies, tasks, workflows"
+            placeholder="조합, 회사, 업무, 워크플로우, 보고서 검색"
             className="w-full bg-transparent text-sm outline-none"
           />
-          <button className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={handleClose}>
+          <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={handleClose}>
             <X size={16} />
           </button>
         </div>
 
         <div className="max-h-[60vh] overflow-auto p-2">
-          {loading && <p className="p-2 text-sm text-slate-500">Searching...</p>}
+          {loading && <p className="p-2 text-sm text-gray-500">검색 중...</p>}
           {!loading && query.trim() && results.length === 0 && (
-            <p className="p-2 text-sm text-slate-500">No results found.</p>
+            <p className="p-2 text-sm text-gray-500">검색 결과가 없습니다.</p>
           )}
           {!query.trim() && (
-            <p className="p-2 text-sm text-slate-500">Use Ctrl+K or Cmd+K anytime.</p>
+            <p className="p-2 text-sm text-gray-500">언제든지 Ctrl+K 또는 Cmd+K로 검색할 수 있습니다.</p>
           )}
 
-          {Object.entries(grouped).map(([type, items]) => (
-            <div key={type} className="mb-3">
-              <p className="px-2 pb-1 text-xs font-medium text-slate-500">{TYPE_LABEL[type] || type}</p>
-              <div className="space-y-1">
-                {items.map(item => (
-                  <button
-                    key={`${item.type}-${item.id}`}
-                    onClick={() => {
-                      navigate(item.url)
-                      handleClose()
-                    }}
-                    className="w-full rounded-lg px-2 py-2 text-left hover:bg-slate-100"
-                  >
-                    <p className="text-sm text-slate-800">{item.title}</p>
-                    {item.subtitle && <p className="text-xs text-slate-500 mt-0.5">{item.subtitle}</p>}
-                  </button>
-                ))}
+          {Object.entries(grouped).map(([type, items]) => {
+            const meta = TYPE_META[type]
+            const HeaderIcon = meta?.icon || Search
+            return (
+              <div key={type} className="mb-3">
+                <p className="px-2 pb-1 text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                  <HeaderIcon size={12} />
+                  {meta?.label || type}
+                </p>
+                <div className="space-y-1">
+                  {items.map(item => {
+                    const itemMeta = TYPE_META[item.type]
+                    const ItemIcon = itemMeta?.icon || Search
+                    return (
+                      <button
+                        key={`${item.type}-${item.id}`}
+                        onClick={() => {
+                          navigate(item.url)
+                          handleClose()
+                        }}
+                        className="w-full rounded-lg px-2 py-2 text-left hover:bg-gray-100"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ItemIcon size={14} className="text-gray-400 shrink-0" />
+                          <p className="text-sm text-gray-800">{item.title}</p>
+                        </div>
+                        {item.subtitle && <p className="text-xs text-gray-500 mt-0.5 pl-6">{item.subtitle}</p>}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
+
+
+
