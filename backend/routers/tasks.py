@@ -1,5 +1,5 @@
 ﻿import re
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -182,6 +182,25 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
     task.status = "completed"
     task.completed_at = datetime.now()
     task.actual_time = data.actual_time
+
+    if data.auto_worklog:
+        from models.worklog import WorkLog, WorkLogDetail
+
+        worklog = WorkLog(
+            date=date.today(),
+            category="업무",
+            title=f"[완료] {task.title}",
+            content=task.memo or f"{task.title} 완료",
+            status="완료",
+            actual_time=data.actual_time,
+            task_id=task.id,
+        )
+        db.add(worklog)
+        db.flush()
+
+        if task.memo:
+            db.add(WorkLogDetail(worklog_id=worklog.id, content=task.memo, order=0))
+
     db.commit()
     db.refresh(task)
     return task

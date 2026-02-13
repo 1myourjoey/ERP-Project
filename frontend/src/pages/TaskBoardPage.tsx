@@ -12,6 +12,8 @@ const QUADRANTS = [
   { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-gray-300', bg: 'bg-gray-50', badge: 'bg-gray-400' },
 ]
 
+const AUTO_WORKLOG_STORAGE_KEY = 'autoWorklog'
+
 function TaskItem({ task, onComplete, onDelete, onEdit }: {
   task: Task
   onComplete: (id: number) => void
@@ -244,10 +246,14 @@ function EditTaskModal({ task, onSave, onCancel }: {
 
 function CompleteModal({ task, onConfirm, onCancel }: {
   task: Task
-  onConfirm: (actualTime: string) => void
+  onConfirm: (actualTime: string, autoWorklog: boolean) => void
   onCancel: () => void
 }) {
   const [actualTime, setActualTime] = useState(task.estimated_time || '')
+  const [autoWorklog, setAutoWorklog] = useState(() => {
+    const saved = window.localStorage.getItem(AUTO_WORKLOG_STORAGE_KEY)
+    return saved == null ? true : saved === 'true'
+  })
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
@@ -259,13 +265,25 @@ function CompleteModal({ task, onConfirm, onCancel }: {
           autoFocus
           value={actualTime}
           onChange={e => setActualTime(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && actualTime && onConfirm(actualTime)}
+          onKeyDown={e => e.key === 'Enter' && actualTime && onConfirm(actualTime, autoWorklog)}
           placeholder="예) 1h30m"
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
         />
+        <label className="mb-4 flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={autoWorklog}
+            onChange={(e) => {
+              const nextValue = e.target.checked
+              setAutoWorklog(nextValue)
+              window.localStorage.setItem(AUTO_WORKLOG_STORAGE_KEY, String(nextValue))
+            }}
+          />
+          업무 기록 자동 생성
+        </label>
         <div className="flex gap-2">
           <button
-            onClick={() => actualTime && onConfirm(actualTime)}
+            onClick={() => actualTime && onConfirm(actualTime, autoWorklog)}
             className="flex-1 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
           >
             <Check size={16} /> 완료
@@ -311,7 +329,8 @@ export default function TaskBoardPage() {
   })
 
   const completeMutation = useMutation({
-    mutationFn: ({ id, actualTime }: { id: number; actualTime: string }) => completeTask(id, actualTime),
+    mutationFn: ({ id, actualTime, autoWorklog }: { id: number; actualTime: string; autoWorklog: boolean }) =>
+      completeTask(id, actualTime, autoWorklog),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -418,7 +437,7 @@ export default function TaskBoardPage() {
       {completingTask && (
         <CompleteModal
           task={completingTask}
-          onConfirm={(actualTime) => completeMutation.mutate({ id: completingTask.id, actualTime })}
+          onConfirm={(actualTime, autoWorklog) => completeMutation.mutate({ id: completingTask.id, actualTime, autoWorklog })}
           onCancel={() => setCompletingTask(null)}
         />
       )}

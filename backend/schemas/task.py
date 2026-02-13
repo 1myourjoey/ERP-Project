@@ -46,6 +46,7 @@ class TaskUpdate(BaseModel):
 
 class TaskComplete(BaseModel):
     actual_time: str
+    auto_worklog: bool | None = None
 
 
 class TaskMove(BaseModel):

@@ -7,6 +7,8 @@ import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning, Check, Send } from 'lucide-react'
 
+const AUTO_WORKLOG_STORAGE_KEY = 'autoWorklog'
+
 const QUADRANT_COLORS: Record<string, string> = {
   Q1: 'bg-red-100 text-red-700',
   Q2: 'bg-blue-100 text-blue-700',
@@ -235,7 +237,8 @@ export default function DashboardPage() {
   })
 
   const completeTaskMut = useMutation({
-    mutationFn: ({ id, actual_time }: { id: number; actual_time: string }) => completeTask(id, actual_time),
+    mutationFn: ({ id, actual_time, auto_worklog }: { id: number; actual_time: string; auto_worklog: boolean }) =>
+      completeTask(id, actual_time, auto_worklog),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
@@ -256,9 +259,12 @@ export default function DashboardPage() {
 
   const handleQuickComplete = (task: Task) => {
     if (completeTaskMut.isPending) return
+    const saved = window.localStorage.getItem(AUTO_WORKLOG_STORAGE_KEY)
+    const autoWorklog = saved == null ? true : saved === 'true'
     completeTaskMut.mutate({
       id: task.id,
       actual_time: task.estimated_time || '0m',
+      auto_worklog: autoWorklog,
     })
   }
 

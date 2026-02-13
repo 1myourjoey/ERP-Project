@@ -18,7 +18,8 @@ export const fetchTasks = (params?: { quadrant?: string; status?: string }) => a
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
-export const completeTask = (id: number, actual_time: string) => api.patch(`/tasks/${id}/complete`, { actual_time }).then(r => r.data)
+export const completeTask = (id: number, actual_time: string, auto_worklog?: boolean) =>
+  api.patch(`/tasks/${id}/complete`, { actual_time, auto_worklog }).then(r => r.data)
 export const deleteTask = (id: number) => api.delete(`/tasks/${id}`)
 export const generateMonthlyReminders = (yearMonth: string) =>
   api.post('/tasks/generate-monthly-reminders', null, { params: { year_month: yearMonth } }).then(r => r.data)
@@ -181,7 +182,9 @@ export const deleteChecklistItem = (checklistId: number, itemId: number) => api.
 export const fetchDocumentStatus = (params?: { status?: string; fund_id?: number; company_id?: number }): Promise<DocumentStatusItem[]> => api.get('/document-status', { params }).then(r => r.data)
 
 // -- Calendar --
-export const fetchCalendarEvents = (params?: { date_from?: string; date_to?: string; status?: string }): Promise<CalendarEvent[]> => api.get('/calendar-events', { params }).then(r => r.data)
+export const fetchCalendarEvents = (
+  params?: { date_from?: string; date_to?: string; status?: string; year?: number; month?: number; include_tasks?: boolean },
+): Promise<CalendarEvent[]> => api.get('/calendar-events', { params }).then(r => r.data)
 export const createCalendarEvent = (data: CalendarEventInput) => api.post('/calendar-events', data).then(r => r.data)
 export const updateCalendarEvent = (id: number, data: Partial<CalendarEventInput>) => api.put(`/calendar-events/${id}`, data).then(r => r.data)
 export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/${id}`)
@@ -202,6 +205,7 @@ export interface DashboardResponse {
   tomorrow: { tasks: Task[]; total_estimated_time: string }
   this_week: Task[]
   upcoming: Task[]
+  no_deadline: Task[]
   active_workflows: ActiveWorkflow[]
   fund_summary: FundSummary[]
   missing_documents: MissingDocument[]
@@ -410,6 +414,11 @@ export interface Fund {
   trustee: string | null
   commitment_total: number | null
   aum: number | null
+  maturity_date: string | null
+  mgmt_fee_rate: number | null
+  performance_fee_rate: number | null
+  hurdle_rate: number | null
+  account_number: string | null
   lp_count?: number
   investment_count?: number
   lps?: LP[]
@@ -425,6 +434,11 @@ export interface FundInput {
   trustee?: string | null
   commitment_total?: number | null
   aum?: number | null
+  maturity_date?: string | null
+  mgmt_fee_rate?: number | null
+  performance_fee_rate?: number | null
+  hurdle_rate?: number | null
+  account_number?: string | null
 }
 
 export interface LPInput {
@@ -453,6 +467,13 @@ export interface Company {
   address: string | null
   industry: string | null
   vics_registered: boolean
+  corp_number: string | null
+  founded_date: string | null
+  analyst: string | null
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  memo: string | null
 }
 
 export interface CompanyInput {
@@ -462,6 +483,13 @@ export interface CompanyInput {
   address?: string | null
   industry?: string | null
   vics_registered?: boolean
+  corp_number?: string | null
+  founded_date?: string | null
+  analyst?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  memo?: string | null
 }
 
 export interface InvestmentInput {
@@ -475,6 +503,11 @@ export interface InvestmentInput {
   contribution_rate?: string | null
   instrument?: string | null
   status?: string
+  round?: string | null
+  valuation_pre?: number | null
+  valuation_post?: number | null
+  ownership_pct?: number | null
+  board_seat?: string | null
 }
 
 export interface InvestmentDocumentInput {
@@ -964,12 +997,14 @@ export interface DocumentStatusItem {
   note: string | null
   due_date: string | null
   days_remaining: number | null
+  fund_id: number
   company_name: string
+  company_id: number
   fund_name: string
 }
 
 export interface SearchResult {
-  type: 'task' | 'fund' | 'company' | 'investment' | 'workflow' | string
+  type: 'task' | 'fund' | 'company' | 'investment' | 'workflow' | 'biz_report' | 'report' | 'worklog' | string
   id: number
   title: string
   subtitle?: string | null
@@ -996,6 +1031,8 @@ export interface CalendarEvent {
   status: string
   task_id: number | null
   quadrant: string | null
+  event_type?: string
+  color?: string | null
 }
 
 export interface WorkLogInput {
