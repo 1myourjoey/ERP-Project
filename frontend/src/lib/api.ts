@@ -97,6 +97,11 @@ export const fetchBizReport = (id: number): Promise<BizReport> => api.get(`/biz-
 export const createBizReport = (data: BizReportInput): Promise<BizReport> => api.post('/biz-reports', data).then(r => r.data)
 export const updateBizReport = (id: number, data: Partial<BizReportInput>): Promise<BizReport> => api.put(`/biz-reports/${id}`, data).then(r => r.data)
 export const deleteBizReport = (id: number) => api.delete(`/biz-reports/${id}`)
+export const fetchRegularReports = (params?: { report_target?: string; fund_id?: number; status?: string; period?: string }): Promise<RegularReport[]> =>
+  api.get('/regular-reports', { params }).then(r => r.data)
+export const createRegularReport = (data: RegularReportInput): Promise<RegularReport> => api.post('/regular-reports', data).then(r => r.data)
+export const updateRegularReport = (id: number, data: Partial<RegularReportInput>): Promise<RegularReport> => api.put(`/regular-reports/${id}`, data).then(r => r.data)
+export const deleteRegularReport = (id: number) => api.delete(`/regular-reports/${id}`)
 export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: string }): Promise<CapitalCall[]> => api.get('/capital-calls', { params }).then(r => r.data)
 export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
 export const createCapitalCall = (data: CapitalCallInput): Promise<CapitalCall> => api.post('/capital-calls', data).then(r => r.data)
@@ -566,6 +571,32 @@ export interface BizReport {
   memo: string | null
   created_at: string | null
   company_name: string | null
+}
+
+export interface RegularReportInput {
+  report_target: string
+  fund_id?: number | null
+  period: string
+  due_date?: string | null
+  status?: string
+  submitted_date?: string | null
+  task_id?: number | null
+  memo?: string | null
+}
+
+export interface RegularReport {
+  id: number
+  report_target: string
+  fund_id: number | null
+  period: string
+  due_date: string | null
+  status: string
+  submitted_date: string | null
+  task_id: number | null
+  memo: string | null
+  created_at: string | null
+  fund_name: string | null
+  days_remaining: number | null
 }
 
 export interface CapitalCallInput {

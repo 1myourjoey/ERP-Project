@@ -25,6 +25,11 @@ export const STATUS_LABEL: Record<string, string> = {
   요청중: '요청중',
   수신: '수신',
   검수완료: '검수완료',
+  미작성: '미작성',
+  작성중: '작성중',
+  검수중: '검수중',
+  전송완료: '전송완료',
+  실패: '실패',
 }
 
 export const labelStatus = (status?: string | null): string => {
