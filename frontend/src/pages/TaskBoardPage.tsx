@@ -4,6 +4,7 @@ import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask, moveT
 import type { Task, TaskBoard, TaskCreate } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 import { Plus, Clock, Trash2, Check, Pencil } from 'lucide-react'
+import MiniCalendar from '../components/MiniCalendar'
 
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -13,6 +14,7 @@ const QUADRANTS = [
 ]
 
 const AUTO_WORKLOG_STORAGE_KEY = 'autoWorklog'
+const TASKBOARD_CALENDAR_STORAGE_KEY = 'taskBoardMiniCalendar'
 
 function TaskItem({ task, onComplete, onDelete, onEdit }: {
   task: Task
@@ -308,6 +310,10 @@ export default function TaskBoardPage() {
   const [statusFilter, setStatusFilter] = useState('pending')
   const [completedYear, setCompletedYear] = useState(currentYear)
   const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
+  const [showMiniCalendar, setShowMiniCalendar] = useState(() => {
+    const saved = window.localStorage.getItem(TASKBOARD_CALENDAR_STORAGE_KEY)
+    return saved === 'true'
+  })
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
@@ -409,56 +415,75 @@ export default function TaskBoardPage() {
               </select>
             </div>
           )}
+          <button
+            onClick={() => {
+              const next = !showMiniCalendar
+              setShowMiniCalendar(next)
+              window.localStorage.setItem(TASKBOARD_CALENDAR_STORAGE_KEY, String(next))
+            }}
+            className={`rounded-lg px-2 py-1 text-xs ${showMiniCalendar ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            캘린더
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {QUADRANTS.map(q => {
-          const tasks = board?.[q.key as keyof TaskBoard] || []
-          return (
-            <div
-              key={q.key}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setDragOverQuadrant(q.key)
-              }}
-              onDragLeave={() => setDragOverQuadrant(prev => (prev === q.key ? null : prev))}
-              onDrop={(e) => {
-                e.preventDefault()
-                setDragOverQuadrant(null)
-                const taskId = Number(e.dataTransfer.getData('taskId'))
-                const fromQuadrant = e.dataTransfer.getData('fromQuadrant')
-                if (!taskId || !fromQuadrant || fromQuadrant === q.key) return
-                moveMutation.mutate({ id: taskId, quadrant: q.key })
-              }}
-              className={`rounded-xl border-2 ${q.color} ${q.bg} p-4 ${
-                dragOverQuadrant === q.key ? 'ring-2 ring-blue-300 ring-inset border-dashed' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`w-2.5 h-2.5 rounded-full ${q.badge}`} />
-                <h3 className="text-sm font-semibold text-gray-700">{q.label}</h3>
-                <span className="text-xs text-gray-400 ml-auto">{tasks.length}</span>
-              </div>
-              <div className="space-y-1.5">
-                {tasks.map(t => (
-                  <TaskItem
-                    key={t.id}
-                    task={t}
-                    onComplete={() => setCompletingTask(t)}
-                    onEdit={(task) => setEditingTask(task)}
-                    onDelete={(id) => {
-                      if (confirm('이 작업을 삭제하시겠습니까?')) deleteMutation.mutate(id)
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="mt-2">
-                <AddTaskForm quadrant={q.key} onAdd={(data) => addMutation.mutate(data)} />
-              </div>
-            </div>
-          )
-        })}
+      <div className={`grid gap-4 ${showMiniCalendar ? 'grid-cols-1 xl:grid-cols-3' : 'grid-cols-1'}`}>
+        <div className={showMiniCalendar ? 'xl:col-span-2' : ''}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {QUADRANTS.map(q => {
+              const tasks = board?.[q.key as keyof TaskBoard] || []
+              return (
+                <div
+                  key={q.key}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setDragOverQuadrant(q.key)
+                  }}
+                  onDragLeave={() => setDragOverQuadrant(prev => (prev === q.key ? null : prev))}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOverQuadrant(null)
+                    const taskId = Number(e.dataTransfer.getData('taskId'))
+                    const fromQuadrant = e.dataTransfer.getData('fromQuadrant')
+                    if (!taskId || !fromQuadrant || fromQuadrant === q.key) return
+                    moveMutation.mutate({ id: taskId, quadrant: q.key })
+                  }}
+                  className={`rounded-xl border-2 ${q.color} ${q.bg} p-4 ${
+                    dragOverQuadrant === q.key ? 'ring-2 ring-blue-300 ring-inset border-dashed' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`w-2.5 h-2.5 rounded-full ${q.badge}`} />
+                    <h3 className="text-sm font-semibold text-gray-700">{q.label}</h3>
+                    <span className="text-xs text-gray-400 ml-auto">{tasks.length}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {tasks.map(t => (
+                      <TaskItem
+                        key={t.id}
+                        task={t}
+                        onComplete={() => setCompletingTask(t)}
+                        onEdit={(task) => setEditingTask(task)}
+                        onDelete={(id) => {
+                          if (confirm('이 작업을 삭제하시겠습니까?')) deleteMutation.mutate(id)
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <AddTaskForm quadrant={q.key} onAdd={(data) => addMutation.mutate(data)} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        {showMiniCalendar && (
+          <div className="xl:col-span-1">
+            <MiniCalendar />
+          </div>
+        )}
       </div>
 
       {editingTask && (

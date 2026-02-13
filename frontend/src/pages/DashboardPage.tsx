@@ -6,6 +6,7 @@ import type { Task, DashboardResponse, ActiveWorkflow, FundSummary, MissingDocum
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning, Check, Send } from 'lucide-react'
+import MiniCalendar from '../components/MiniCalendar'
 
 const AUTO_WORKLOG_STORAGE_KEY = 'autoWorklog'
 
@@ -386,6 +387,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
+          <MiniCalendar />
+
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Building2 size={16} /> 조합 요약
