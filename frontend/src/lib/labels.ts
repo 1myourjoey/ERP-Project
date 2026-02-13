@@ -11,6 +11,16 @@ export const STATUS_LABEL: Record<string, string> = {
   exited: '회수완료',
   written_off: '손실처리',
   cancelled: '취소',
+  scheduled: '예정중',
+  deliberating: '심의중',
+  approved: '가결',
+  rejected: '부결',
+  planned: '예정',
+  done: '완료',
+  예정중: '예정중',
+  심의중: '심의중',
+  가결: '가결',
+  부결: '부결',
 }
 
 export const labelStatus = (status?: string | null): string => {

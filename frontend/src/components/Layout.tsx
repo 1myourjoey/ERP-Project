@@ -7,6 +7,10 @@ import {
   BookOpen,
   Building2,
   PieChart,
+  ListTree,
+  LineChart,
+  Landmark,
+  TrendingDown,
   CheckSquare,
   Files,
   CalendarDays,
@@ -24,6 +28,10 @@ const NAV = [
   { to: '/worklogs', label: '업무 기록', icon: BookOpen },
   { to: '/funds', label: '조합 관리', icon: Building2 },
   { to: '/investments', label: '투자 관리', icon: PieChart },
+  { to: '/transactions', label: '거래원장', icon: ListTree },
+  { to: '/valuations', label: '가치평가', icon: LineChart },
+  { to: '/fund-operations', label: '조합 운영', icon: Landmark },
+  { to: '/exits', label: '회수 관리', icon: TrendingDown },
   { to: '/checklists', label: '체크리스트', icon: CheckSquare },
   { to: '/documents', label: '서류 현황', icon: Files },
   { to: '/calendar', label: '캘린더', icon: CalendarDays },
@@ -51,7 +59,7 @@ export default function Layout() {
     <div className="flex h-screen">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -59,22 +67,22 @@ export default function Layout() {
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 text-white
-          flex flex-col shrink-0 transform transition-transform duration-200
+          flex shrink-0 flex-col transform transition-transform duration-200
           md:relative md:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-700 px-5 py-4">
           <div>
             <h1 className="text-lg font-bold tracking-tight">VC ERP</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Trigger Investment Partners</p>
+            <p className="mt-0.5 text-xs text-slate-400">Trigger Investment Partners</p>
           </div>
-          <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
+          <button className="text-slate-400 hover:text-white md:hidden" onClick={() => setSidebarOpen(false)}>
             <X size={20} />
           </button>
         </div>
 
-        <nav className="flex-1 py-3 overflow-auto">
+        <nav className="flex-1 overflow-auto py-3">
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -83,7 +91,7 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                   isActive
-                    ? 'bg-slate-700/60 text-white font-medium'
+                    ? 'bg-slate-700/60 font-medium text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`
               }
@@ -95,8 +103,8 @@ export default function Layout() {
         </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+      <div className="flex flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center">
             <button onClick={() => setSidebarOpen(true)} className="text-slate-700 md:hidden">
               <Menu size={22} />
