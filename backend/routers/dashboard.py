@@ -9,6 +9,7 @@ from models.task import Task
 from models.workflow_instance import WorkflowInstance
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany, InvestmentDocument
+from models.regular_report import RegularReport
 from schemas.task import TaskResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -186,6 +187,31 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             "days_remaining": (doc.due_date - today).days if doc.due_date else None,
         })
 
+    upcoming_reports = []
+    report_rows = (
+        db.query(RegularReport)
+        .filter(
+            RegularReport.status.notin_(["전송완료"]),
+            RegularReport.due_date.isnot(None),
+            RegularReport.due_date <= today + timedelta(days=7),
+        )
+        .order_by(RegularReport.due_date.asc(), RegularReport.id.desc())
+        .limit(20)
+        .all()
+    )
+    for report in report_rows:
+        fund = db.get(Fund, report.fund_id) if report.fund_id else None
+        upcoming_reports.append({
+            "id": report.id,
+            "report_target": report.report_target,
+            "fund_id": report.fund_id,
+            "fund_name": fund.name if fund else None,
+            "period": report.period,
+            "due_date": report.due_date.isoformat() if report.due_date else None,
+            "status": report.status,
+            "days_remaining": (report.due_date - today).days if report.due_date else None,
+        })
+
     return {
         "date": today.isoformat(),
         "day_of_week": WEEKDAYS[today.weekday()],
@@ -203,6 +229,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         "active_workflows": active_workflows,
         "fund_summary": fund_summary,
         "missing_documents": missing_documents,
+        "upcoming_reports": upcoming_reports,
     }
 
 

@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { completeTask, fetchDashboard, generateMonthlyReminders } from '../lib/api'
-import type { Task, DashboardResponse, ActiveWorkflow, FundSummary, MissingDocument } from '../lib/api'
+import type { Task, DashboardResponse, ActiveWorkflow, FundSummary, MissingDocument, UpcomingReport } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning, Check } from 'lucide-react'
+import { Clock, AlertTriangle, CheckCircle2, ArrowRight, Building2, FileWarning, Check, Send } from 'lucide-react'
 
 const QUADRANT_COLORS: Record<string, string> = {
   Q1: 'bg-red-100 text-red-700',
@@ -51,6 +51,35 @@ function dueBadge(doc: MissingDocument): { text: string; className: string } | n
   }
   return {
     text: `D-${doc.days_remaining}`,
+    className: 'bg-slate-100 text-slate-600',
+  }
+}
+
+function reportDueBadge(report: UpcomingReport): { text: string; className: string } | null {
+  if (report.status === '전송완료') {
+    return { text: '완료', className: 'bg-green-100 text-green-700' }
+  }
+  if (report.days_remaining == null) return null
+  if (report.days_remaining < 0) {
+    return {
+      text: `지연 D+${Math.abs(report.days_remaining)}`,
+      className: 'bg-red-200 text-red-800',
+    }
+  }
+  if (report.days_remaining <= 3) {
+    return {
+      text: `D-${report.days_remaining}`,
+      className: 'bg-red-100 text-red-700',
+    }
+  }
+  if (report.days_remaining <= 7) {
+    return {
+      text: `D-${report.days_remaining}`,
+      className: 'bg-amber-100 text-amber-700',
+    }
+  }
+  return {
+    text: `D-${report.days_remaining}`,
     className: 'bg-slate-100 text-slate-600',
   }
 }
@@ -237,7 +266,7 @@ export default function DashboardPage() {
   if (error) return <div className="p-8 text-red-500">대시보드 데이터를 불러오지 못했습니다.</div>
   if (!data) return null
 
-  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, active_workflows, fund_summary, missing_documents } = data
+  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, active_workflows, fund_summary, missing_documents, upcoming_reports } = data
 
   return (
     <div className="p-6 max-w-6xl">
@@ -261,11 +290,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-5">
         <StatCard icon={<AlertTriangle size={14} />} label="오늘 작업" value={today.tasks.length} tone="red" />
         <StatCard icon={<Clock size={14} />} label="이번 주 작업" value={this_week.length} tone="blue" />
         <StatCard icon={<ArrowRight size={14} />} label="진행중 워크플로우" value={active_workflows.length} tone="indigo" />
         <StatCard icon={<FileWarning size={14} />} label="미수 서류" value={missing_documents.length} tone="amber" />
+        <StatCard icon={<Send size={14} />} label="보고 마감" value={upcoming_reports.length} tone="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -359,6 +389,35 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-400">등록된 조합이 없습니다.</p>
+            )}
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Send size={16} /> 보고 마감
+            </h3>
+            {upcoming_reports?.length ? (
+              <div className="space-y-2 max-h-72 overflow-auto">
+                {upcoming_reports.slice(0, 10).map((report: UpcomingReport) => {
+                  const badge = reportDueBadge(report)
+                  return (
+                    <button
+                      key={report.id}
+                      onClick={() => navigate('/reports')}
+                      className="w-full text-left p-2 rounded border border-slate-200 hover:bg-slate-50"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-800">{report.report_target} | {report.period}</p>
+                        {badge && <span className={`text-[11px] px-1.5 py-0.5 rounded ${badge.className}`}>{badge.text}</span>}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
+                      {report.due_date && <p className="text-[11px] text-slate-500 mt-0.5">마감일 {formatShortDate(report.due_date)}</p>}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">임박한 보고 마감이 없습니다.</p>
             )}
           </div>
 

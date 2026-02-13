@@ -205,6 +205,7 @@ export interface DashboardResponse {
   active_workflows: ActiveWorkflow[]
   fund_summary: FundSummary[]
   missing_documents: MissingDocument[]
+  upcoming_reports: UpcomingReport[]
 }
 
 export interface ActiveWorkflow {
@@ -638,6 +639,17 @@ export interface RegularReport {
   memo: string | null
   created_at: string | null
   fund_name: string | null
+  days_remaining: number | null
+}
+
+export interface UpcomingReport {
+  id: number
+  report_target: string
+  fund_id: number | null
+  fund_name: string | null
+  period: string
+  due_date: string | null
+  status: string
   days_remaining: number | null
 }
 
