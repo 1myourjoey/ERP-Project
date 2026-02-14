@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchCompanies,
   fetchFunds,
@@ -33,7 +33,6 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { ArrowLeft } from 'lucide-react'
 
 interface InvestmentDocument {
   id: number
@@ -270,27 +269,35 @@ export default function InvestmentDetailPage() {
     },
   })
   if (!Number.isFinite(investmentId) || investmentId <= 0) {
-    return <div className="p-6 text-sm text-red-600">유효하지 않은 투자 ID입니다.</div>
+    return <div className="page-container text-sm text-red-600">유효하지 않은 투자 ID입니다.</div>
   }
 
   return (
-    <div className="p-6 max-w-6xl space-y-4">
-      <button onClick={() => navigate('/investments')} className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
-        <ArrowLeft size={16} /> 투자 목록으로
-      </button>
+    <div className="page-container space-y-4">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Link to="/investments" className="hover:text-blue-600">투자 관리</Link>
+        <span>/</span>
+        <span className="text-gray-900">{companyName === '-' ? `투자 #${investmentId}` : companyName}</span>
+      </div>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">{companyName === '-' ? `투자 #${investmentId}` : companyName}</h2>
+          <p className="page-subtitle">투자 상세 정보, 서류, 가치평가, 의결권 이력을 관리합니다.</p>
+        </div>
+      </div>
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">불러오는 중...</p>
+        <div className="loading-state"><div className="loading-spinner" /></div>
       ) : !selectedInvestment ? (
         <p className="text-sm text-gray-500">투자를 찾을 수 없습니다.</p>
       ) : (
         <>
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-4">
+          <div className="card-base space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">투자 #{selectedInvestment.id}</h2>
               <div className="flex gap-2">
-                <button className="text-xs px-2 py-1 bg-gray-100 rounded" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
-                <button className="text-xs px-2 py-1 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(investmentId) }}>삭제</button>
+                <button className="secondary-btn" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
+                <button className="danger-btn" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(investmentId) }}>삭제</button>
               </div>
             </div>
 
@@ -335,7 +342,7 @@ export default function InvestmentDetailPage() {
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">연결된 워크플로우</h3>
             {!linkedWorkflows?.length ? (
               <p className="text-sm text-gray-400">연결된 워크플로우 인스턴스가 없습니다.</p>
@@ -358,7 +365,7 @@ export default function InvestmentDetailPage() {
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">체크리스트</h3>
             {!linkedChecklists?.length ? (
               <p className="text-sm text-gray-400">연결된 체크리스트가 없습니다.</p>
@@ -388,10 +395,10 @@ export default function InvestmentDetailPage() {
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-700">서류</h3>
-              <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
+              <button className="primary-btn" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
             </div>
 
             {showDocForm && <DocumentForm initial={EMPTY_DOC} onSubmit={d => createDocMut.mutate(d)} onCancel={() => setShowDocForm(false)} />}
@@ -408,8 +415,8 @@ export default function InvestmentDetailPage() {
                         <p className="text-xs text-gray-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
                       </div>
                       <div className="flex gap-1">
-                        <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingDocId(doc.id)}>수정</button>
-                        <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 서류를 삭제하시겠습니까?')) deleteDocMut.mutate(doc.id) }}>삭제</button>
+                        <button className="secondary-btn" onClick={() => setEditingDocId(doc.id)}>수정</button>
+                        <button className="danger-btn" onClick={() => { if (confirm('이 서류를 삭제하시겠습니까?')) deleteDocMut.mutate(doc.id) }}>삭제</button>
                       </div>
                     </div>
                   )}
@@ -417,7 +424,7 @@ export default function InvestmentDetailPage() {
               )) : <p className="text-sm text-gray-400">서류가 없습니다.</p>}
             </div>
           </div>
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-700">가치평가</h3>
               <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ 가치평가</button>
@@ -466,8 +473,8 @@ export default function InvestmentDetailPage() {
                         <p className="text-xs text-gray-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
                       </div>
                       <div className="flex gap-1">
-                        <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingValuationId(valuation.id)}>수정</button>
-                        <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 가치평가를 삭제하시겠습니까?')) deleteValuationMut.mutate(valuation.id) }}>삭제</button>
+                        <button className="secondary-btn" onClick={() => setEditingValuationId(valuation.id)}>수정</button>
+                        <button className="danger-btn" onClick={() => { if (confirm('이 가치평가를 삭제하시겠습니까?')) deleteValuationMut.mutate(valuation.id) }}>삭제</button>
                       </div>
                     </div>
                   )}
@@ -476,7 +483,7 @@ export default function InvestmentDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">의결권 행사 이력</h3>
               <button
@@ -601,8 +608,8 @@ function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { fun
       <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="투자수단" className="px-2 py-1 text-sm border rounded" />
       <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-2 py-1 text-sm border rounded" />
       <div className="md:col-span-3 flex gap-2">
-        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (!form.fund_id || !form.company_id) return; onSubmit({ ...form, investment_date: form.investment_date || null, round: form.round?.trim() || null, board_seat: form.board_seat?.trim() || null, contribution_rate: form.contribution_rate?.trim() || null, instrument: form.instrument?.trim() || null }) }}>저장</button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="primary-btn" onClick={() => { if (!form.fund_id || !form.company_id) return; onSubmit({ ...form, investment_date: form.investment_date || null, round: form.round?.trim() || null, board_seat: form.board_seat?.trim() || null, contribution_rate: form.contribution_rate?.trim() || null, instrument: form.instrument?.trim() || null }) }}>저장</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
@@ -619,8 +626,8 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: InvestmentDocu
       <input type="date" value={form.due_date || ''} onChange={e => setForm(prev => ({ ...prev, due_date: e.target.value || null }))} className="px-2 py-1 text-sm border rounded" />
       <input value={form.note || ''} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="비고" className="px-2 py-1 text-sm border rounded" />
       <div className="md:col-span-5 flex gap-2">
-        <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim(), due_date: form.due_date || null }) }}>저장</button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="primary-btn" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim(), due_date: form.due_date || null }) }}>저장</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
@@ -742,10 +749,17 @@ function ValuationForm({
         >
           저장
         </button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

@@ -154,8 +154,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-5">캘린더</h2>
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">캘린더</h2>
+          <p className="page-subtitle">일정과 업무 마감 일정을 한 화면에서 확인합니다.</p>
+        </div>
+        <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -177,7 +183,6 @@ export default function CalendarPage() {
             리스트
           </button>
         </div>
-        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
@@ -197,7 +202,7 @@ export default function CalendarPage() {
 
       {view === 'calendar' ? (
         <div className="space-y-4">
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3 flex items-center justify-between">
+          <div className="card-base flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
@@ -233,7 +238,7 @@ export default function CalendarPage() {
             ))}
 
             {isLoading ? (
-              <div className="col-span-7 bg-white p-6 text-sm text-gray-500 text-center">불러오는 중...</div>
+              <div className="col-span-7 loading-state"><div className="loading-spinner" /></div>
             ) : (
               cells.map(({ date, inCurrentMonth }) => {
                 const dateKey = formatDate(date)
@@ -270,12 +275,12 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+          <div className="card-base">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-gray-700">
                 {parseDate(selectedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
               </h4>
-              <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => openCreateForDate(selectedDate)}>
+              <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>
                 + 이 날짜에 추가
               </button>
             </div>
@@ -316,11 +321,11 @@ export default function CalendarPage() {
                             <span className="text-xs text-gray-400">업무 보드에서 관리</span>
                           ) : (
                             <>
-                              <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
-                              <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                              <button className="danger-btn" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
                             </>
                           )}
                         </div>
@@ -333,9 +338,9 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           {isLoading ? (
-            <p className="p-4 text-sm text-gray-500">불러오는 중...</p>
+            <div className="loading-state"><div className="loading-spinner" /></div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs">
@@ -381,11 +386,11 @@ export default function CalendarPage() {
                             <span className="text-xs text-gray-400">업무 보드에서 관리</span>
                           ) : (
                             <>
-                              <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingId(event.id)}>수정</button>
+                              <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
-                              <button className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                              <button className="danger-btn" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
                             </>
                           )}
                         </div>
@@ -435,7 +440,7 @@ function EventForm({
       </div>
       <div className="flex gap-2 mt-2">
         <button
-          className="text-xs px-3 py-1 bg-blue-600 text-white rounded"
+          className="primary-btn"
           onClick={() => {
             if (!form.title.trim() || !form.date) return
             onSubmit({
@@ -446,10 +451,17 @@ function EventForm({
             })
           }}
         >저장</button>
-        <button className="text-xs px-3 py-1 bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

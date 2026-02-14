@@ -122,14 +122,20 @@ export default function ChecklistsPage() {
   })
 
   return (
-    <div className="p-6 max-w-6xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">체크리스트</h2>
-      <p className="text-sm text-gray-500 mb-4">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">체크리스트</h2>
+          <p className="page-subtitle">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
+        </div>
+        <button className="primary-btn" onClick={() => setShowCreate(v => !v)}>
+          + 체크리스트
+        </button>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-700">체크리스트 목록</h3>
-            <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowCreate(v => !v)}>+ 체크리스트</button>
           </div>
 
           {showCreate && (
@@ -141,7 +147,7 @@ export default function ChecklistsPage() {
             />
           )}
 
-          {isLoading ? <p className="text-sm text-gray-500">불러오는 중...</p> : (
+          {isLoading ? <div className="loading-state"><div className="loading-spinner" /></div> : (
             <div className="space-y-2">
               {checklists?.map((cl: ChecklistListItem) => (
                 <button
@@ -159,7 +165,7 @@ export default function ChecklistsPage() {
 
         <div>
           {!selectedId || !checklist ? (
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-sm text-gray-500">체크리스트를 선택하세요.</div>
+            <div className="card-base text-sm text-gray-500">체크리스트를 선택하세요.</div>
           ) : editingChecklist ? (
             <ChecklistForm
               investments={investmentOptions}
@@ -168,16 +174,16 @@ export default function ChecklistsPage() {
               onCancel={() => setEditingChecklist(false)}
             />
           ) : (
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <div className="card-base">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{checklist.name}</h3>
                   <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="text-xs px-2 py-1 bg-gray-100 rounded" onClick={() => setEditingChecklist(true)}>수정</button>
+                  <button className="secondary-btn" onClick={() => setEditingChecklist(true)}>수정</button>
                   <button
-                    className="text-xs px-2 py-1 bg-red-50 text-red-700 rounded"
+                    className="danger-btn"
                     onClick={() => { if (confirm('이 체크리스트를 삭제하시겠습니까?')) deleteMut.mutate(selectedId) }}
                   >삭제</button>
                 </div>
@@ -186,7 +192,7 @@ export default function ChecklistsPage() {
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-gray-700">항목</h4>
-                  <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowItemCreate(v => !v)}>+ 항목</button>
+                  <button className="primary-btn" onClick={() => setShowItemCreate(v => !v)}>+ 항목</button>
                 </div>
 
                 {showItemCreate && (
@@ -217,9 +223,9 @@ export default function ChecklistsPage() {
                             <p className={`text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{item.order}. {item.name}</p>
                             <p className="text-xs text-gray-500">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
                           </div>
-                          <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingItemId(item.id)}>수정</button>
+                          <button className="secondary-btn" onClick={() => setEditingItemId(item.id)}>수정</button>
                           <button
-                            className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded"
+                            className="danger-btn"
                             onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) deleteItemMut.mutate({ checklistId: selectedId, itemId: item.id }) }}
                           >삭제</button>
                         </div>
@@ -265,8 +271,8 @@ function ChecklistForm({
         </select>
       </div>
       <div className="flex gap-2 mt-2">
-        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => name.trim() && onSubmit({ name: name.trim(), category: category.trim() || null, investment_id: investmentId === '' ? null : investmentId, items: [] })}>저장</button>
-        <button className="text-xs px-3 py-1 bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="primary-btn" onClick={() => name.trim() && onSubmit({ name: name.trim(), category: category.trim() || null, investment_id: investmentId === '' ? null : investmentId, items: [] })}>저장</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
@@ -290,12 +296,19 @@ function ItemForm({
       <input value={form.notes || ''} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} className="px-2 py-1 text-sm border rounded" placeholder="비고" />
       <label className="text-sm flex items-center gap-2 px-2 py-1 border rounded bg-white"><input type="checkbox" checked={!!form.required} onChange={e => setForm(prev => ({ ...prev, required: e.target.checked }))} /> 필수</label>
       <div className="flex gap-2">
-        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={() => form.name.trim() && onSubmit({ ...form, name: form.name.trim(), notes: form.notes?.trim() || null })}>저장</button>
-        <button className="text-xs px-3 py-1 bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="primary-btn" onClick={() => form.name.trim() && onSubmit({ ...form, name: form.name.trim(), notes: form.notes?.trim() || null })}>저장</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
 }
+
+
+
+
+
+
+
 
 
 

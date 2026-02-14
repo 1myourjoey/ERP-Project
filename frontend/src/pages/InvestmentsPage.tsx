@@ -95,7 +95,7 @@ function CompanyForm({
       <textarea value={form.memo || ''} onChange={e => setForm(prev => ({ ...prev, memo: e.target.value }))} placeholder="비고" className="md:col-span-6 px-2 py-1 text-sm border rounded resize-none" rows={2} />
       <div className="md:col-span-6 flex gap-2">
         <button
-          className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:bg-gray-300"
+          className="primary-btn"
           disabled={loading || !form.name?.trim()}
           onClick={() => {
             if (!form.name?.trim()) return
@@ -118,7 +118,7 @@ function CompanyForm({
         >
           저장
         </button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
@@ -220,14 +220,19 @@ export default function InvestmentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-5">투자 관리</h2>
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">투자 관리</h2>
+          <p className="page-subtitle">투자 포트폴리오와 기업 정보를 관리합니다.</p>
+        </div>
+      </div>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <div className="xl:col-span-1 space-y-4">
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
+          <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">포트폴리오 회사</h3>
-              <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowCompanyForm(v => !v)}>+ 회사</button>
+              <button className="primary-btn" onClick={() => setShowCompanyForm(v => !v)}>+ 회사</button>
             </div>
             {showCompanyForm && (
               <CompanyForm
@@ -252,9 +257,9 @@ export default function InvestmentsPage() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-medium text-gray-800">{company.name}</p>
                         <div className="flex gap-1">
-                          <button className="text-xs px-2 py-0.5 bg-gray-100 rounded" onClick={() => setEditingCompanyId(company.id)}>수정</button>
+                          <button className="secondary-btn" onClick={() => setEditingCompanyId(company.id)}>수정</button>
                           <button
-                            className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded"
+                            className="danger-btn"
                             onClick={() => {
                               if (confirm('이 회사를 삭제하시겠습니까?')) {
                                 deleteCompanyMut.mutate(company.id)
@@ -279,10 +284,10 @@ export default function InvestmentsPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
+        <div className="xl:col-span-2 card-base space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">투자 목록</h3>
-            <button className="text-xs px-2 py-1 bg-blue-600 text-white rounded" onClick={() => setShowInvestmentForm(v => !v)}>+ 투자</button>
+            <button className="primary-btn" onClick={() => setShowInvestmentForm(v => !v)}>+ 투자</button>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -309,7 +314,7 @@ export default function InvestmentsPage() {
             />
           )}
 
-          {invLoading ? <p className="text-sm text-gray-500">불러오는 중...</p> : (
+          {invLoading ? <div className="loading-state"><div className="loading-spinner" /></div> : (
             <div className="space-y-2 max-h-[38rem] overflow-auto">
               {investments?.map((inv) => (
                 <div key={inv.id} className="w-full rounded border p-3 text-left hover:bg-gray-50">
@@ -405,7 +410,7 @@ function InvestmentForm({
 
       <div className="md:col-span-3 flex gap-2">
         <button
-          className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:bg-gray-300"
+          className="primary-btn"
           disabled={submitting}
           onClick={() => {
             if (!form.fund_id || !form.company_id) return
@@ -431,10 +436,17 @@ function InvestmentForm({
         >
           저장
         </button>
-        <button className="px-3 py-1 text-xs bg-white border rounded" onClick={onCancel}>취소</button>
+        <button className="secondary-btn" onClick={onCancel}>취소</button>
       </div>
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

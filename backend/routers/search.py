@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends
+import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.biz_report import BizReport
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany
+from models.regular_report import RegularReport
 from models.task import Task
+from models.worklog import WorkLog
 from models.workflow_instance import WorkflowInstance
 
 router = APIRouter(tags=["search"])
@@ -95,6 +99,66 @@ def search(q: str, db: Session = Depends(get_db)):
                 "title": instance.name,
                 "subtitle": instance.status,
                 "url": "/workflows",
+            }
+        )
+
+    biz_reports = (
+        db.query(BizReport, Fund)
+        .join(Fund, Fund.id == BizReport.fund_id)
+        .filter(
+            Fund.name.ilike(like)
+            | sa.cast(BizReport.report_year, sa.String).ilike(like)
+            | BizReport.status.ilike(like)
+        )
+        .order_by(BizReport.id.desc())
+        .limit(5)
+        .all()
+    )
+    for report, fund in biz_reports:
+        title = f"{fund.name} {report.report_year} 영업보고"
+        results.append(
+            {
+                "type": "biz_report",
+                "id": report.id,
+                "title": title,
+                "subtitle": report.status,
+                "url": "/biz-reports",
+            }
+        )
+
+    reports = (
+        db.query(RegularReport)
+        .filter(RegularReport.report_target.ilike(like))
+        .order_by(RegularReport.id.desc())
+        .limit(5)
+        .all()
+    )
+    for report in reports:
+        results.append(
+            {
+                "type": "report",
+                "id": report.id,
+                "title": f"{report.report_target} ({report.period or ''})",
+                "subtitle": report.status,
+                "url": "/reports",
+            }
+        )
+
+    worklogs = (
+        db.query(WorkLog)
+        .filter(WorkLog.title.ilike(like))
+        .order_by(WorkLog.id.desc())
+        .limit(5)
+        .all()
+    )
+    for worklog in worklogs:
+        results.append(
+            {
+                "type": "worklog",
+                "id": worklog.id,
+                "title": worklog.title,
+                "subtitle": worklog.category,
+                "url": "/worklogs",
             }
         )
 

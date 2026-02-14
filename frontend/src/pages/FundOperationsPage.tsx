@@ -108,7 +108,7 @@ function labelAssemblyType(value: string | null | undefined): string {
 
 function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="card-base">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
         {right}
@@ -298,9 +298,12 @@ export default function FundOperationsPage() {
   }
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">조합 운영</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">조합 운영</h2>
+          <p className="page-subtitle">출자, 배분, 총회 운영과 성과지표를 확인합니다.</p>
+        </div>
         <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
           {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
         </select>
@@ -328,7 +331,7 @@ export default function FundOperationsPage() {
             {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
           </select>
           <input type="number" value={newCall.total_amount || 0} onChange={(e) => setNewCall((p) => ({ ...p, total_amount: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" placeholder="출자 총액" />
-          <button onClick={() => selectedFundId && createCallMut.mutate({ ...newCall, fund_id: selectedFundId, memo: newCall.memo?.trim() || null })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">등록</button>
+          <button onClick={() => selectedFundId && createCallMut.mutate({ ...newCall, fund_id: selectedFundId, memo: newCall.memo?.trim() || null })} className="primary-btn">등록</button>
         </div>
         <div className="space-y-2">
           {calls?.map((row) => (
@@ -337,8 +340,8 @@ export default function FundOperationsPage() {
                 <p className="text-sm text-gray-800">{toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setCallExpandedId(callExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
-                  <button onClick={() => toggleCallEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                  <button onClick={() => deleteCallMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                  <button onClick={() => toggleCallEdit(row)} className="secondary-btn">수정</button>
+                  <button onClick={() => deleteCallMut.mutate(row.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
               {editingCallId === row.id && editCall && (
@@ -349,8 +352,8 @@ export default function FundOperationsPage() {
                   </select>
                   <input type="number" value={editCall.total_amount} onChange={(e) => setEditCall((p) => (p ? { ...p, total_amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
-                    <button onClick={() => updateCallMut.mutate({ id: row.id, data: { call_date: editCall.call_date, call_type: editCall.call_type, total_amount: editCall.total_amount, memo: editCall.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingCallId(null); setEditCall(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                    <button onClick={() => updateCallMut.mutate({ id: row.id, data: { call_date: editCall.call_date, call_type: editCall.call_type, total_amount: editCall.total_amount, memo: editCall.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button onClick={() => { setEditingCallId(null); setEditCall(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>
               )}
@@ -364,7 +367,7 @@ export default function FundOperationsPage() {
                     <input type="number" value={newCallItem.amount || 0} onChange={(e) => setNewCallItem((p) => ({ ...p, amount: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
                     <select value={newCallItem.paid ? '1' : '0'} onChange={(e) => setNewCallItem((p) => ({ ...p, paid: e.target.value === '1' }))} className="rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
                     <input type="date" value={newCallItem.paid_date || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, paid_date: e.target.value || null }))} className="rounded border px-2 py-1 text-sm" />
-                    <button onClick={() => newCallItem.lp_id && createCallItemMut.mutate({ id: row.id, data: newCallItem })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">항목 추가</button>
+                    <button onClick={() => newCallItem.lp_id && createCallItemMut.mutate({ id: row.id, data: newCallItem })} className="primary-btn">항목 추가</button>
                   </div>
                   <div className="space-y-1">
                     {callItems?.map((item) => (
@@ -374,15 +377,15 @@ export default function FundOperationsPage() {
                             <input type="number" value={editCallItem.amount} onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                             <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
                             <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="rounded border px-2 py-1 text-sm" />
-                            <button onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                            <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                            <button onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })} className="primary-btn">저장</button>
+                            <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="secondary-btn">취소</button>
                           </div>
                         ) : (
                           <>
                             <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | {formatKRW(item.amount)} | {item.paid ? '납입' : '미납'} | {toDate(item.paid_date)}</p>
                             <div className="flex gap-1">
-                              <button onClick={() => toggleCallItemEdit(item)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                              <button onClick={() => deleteCallItemMut.mutate({ callId: row.id, itemId: item.id })} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                              <button onClick={() => toggleCallItemEdit(item)} className="secondary-btn">수정</button>
+                              <button onClick={() => deleteCallItemMut.mutate({ callId: row.id, itemId: item.id })} className="danger-btn">삭제</button>
                             </div>
                           </>
                         )}
@@ -404,7 +407,7 @@ export default function FundOperationsPage() {
           </select>
           <input type="number" value={newDistribution.principal_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, principal_total: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
           <input type="number" value={newDistribution.profit_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, profit_total: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-          <button onClick={() => selectedFundId && createDistMut.mutate({ ...newDistribution, fund_id: selectedFundId, memo: newDistribution.memo?.trim() || null })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">등록</button>
+          <button onClick={() => selectedFundId && createDistMut.mutate({ ...newDistribution, fund_id: selectedFundId, memo: newDistribution.memo?.trim() || null })} className="primary-btn">등록</button>
         </div>
         <div className="space-y-2">
           {distributions?.map((row) => (
@@ -413,8 +416,8 @@ export default function FundOperationsPage() {
                 <p className="text-sm text-gray-800">{toDate(row.dist_date)} | {labelDistributionType(row.dist_type)} | 원금 총액 {formatKRW(row.principal_total)} | 수익 총액 {formatKRW(row.profit_total)}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setDistExpandedId(distExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
-                  <button onClick={() => toggleDistributionEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                  <button onClick={() => deleteDistMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                  <button onClick={() => toggleDistributionEdit(row)} className="secondary-btn">수정</button>
+                  <button onClick={() => deleteDistMut.mutate(row.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
               {editingDistId === row.id && editDistribution && (
@@ -426,8 +429,8 @@ export default function FundOperationsPage() {
                   <input type="number" value={editDistribution.principal_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, principal_total: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <input type="number" value={editDistribution.profit_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, profit_total: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
-                    <button onClick={() => updateDistMut.mutate({ id: row.id, data: { dist_date: editDistribution.dist_date, dist_type: editDistribution.dist_type, principal_total: editDistribution.principal_total, profit_total: editDistribution.profit_total, performance_fee: editDistribution.performance_fee, memo: editDistribution.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingDistId(null); setEditDistribution(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                    <button onClick={() => updateDistMut.mutate({ id: row.id, data: { dist_date: editDistribution.dist_date, dist_type: editDistribution.dist_type, principal_total: editDistribution.principal_total, profit_total: editDistribution.profit_total, performance_fee: editDistribution.performance_fee, memo: editDistribution.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button onClick={() => { setEditingDistId(null); setEditDistribution(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>
               )}
@@ -440,7 +443,7 @@ export default function FundOperationsPage() {
                     </select>
                     <input type="number" value={newDistributionItem.principal || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, principal: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
                     <input type="number" value={newDistributionItem.profit || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, profit: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-                    <button onClick={() => newDistributionItem.lp_id && createDistItemMut.mutate({ id: row.id, data: newDistributionItem })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">항목 추가</button>
+                    <button onClick={() => newDistributionItem.lp_id && createDistItemMut.mutate({ id: row.id, data: newDistributionItem })} className="primary-btn">항목 추가</button>
                   </div>
                   <div className="space-y-1">
                     {distributionItems?.map((item) => (
@@ -449,15 +452,15 @@ export default function FundOperationsPage() {
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                             <input type="number" value={editDistributionItem.principal} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, principal: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                             <input type="number" value={editDistributionItem.profit} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, profit: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
-                            <button onClick={() => updateDistItemMut.mutate({ distributionId: row.id, itemId: item.id, data: { principal: editDistributionItem.principal, profit: editDistributionItem.profit } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                            <button onClick={() => { setEditingDistItemId(null); setEditDistributionItem(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                            <button onClick={() => updateDistItemMut.mutate({ distributionId: row.id, itemId: item.id, data: { principal: editDistributionItem.principal, profit: editDistributionItem.profit } })} className="primary-btn">저장</button>
+                            <button onClick={() => { setEditingDistItemId(null); setEditDistributionItem(null) }} className="secondary-btn">취소</button>
                           </div>
                         ) : (
                           <>
                             <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | 원금 {formatKRW(item.principal)} | 수익 {formatKRW(item.profit)}</p>
                             <div className="flex gap-1">
-                              <button onClick={() => toggleDistributionItemEdit(item)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                              <button onClick={() => deleteDistItemMut.mutate({ distributionId: row.id, itemId: item.id })} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                              <button onClick={() => toggleDistributionItemEdit(item)} className="secondary-btn">수정</button>
+                              <button onClick={() => deleteDistItemMut.mutate({ distributionId: row.id, itemId: item.id })} className="danger-btn">삭제</button>
                             </div>
                           </>
                         )}
@@ -481,7 +484,7 @@ export default function FundOperationsPage() {
             {ASSEMBLY_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}
           </select>
           <input value={newAssembly.agenda || ''} onChange={(e) => setNewAssembly((p) => ({ ...p, agenda: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="안건" />
-          <button onClick={() => selectedFundId && createAssemblyMut.mutate({ ...newAssembly, fund_id: selectedFundId, agenda: newAssembly.agenda?.trim() || null })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">등록</button>
+          <button onClick={() => selectedFundId && createAssemblyMut.mutate({ ...newAssembly, fund_id: selectedFundId, agenda: newAssembly.agenda?.trim() || null })} className="primary-btn">등록</button>
         </div>
         <div className="space-y-1">
           {assemblies?.map((row) => (
@@ -489,8 +492,8 @@ export default function FundOperationsPage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-700">{toDate(row.date)} | {labelAssemblyType(row.type)} | {labelStatus(row.status)} | 의사록 {row.minutes_completed ? '작성 완료' : '미작성'}</p>
                 <div className="flex gap-1">
-                  <button onClick={() => toggleAssemblyEdit(row)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                  <button onClick={() => deleteAssemblyMut.mutate(row.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                  <button onClick={() => toggleAssemblyEdit(row)} className="secondary-btn">수정</button>
+                  <button onClick={() => deleteAssemblyMut.mutate(row.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
               {editingAssemblyId === row.id && editAssembly && (
@@ -504,8 +507,8 @@ export default function FundOperationsPage() {
                   </select>
                   <input value={editAssembly.agenda} onChange={(e) => setEditAssembly((p) => (p ? { ...p, agenda: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
-                    <button onClick={() => updateAssemblyMut.mutate({ id: row.id, data: { date: editAssembly.date, type: editAssembly.type, status: editAssembly.status, agenda: editAssembly.agenda.trim() || null, minutes_completed: editAssembly.minutes_completed, memo: editAssembly.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingAssemblyId(null); setEditAssembly(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                    <button onClick={() => updateAssemblyMut.mutate({ id: row.id, data: { date: editAssembly.date, type: editAssembly.type, status: editAssembly.status, agenda: editAssembly.agenda.trim() || null, minutes_completed: editAssembly.minutes_completed, memo: editAssembly.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button onClick={() => { setEditingAssemblyId(null); setEditAssembly(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>
               )}
@@ -516,5 +519,10 @@ export default function FundOperationsPage() {
     </div>
   )
 }
+
+
+
+
+
 
 

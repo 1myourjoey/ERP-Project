@@ -151,7 +151,7 @@ function JournalForm({
             />
             <button
               onClick={() => setForm((prev) => ({ ...prev, lines: prev.lines.filter((_, lineIndex) => lineIndex !== index) }))}
-              className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+              className="danger-btn"
               disabled={form.lines.length <= 1}
             >
               삭제
@@ -163,7 +163,7 @@ function JournalForm({
       <div className="mt-2 flex items-center justify-between">
         <button
           onClick={() => setForm((prev) => ({ ...prev, lines: [...prev.lines, { account_id: 0, debit: 0, credit: 0, memo: '' }] }))}
-          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+          className="secondary-btn"
         >
           + 라인 추가
         </button>
@@ -183,7 +183,7 @@ function JournalForm({
             })
           }}
           disabled={loading || !balanced}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
+          className="primary-btn"
         >
           저장
         </button>
@@ -333,9 +333,12 @@ export default function AccountingPage() {
   )
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">회계 관리</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">회계 관리</h2>
+          <p className="page-subtitle">계정과목, 전표, 합계잔액표를 관리합니다.</p>
+        </div>
         <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
           {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
         </select>
@@ -382,7 +385,7 @@ export default function AccountingPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <div className="card-base">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -426,11 +429,11 @@ export default function AccountingPage() {
                                     sub_category: editAccount.sub_category?.trim() || null,
                                   },
                                 })}
-                                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                                className="primary-btn"
                               >
                                 저장
                               </button>
-                              <button onClick={() => { setEditingAccountId(null); setEditAccount(null) }} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">취소</button>
+                              <button onClick={() => { setEditingAccountId(null); setEditAccount(null) }} className="secondary-btn">취소</button>
                             </div>
                           </td>
                         </>
@@ -457,7 +460,7 @@ export default function AccountingPage() {
                                     display_order: account.display_order,
                                   })
                                 }}
-                                className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
+                                className="secondary-btn"
                               >
                                 수정
                               </button>
@@ -465,7 +468,7 @@ export default function AccountingPage() {
                                 onClick={() => {
                                   if (confirm('이 계정과목을 삭제하시겠습니까?')) deleteAccountMut.mutate(account.id)
                                 }}
-                                className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                                className="danger-btn"
                               >
                                 삭제
                               </button>
@@ -508,7 +511,7 @@ export default function AccountingPage() {
             />
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <div className="card-base">
             <h3 className="mb-2 text-sm font-semibold text-gray-700">전표 목록</h3>
             <div className="space-y-2">
               {entries?.map((entry) => (
@@ -551,7 +554,7 @@ export default function AccountingPage() {
                             })),
                           })
                         }}
-                        className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
+                        className="secondary-btn"
                       >
                         수정
                       </button>
@@ -559,7 +562,7 @@ export default function AccountingPage() {
                         onClick={() => {
                           if (confirm('이 전표를 삭제하시겠습니까?')) deleteEntryMut.mutate(entry.id)
                         }}
-                        className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                        className="danger-btn"
                       >
                         삭제
                       </button>
@@ -582,7 +585,7 @@ export default function AccountingPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <div className="card-base">
             <h3 className="mb-2 text-sm font-semibold text-gray-700">합계잔액표</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -621,5 +624,11 @@ export default function AccountingPage() {
     </div>
   )
 }
+
+
+
+
+
+
 
 

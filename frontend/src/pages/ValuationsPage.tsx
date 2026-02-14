@@ -233,7 +233,7 @@ function ValuationForm({
             })
           }}
           disabled={loading}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
+          className="primary-btn"
         >
           {submitLabel}
         </button>
@@ -307,18 +307,21 @@ export default function ValuationsPage() {
   const companyNameMap = useMemo(() => new Map((companies || []).map((company) => [company.id, company.name])), [companies])
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">가치평가</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">가치평가</h2>
+          <p className="page-subtitle">평가 방법별 밸류에이션 이력을 관리합니다.</p>
+        </div>
         <button
           onClick={() => setShowCreate((prev) => !prev)}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+          className="primary-btn"
         >
           + 신규 평가 등록
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <select
@@ -366,7 +369,7 @@ export default function ValuationsPage() {
           </select>
         </div>
         <div className="mt-2">
-          <button onClick={() => setFilters(EMPTY_FILTERS)} className="rounded border px-2 py-1 text-xs hover:bg-gray-100">
+          <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">
             필터 초기화
           </button>
         </div>
@@ -385,10 +388,10 @@ export default function ValuationsPage() {
         />
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">평가 이력</h3>
         {isLoading ? (
-          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
+          <div className="loading-state"><div className="loading-spinner" /></div>
         ) : !rows?.length ? (
           <p className="p-2 text-sm text-gray-400">가치평가 이력이 없습니다.</p>
         ) : (
@@ -437,14 +440,14 @@ export default function ValuationsPage() {
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => setEditingId(row.id)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">
+                      <button onClick={() => setEditingId(row.id)} className="secondary-btn">
                         수정
                       </button>
                       <button
                         onClick={() => {
                           if (confirm('이 평가를 삭제하시겠습니까?')) deleteMut.mutate(row.id)
                         }}
-                        className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                        className="danger-btn"
                       >
                         삭제
                       </button>
@@ -459,5 +462,12 @@ export default function ValuationsPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

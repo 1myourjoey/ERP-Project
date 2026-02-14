@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+﻿import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { setToastHandler, type ToastType } from '../lib/toastBridge'
 
 interface ToastItem {
@@ -48,3 +48,4 @@ export const useToast = () => {
   if (!context) throw new Error('useToast must be used within ToastProvider')
   return context
 }
+

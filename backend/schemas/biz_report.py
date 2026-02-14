@@ -1,66 +1,61 @@
 from datetime import date, datetime
-from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class BizReportCreate(BaseModel):
-    company_id: int
-    fund_id: int | None = None
-    report_type: Literal["분기보고", "월보고", "일반보고"]
-    period: str
-    status: str | None = "요청전"
-    requested_date: date | None = None
-    received_date: date | None = None
-    reviewed_date: date | None = None
-    analyst_comment: str | None = None
-    revenue: float | None = None
-    operating_income: float | None = None
-    net_income: float | None = None
-    total_assets: float | None = None
-    total_liabilities: float | None = None
-    employees: int | None = None
+class BizReportBase(BaseModel):
+    fund_id: int
+    report_year: int = Field(ge=2000, le=2100)
+    status: str = "작성중"
+    submission_date: date | None = None
+
+    total_commitment: float | None = None
+    total_paid_in: float | None = None
+    total_invested: float | None = None
+    total_distributed: float | None = None
+    fund_nav: float | None = None
+    irr: float | None = None
+    tvpi: float | None = None
+    dpi: float | None = None
+
+    market_overview: str | None = None
+    portfolio_summary: str | None = None
+    investment_activity: str | None = None
+    key_issues: str | None = None
+    outlook: str | None = None
     memo: str | None = None
+
+
+class BizReportCreate(BizReportBase):
+    pass
 
 
 class BizReportUpdate(BaseModel):
     fund_id: int | None = None
-    report_type: str | None = None
-    period: str | None = None
+    report_year: int | None = Field(default=None, ge=2000, le=2100)
     status: str | None = None
-    requested_date: date | None = None
-    received_date: date | None = None
-    reviewed_date: date | None = None
-    analyst_comment: str | None = None
-    revenue: float | None = None
-    operating_income: float | None = None
-    net_income: float | None = None
-    total_assets: float | None = None
-    total_liabilities: float | None = None
-    employees: int | None = None
+    submission_date: date | None = None
+
+    total_commitment: float | None = None
+    total_paid_in: float | None = None
+    total_invested: float | None = None
+    total_distributed: float | None = None
+    fund_nav: float | None = None
+    irr: float | None = None
+    tvpi: float | None = None
+    dpi: float | None = None
+
+    market_overview: str | None = None
+    portfolio_summary: str | None = None
+    investment_activity: str | None = None
+    key_issues: str | None = None
+    outlook: str | None = None
     memo: str | None = None
 
 
-class BizReportResponse(BaseModel):
+class BizReportResponse(BizReportBase):
     id: int
-    company_id: int
-    fund_id: int | None
-    report_type: str
-    period: str
-    status: str
-    requested_date: date | None
-    received_date: date | None
-    reviewed_date: date | None
-    analyst_comment: str | None
-    revenue: float | None
-    operating_income: float | None
-    net_income: float | None
-    total_assets: float | None
-    total_liabilities: float | None
-    employees: int | None
-    memo: str | None
-    created_at: datetime | None
-    company_name: str | None = None
+    created_at: datetime | None = None
     fund_name: str | None = None
 
     model_config = {"from_attributes": True}

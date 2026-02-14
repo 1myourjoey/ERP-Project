@@ -231,7 +231,7 @@ function TransactionForm({
             })
           }}
           disabled={loading}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
+          className="primary-btn"
         >
           {submitLabel}
         </button>
@@ -311,18 +311,21 @@ export default function TransactionsPage() {
   )
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">거래원장</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">거래원장</h2>
+          <p className="page-subtitle">투자 거래 이력을 검색하고 관리합니다.</p>
+        </div>
         <button
           onClick={() => setShowCreate((prev) => !prev)}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+          className="primary-btn"
         >
           + 신규 거래 등록
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <select
@@ -366,7 +369,7 @@ export default function TransactionsPage() {
         <div className="mt-2">
           <button
             onClick={() => setFilters(EMPTY_FILTERS)}
-            className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+            className="secondary-btn"
           >
             필터 초기화
           </button>
@@ -386,10 +389,10 @@ export default function TransactionsPage() {
         />
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">거래 내역</h3>
         {isLoading ? (
-          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
+          <div className="loading-state"><div className="loading-spinner" /></div>
         ) : !rows?.length ? (
           <p className="p-2 text-sm text-gray-400">거래 내역이 없습니다.</p>
         ) : (
@@ -443,7 +446,7 @@ export default function TransactionsPage() {
                     <div className="flex gap-1">
                       <button
                         onClick={() => setEditingId(row.id)}
-                        className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
+                        className="secondary-btn"
                       >
                         수정
                       </button>
@@ -451,7 +454,7 @@ export default function TransactionsPage() {
                         onClick={() => {
                           if (confirm('이 거래를 삭제하시겠습니까?')) deleteMut.mutate(row.id)
                         }}
-                        className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+                        className="danger-btn"
                       >
                         삭제
                       </button>
@@ -466,5 +469,12 @@ export default function TransactionsPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

@@ -34,7 +34,7 @@ function FundForm({
   const [form, setForm] = useState<FundInput>(initial)
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
+    <div className="card-base space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-800">{title}</h3>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -64,11 +64,11 @@ function FundForm({
             trustee: form.trustee?.trim() || null,
           })}
           disabled={loading || !form.name.trim()}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
+          className="primary-btn"
         >
           저장
         </button>
-        <button onClick={onCancel} className="px-4 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">취소</button>
+        <button onClick={onCancel} className="secondary-btn">취소</button>
       </div>
     </div>
   )
@@ -93,10 +93,10 @@ export default function FundsPage() {
   })
 
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">조합 관리</h2>
-        <button onClick={() => setShowCreateFund(v => !v)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"><Plus size={14} /> 조합 추가</button>
+    <div className="page-container">
+      <div className="page-header">
+        <h2 className="page-title">조합 관리</h2>
+        <button onClick={() => setShowCreateFund(v => !v)} className="primary-btn inline-flex items-center gap-1"><Plus size={14} /> 조합 추가</button>
       </div>
 
       {showCreateFund && (
@@ -105,7 +105,7 @@ export default function FundsPage() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3">
+      <div className="card-base">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">조합 목록</h3>
         {isLoading ? <p className="text-sm text-gray-500 p-2">불러오는 중...</p> : (
           <div className="space-y-2">
@@ -131,5 +131,11 @@ export default function FundsPage() {
     </div>
   )
 }
+
+
+
+
+
+
 
 

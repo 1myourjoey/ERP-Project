@@ -130,11 +130,11 @@ function WorkLogForm({ categories, initial, onSave, onClose, title: formTitle }:
         <button
           onClick={submit}
           disabled={!form.title}
-          className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
+          className="primary-btn w-full"
         >
           저장
         </button>
-        <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
+        <button onClick={onClose} className="secondary-btn">
           취소
         </button>
       </div>
@@ -291,14 +291,14 @@ export default function WorkLogsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+    <div className="page-container">
+      <div className="page-header">
+        <h2 className="page-title flex items-center gap-2">
           <BookOpen size={24} /> 업무 기록
         </h2>
         <button
           onClick={() => { setShowAdd(!showAdd); setEditingLog(null) }}
-          className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+          className="primary-btn inline-flex items-center gap-1"
         >
           <Plus size={16} /> 기록 추가
         </button>
@@ -350,7 +350,7 @@ export default function WorkLogsPage() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">불러오는 중...</p>
+        <div className="loading-state"><div className="loading-spinner" /></div>
       ) : Object.keys(grouped).length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-12">기록이 없습니다.</p>
       ) : (
@@ -377,6 +377,11 @@ export default function WorkLogsPage() {
     </div>
   )
 }
+
+
+
+
+
 
 
 

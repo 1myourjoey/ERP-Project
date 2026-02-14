@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchTaskBoard, createTask, updateTask, completeTask, deleteTask, moveTask } from '../lib/api'
 import type { Task, TaskBoard, TaskCreate } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
-import { Plus, Clock, Trash2, Check, Pencil } from 'lucide-react'
+import { Plus, Clock, Trash2, Check, Pencil, X } from 'lucide-react'
 import MiniCalendar from '../components/MiniCalendar'
 
 const QUADRANTS = [
@@ -122,7 +122,7 @@ function AddTaskForm({ quadrant, onAdd }: { quadrant: string; onAdd: (data: Task
         />
       </div>
       <div className="flex gap-2">
-        <button onClick={submit} className="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+        <button onClick={submit} className="primary-btn w-full">
           추가
         </button>
         <button onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded transition-colors">
@@ -158,11 +158,18 @@ function EditTaskModal({ task, onSave, onCancel }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
-      <div className="bg-white rounded-xl p-5 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-base font-semibold text-gray-800 mb-4">작업 수정</h3>
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onCancel} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">작업 수정</h3>
+            <button onClick={onCancel}>
+              <X size={20} className="text-gray-400 hover:text-gray-600" />
+            </button>
+          </div>
 
-        <div className="space-y-3">
+          <div className="space-y-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">제목</label>
             <input
@@ -230,19 +237,17 @@ function EditTaskModal({ task, onSave, onCancel }: {
           </div>
         </div>
 
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={submit}
-            className="flex-1 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            저장
-          </button>
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-            취소
-          </button>
+          <div className="mt-6 flex justify-end gap-2">
+            <button onClick={onCancel} className="secondary-btn">
+              취소
+            </button>
+            <button onClick={submit} className="primary-btn">
+              저장
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -258,44 +263,52 @@ function CompleteModal({ task, onConfirm, onCancel }: {
   })
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onCancel}>
-      <div className="bg-white rounded-xl p-5 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-base font-semibold text-gray-800 mb-1">작업 완료</h3>
-        <p className="text-sm text-gray-600 mb-4">{task.title}</p>
-        <label className="block text-xs text-gray-500 mb-1">실제 소요 시간</label>
-        <input
-          autoFocus
-          value={actualTime}
-          onChange={e => setActualTime(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && actualTime && onConfirm(actualTime, autoWorklog)}
-          placeholder="예) 1h30m"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
-        />
-        <label className="mb-4 flex items-center gap-2 text-sm text-gray-700">
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onCancel} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">작업 완료</h3>
+            <button onClick={onCancel}>
+              <X size={20} className="text-gray-400 hover:text-gray-600" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">{task.title}</p>
+          <label className="block text-xs text-gray-500 mb-1">실제 소요 시간</label>
           <input
-            type="checkbox"
-            checked={autoWorklog}
-            onChange={(e) => {
-              const nextValue = e.target.checked
-              setAutoWorklog(nextValue)
-              window.localStorage.setItem(AUTO_WORKLOG_STORAGE_KEY, String(nextValue))
-            }}
+            autoFocus
+            value={actualTime}
+            onChange={e => setActualTime(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && actualTime && onConfirm(actualTime, autoWorklog)}
+            placeholder="예) 1h30m"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
           />
-          업무 기록 자동 생성
-        </label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => actualTime && onConfirm(actualTime, autoWorklog)}
-            className="flex-1 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
-          >
-            <Check size={16} /> 완료
-          </button>
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-            취소
-          </button>
+          <label className="mb-4 flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={autoWorklog}
+              onChange={(e) => {
+                const nextValue = e.target.checked
+                setAutoWorklog(nextValue)
+                window.localStorage.setItem(AUTO_WORKLOG_STORAGE_KEY, String(nextValue))
+              }}
+            />
+            업무 기록 자동 생성
+          </label>
+          <div className="mt-6 flex justify-end gap-2">
+            <button onClick={onCancel} className="secondary-btn">
+              취소
+            </button>
+            <button
+              onClick={() => actualTime && onConfirm(actualTime, autoWorklog)}
+              className="primary-btn inline-flex items-center gap-1"
+            >
+              <Check size={16} /> 완료
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -372,12 +385,12 @@ export default function TaskBoardPage() {
     },
   })
 
-  if (isLoading) return <div className="p-8 text-gray-500">불러오는 중...</div>
+  if (isLoading) return <div className="loading-state"><div className="loading-spinner" /></div>
 
   return (
-    <div className="p-6">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-2xl font-bold text-gray-900">업무 보드</h2>
+    <div className="page-container">
+      <div className="page-header">
+        <h2 className="page-title">업무 보드</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {['pending', 'all', 'completed'].map(s => (
@@ -504,5 +517,10 @@ export default function TaskBoardPage() {
     </div>
   )
 }
+
+
+
+
+
 
 

@@ -5,6 +5,7 @@ import TaskBoardPage from './pages/TaskBoardPage'
 import WorkflowsPage from './pages/WorkflowsPage'
 import WorkLogsPage from './pages/WorkLogsPage'
 import FundsPage from './pages/FundsPage'
+import FundOverviewPage from './pages/FundOverviewPage'
 import FundDetailPage from './pages/FundDetailPage'
 import InvestmentsPage from './pages/InvestmentsPage'
 import InvestmentDetailPage from './pages/InvestmentDetailPage'
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/workflows" element={<WorkflowsPage />} />
         <Route path="/worklogs" element={<WorkLogsPage />} />
         <Route path="/funds" element={<FundsPage />} />
+        <Route path="/fund-overview" element={<FundOverviewPage />} />
         <Route path="/funds/:id" element={<FundDetailPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
         <Route path="/investments/:id" element={<InvestmentDetailPage />} />
@@ -44,3 +46,4 @@ export default function App() {
     </Routes>
   )
 }
+

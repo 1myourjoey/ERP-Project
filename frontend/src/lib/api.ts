@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError } from 'axios'
+import axios, { AxiosError } from 'axios'
 import { pushToast } from './toastBridge'
 
 const api = axios.create({ baseURL: '/api' })
@@ -27,6 +27,8 @@ export const generateMonthlyReminders = (yearMonth: string) =>
 
 // -- Dashboard --
 export const fetchDashboard = (): Promise<DashboardResponse> => api.get('/dashboard/today').then(r => r.data)
+export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
+  api.get('/dashboard/upcoming-notices', { params: { days } }).then(r => r.data)
 
 // -- Workflows --
 export const fetchWorkflows = (): Promise<WorkflowListItem[]> => api.get('/workflows').then(r => r.data)
@@ -56,6 +58,8 @@ export const searchGlobal = (q: string): Promise<SearchResult[]> =>
 
 // -- Funds --
 export const fetchFunds = (): Promise<Fund[]> => api.get('/funds').then(r => r.data)
+export const fetchFundOverview = (referenceDate?: string): Promise<FundOverviewResponse> =>
+  api.get('/funds/overview', { params: { reference_date: referenceDate } }).then(r => r.data)
 export const fetchFund = (id: number): Promise<Fund> => api.get(`/funds/${id}`).then(r => r.data)
 export const createFund = (data: FundInput) => api.post('/funds', data).then(r => r.data)
 export const updateFund = (id: number, data: Partial<FundInput>) => api.put(`/funds/${id}`, data).then(r => r.data)
@@ -64,6 +68,22 @@ export const fetchFundLPs = (fundId: number): Promise<LP[]> => api.get(`/funds/$
 export const createFundLP = (fundId: number, data: LPInput) => api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
 export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) => api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
 export const deleteFundLP = (fundId: number, lpId: number) => api.delete(`/funds/${fundId}/lps/${lpId}`)
+export const updateFundNoticePeriods = (
+  fundId: number,
+  data: FundNoticePeriodInput[],
+): Promise<FundNoticePeriodResponse[]> => api.put(`/funds/${fundId}/notice-periods`, data).then(r => r.data)
+export const updateFundKeyTerms = (
+  fundId: number,
+  data: FundKeyTermInput[],
+): Promise<FundKeyTermResponse[]> => api.put(`/funds/${fundId}/key-terms`, data).then(r => r.data)
+export const calculateDeadline = (
+  fundId: number,
+  targetDate: string,
+  noticeType: string,
+): Promise<NoticeDeadlineResult> =>
+  api.get(`/funds/${fundId}/calculate-deadline`, {
+    params: { target_date: targetDate, notice_type: noticeType },
+  }).then(r => r.data)
 
 // -- Investments --
 export const fetchCompanies = (): Promise<Company[]> => api.get('/companies').then(r => r.data)
@@ -98,7 +118,7 @@ export const fetchValuation = (id: number): Promise<Valuation> => api.get(`/valu
 export const createValuation = (data: ValuationInput): Promise<Valuation> => api.post('/valuations', data).then(r => r.data)
 export const updateValuation = (id: number, data: Partial<ValuationInput>): Promise<Valuation> => api.put(`/valuations/${id}`, data).then(r => r.data)
 export const deleteValuation = (id: number) => api.delete(`/valuations/${id}`)
-export const fetchBizReports = (params?: { company_id?: number; fund_id?: number; report_type?: string; status?: string }): Promise<BizReport[]> =>
+export const fetchBizReports = (params?: { fund_id?: number; year?: number; status?: string }): Promise<BizReport[]> =>
   api.get('/biz-reports', { params }).then(r => r.data)
 export const fetchBizReport = (id: number): Promise<BizReport> => api.get(`/biz-reports/${id}`).then(r => r.data)
 export const createBizReport = (data: BizReportInput): Promise<BizReport> => api.post('/biz-reports', data).then(r => r.data)
@@ -212,6 +232,7 @@ export interface DashboardResponse {
   fund_summary: FundSummary[]
   missing_documents: MissingDocument[]
   upcoming_reports: UpcomingReport[]
+  upcoming_notices?: UpcomingNotice[]
 }
 
 export interface ActiveWorkflow {
@@ -233,6 +254,44 @@ export interface FundSummary {
   aum: number | null
   lp_count: number
   investment_count: number
+}
+
+export interface FundOverviewItem {
+  no: number
+  id: number
+  name: string
+  fund_type: string
+  fund_manager: string | null
+  formation_date: string | null
+  investment_period_end: string | null
+  investment_period_progress: number | null
+  maturity_date: string | null
+  commitment_total: number | null
+  total_paid_in: number | null
+  paid_in_ratio: number | null
+  gp_commitment: number | null
+  total_invested: number | null
+  uninvested: number | null
+  investment_assets: number | null
+  company_count: number
+  hurdle_rate: number | null
+  remaining_period: string | null
+}
+
+export interface FundOverviewTotals {
+  commitment_total: number
+  total_paid_in: number
+  gp_commitment: number
+  total_invested: number
+  uninvested: number
+  investment_assets: number
+  company_count: number
+}
+
+export interface FundOverviewResponse {
+  reference_date: string
+  funds: FundOverviewItem[]
+  totals: FundOverviewTotals
 }
 
 export interface MissingDocument {
@@ -412,10 +471,13 @@ export interface Fund {
   formation_date: string | null
   status: string
   gp: string | null
+  fund_manager: string | null
   co_gp: string | null
   trustee: string | null
   commitment_total: number | null
+  gp_commitment: number | null
   aum: number | null
+  investment_period_end: string | null
   maturity_date: string | null
   mgmt_fee_rate: number | null
   performance_fee_rate: number | null
@@ -424,6 +486,8 @@ export interface Fund {
   lp_count?: number
   investment_count?: number
   lps?: LP[]
+  notice_periods?: FundNoticePeriodResponse[]
+  key_terms?: FundKeyTermResponse[]
 }
 
 export interface FundInput {
@@ -432,10 +496,13 @@ export interface FundInput {
   formation_date?: string | null
   status?: string
   gp?: string | null
+  fund_manager?: string | null
   co_gp?: string | null
   trustee?: string | null
   commitment_total?: number | null
+  gp_commitment?: number | null
   aum?: number | null
+  investment_period_end?: string | null
   maturity_date?: string | null
   mgmt_fee_rate?: number | null
   performance_fee_rate?: number | null
@@ -459,6 +526,38 @@ export interface LP {
   commitment: number | null
   paid_in: number | null
   contact: string | null
+}
+
+export interface FundNoticePeriodInput {
+  notice_type: string
+  label: string
+  business_days: number
+  memo?: string | null
+}
+
+export interface FundNoticePeriodResponse {
+  id: number
+  fund_id: number
+  notice_type: string
+  label: string
+  business_days: number
+  memo: string | null
+}
+
+export interface FundKeyTermInput {
+  category: string
+  label: string
+  value: string
+  article_ref?: string | null
+}
+
+export interface FundKeyTermResponse {
+  id: number
+  fund_id: number
+  category: string
+  label: string
+  value: string
+  article_ref: string | null
 }
 
 export interface Company {
@@ -613,44 +712,47 @@ export interface Valuation {
 }
 
 export interface BizReportInput {
-  company_id: number
-  fund_id?: number | null
-  report_type: string
-  period: string
+  fund_id: number
+  report_year: number
   status?: string
-  requested_date?: string | null
-  received_date?: string | null
-  reviewed_date?: string | null
-  analyst_comment?: string | null
-  revenue?: number | null
-  operating_income?: number | null
-  net_income?: number | null
-  total_assets?: number | null
-  total_liabilities?: number | null
-  employees?: number | null
+  submission_date?: string | null
+  total_commitment?: number | null
+  total_paid_in?: number | null
+  total_invested?: number | null
+  total_distributed?: number | null
+  fund_nav?: number | null
+  irr?: number | null
+  tvpi?: number | null
+  dpi?: number | null
+  market_overview?: string | null
+  portfolio_summary?: string | null
+  investment_activity?: string | null
+  key_issues?: string | null
+  outlook?: string | null
   memo?: string | null
 }
 
 export interface BizReport {
   id: number
-  company_id: number
-  fund_id: number | null
-  report_type: string
-  period: string
+  fund_id: number
+  report_year: number
   status: string
-  requested_date: string | null
-  received_date: string | null
-  reviewed_date: string | null
-  analyst_comment: string | null
-  revenue: number | null
-  operating_income: number | null
-  net_income: number | null
-  total_assets: number | null
-  total_liabilities: number | null
-  employees: number | null
+  submission_date: string | null
+  total_commitment: number | null
+  total_paid_in: number | null
+  total_invested: number | null
+  total_distributed: number | null
+  fund_nav: number | null
+  irr: number | null
+  tvpi: number | null
+  dpi: number | null
+  market_overview: string | null
+  portfolio_summary: string | null
+  investment_activity: string | null
+  key_issues: string | null
+  outlook: string | null
   memo: string | null
   created_at: string | null
-  company_name: string | null
   fund_name: string | null
 }
 
@@ -689,6 +791,23 @@ export interface UpcomingReport {
   due_date: string | null
   status: string
   days_remaining: number | null
+}
+
+export interface UpcomingNotice {
+  fund_name: string
+  notice_label: string
+  deadline: string
+  days_remaining: number
+  workflow_instance_name: string
+  workflow_instance_id?: number | null
+}
+
+export interface NoticeDeadlineResult {
+  target_date: string
+  notice_type: string
+  business_days: number
+  deadline: string
+  label: string
 }
 
 export interface AccountInput {
@@ -1093,5 +1212,6 @@ export interface WorkLog {
   lessons: WorkLogLesson[]
   follow_ups: WorkLogFollowUp[]
 }
+
 
 

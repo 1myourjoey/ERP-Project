@@ -46,3 +46,48 @@ textarea:focus {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px #dbeafe;
 }
+
+.page-container {
+  @apply mx-auto max-w-7xl px-6 py-6;
+}
+
+.page-header {
+  @apply mb-6 flex items-center justify-between gap-3;
+}
+
+.page-title {
+  @apply text-xl font-semibold text-gray-900;
+}
+
+.page-subtitle {
+  @apply mt-1 text-sm text-gray-500;
+}
+
+.card-base {
+  @apply rounded-2xl border border-gray-200 bg-white p-5;
+}
+
+.primary-btn {
+  @apply rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-100;
+}
+
+.secondary-btn {
+  @apply rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60;
+}
+
+.danger-btn {
+  @apply rounded-xl px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-60;
+}
+
+.loading-state {
+  @apply flex items-center justify-center py-16;
+}
+
+.loading-spinner {
+  @apply h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent;
+}
+
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 text-gray-400;
+}
+

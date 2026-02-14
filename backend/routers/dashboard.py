@@ -1,4 +1,4 @@
-﻿import re
+import re
 from datetime import date, timedelta, datetime
 
 from fastapi import APIRouter, Depends
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.task import Task
 from models.workflow_instance import WorkflowInstance
-from models.fund import Fund
+from models.fund import Fund, FundNoticePeriod
 from models.investment import Investment, PortfolioCompany, InvestmentDocument
 from models.regular_report import RegularReport
 from schemas.task import TaskResponse
@@ -29,6 +29,19 @@ def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
         except ValueError:
             pass
     return dates
+
+
+def _match_notice_type(step_name: str, step_timing: str, notice_map: dict[str, FundNoticePeriod]) -> str | None:
+    lowered_name = step_name.lower()
+    lowered_timing = step_timing.lower()
+
+    for notice_type, notice in notice_map.items():
+        if notice_type in lowered_name or notice_type in lowered_timing:
+            return notice_type
+        label = (notice.label or "").lower()
+        if label and (label in lowered_name or label in lowered_timing):
+            return notice_type
+    return None
 
 
 @router.get("/today")
@@ -67,10 +80,14 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     tomorrow_tasks: list[TaskResponse] = []
     week_tasks: list[TaskResponse] = []
     upcoming_tasks: list[TaskResponse] = []
+    no_deadline_tasks: list[TaskResponse] = []
 
     for task in pending_tasks:
         task_resp = TaskResponse.model_validate(task)
         deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
+        if deadline is None:
+            no_deadline_tasks.append(task_resp)
+            continue
 
         if deadline == today:
             today_tasks.append(task_resp)
@@ -226,11 +243,82 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         },
         "this_week": week_tasks,
         "upcoming": upcoming_tasks,
+        "no_deadline": no_deadline_tasks,
         "active_workflows": active_workflows,
         "fund_summary": fund_summary,
         "missing_documents": missing_documents,
         "upcoming_reports": upcoming_reports,
     }
+
+
+@router.get("/upcoming-notices")
+def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
+    today = date.today()
+    horizon = today + timedelta(days=max(0, days))
+
+    active_instances = (
+        db.query(WorkflowInstance)
+        .filter(WorkflowInstance.status == "active")
+        .all()
+    )
+
+    notice_cache: dict[int, dict[str, FundNoticePeriod]] = {}
+    fund_name_cache: dict[int, str] = {}
+    results: list[dict] = []
+
+    for instance in active_instances:
+        fund_id = instance.fund_id
+        if fund_id is None and instance.investment_id is not None:
+            investment = db.get(Investment, instance.investment_id)
+            if investment:
+                fund_id = investment.fund_id
+        if fund_id is None:
+            continue
+
+        if fund_id not in notice_cache:
+            rows = (
+                db.query(FundNoticePeriod)
+                .filter(FundNoticePeriod.fund_id == fund_id)
+                .all()
+            )
+            notice_cache[fund_id] = {row.notice_type.lower(): row for row in rows}
+        notice_map = notice_cache[fund_id]
+        if not notice_map:
+            continue
+
+        if fund_id not in fund_name_cache:
+            fund = db.get(Fund, fund_id)
+            fund_name_cache[fund_id] = fund.name if fund else f"조합 #{fund_id}"
+        fund_name = fund_name_cache[fund_id]
+
+        for step_instance in instance.step_instances:
+            if step_instance.status in ("completed", "skipped"):
+                continue
+            if step_instance.calculated_date is None:
+                continue
+
+            deadline = step_instance.calculated_date
+            if deadline < today or deadline > horizon:
+                continue
+
+            step_name = step_instance.step.name if step_instance.step else ""
+            step_timing = step_instance.step.timing if step_instance.step else ""
+            matched_notice_type = _match_notice_type(step_name, step_timing, notice_map)
+            if not matched_notice_type:
+                continue
+
+            notice = notice_map[matched_notice_type]
+            results.append({
+                "fund_name": fund_name,
+                "notice_label": notice.label,
+                "deadline": deadline.isoformat(),
+                "days_remaining": (deadline - today).days,
+                "workflow_instance_name": instance.name,
+                "workflow_instance_id": instance.id,
+            })
+
+    results.sort(key=lambda row: (row["deadline"], row["fund_name"], row["notice_label"]))
+    return results
 
 
 def _sum_time(tasks: list[TaskResponse]) -> str:

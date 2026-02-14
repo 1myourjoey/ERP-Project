@@ -2,7 +2,7 @@ from .task import Task
 from .worklog import WorkLog, WorkLogDetail, WorkLogLesson, WorkLogFollowUp
 from .workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from .workflow_instance import WorkflowInstance, WorkflowStepInstance
-from .fund import Fund, LP
+from .fund import Fund, LP, FundNoticePeriod, FundKeyTerm
 from .investment import PortfolioCompany, Investment, InvestmentDocument
 from .transaction import Transaction
 from .valuation import Valuation
@@ -28,7 +28,7 @@ __all__ = [
     "WorkLog", "WorkLogDetail", "WorkLogLesson", "WorkLogFollowUp",
     "Workflow", "WorkflowStep", "WorkflowDocument", "WorkflowWarning",
     "WorkflowInstance", "WorkflowStepInstance",
-    "Fund", "LP",
+    "Fund", "LP", "FundNoticePeriod", "FundKeyTerm",
     "PortfolioCompany", "Investment", "InvestmentDocument",
     "Transaction",
     "Valuation",

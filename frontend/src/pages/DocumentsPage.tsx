@@ -27,7 +27,7 @@ function dueBadge(daysRemaining: number | null) {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="card-base">
       <p className="text-xs text-gray-500">{label}</p>
       <p className="mt-1 text-xl font-bold text-gray-800">{value}</p>
     </div>
@@ -73,8 +73,13 @@ export default function DocumentsPage() {
   }, [docs])
 
   return (
-    <div className="p-6 max-w-7xl space-y-4">
-      <h2 className="text-2xl font-bold text-gray-900">서류 현황</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">서류 현황</h2>
+          <p className="page-subtitle">서류 수집 상태와 마감 일정을 추적합니다.</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <SummaryCard label="전체 서류 수" value={`${summary.total}건`} />
@@ -82,7 +87,7 @@ export default function DocumentsPage() {
         <SummaryCard label="수집률" value={`${summary.rate}%`} />
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+      <div className="card-base">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
             <option value="">전체 상태</option>
@@ -103,9 +108,9 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         {isLoading ? (
-          <p className="p-4 text-sm text-gray-500">불러오는 중...</p>
+          <div className="loading-state"><div className="loading-spinner" /></div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs">
@@ -161,5 +166,10 @@ export default function DocumentsPage() {
     </div>
   )
 }
+
+
+
+
+
 
 

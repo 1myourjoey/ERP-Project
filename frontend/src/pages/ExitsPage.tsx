@@ -206,10 +206,15 @@ export default function ExitsPage() {
   }
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <h2 className="text-2xl font-bold text-gray-900">회수 관리</h2>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">회수 관리</h2>
+          <p className="page-subtitle">위원회 심의와 회수 거래를 통합 관리합니다.</p>
+        </div>
+      </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 위원회 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <select value={newCommittee.company_id || ''} onChange={(e) => setNewCommittee((p) => ({ ...p, company_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
@@ -225,11 +230,11 @@ export default function ExitsPage() {
             ))}
           </select>
           <input value={newCommittee.exit_strategy || ''} onChange={(e) => setNewCommittee((p) => ({ ...p, exit_strategy: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="회수 전략" />
-          <button onClick={() => newCommittee.company_id && createCommitteeMut.mutate({ ...newCommittee, agenda: newCommittee.agenda?.trim() || null, memo: newCommittee.memo?.trim() || null })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">등록</button>
+          <button onClick={() => newCommittee.company_id && createCommitteeMut.mutate({ ...newCommittee, agenda: newCommittee.agenda?.trim() || null, memo: newCommittee.memo?.trim() || null })} className="primary-btn">등록</button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">위원회</h3>
         <div className="space-y-2">
           {committees?.map((committee) => (
@@ -238,8 +243,8 @@ export default function ExitsPage() {
                 <p className="text-sm text-gray-700">{committee.company_name || committee.company_id} | {toDate(committee.meeting_date)} | {labelStatus(committee.status)} | {committee.exit_strategy || '-'}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setExpandedCommitteeId(expandedCommitteeId === committee.id ? null : committee.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">재원 연결</button>
-                  <button onClick={() => toggleCommitteeEdit(committee)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                  <button onClick={() => deleteCommitteeMut.mutate(committee.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                  <button onClick={() => toggleCommitteeEdit(committee)} className="secondary-btn">수정</button>
+                  <button onClick={() => deleteCommitteeMut.mutate(committee.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
 
@@ -256,8 +261,8 @@ export default function ExitsPage() {
                   <input value={editCommittee.exit_strategy} onChange={(e) => setEditCommittee((p) => (p ? { ...p, exit_strategy: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
                   <input value={editCommittee.memo} onChange={(e) => setEditCommittee((p) => (p ? { ...p, memo: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
                   <div className="flex gap-1">
-                    <button onClick={() => updateCommitteeMut.mutate({ id: committee.id, data: { meeting_date: editCommittee.meeting_date, status: editCommittee.status, exit_strategy: editCommittee.exit_strategy.trim() || null, memo: editCommittee.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingCommitteeId(null); setEditCommittee(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                    <button onClick={() => updateCommitteeMut.mutate({ id: committee.id, data: { meeting_date: editCommittee.meeting_date, status: editCommittee.status, exit_strategy: editCommittee.exit_strategy.trim() || null, memo: editCommittee.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button onClick={() => { setEditingCommitteeId(null); setEditCommittee(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>
               )}
@@ -270,7 +275,7 @@ export default function ExitsPage() {
                       {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
                     </select>
                     <input type="number" value={newCommitteeFund.investment_id || ''} onChange={(e) => setNewCommitteeFund((p) => ({ ...p, investment_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm" placeholder="투자건 ID" />
-                    <button onClick={() => newCommitteeFund.fund_id && newCommitteeFund.investment_id && createCommitteeFundMut.mutate({ id: committee.id, data: newCommitteeFund })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">연결</button>
+                    <button onClick={() => newCommitteeFund.fund_id && newCommitteeFund.investment_id && createCommitteeFundMut.mutate({ id: committee.id, data: newCommitteeFund })} className="primary-btn">연결</button>
                   </div>
                   <div className="space-y-1">
                     {committeeFunds?.map((item) => (
@@ -279,15 +284,15 @@ export default function ExitsPage() {
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                             <input type="number" value={editCommitteeFund.fund_id} onChange={(e) => setEditCommitteeFund((p) => (p ? { ...p, fund_id: Number(e.target.value) || 0 } : p))} className="rounded border px-2 py-1 text-sm" />
                             <input type="number" value={editCommitteeFund.investment_id} onChange={(e) => setEditCommitteeFund((p) => (p ? { ...p, investment_id: Number(e.target.value) || 0 } : p))} className="rounded border px-2 py-1 text-sm" />
-                            <button onClick={() => updateCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id, data: { fund_id: editCommitteeFund.fund_id, investment_id: editCommitteeFund.investment_id } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                            <button onClick={() => { setEditingCommitteeFundId(null); setEditCommitteeFund(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                            <button onClick={() => updateCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id, data: { fund_id: editCommitteeFund.fund_id, investment_id: editCommitteeFund.investment_id } })} className="primary-btn">저장</button>
+                            <button onClick={() => { setEditingCommitteeFundId(null); setEditCommitteeFund(null) }} className="secondary-btn">취소</button>
                           </div>
                         ) : (
                           <>
                             <p className="text-xs text-gray-600">조합 {item.fund_name || item.fund_id} | 투자건 #{item.investment_id}</p>
                             <div className="flex gap-1">
-                              <button onClick={() => toggleCommitteeFundEdit(item)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                              <button onClick={() => deleteCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id })} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                              <button onClick={() => toggleCommitteeFundEdit(item)} className="secondary-btn">수정</button>
+                              <button onClick={() => deleteCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id })} className="danger-btn">삭제</button>
                             </div>
                           </>
                         )}
@@ -302,7 +307,7 @@ export default function ExitsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 회수 거래 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input type="number" value={newTrade.exit_committee_id || ''} onChange={(e) => setNewTrade((p) => ({ ...p, exit_committee_id: e.target.value ? Number(e.target.value) : null }))} className="rounded border px-2 py-1 text-sm" placeholder="위원회 ID (선택)" />
@@ -322,11 +327,11 @@ export default function ExitsPage() {
           <input type="number" value={newTrade.fees || 0} onChange={(e) => setNewTrade((p) => ({ ...p, fees: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" placeholder="수수료" />
           <input type="number" value={newTrade.realized_gain || ''} onChange={(e) => setNewTrade((p) => ({ ...p, realized_gain: e.target.value ? Number(e.target.value) : null }))} className="rounded border px-2 py-1 text-sm" placeholder="실현손익" />
           <input value={newTrade.memo || ''} onChange={(e) => setNewTrade((p) => ({ ...p, memo: e.target.value }))} className="rounded border px-2 py-1 text-sm md:col-span-2" placeholder="비고" />
-          <button onClick={() => newTrade.fund_id && newTrade.company_id && newTrade.investment_id && createTradeMut.mutate({ ...newTrade, memo: newTrade.memo?.trim() || null })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">등록</button>
+          <button onClick={() => newTrade.fund_id && newTrade.company_id && newTrade.investment_id && createTradeMut.mutate({ ...newTrade, memo: newTrade.memo?.trim() || null })} className="primary-btn">등록</button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">회수 거래</h3>
         <div className="space-y-1">
           {trades?.map((trade) => (
@@ -334,8 +339,8 @@ export default function ExitsPage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-700">{trade.fund_name || trade.fund_id} | {trade.company_name || trade.company_id} | {toDate(trade.trade_date)} | {labelExitType(trade.exit_type)} | 거래 금액 {formatKRW(trade.amount)} | 회수액 {formatKRW(trade.net_amount || 0)}</p>
                 <div className="flex gap-1">
-                  <button onClick={() => toggleTradeEdit(trade)} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">수정</button>
-                  <button onClick={() => deleteTradeMut.mutate(trade.id)} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                  <button onClick={() => toggleTradeEdit(trade)} className="secondary-btn">수정</button>
+                  <button onClick={() => deleteTradeMut.mutate(trade.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
               {editingTradeId === trade.id && editTrade && (
@@ -357,8 +362,8 @@ export default function ExitsPage() {
                   <input type="number" value={editTrade.fees} onChange={(e) => setEditTrade((p) => (p ? { ...p, fees: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
                   <input type="number" value={editTrade.realized_gain ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, realized_gain: e.target.value ? Number(e.target.value) : null } : p))} className="rounded border px-2 py-1 text-sm" placeholder="실현손익" />
                   <div className="flex gap-1">
-                    <button onClick={() => updateTradeMut.mutate({ id: trade.id, data: { exit_committee_id: editTrade.exit_committee_id, fund_id: editTrade.fund_id, company_id: editTrade.company_id, investment_id: editTrade.investment_id, trade_date: editTrade.trade_date, exit_type: editTrade.exit_type, amount: editTrade.amount, fees: editTrade.fees, shares_sold: editTrade.shares_sold, realized_gain: editTrade.realized_gain, memo: editTrade.memo.trim() || null } })} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                    <button onClick={() => { setEditingTradeId(null); setEditTrade(null) }} className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200">취소</button>
+                    <button onClick={() => updateTradeMut.mutate({ id: trade.id, data: { exit_committee_id: editTrade.exit_committee_id, fund_id: editTrade.fund_id, company_id: editTrade.company_id, investment_id: editTrade.investment_id, trade_date: editTrade.trade_date, exit_type: editTrade.exit_type, amount: editTrade.amount, fees: editTrade.fees, shares_sold: editTrade.shares_sold, realized_gain: editTrade.realized_gain, memo: editTrade.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button onClick={() => { setEditingTradeId(null); setEditTrade(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>
               )}
@@ -370,5 +375,10 @@ export default function ExitsPage() {
     </div>
   )
 }
+
+
+
+
+
 
 

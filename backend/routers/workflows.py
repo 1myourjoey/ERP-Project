@@ -250,6 +250,9 @@ def complete_step(
             task.status = "completed"
             task.completed_at = datetime.now()
             task.actual_time = data.actual_time
+            if data.notes:
+                existing_memo = task.memo or ""
+                task.memo = f"{existing_memo}\n[완료 메모] {data.notes}".strip()
 
     # Session autoflush is disabled globally, so persist current-step completion
     # before querying for the next pending step.

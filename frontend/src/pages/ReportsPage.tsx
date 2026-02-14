@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation } from 'react-router-dom'
 import {
   createRegularReport,
   deleteRegularReport,
@@ -19,17 +20,7 @@ interface FilterState {
   status: string
 }
 
-const REPORT_TARGET_OPTIONS = ['농금원', 'VICS', 'LP', '내부보고회', '홈택스', '금감원', '한국벤처캐피탈협회', '기타']
-const REPORT_TARGET_LABEL: Record<string, string> = {
-  농금원: '농금원',
-  VICS: '벤처협회 VICS',
-  LP: 'LP 보고',
-  내부보고회: '내부보고회',
-  홈택스: '홈택스',
-  금감원: '금감원',
-  한국벤처캐피탈협회: '한국벤처캐피탈협회',
-  기타: '기타',
-}
+const REPORT_TARGET_OPTIONS = ['중기부', 'VICS', 'LP', '내부보고', '연차보고', '기타']
 const STATUS_OPTIONS = ['예정', '준비중', '제출완료', '확인완료']
 
 const EMPTY_FILTERS: FilterState = {
@@ -39,7 +30,7 @@ const EMPTY_FILTERS: FilterState = {
 }
 
 const EMPTY_INPUT: RegularReportInput = {
-  report_target: '농금원',
+  report_target: '중기부',
   fund_id: null,
   period: '',
   due_date: '',
@@ -68,6 +59,8 @@ function dueBadge(report: RegularReport): { text: string; className: string } | 
 export default function ReportsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const location = useLocation()
+  const highlightId = ((location.state as { highlightId?: number } | null)?.highlightId) ?? null
 
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [showCreate, setShowCreate] = useState(false)
@@ -119,18 +112,19 @@ export default function ReportsPage() {
   })
 
   return (
-    <div className="max-w-7xl p-6 space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-xl font-semibold text-gray-900">보고·공시 관리</h2>
-        <p className="text-sm text-gray-500">정기/수시 보고 일정과 현황을 기록합니다.</p>
-        <p className="text-xs text-gray-400">(실제 보고는 농금원 ERP, VICS 등 각 기관 시스템에서 진행)</p>
+    <div className="page-container space-y-4">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">보고·공시 관리</h2>
+          <p className="page-subtitle">정기/수시 보고 일정과 제출 상태를 관리합니다.</p>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+      <div className="card-base">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
             <option value="">전체 대상</option>
-            {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{REPORT_TARGET_LABEL[target] || target}</option>)}
+            {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
           </select>
           <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
             <option value="">전체 조합</option>
@@ -142,8 +136,8 @@ export default function ReportsPage() {
           </select>
         </div>
         <div className="mt-2 flex gap-2">
-          <button onClick={() => setFilters(EMPTY_FILTERS)} className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100">필터 초기화</button>
-          <button onClick={() => setShowCreate((prev) => !prev)} className="rounded-lg bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700">+ 보고 기록 추가</button>
+          <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">필터 초기화</button>
+          <button onClick={() => setShowCreate((prev) => !prev)} className="primary-btn">+ 보고 기록 추가</button>
         </div>
       </div>
 
@@ -152,7 +146,7 @@ export default function ReportsPage() {
           <h3 className="text-sm font-semibold text-gray-700">신규 보고 기록</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-              {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{REPORT_TARGET_LABEL[target] || target}</option>)}
+              {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
             </select>
             <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="rounded border px-2 py-1 text-sm">
               <option value="">조합 미지정</option>
@@ -164,7 +158,7 @@ export default function ReportsPage() {
               {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </div>
-          <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={4} className="w-full rounded border px-2 py-1 text-sm" placeholder="메모 (예: 향후 자료 전달 예정, 별도 ERP 제출 예정 등)" />
+          <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="메모" />
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -176,31 +170,31 @@ export default function ReportsPage() {
                 })
               }}
               disabled={createMut.isPending}
-              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
+              className="primary-btn"
             >
               저장
             </button>
-            <button onClick={() => setShowCreate(false)} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">취소</button>
+            <button onClick={() => setShowCreate(false)} className="secondary-btn">취소</button>
           </div>
         </div>
       )}
 
       <div className="space-y-3">
         {isLoading ? (
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-500 shadow-sm">불러오는 중...</div>
+          <div className="loading-state"><div className="loading-spinner" /></div>
         ) : !rows?.length ? (
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-400 shadow-sm">보고 기록이 없습니다.</div>
+          <div className="empty-state"><p className="text-sm">보고 기록이 없습니다.</p></div>
         ) : (
           rows.map((row) => {
             const badge = dueBadge(row)
             const isEditing = editingId === row.id && !!editForm
             return (
-              <div key={row.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div key={row.id} className={`card-base ${highlightId === row.id ? 'ring-2 ring-blue-300' : ''}`}>
                 {isEditing && editForm ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                       <select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="rounded border px-2 py-1 text-sm">
-                        {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{REPORT_TARGET_LABEL[target] || target}</option>)}
+                        {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
                       </select>
                       <select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="rounded border px-2 py-1 text-sm">
                         <option value="">조합 미지정</option>
@@ -217,14 +211,14 @@ export default function ReportsPage() {
                       <textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="rounded border px-2 py-1 text-sm" />
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => updateMut.mutate({ id: row.id, data: { ...editForm, period: editForm.period.trim(), memo: editForm.memo?.trim() || null } })} className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700">저장</button>
-                      <button onClick={() => { setEditingId(null); setEditForm(null) }} className="rounded border px-3 py-1 text-xs hover:bg-gray-100">취소</button>
+                      <button onClick={() => updateMut.mutate({ id: row.id, data: { ...editForm, period: editForm.period.trim(), memo: editForm.memo?.trim() || null } })} className="primary-btn">저장</button>
+                      <button onClick={() => { setEditingId(null); setEditForm(null) }} className="secondary-btn">취소</button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-800">{REPORT_TARGET_LABEL[row.report_target] || row.report_target} · {row.period}</p>
+                      <p className="text-sm font-semibold text-gray-800">{row.report_target} · {row.period}</p>
                       <div className="flex items-center gap-1">
                         {badge && <span className={`rounded px-2 py-0.5 text-xs ${badge.className}`}>{badge.text}</span>}
                         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{labelStatus(row.status)}</span>
@@ -247,11 +241,11 @@ export default function ReportsPage() {
                             memo: row.memo,
                           })
                         }}
-                        className="rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200"
+                        className="secondary-btn"
                       >
                         수정
                       </button>
-                      <button onClick={() => { if (confirm('이 보고 기록을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">삭제</button>
+                      <button onClick={() => { if (confirm('이 보고 기록을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
                     </div>
                   </div>
                 )}
@@ -263,3 +257,4 @@ export default function ReportsPage() {
     </div>
   )
 }
+

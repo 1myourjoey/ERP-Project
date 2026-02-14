@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from database import engine, Base, SessionLocal
 from models import *  # noqa: F401,F403 - import all models so tables are created
 from seed.seed_accounts import seed_accounts
+from scripts.seed_data import seed_all
 from routers import (
     tasks,
     workflows,
@@ -67,6 +68,9 @@ def ensure_sqlite_compat_columns():
             ("funds", "performance_fee_rate", "REAL"),
             ("funds", "hurdle_rate", "REAL"),
             ("funds", "account_number", "TEXT"),
+            ("funds", "fund_manager", "TEXT"),
+            ("funds", "investment_period_end", "DATE"),
+            ("funds", "gp_commitment", "REAL"),
             ("portfolio_companies", "corp_number", "TEXT"),
             ("portfolio_companies", "founded_date", "DATE"),
             ("portfolio_companies", "analyst", "TEXT"),
@@ -95,6 +99,7 @@ async def lifespan(app: FastAPI):
         db = SessionLocal()
         try:
             seed_accounts(db)
+            seed_all(db)
         finally:
             db.close()
     yield
