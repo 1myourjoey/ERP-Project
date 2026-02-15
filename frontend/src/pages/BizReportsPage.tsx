@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createBizReport,
+  createTask,
   deleteBizReport,
   fetchBizReports,
   fetchFunds,
+  fetchTasks,
   updateBizReport,
   type BizReport,
   type BizReportInput,
   type Fund,
+  type Task,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -172,6 +175,10 @@ export default function BizReportsPage() {
     queryKey: ['bizReports', params],
     queryFn: () => fetchBizReports(params),
   })
+  const { data: lpReportTasks = [] } = useQuery<Task[]>({
+    queryKey: ['tasks', { category: 'LP보고' }],
+    queryFn: () => fetchTasks({ category: 'LP보고' }),
+  })
 
   const createMut = useMutation({
     mutationFn: (data: BizReportInput) => createBizReport(data),
@@ -198,6 +205,16 @@ export default function BizReportsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bizReports'] })
       addToast('success', '영업보고를 삭제했습니다.')
+    },
+  })
+
+  const createTaskMut = useMutation({
+    mutationFn: createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      addToast('success', '업무가 생성되었습니다.')
     },
   })
 
@@ -311,6 +328,20 @@ export default function BizReportsPage() {
                 <div className="flex items-center gap-1">
                   <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{labelStatus(report.status)}</span>
                   <button
+                    onClick={() =>
+                      createTaskMut.mutate({
+                        title: `${report.fund_name || `조합 #${report.fund_id}`} ${report.report_year} 영업보고서 작성`,
+                        fund_id: report.fund_id,
+                        category: 'LP보고',
+                        quadrant: 'Q1',
+                        deadline: report.submission_date || null,
+                      })
+                    }
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    업무 추가
+                  </button>
+                  <button
                     onClick={() => {
                       setEditingId(report.id)
                       setEditForm({
@@ -368,6 +399,23 @@ export default function BizReportsPage() {
                 <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>투자활동:</strong> {report.investment_activity || '-'}</p>
                 <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>이슈/전망:</strong> {[report.key_issues, report.outlook].filter(Boolean).join(' / ') || '-'}</p>
               </div>
+              {lpReportTasks.filter((task) => task.fund_id === report.fund_id && task.category === 'LP보고').length > 0 && (
+                <div className="mt-2 border-t pt-2">
+                  <p className="mb-1 text-xs font-medium text-gray-500">연관 업무</p>
+                  <div className="space-y-1">
+                    {lpReportTasks
+                      .filter((task) => task.fund_id === report.fund_id && task.category === 'LP보고')
+                      .map((task) => (
+                        <div key={task.id} className="flex items-center gap-2 text-xs">
+                          <span className={task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}>
+                            {task.title}
+                          </span>
+                          {task.estimated_time && <span className="text-gray-400">{task.estimated_time}</span>}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

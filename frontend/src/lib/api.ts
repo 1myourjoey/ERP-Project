@@ -15,7 +15,7 @@ api.interceptors.response.use(
 // -- Tasks --
 export const fetchTaskBoard = (status = 'pending', year?: number, month?: number) =>
   api.get('/tasks/board', { params: { status, year, month } }).then(r => r.data)
-export const fetchTasks = (params?: { quadrant?: string; status?: string }) => api.get('/tasks', { params }).then(r => r.data)
+export const fetchTasks = (params?: { quadrant?: string; status?: string; fund_id?: number; category?: string }) => api.get('/tasks', { params }).then(r => r.data)
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
