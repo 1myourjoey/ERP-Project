@@ -47,7 +47,7 @@ function typeLabel(event: CalendarEvent) {
   return '일반 일정'
 }
 
-export default function MiniCalendar() {
+export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: number) => void }) {
   const queryClient = useQueryClient()
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -204,11 +204,27 @@ export default function MiniCalendar() {
         ) : (
           <div className="max-h-44 space-y-1 overflow-auto">
             {selectedEvents.map((event) => (
-              <div key={`${event.id}-${event.title}`} className="rounded border border-gray-200 bg-white p-1.5">
+              <div
+                key={`${event.id}-${event.title}`}
+                onClick={() => {
+                  if (event.task_id && onTaskClick) {
+                    onTaskClick(event.task_id)
+                  }
+                }}
+                className={`rounded border border-gray-200 bg-white p-1.5 ${
+                  event.task_id && onTaskClick ? 'cursor-pointer hover:bg-blue-50' : ''
+                }`}
+              >
                 <div className="flex items-center justify-between gap-1">
                   <p className="truncate text-xs text-gray-800">{event.title}</p>
                   {event.id > 0 ? (
-                    <button onClick={() => deleteMut.mutate(event.id)} className="text-red-500 hover:text-red-700">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteMut.mutate(event.id)
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
                       <Trash2 size={12} />
                     </button>
                   ) : null}

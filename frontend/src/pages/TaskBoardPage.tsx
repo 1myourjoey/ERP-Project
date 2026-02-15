@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, Pencil, Plus, Trash2 } from 'lucide-react'
 
@@ -11,6 +11,7 @@ import {
   createTask,
   deleteTask,
   fetchFunds,
+  fetchTasks,
   fetchWorkflows,
   fetchTaskBoard,
   instantiateWorkflow,
@@ -529,6 +530,82 @@ function EditTaskModal({
   )
 }
 
+function TaskDetailModal({
+  task,
+  onClose,
+  onEdit,
+  onComplete,
+}: {
+  task: Task
+  onClose: () => void
+  onEdit: (task: Task) => void
+  onComplete: (task: Task) => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">{task.title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-700">
+          {task.deadline && (
+            <div><span className="font-medium">마감:</span> {new Date(task.deadline).toLocaleString('ko-KR')}</div>
+          )}
+          {task.estimated_time && (
+            <div><span className="font-medium">예상 시간:</span> {task.estimated_time}</div>
+          )}
+          {task.fund_name && (
+            <div><span className="font-medium">조합:</span> {task.fund_name}</div>
+          )}
+          {task.company_name && (
+            <div><span className="font-medium">피투자사:</span> {task.company_name}</div>
+          )}
+          {task.category && (
+            <div><span className="font-medium">카테고리:</span> {task.category}</div>
+          )}
+          <div><span className="font-medium">사분면:</span> {task.quadrant}</div>
+          {task.memo && (
+            <div><span className="font-medium">메모:</span> {task.memo}</div>
+          )}
+          {task.delegate_to && (
+            <div><span className="font-medium">담당자:</span> {task.delegate_to}</div>
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+          {task.status !== 'completed' && (
+            <>
+              <button
+                onClick={() => onComplete(task)}
+                className="rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+              >
+                완료
+              </button>
+              <button
+                onClick={() => onEdit(task)}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+              >
+                수정
+              </button>
+            </>
+          )}
+          <button
+            onClick={onClose}
+            className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-300"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -544,6 +621,7 @@ export default function TaskBoardPage() {
   const [completedYear, setCompletedYear] = useState(currentYear)
   const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
   const [showMiniCalendar, setShowMiniCalendar] = useState(false)
+  const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
 
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
@@ -562,6 +640,16 @@ export default function TaskBoardPage() {
     queryKey: ['funds'],
     queryFn: fetchFunds,
   })
+  const { data: calendarTasks = [] } = useQuery<Task[]>({
+    queryKey: ['tasks', { status: 'all' }],
+    queryFn: () => fetchTasks({ status: 'all' }),
+    enabled: showMiniCalendar,
+  })
+
+  const calendarTaskMap = useMemo(
+    () => new Map(calendarTasks.map((task) => [task.id, task])),
+    [calendarTasks],
+  )
 
   const filterByFund = (tasks: Task[]) => {
     if (fundFilter === '') return tasks
@@ -691,7 +779,16 @@ export default function TaskBoardPage() {
 
       {showMiniCalendar ? (
         <div className="w-full">
-          <MiniCalendar />
+          <MiniCalendar
+            onTaskClick={(taskId) => {
+              const target = calendarTaskMap.get(taskId)
+              if (!target) {
+                addToast('error', '업무 상세 정보를 찾지 못했습니다.')
+                return
+              }
+              setDetailTask(target)
+            }}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -772,6 +869,21 @@ export default function TaskBoardPage() {
             completeMutation.mutate({ id: completingTask.id, actualTime, autoWorklog, memo })
           }
           onCancel={() => setCompletingTask(null)}
+        />
+      )}
+
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+          onEdit={(task) => {
+            setDetailTask(null)
+            setEditingTask(task)
+          }}
+          onComplete={(task) => {
+            setDetailTask(null)
+            setCompletingTask(task)
+          }}
         />
       )}
     </div>
