@@ -124,6 +124,8 @@ class InvestmentListItem(BaseModel):
     company_id: int
     fund_name: str
     company_name: str
+    company_founded_date: Optional[date] = None
+    industry: Optional[str] = None
     investment_date: Optional[date] = None
     amount: Optional[float] = Field(default=None, ge=0)
     instrument: Optional[str] = None

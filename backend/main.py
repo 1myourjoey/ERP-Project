@@ -71,6 +71,7 @@ def ensure_sqlite_compat_columns():
             ("funds", "fund_manager", "TEXT"),
             ("funds", "investment_period_end", "DATE"),
             ("funds", "gp_commitment", "REAL"),
+            ("funds", "contribution_type", "TEXT"),
             ("portfolio_companies", "corp_number", "TEXT"),
             ("portfolio_companies", "founded_date", "DATE"),
             ("portfolio_companies", "analyst", "TEXT"),
@@ -86,6 +87,9 @@ def ensure_sqlite_compat_columns():
             ("exit_committees", "performance_fee", "REAL"),
             ("biz_reports", "fund_id", "INTEGER"),
             ("checklists", "investment_id", "INTEGER"),
+            ("tasks", "category", "TEXT"),
+            ("tasks", "fund_id", "INTEGER"),
+            ("tasks", "investment_id", "INTEGER"),
         ]:
             if not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")

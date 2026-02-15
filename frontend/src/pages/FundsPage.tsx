@@ -2,9 +2,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { fetchFunds, createFund, type Fund, type FundInput } from '../lib/api'
-import { labelStatus } from '../lib/labels'
+import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Building2, ChevronRight, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 
 const EMPTY_FUND: FundInput = {
   name: '',
@@ -108,21 +108,50 @@ export default function FundsPage() {
       <div className="card-base">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">조합 목록</h3>
         {isLoading ? <p className="text-sm text-gray-500 p-2">불러오는 중...</p> : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {funds?.map((fund) => (
-              <button
+              <div
                 key={fund.id}
                 onClick={() => navigate(`/funds/${fund.id}`)}
-                className="w-full text-left p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                className="card-base cursor-pointer p-4 hover:ring-1 hover:ring-blue-200"
               >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-800 flex items-center gap-2"><Building2 size={15} />{fund.name}</h4>
-                  <ChevronRight size={16} className="text-gray-400" />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{fund.name}</h4>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {fund.type} | {labelStatus(fund.status)}
+                    </p>
+                  </div>
+                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                    {labelStatus(fund.status)}
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {fund.type} | {labelStatus(fund.status)} | LP {fund.lp_count ?? 0} | 투자 {fund.investment_count ?? 0}
-                </p>
-              </button>
+
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {fund.formation_date && (
+                    <div className="text-gray-500">
+                      <span className="text-xs">결성일</span>
+                      <p className="font-medium text-gray-700">{fund.formation_date}</p>
+                    </div>
+                  )}
+                  {fund.commitment_total != null && (
+                    <div className="text-gray-500">
+                      <span className="text-xs">약정총액</span>
+                      <p className="font-medium text-gray-700">{formatKRW(fund.commitment_total)}</p>
+                    </div>
+                  )}
+                  {fund.aum != null && (
+                    <div className="text-gray-500">
+                      <span className="text-xs">운용규모</span>
+                      <p className="font-medium text-gray-700">{formatKRW(fund.aum)}</p>
+                    </div>
+                  )}
+                  <div className="text-gray-500">
+                    <span className="text-xs">투자건수</span>
+                    <p className="font-medium text-gray-700">{fund.investment_count ?? 0}건</p>
+                  </div>
+                </div>
+              </div>
             ))}
             {!funds?.length && <p className="text-sm text-gray-400 p-2">등록된 조합이 없습니다.</p>}
           </div>

@@ -231,15 +231,25 @@ def build_fund_overview(
 @router.get("/api/funds", response_model=list[FundListItem])
 def list_funds(db: Session = Depends(get_db)):
     funds = db.query(Fund).order_by(Fund.id.desc()).all()
+    investment_counts = {
+        int(fund_id): int(count)
+        for fund_id, count in (
+            db.query(Investment.fund_id, func.count(Investment.id))
+            .group_by(Investment.fund_id)
+            .all()
+        )
+    }
     return [
         FundListItem(
             id=f.id,
             name=f.name,
             type=f.type,
             status=f.status,
+            formation_date=f.formation_date,
             commitment_total=f.commitment_total,
             aum=f.aum,
             lp_count=len(f.lps),
+            investment_count=investment_counts.get(f.id, 0),
         )
         for f in funds
     ]

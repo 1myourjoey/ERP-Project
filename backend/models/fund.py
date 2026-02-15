@@ -29,6 +29,7 @@ class Fund(Base):
     trustee = Column(String, nullable=True)
     commitment_total = Column(Float, nullable=True)
     gp_commitment = Column(Float, nullable=True)
+    contribution_type = Column(String, nullable=True)
     aum = Column(Float, nullable=True)
     investment_period_end = Column(Date, nullable=True)
     maturity_date = Column(Date, nullable=True)

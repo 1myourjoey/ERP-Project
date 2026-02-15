@@ -5,6 +5,7 @@ import {
   createFundLP,
   deleteFund,
   deleteFundLP,
+  fetchCapitalCalls,
   fetchDocumentStatus,
   fetchFund,
   fetchInvestments,
@@ -17,6 +18,7 @@ import {
   type FundInput,
   type FundKeyTermInput,
   type FundNoticePeriodInput,
+  type CapitalCall,
   type LPInput,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
@@ -26,6 +28,8 @@ import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 interface FundInvestmentListItem {
   id: number
   company_name?: string
+  company_founded_date?: string | null
+  industry?: string | null
   investment_date?: string | null
   amount?: number | null
   instrument?: string | null
@@ -148,6 +152,12 @@ function FundForm({
         <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="총 약정액" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" value={form.gp_commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, gp_commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="GP 출자금" className="px-3 py-2 text-sm border rounded-lg" />
+        <select value={form.contribution_type || ''} onChange={e => setForm(prev => ({ ...prev, contribution_type: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg">
+          <option value="">출자방식 선택</option>
+          <option value="일시">일시</option>
+          <option value="분할">분할</option>
+          <option value="수시">수시</option>
+        </select>
         <input type="number" value={form.aum ?? ''} onChange={e => setForm(prev => ({ ...prev, aum: e.target.value ? Number(e.target.value) : null }))} placeholder="AUM" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="px-3 py-2 text-sm border rounded-lg" />
@@ -169,6 +179,7 @@ function FundForm({
             fund_manager: form.fund_manager?.trim() || null,
             co_gp: form.co_gp?.trim() || null,
             trustee: form.trustee?.trim() || null,
+            contribution_type: form.contribution_type?.trim() || null,
             account_number: form.account_number?.trim() || null,
           })}
           disabled={loading || !form.name.trim()}
@@ -220,6 +231,7 @@ export default function FundDetailPage() {
   const [editingLPId, setEditingLPId] = useState<number | null>(null)
   const [editingNotices, setEditingNotices] = useState(false)
   const [editingKeyTerms, setEditingKeyTerms] = useState(false)
+  const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
 
@@ -241,6 +253,12 @@ export default function FundDetailPage() {
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
 
+  const { data: capitalCalls = [] } = useQuery<CapitalCall[]>({
+    queryKey: ['capitalCalls', { fund_id: fundId }],
+    queryFn: () => fetchCapitalCalls({ fund_id: fundId }),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
   useEffect(() => {
     if (!fundDetail) return
     if (!editingNotices) {
@@ -255,6 +273,23 @@ export default function FundDetailPage() {
     () => (investments ?? []).reduce((sum, inv) => sum + (inv.amount ?? 0), 0),
     [investments],
   )
+
+  const sortedCapitalCalls = useMemo(
+    () => [...capitalCalls].sort((a, b) => (a.call_date || '').localeCompare(b.call_date || '')),
+    [capitalCalls],
+  )
+
+  const initialPaidIn = useMemo(
+    () => (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0),
+    [fundDetail?.lps],
+  )
+
+  const additionalPaidIn = useMemo(
+    () => sortedCapitalCalls.reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0),
+    [sortedCapitalCalls],
+  )
+
+  const totalPaidIn = initialPaidIn + additionalPaidIn
 
   const keyTermsByCategory = useMemo(() => {
     const grouped = new Map<string, { label: string; value: string; article_ref: string | null }[]>()
@@ -413,6 +448,7 @@ export default function FundDetailPage() {
                 <div className="p-2 bg-gray-50 rounded">신탁사: {fundDetail.trustee || '-'}</div>
                 <div className="p-2 bg-gray-50 rounded">약정액: {formatKRW(fundDetail.commitment_total ?? null)}</div>
                 <div className="p-2 bg-gray-50 rounded">GP 출자금: {formatKRW(fundDetail.gp_commitment ?? null)}</div>
+                <div className="p-2 bg-gray-50 rounded">출자방식: {fundDetail.contribution_type || '-'}</div>
                 <div className="p-2 bg-gray-50 rounded">AUM: {formatKRW(fundDetail.aum ?? null)}</div>
                 <div className="p-2 bg-gray-50 rounded">관리보수율: {fundDetail.mgmt_fee_rate != null ? `${fundDetail.mgmt_fee_rate}%` : '-'}</div>
                 <div className="p-2 bg-gray-50 rounded">성과보수율: {fundDetail.performance_fee_rate != null ? `${fundDetail.performance_fee_rate}%` : '-'}</div>
@@ -421,6 +457,53 @@ export default function FundDetailPage() {
               </div>
             </div>
           )}
+
+          <div className="card-base">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">출자 이력</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2 text-left">차수</th>
+                    <th className="px-3 py-2 text-left">납입일</th>
+                    <th className="px-3 py-2 text-right">납입금액</th>
+                    <th className="px-3 py-2 text-right">납입비율</th>
+                    <th className="px-3 py-2 text-left">비고</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  <tr>
+                    <td className="px-3 py-2">최초 결성</td>
+                    <td className="px-3 py-2">{fundDetail.formation_date || '-'}</td>
+                    <td className="px-3 py-2 text-right">{formatKRW(initialPaidIn)}</td>
+                    <td className="px-3 py-2 text-right">
+                      {fundDetail.commitment_total ? `${((initialPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">최초 납입</td>
+                  </tr>
+                  {sortedCapitalCalls.map((call, index) => (
+                    <tr key={call.id}>
+                      <td className="px-3 py-2">{index + 1}차 캐피탈콜</td>
+                      <td className="px-3 py-2">{call.call_date || '-'}</td>
+                      <td className="px-3 py-2 text-right">{formatKRW(call.total_amount || 0)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {fundDetail.commitment_total ? `${(((call.total_amount || 0) / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-gray-500">{call.memo || call.call_type || '-'}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50 font-semibold">
+                    <td className="px-3 py-2" colSpan={2}>합계</td>
+                    <td className="px-3 py-2 text-right">{formatKRW(totalPaidIn)}</td>
+                    <td className="px-3 py-2 text-right">
+                      {fundDetail.commitment_total ? `${((totalPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
+                    </td>
+                    <td className="px-3 py-2" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
@@ -708,10 +791,27 @@ export default function FundDetailPage() {
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="card-base">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">투자 내역</h3>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">투자 내역</h3>
+                <div className="flex rounded border text-xs">
+                  <button
+                    onClick={() => setInvestmentViewMode('cards')}
+                    className={`px-2 py-1 ${investmentViewMode === 'cards' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
+                  >
+                    카드
+                  </button>
+                  <button
+                    onClick={() => setInvestmentViewMode('table')}
+                    className={`px-2 py-1 ${investmentViewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
+                  >
+                    목록
+                  </button>
+                </div>
+              </div>
+
               {!investments?.length ? (
                 <p className="text-sm text-gray-400">등록된 투자가 없습니다.</p>
-              ) : (
+              ) : investmentViewMode === 'cards' ? (
                 <div className="space-y-2">
                   {investments.map((inv) => (
                     <button
@@ -730,6 +830,39 @@ export default function FundDetailPage() {
                       </p>
                     </button>
                   ))}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-xs text-gray-500">
+                      <tr>
+                        <th className="px-3 py-2 text-left">투자기업명</th>
+                        <th className="px-3 py-2 text-left">설립일</th>
+                        <th className="px-3 py-2 text-left">업종</th>
+                        <th className="px-3 py-2 text-left">투자수단</th>
+                        <th className="px-3 py-2 text-right">투자총액</th>
+                        <th className="px-3 py-2 text-center">회수완료</th>
+                        <th className="px-3 py-2 text-left">투자일자</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {investments.map((inv) => (
+                        <tr
+                          key={inv.id}
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => navigate(`/investments/${inv.id}`)}
+                        >
+                          <td className="px-3 py-2 font-medium text-gray-800">{inv.company_name || '-'}</td>
+                          <td className="px-3 py-2 text-gray-500">{inv.company_founded_date || '-'}</td>
+                          <td className="px-3 py-2 text-gray-500">{inv.industry || '-'}</td>
+                          <td className="px-3 py-2 text-gray-700">{inv.instrument || '-'}</td>
+                          <td className="px-3 py-2 text-right">{formatKRW(inv.amount ?? null)}</td>
+                          <td className="px-3 py-2 text-center">{inv.status === 'exited' ? 'Y' : '-'}</td>
+                          <td className="px-3 py-2 text-gray-500">{inv.investment_date || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -762,11 +895,3 @@ export default function FundDetailPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-

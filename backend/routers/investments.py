@@ -91,6 +91,8 @@ def list_investments(
             company_id=inv.company_id,
             fund_name=fund.name if fund else "",
             company_name=company.name if company else "",
+            company_founded_date=company.founded_date if company else None,
+            industry=company.industry if company else None,
             investment_date=inv.investment_date,
             amount=inv.amount,
             instrument=inv.instrument,

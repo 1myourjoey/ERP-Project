@@ -12,7 +12,7 @@ class LPCreate(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def validate_type(cls, value: str) -> str:
+    def validate_lp_create_type(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("type must not be empty")
@@ -28,7 +28,7 @@ class LPUpdate(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def validate_type(cls, value: Optional[str]) -> Optional[str]:
+    def validate_lp_update_type(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         value = value.strip()
@@ -96,6 +96,7 @@ class FundCreate(BaseModel):
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
+    contribution_type: Optional[str] = None
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None
@@ -106,7 +107,7 @@ class FundCreate(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def validate_type(cls, value: str) -> str:
+    def validate_fund_create_type(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("type must not be empty")
@@ -124,6 +125,7 @@ class FundUpdate(BaseModel):
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
+    contribution_type: Optional[str] = None
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None
@@ -134,7 +136,7 @@ class FundUpdate(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def validate_type(cls, value: Optional[str]) -> Optional[str]:
+    def validate_fund_update_type(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         value = value.strip()
@@ -148,9 +150,11 @@ class FundListItem(BaseModel):
     name: str
     type: str
     status: str
+    formation_date: Optional[date] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     aum: Optional[float] = Field(default=None, ge=0)
     lp_count: int = 0
+    investment_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -205,6 +209,7 @@ class FundResponse(BaseModel):
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
+    contribution_type: Optional[str] = None
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None

@@ -19,8 +19,13 @@ export const fetchTasks = (params?: { quadrant?: string; status?: string }) => a
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
-export const completeTask = (id: number, actual_time: string, auto_worklog?: boolean) =>
-  api.patch(`/tasks/${id}/complete`, { actual_time, auto_worklog }).then(r => r.data)
+export const completeTask = (
+  id: number,
+  actual_time: string,
+  auto_worklog: boolean,
+  memo?: string,
+) => api.patch(`/tasks/${id}/complete`, { actual_time, auto_worklog, memo: memo || null }).then(r => r.data)
+export const undoCompleteTask = (id: number) => api.patch(`/tasks/${id}/undo-complete`).then(r => r.data)
 export const deleteTask = (id: number) => api.delete(`/tasks/${id}`)
 export const generateMonthlyReminders = (yearMonth: string) =>
   api.post('/tasks/generate-monthly-reminders', null, { params: { year_month: yearMonth } }).then(r => r.data)
@@ -233,6 +238,9 @@ export interface DashboardResponse {
   missing_documents: MissingDocument[]
   upcoming_reports: UpcomingReport[]
   upcoming_notices?: UpcomingNotice[]
+  completed_today: Task[]
+  completed_today_count: number
+  completed_this_week_count: number
 }
 
 export interface ActiveWorkflow {
@@ -313,6 +321,9 @@ export interface TaskCreate {
   quadrant?: string
   memo?: string | null
   delegate_to?: string | null
+  category?: string | null
+  fund_id?: number | null
+  investment_id?: number | null
 }
 
 export interface Task {
@@ -329,6 +340,11 @@ export interface Task {
   actual_time: string | null
   workflow_instance_id: number | null
   workflow_step_order: number | null
+  category: string | null
+  fund_id: number | null
+  investment_id: number | null
+  fund_name: string | null
+  company_name: string | null
 }
 
 export interface TaskBoard {
@@ -476,6 +492,7 @@ export interface Fund {
   trustee: string | null
   commitment_total: number | null
   gp_commitment: number | null
+  contribution_type: string | null
   aum: number | null
   investment_period_end: string | null
   maturity_date: string | null
@@ -501,6 +518,7 @@ export interface FundInput {
   trustee?: string | null
   commitment_total?: number | null
   gp_commitment?: number | null
+  contribution_type?: string | null
   aum?: number | null
   investment_period_end?: string | null
   maturity_date?: string | null
