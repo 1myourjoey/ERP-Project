@@ -73,6 +73,29 @@ def http_request(
     return status, parsed, text
 
 
+def http_request_binary(
+    method: str,
+    path: str,
+    expected_status: tuple[int, ...] = (200,),
+) -> tuple[int, bytes, dict[str, str]]:
+    req = Request(f"{BASE_URL}{path}", method=method)
+    try:
+        with urlopen(req, timeout=20) as res:
+            status = res.getcode()
+            body = res.read()
+            headers = {k.lower(): v for k, v in res.headers.items()}
+    except HTTPError as err:
+        status = err.code
+        body = err.read()
+        headers = {k.lower(): v for k, v in err.headers.items()}
+
+    if status not in expected_status:
+        raise SmokeFailure(
+            f"{method} {path} returned {status}, expected {expected_status}. body_len={len(body)}"
+        )
+    return status, body, headers
+
+
 def find_calendar_event(events: list[dict[str, Any]], task_id: int) -> dict[str, Any] | None:
     for event in events:
         if event.get("task_id") == task_id:
@@ -185,6 +208,8 @@ def run_smoke() -> None:
         expected_status=(201,),
     )
     created["task_id"] = int(task["id"])
+    for field in ("category", "fund_id", "fund_name", "company_name"):
+        expect(field in task, f"task response missing field: {field}")
     print("[PASS] create task")
 
     query_1 = urlencode({"date_from": deadline_day_1, "date_to": deadline_day_1})
@@ -200,6 +225,8 @@ def run_smoke() -> None:
         payload={"title": f"{marker}-task-updated", "deadline": deadline_2},
     )
     expect(updated_task["title"].endswith("updated"), "task update did not apply")
+    for field in ("category", "fund_id", "fund_name", "company_name"):
+        expect(field in updated_task, f"updated task response missing field: {field}")
     query_2 = urlencode({"date_from": deadline_day_2, "date_to": deadline_day_2})
     _, events_day_2, _ = http_request("GET", f"/api/calendar-events?{query_2}")
     moved_event = find_calendar_event(events_day_2, created["task_id"])
@@ -275,6 +302,51 @@ def run_smoke() -> None:
     )
     print("[PASS] fund/lp CRUD")
 
+    _, overview_payload, _ = http_request(
+        "GET",
+        f"/api/funds/overview?{urlencode({'reference_date': today.isoformat()})}",
+    )
+    expect(isinstance(overview_payload, dict), "fund overview should return object")
+    expect("funds" in overview_payload and "totals" in overview_payload, "fund overview shape invalid")
+    print("[PASS] fund overview endpoint")
+
+    _, export_bytes, export_headers = http_request_binary(
+        "GET",
+        f"/api/funds/overview/export?{urlencode({'reference_date': today.isoformat()})}",
+    )
+    expect(len(export_bytes) > 0, "fund overview export returned empty body")
+    expect(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        in export_headers.get("content-type", ""),
+        "fund overview export content-type mismatch",
+    )
+    print("[PASS] fund overview excel export")
+
+    _, report_task, _ = http_request(
+        "POST",
+        "/api/tasks",
+        payload={
+            "title": f"{marker}-lp-report-task",
+            "quadrant": "Q1",
+            "category": "LP보고",
+            "fund_id": created["fund_id"],
+            "deadline": deadline_1,
+        },
+        expected_status=(201,),
+    )
+    report_task_id = int(report_task["id"])
+    _, filtered_tasks, _ = http_request(
+        "GET",
+        f"/api/tasks?{urlencode({'fund_id': created['fund_id'], 'category': 'LP보고'})}",
+    )
+    expect(
+        isinstance(filtered_tasks, list)
+        and any(row.get("id") == report_task_id for row in filtered_tasks),
+        "task list fund_id/category filter failed",
+    )
+    http_request("DELETE", f"/api/tasks/{report_task_id}", expected_status=(204,))
+    print("[PASS] task filter by fund/category")
+
     _, company, _ = http_request(
         "POST",
         "/api/companies",
@@ -308,6 +380,19 @@ def run_smoke() -> None:
         "PUT",
         f"/api/investments/{created['investment_id']}",
         payload={"amount": 260000},
+    )
+    _, investment_rows, _ = http_request(
+        "GET",
+        f"/api/investments?{urlencode({'fund_id': created['fund_id']})}",
+    )
+    target_investment = next(
+        (row for row in investment_rows if row.get("id") == created["investment_id"]),
+        None,
+    )
+    expect(target_investment is not None, "investment list missing created row")
+    expect(
+        "company_founded_date" in target_investment and "industry" in target_investment,
+        "investment list missing company metadata fields",
     )
 
     _, document, _ = http_request(
@@ -798,6 +883,8 @@ def run_smoke() -> None:
     if next_step.get("task_id") is not None:
         _, next_task, _ = http_request("GET", f"/api/tasks/{next_step['task_id']}")
         expect(next_task.get("status") == "in_progress", "next step task was not activated")
+        for field in ("category", "fund_id", "fund_name", "company_name"):
+            expect(field in next_task, f"next step task response missing field: {field}")
     print("[PASS] workflow step completion -> next task activation")
 
     # 5) Error response shape check

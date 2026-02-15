@@ -89,7 +89,8 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             no_deadline_tasks.append(task_resp)
             continue
 
-        if deadline == today:
+        # Overdue tasks should stay visible in today's bucket so dashboard/task board counts align.
+        if deadline <= today:
             today_tasks.append(task_resp)
         elif deadline == tomorrow:
             tomorrow_tasks.append(task_resp)

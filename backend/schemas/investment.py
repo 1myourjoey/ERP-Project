@@ -92,7 +92,7 @@ class InvestmentCreate(BaseModel):
     valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: Literal["active", "exited", "written_off"] = "active"
+    status: Literal["active", "exited", "written_off", "planned"] = "active"
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)
@@ -110,7 +110,7 @@ class InvestmentUpdate(BaseModel):
     valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: Optional[Literal["active", "exited", "written_off"]] = None
+    status: Optional[Literal["active", "exited", "written_off", "planned"]] = None
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)
@@ -129,7 +129,7 @@ class InvestmentListItem(BaseModel):
     investment_date: Optional[date] = None
     amount: Optional[float] = Field(default=None, ge=0)
     instrument: Optional[str] = None
-    status: Literal["active", "exited", "written_off"]
+    status: Literal["active", "exited", "written_off", "planned"]
 
 
 class InvestmentResponse(BaseModel):
@@ -143,7 +143,7 @@ class InvestmentResponse(BaseModel):
     valuation: Optional[float] = Field(default=None, ge=0)
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
-    status: Literal["active", "exited", "written_off"]
+    status: Literal["active", "exited", "written_off", "planned"]
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)
