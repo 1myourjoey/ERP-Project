@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import MiniCalendar from '../components/MiniCalendar'
@@ -100,11 +101,13 @@ function TaskItem({
   onComplete,
   onDelete,
   onEdit,
+  isBlinking = false,
 }: {
   task: Task
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  isBlinking?: boolean
 }) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
@@ -112,12 +115,15 @@ function TaskItem({
 
   return (
     <div
+      id={`task-${task.id}`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('taskId', String(task.id))
         e.dataTransfer.setData('fromQuadrant', task.quadrant)
       }}
-      className="group flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-sm"
+      className={`group flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-sm ${
+        isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
+      }`}
     >
       <button
         onClick={() => onComplete(task)}
@@ -161,13 +167,22 @@ function WorkflowGroupCard({
   onComplete,
   onDelete,
   onEdit,
+  blinkingId,
 }: {
   group: WorkflowGroup
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  blinkingId: number | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const hasBlinkingTask = blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
+  const [expanded, setExpanded] = useState(hasBlinkingTask)
+
+  useEffect(() => {
+    if (hasBlinkingTask) {
+      setExpanded(true)
+    }
+  }, [hasBlinkingTask])
 
   return (
     <div className="rounded-md border border-indigo-200 bg-indigo-50/50">
@@ -188,7 +203,14 @@ function WorkflowGroupCard({
       {expanded && (
         <div className="space-y-1 border-t border-indigo-200 px-2 py-1.5">
           {group.tasks.map((task) => (
-            <TaskItem key={task.id} task={task} onComplete={onComplete} onDelete={onDelete} onEdit={onEdit} />
+            <TaskItem
+              key={task.id}
+              task={task}
+              onComplete={onComplete}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              isBlinking={blinkingId === task.id}
+            />
           ))}
         </div>
       )}
@@ -609,6 +631,8 @@ function TaskDetailModal({
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const location = useLocation()
+  const highlightTaskId = (location.state as { highlightTaskId?: number } | null)?.highlightTaskId
 
   const now = new Date()
   const currentYear = now.getFullYear()
@@ -623,6 +647,8 @@ export default function TaskBoardPage() {
   const [showMiniCalendar, setShowMiniCalendar] = useState(false)
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
+  const [blinkingId, setBlinkingId] = useState<number | null>(null)
+  const [pendingScrollId, setPendingScrollId] = useState<number | null>(null)
 
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
@@ -650,6 +676,32 @@ export default function TaskBoardPage() {
     () => new Map(calendarTasks.map((task) => [task.id, task])),
     [calendarTasks],
   )
+
+  useEffect(() => {
+    if (!highlightTaskId) return
+
+    setStatusFilter('all')
+    setFundFilter('')
+    setShowMiniCalendar(false)
+    setBlinkingId(highlightTaskId)
+    setPendingScrollId(highlightTaskId)
+
+    const timer = window.setTimeout(() => {
+      setBlinkingId((prev) => (prev === highlightTaskId ? null : prev))
+    }, 3000)
+
+    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
+
+    return () => window.clearTimeout(timer)
+  }, [highlightTaskId])
+
+  useEffect(() => {
+    if (!pendingScrollId || showMiniCalendar) return
+    const el = document.getElementById(`task-${pendingScrollId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setPendingScrollId(null)
+  }, [pendingScrollId, showMiniCalendar, board])
 
   const filterByFund = (tasks: Task[]) => {
     if (fundFilter === '') return tasks
@@ -830,6 +882,7 @@ export default function TaskBoardPage() {
                       onComplete={setCompletingTask}
                       onEdit={setEditingTask}
                       onDelete={handleDeleteTask}
+                      isBlinking={blinkingId === task.id}
                     />
                   ))}
 
@@ -840,6 +893,7 @@ export default function TaskBoardPage() {
                       onComplete={setCompletingTask}
                       onEdit={setEditingTask}
                       onDelete={handleDeleteTask}
+                      blinkingId={blinkingId}
                     />
                   ))}
                 </div>
