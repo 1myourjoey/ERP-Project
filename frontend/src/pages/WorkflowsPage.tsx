@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+ï»¿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
@@ -70,7 +70,7 @@ function renderPrintWindow(title: string, body: string) {
       <head>
         <title>${escapeHtml(title)}</title>
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; color: #111827; }
+          body { font-family: 'Malgun Gothic', 'ë§‘ì€ ê³ ë”•', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; padding: 24px; color: #111827; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .sheet { max-width: 900px; margin: 0 auto; }
           h1 { margin: 0; font-size: 20px; }
           .meta { margin-top: 8px; color: #4b5563; font-size: 13px; line-height: 1.6; }
@@ -80,7 +80,7 @@ function renderPrintWindow(title: string, body: string) {
           th { border-bottom: 2px solid #111827; }
           ul { margin: 0; padding-left: 18px; font-size: 13px; }
           li { margin: 4px 0; }
-          @media print { body { padding: 12px; } }
+          @media print { @page { margin: 20mm; } body { padding: 12px; } }
         </style>
       </head>
       <body>
@@ -115,33 +115,33 @@ function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: W
   const documents =
     (template?.documents ?? [])
       .map((doc) => `<li>[ ] ${escapeHtml(doc.name)}${doc.notes ? ` - ${escapeHtml(doc.notes)}` : ''}</li>`)
-      .join('') || '<li>¾øÀ½</li>'
+      .join('') || '<li>ì—†ìŒ</li>'
 
   const warnings = (template?.warnings ?? [])
     .map((warning) => `<li>${escapeHtml(warning.content)}</li>`)
     .join('')
 
   const body = `
-    <h1>VC ERP ¿öÅ©ÇÃ·Î¿ì Ã¼Å©¸®½ºÆ®</h1>
+    <h1>VC ERP ì›Œí¬í”Œë¡œìš° ì²´í¬ë¦¬ìŠ¤íŠ¸</h1>
     <div class="meta">
       <strong>${escapeHtml(instance.name)}</strong><br />
-      ${instance.fund_name ? `Á¶ÇÕ: ${escapeHtml(instance.fund_name)}<br />` : ''}
-      ${instance.company_name ? `È¸»ç: ${escapeHtml(instance.company_name)}<br />` : ''}
-      ½ÃÀÛÀÏ: ${escapeHtml(instance.trigger_date)}<br />
-      ÀÎ¼âÀÏ: ${new Date().toLocaleDateString('ko-KR')}
+      ${instance.fund_name ? `ì¡°í•©: ${escapeHtml(instance.fund_name)}<br />` : ''}
+      ${instance.company_name ? `íšŒì‚¬: ${escapeHtml(instance.company_name)}<br />` : ''}
+      ì‹œì‘ì¼: ${escapeHtml(instance.trigger_date)}<br />
+      ì¸ì‡„ì¼: ${new Date().toLocaleDateString('ko-KR')}
     </div>
-    <h2>ÁøÇà ´Ü°è</h2>
+    <h2>ì§„í–‰ ë‹¨ê³„</h2>
     <table>
       <thead>
-        <tr><th>¿Ï·á</th><th>½ÃÁ¡</th><th>ÀÏÀÚ</th><th>´Ü°è</th><th>ºñ°í</th></tr>
+        <tr><th>ì™„ë£Œ</th><th>ì‹œì </th><th>ì¼ì</th><th>ë‹¨ê³„</th><th>ë¹„ê³ </th></tr>
       </thead>
       <tbody>${stepRows}</tbody>
     </table>
-    <h2>ÇÊ¿ä ¼­·ù</h2>
+    <h2>í•„ìš” ì„œë¥˜</h2>
     <ul>${documents}</ul>
-    ${warnings ? `<h2>ÁÖÀÇ»çÇ×</h2><ul>${warnings}</ul>` : ''}
+    ${warnings ? `<h2>ì£¼ì˜ì‚¬í•­</h2><ul>${warnings}</ul>` : ''}
   `
-  renderPrintWindow(`${instance.name} Ã¼Å©¸®½ºÆ®`, body)
+  renderPrintWindow(`${instance.name} ì²´í¬ë¦¬ìŠ¤íŠ¸`, body)
 }
 
 function printWorkflowTemplateChecklist(template: WorkflowTemplate) {
@@ -160,32 +160,32 @@ function printWorkflowTemplateChecklist(template: WorkflowTemplate) {
   const documents =
     template.documents
       .map((doc) => `<li>[ ] ${escapeHtml(doc.name)}${doc.notes ? ` - ${escapeHtml(doc.notes)}` : ''}</li>`)
-      .join('') || '<li>¾øÀ½</li>'
+      .join('') || '<li>ì—†ìŒ</li>'
 
   const warnings = template.warnings
     .map((warning) => `<li>${escapeHtml(warning.content)}</li>`)
     .join('')
 
   const body = `
-    <h1>¿öÅ©ÇÃ·Î¿ì ÅÛÇÃ¸´ Ã¼Å©¸®½ºÆ®</h1>
+    <h1>ì›Œí¬í”Œë¡œìš° í…œí”Œë¦¿ ì²´í¬ë¦¬ìŠ¤íŠ¸</h1>
     <div class="meta">
       <strong>${escapeHtml(template.name)}</strong><br />
-      Ä«Å×°í¸®: ${escapeHtml(template.category || '-')}<br />
-      ÃÑ ±â°£: ${escapeHtml(template.total_duration || '-')}<br />
-      ÀÎ¼âÀÏ: ${new Date().toLocaleDateString('ko-KR')}
+      ì¹´í…Œê³ ë¦¬: ${escapeHtml(template.category || '-')}<br />
+      ì´ ê¸°ê°„: ${escapeHtml(template.total_duration || '-')}<br />
+      ì¸ì‡„ì¼: ${new Date().toLocaleDateString('ko-KR')}
     </div>
-    <h2>±âº» ´Ü°è</h2>
+    <h2>ê¸°ë³¸ ë‹¨ê³„</h2>
     <table>
       <thead>
-        <tr><th>¿Ï·á</th><th>½ÃÁ¡</th><th>ÀÏÀÚ</th><th>´Ü°è</th><th>ºñ°í</th></tr>
+        <tr><th>ì™„ë£Œ</th><th>ì‹œì </th><th>ì¼ì</th><th>ë‹¨ê³„</th><th>ë¹„ê³ </th></tr>
       </thead>
       <tbody>${stepRows}</tbody>
     </table>
-    <h2>ÇÊ¿ä ¼­·ù</h2>
+    <h2>í•„ìš” ì„œë¥˜</h2>
     <ul>${documents}</ul>
-    ${warnings ? `<h2>ÁÖÀÇ»çÇ×</h2><ul>${warnings}</ul>` : ''}
+    ${warnings ? `<h2>ì£¼ì˜ì‚¬í•­</h2><ul>${warnings}</ul>` : ''}
   `
-  renderPrintWindow(`${template.name} Ã¼Å©¸®½ºÆ®`, body)
+  renderPrintWindow(`${template.name} ì²´í¬ë¦¬ìŠ¤íŠ¸`, body)
 }
 
 const EMPTY_TEMPLATE: WorkflowTemplateInput = {
@@ -589,7 +589,7 @@ export default function WorkflowsPage() {
       })
       printWorkflowTemplateChecklist(template)
     } catch {
-      addToast('error', '?œí”Œë¦??•ë³´ë¥?ë¶ˆëŸ¬?¤ì? ëª»í–ˆ?µë‹ˆ??')
+      addToast('error', '?ì’—ëµ†ç”±??ëº£ë‚«ç‘œ?éºëˆìœ­?ã…¼? ï§ì‚µë»½?ë“¬ë•²??')
     }
   }
 
@@ -639,7 +639,7 @@ export default function WorkflowsPage() {
                 <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
                   <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
                     <p className="text-sm font-medium text-gray-800">{row.name}</p>
-                    <p className="text-xs text-gray-500">{row.step_count} steps{row.total_duration ? ` å¤?${row.total_duration}` : ''}</p>
+                    <p className="text-xs text-gray-500">{row.step_count} steps{row.total_duration ? ` é¸š?${row.total_duration}` : ''}</p>
                   </button>
                   <div className="mt-2 flex gap-1">
                     <button
@@ -698,5 +698,6 @@ export default function WorkflowsPage() {
     </div>
   )
 }
+
 
 
