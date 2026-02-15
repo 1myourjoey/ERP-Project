@@ -100,6 +100,7 @@ class FundCreate(BaseModel):
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None
+    dissolution_date: Optional[date] = None
     mgmt_fee_rate: Optional[float] = Field(default=None, ge=0)
     performance_fee_rate: Optional[float] = Field(default=None, ge=0)
     hurdle_rate: Optional[float] = Field(default=None, ge=0)
@@ -129,6 +130,7 @@ class FundUpdate(BaseModel):
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None
+    dissolution_date: Optional[date] = None
     mgmt_fee_rate: Optional[float] = Field(default=None, ge=0)
     performance_fee_rate: Optional[float] = Field(default=None, ge=0)
     hurdle_rate: Optional[float] = Field(default=None, ge=0)
@@ -151,6 +153,8 @@ class FundListItem(BaseModel):
     type: str
     status: str
     formation_date: Optional[date] = None
+    maturity_date: Optional[date] = None
+    dissolution_date: Optional[date] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     aum: Optional[float] = Field(default=None, ge=0)
     lp_count: int = 0
@@ -213,6 +217,7 @@ class FundResponse(BaseModel):
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
     maturity_date: Optional[date] = None
+    dissolution_date: Optional[date] = None
     mgmt_fee_rate: Optional[float] = Field(default=None, ge=0)
     performance_fee_rate: Optional[float] = Field(default=None, ge=0)
     hurdle_rate: Optional[float] = Field(default=None, ge=0)

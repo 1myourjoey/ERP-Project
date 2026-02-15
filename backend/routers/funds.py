@@ -30,6 +30,7 @@ from schemas.fund import (
 from services.workflow_service import calculate_business_days_before
 
 router = APIRouter(tags=["funds"])
+OVERVIEW_UNIT = 1_000_000
 
 
 def calculate_paid_in_as_of(
@@ -75,6 +76,32 @@ def calculate_paid_in_as_of(
     if not gp_lp_ids and fallback_gp_commitment is not None:
         gp_paid_in = float(fallback_gp_commitment or 0)
     return round(total_paid_in, 2), round(gp_paid_in, 2)
+
+
+def to_overview_unit(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return round(float(value) / OVERVIEW_UNIT, 2)
+
+
+def format_remaining_period(maturity_date: date | None, ref_date: date) -> str:
+    if maturity_date is None:
+        return "-"
+    if ref_date > maturity_date:
+        return "만기 경과"
+
+    delta = relativedelta(maturity_date, ref_date)
+    parts: list[str] = []
+    if delta.years:
+        parts.append(f"{delta.years}년")
+    if delta.months:
+        parts.append(f"{delta.months}개월")
+
+    # For less than 1 month remaining, show days instead of 0년 0개월.
+    if not parts and delta.days:
+        parts.append(f"{delta.days}일")
+
+    return "".join(parts) if parts else "만기일"
 
 
 def build_fund_overview(
@@ -163,13 +190,7 @@ def build_fund_overview(
             else:
                 progress = 0.0
 
-        if fund.maturity_date and ref_date < fund.maturity_date:
-            delta = relativedelta(fund.maturity_date, ref_date)
-            remaining = f"{delta.years}??{delta.months}媛쒖썡"
-        elif fund.maturity_date:
-            remaining = "留뚭린 寃쎄낵"
-        else:
-            remaining = "-"
+        remaining = format_remaining_period(fund.maturity_date, ref_date)
 
         item = FundOverviewItem(
             no=index,
@@ -181,13 +202,13 @@ def build_fund_overview(
             investment_period_end=fund.investment_period_end.isoformat() if fund.investment_period_end else None,
             investment_period_progress=progress,
             maturity_date=fund.maturity_date.isoformat() if fund.maturity_date else None,
-            commitment_total=fund.commitment_total,
-            total_paid_in=round(total_paid_in, 2),
+            commitment_total=to_overview_unit(fund.commitment_total),
+            total_paid_in=to_overview_unit(total_paid_in),
             paid_in_ratio=paid_in_ratio,
-            gp_commitment=round(gp_paid_in, 2),
-            total_invested=round(total_invested, 2),
-            uninvested=uninvested,
-            investment_assets=round(investment_assets, 2),
+            gp_commitment=to_overview_unit(gp_paid_in),
+            total_invested=to_overview_unit(total_invested),
+            uninvested=to_overview_unit(uninvested),
+            investment_assets=to_overview_unit(investment_assets),
             company_count=company_count,
             hurdle_rate=fund.hurdle_rate,
             remaining_period=remaining,
@@ -217,12 +238,12 @@ def build_fund_overview(
     return (
         items,
         FundOverviewTotals(
-            commitment_total=round(totals["commitment_total"], 2),
-            total_paid_in=round(totals["total_paid_in"], 2),
-            gp_commitment=round(totals["gp_commitment"], 2),
-            total_invested=round(totals["total_invested"], 2),
-            uninvested=round(totals["uninvested"], 2),
-            investment_assets=round(totals["investment_assets"], 2),
+            commitment_total=to_overview_unit(totals["commitment_total"]) or 0,
+            total_paid_in=to_overview_unit(totals["total_paid_in"]) or 0,
+            gp_commitment=to_overview_unit(totals["gp_commitment"]) or 0,
+            total_invested=to_overview_unit(totals["total_invested"]) or 0,
+            uninvested=to_overview_unit(totals["uninvested"]) or 0,
+            investment_assets=to_overview_unit(totals["investment_assets"]) or 0,
             company_count=totals["company_count"],
         ),
     )
@@ -246,6 +267,8 @@ def list_funds(db: Session = Depends(get_db)):
             type=f.type,
             status=f.status,
             formation_date=f.formation_date,
+            maturity_date=f.maturity_date,
+            dissolution_date=f.dissolution_date,
             commitment_total=f.commitment_total,
             aum=f.aum,
             lp_count=len(f.lps),

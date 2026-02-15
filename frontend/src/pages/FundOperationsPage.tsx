@@ -1,5 +1,7 @@
 ﻿import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Landmark } from 'lucide-react'
 import {
   createAssembly,
   createCapitalCall,
@@ -157,8 +159,11 @@ interface AssemblyEditState {
 export default function FundOperationsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const initialFundId = (location.state as { fundId?: number } | null)?.fundId ?? null
 
-  const [fundId, setFundId] = useState<number | null>(null)
+  const [fundId, setFundId] = useState<number | null>(initialFundId)
   const [performanceDate, setPerformanceDate] = useState('')
 
   const [callExpandedId, setCallExpandedId] = useState<number | null>(null)
@@ -203,7 +208,19 @@ export default function FundOperationsPage() {
   const { data: distributionItems } = useQuery({ queryKey: ['distributionItems', distExpandedId], queryFn: () => fetchDistributionItems(distExpandedId as number), enabled: !!distExpandedId })
   const { data: assemblies } = useQuery<Assembly[]>({ queryKey: ['assemblies', selectedFundId], queryFn: () => fetchAssemblies({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
 
-  const createCallMut = useMutation({ mutationFn: (data: CapitalCallInput) => createCapitalCall(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); addToast('success', '출자 요청을 등록했습니다.') } })
+  const createCallMut = useMutation({
+    mutationFn: (data: CapitalCallInput) => createCapitalCall(data.fund_id, {
+      call_date: data.call_date,
+      total_amount: data.total_amount ?? null,
+      call_type: data.call_type,
+      memo: data.memo,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      addToast('success', '출자 요청을 등록했습니다.')
+    },
+  })
   const updateCallMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<CapitalCallInput> }) => updateCapitalCall(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); setEditingCallId(null); setEditCall(null); addToast('success', '출자 요청을 수정했습니다.') } })
   const deleteCallMut = useMutation({ mutationFn: (id: number) => deleteCapitalCall(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); addToast('success', '출자 요청을 삭제했습니다.') } })
   const createCallItemMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: CapitalCallItemInput }) => createCapitalCallItem(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] }); addToast('success', 'LP 항목을 추가했습니다.') } })
@@ -304,9 +321,32 @@ export default function FundOperationsPage() {
           <h2 className="page-title">조합 운영</h2>
           <p className="page-subtitle">출자, 배분, 총회 운영과 성과지표를 확인합니다.</p>
         </div>
-        <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
-          {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-        </select>
+      </div>
+
+      <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white">
+            <Landmark size={20} />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-medium text-blue-600">조합 선택</label>
+            <select
+              value={selectedFundId || ''}
+              onChange={(e) => setFundId(Number(e.target.value) || null)}
+              className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            >
+              {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+            </select>
+          </div>
+          {selectedFundId && (
+            <button
+              onClick={() => navigate(`/funds/${selectedFundId}`)}
+              className="secondary-btn whitespace-nowrap text-sm"
+            >
+              조합 상세 보기
+            </button>
+          )}
+        </div>
       </div>
 
       <Section title="성과지표" right={<input type="date" value={performanceDate} onChange={(e) => setPerformanceDate(e.target.value)} className="rounded border px-2 py-1 text-xs" />}>

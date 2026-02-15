@@ -33,6 +33,7 @@ class Fund(Base):
     aum = Column(Float, nullable=True)
     investment_period_end = Column(Date, nullable=True)
     maturity_date = Column(Date, nullable=True)
+    dissolution_date = Column(Date, nullable=True)
     mgmt_fee_rate = Column(Float, nullable=True)
     performance_fee_rate = Column(Float, nullable=True)
     hurdle_rate = Column(Float, nullable=True)

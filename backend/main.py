@@ -64,6 +64,7 @@ def ensure_sqlite_compat_columns():
 
         for table, column, sql_type in [
             ("funds", "maturity_date", "DATE"),
+            ("funds", "dissolution_date", "DATE"),
             ("funds", "mgmt_fee_rate", "REAL"),
             ("funds", "performance_fee_rate", "REAL"),
             ("funds", "hurdle_rate", "REAL"),

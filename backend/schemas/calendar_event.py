@@ -1,12 +1,12 @@
 from pydantic import BaseModel, Field
-from datetime import date, time
+from datetime import date, time as dt_time
 from typing import Literal, Optional
 
 
 class CalendarEventCreate(BaseModel):
     title: str
     date: date
-    time: Optional[time] = None
+    time: Optional[dt_time] = None
     duration: Optional[int] = Field(default=None, ge=0)
     description: Optional[str] = None
     status: Literal["pending", "completed"] = "pending"
@@ -16,7 +16,7 @@ class CalendarEventCreate(BaseModel):
 class CalendarEventUpdate(BaseModel):
     title: Optional[str] = None
     date: Optional[date] = None
-    time: Optional[time] = None
+    time: Optional[dt_time] = None
     duration: Optional[int] = Field(default=None, ge=0)
     description: Optional[str] = None
     status: Optional[Literal["pending", "completed"]] = None
@@ -27,7 +27,7 @@ class CalendarEventResponse(BaseModel):
     id: int
     title: str
     date: date
-    time: Optional[time] = None
+    time: Optional[dt_time] = None
     duration: Optional[int] = Field(default=None, ge=0)
     description: Optional[str] = None
     status: str

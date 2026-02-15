@@ -57,6 +57,22 @@ const STANDARD_NOTICE_TYPES = [
 
 const NOTICE_TYPE_MAP = new Map(STANDARD_NOTICE_TYPES.map((item) => [item.notice_type, item]))
 
+const FUND_TYPE_OPTIONS = [
+  '투자조합',
+  '벤처투자조합',
+  '신기술투자조합',
+  '사모투자합자회사(PEF)',
+  '창업투자조합',
+  '기타',
+]
+
+const FUND_STATUS_OPTIONS = [
+  { value: 'forming', label: '결성예정' },
+  { value: 'active', label: '운용 중' },
+  { value: 'dissolved', label: '해산' },
+  { value: 'liquidated', label: '청산 완료' },
+]
+
 const EMPTY_LP: LPInput = {
   name: '',
   type: '기관투자자',
@@ -142,10 +158,23 @@ function FundForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="조합 유형" className="px-3 py-2 text-sm border rounded-lg" />
+        <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg">
+          {FUND_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg">
+          {FUND_STATUS_OPTIONS.map((status) => (
+            <option key={status.value} value={status.value}>{status.label}</option>
+          ))}
+        </select>
         <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-3 py-2 text-sm border rounded-lg" />
+        {form.status !== 'forming' && (
+          <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg" />
+        )}
+        {(form.status === 'dissolved' || form.status === 'liquidated') && (
+          <input type="date" value={form.dissolution_date || ''} onChange={e => setForm(prev => ({ ...prev, dissolution_date: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg" />
+        )}
         <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="px-3 py-2 text-sm border rounded-lg" />
         <input value={form.fund_manager || ''} onChange={e => setForm(prev => ({ ...prev, fund_manager: e.target.value }))} placeholder="대표 펀드매니저" className="px-3 py-2 text-sm border rounded-lg" />
         <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="px-3 py-2 text-sm border rounded-lg" />
@@ -158,7 +187,6 @@ function FundForm({
           <option value="분할">분할</option>
           <option value="수시">수시</option>
         </select>
-        <input type="number" value={form.aum ?? ''} onChange={e => setForm(prev => ({ ...prev, aum: e.target.value ? Number(e.target.value) : null }))} placeholder="AUM" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="px-3 py-2 text-sm border rounded-lg" />
         <input type="number" step="0.01" value={form.performance_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, performance_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="성과보수율(%)" className="px-3 py-2 text-sm border rounded-lg" />
@@ -172,9 +200,11 @@ function FundForm({
             ...form,
             name: form.name.trim(),
             type: form.type.trim(),
+            status: form.status || 'active',
             formation_date: form.formation_date || null,
             investment_period_end: form.investment_period_end || null,
             maturity_date: form.maturity_date || null,
+            dissolution_date: form.dissolution_date || null,
             gp: form.gp?.trim() || null,
             fund_manager: form.fund_manager?.trim() || null,
             co_gp: form.co_gp?.trim() || null,
@@ -413,7 +443,6 @@ export default function FundDetailPage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <SummaryCard label="총 약정" value={formatKRW(fundDetail.commitment_total ?? null)} />
-            <SummaryCard label="운용규모(AUM)" value={formatKRW(fundDetail.aum ?? null)} />
             <SummaryCard label="투자 건수" value={`${investments?.length ?? 0}건`} />
             <SummaryCard label="투자 금액 합계" value={formatKRW(totalInvestmentAmount)} />
           </div>
@@ -449,7 +478,6 @@ export default function FundDetailPage() {
                 <div className="p-2 bg-gray-50 rounded">약정액: {formatKRW(fundDetail.commitment_total ?? null)}</div>
                 <div className="p-2 bg-gray-50 rounded">GP 출자금: {formatKRW(fundDetail.gp_commitment ?? null)}</div>
                 <div className="p-2 bg-gray-50 rounded">출자방식: {fundDetail.contribution_type || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">AUM: {formatKRW(fundDetail.aum ?? null)}</div>
                 <div className="p-2 bg-gray-50 rounded">관리보수율: {fundDetail.mgmt_fee_rate != null ? `${fundDetail.mgmt_fee_rate}%` : '-'}</div>
                 <div className="p-2 bg-gray-50 rounded">성과보수율: {fundDetail.performance_fee_rate != null ? `${fundDetail.performance_fee_rate}%` : '-'}</div>
                 <div className="p-2 bg-gray-50 rounded">허들레이트: {fundDetail.hurdle_rate != null ? `${fundDetail.hurdle_rate}%` : '-'}</div>

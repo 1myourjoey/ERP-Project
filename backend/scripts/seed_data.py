@@ -38,6 +38,8 @@ from models.workflow_instance import WorkflowInstance
 from seed.seed_accounts import seed_accounts
 from services.workflow_service import instantiate_workflow
 
+KRW_UNIT_SCALE = 1_000_000
+
 
 def d(value: str) -> date:
     return date.fromisoformat(value)
@@ -75,6 +77,7 @@ def ensure_fund_schema(db: Session) -> None:
     add_specs = [
         ("fund_manager", "TEXT"),
         ("investment_period_end", "DATE"),
+        ("dissolution_date", "DATE"),
         ("gp_commitment", "REAL"),
         ("contribution_type", "TEXT"),
     ]
@@ -100,6 +103,103 @@ def ensure_task_schema(db: Session) -> None:
         for name, sql_type in add_specs:
             if name not in columns:
                 conn.exec_driver_sql(f"ALTER TABLE tasks ADD COLUMN {name} {sql_type}")
+
+
+def _legacy_money_condition(column):
+    return sa.and_(
+        column.isnot(None),
+        column < KRW_UNIT_SCALE,
+        column > -KRW_UNIT_SCALE,
+        column != 0,
+    )
+
+
+def _scale_legacy_column(db: Session, model, column) -> None:
+    db.query(model).filter(_legacy_money_condition(column)).update(
+        {column: column * KRW_UNIT_SCALE},
+        synchronize_session=False,
+    )
+
+
+def normalize_currency_units_to_won(db: Session) -> None:
+    commitment_values = [
+        float(value)
+        for (value,) in db.query(Fund.commitment_total)
+        .filter(Fund.commitment_total.isnot(None))
+        .all()
+    ]
+    if not commitment_values:
+        return
+
+    legacy_fund_count = sum(
+        1 for value in commitment_values if 0 < abs(value) < KRW_UNIT_SCALE
+    )
+    required_legacy_count = max(2, (len(commitment_values) + 1) // 2)
+    fixed_partial_aum_count = db.query(Fund).filter(
+        Fund.commitment_total.isnot(None),
+        Fund.aum.isnot(None),
+        Fund.aum > 0,
+        Fund.commitment_total == Fund.aum * 100,
+    ).update(
+        {Fund.aum: Fund.commitment_total},
+        synchronize_session=False,
+    )
+    if legacy_fund_count < required_legacy_count:
+        if fixed_partial_aum_count:
+            db.commit()
+            print("[seed] currency units: normalized partial AUM values")
+        return
+
+    # Legacy seed values are stored in million KRW units (e.g., 20500).
+    # Convert those rows to KRW while avoiding already-converted values.
+    _scale_legacy_column(db, Fund, Fund.commitment_total)
+    _scale_legacy_column(db, Fund, Fund.gp_commitment)
+    _scale_legacy_column(db, Fund, Fund.aum)
+
+    _scale_legacy_column(db, LP, LP.commitment)
+    _scale_legacy_column(db, LP, LP.paid_in)
+
+    _scale_legacy_column(db, CapitalCall, CapitalCall.total_amount)
+    _scale_legacy_column(db, CapitalCallItem, CapitalCallItem.amount)
+
+    _scale_legacy_column(db, Distribution, Distribution.principal_total)
+    _scale_legacy_column(db, Distribution, Distribution.profit_total)
+    _scale_legacy_column(db, Distribution, Distribution.performance_fee)
+    _scale_legacy_column(db, DistributionItem, DistributionItem.principal)
+    _scale_legacy_column(db, DistributionItem, DistributionItem.profit)
+
+    _scale_legacy_column(db, Investment, Investment.amount)
+    _scale_legacy_column(db, Investment, Investment.valuation)
+    _scale_legacy_column(db, Investment, Investment.valuation_pre)
+    _scale_legacy_column(db, Investment, Investment.valuation_post)
+
+    _scale_legacy_column(db, Transaction, Transaction.amount)
+    _scale_legacy_column(db, Transaction, Transaction.balance_before)
+    _scale_legacy_column(db, Transaction, Transaction.balance_after)
+    _scale_legacy_column(db, Transaction, Transaction.realized_gain)
+    _scale_legacy_column(db, Transaction, Transaction.cumulative_gain)
+
+    _scale_legacy_column(db, Valuation, Valuation.value)
+    _scale_legacy_column(db, Valuation, Valuation.prev_value)
+    _scale_legacy_column(db, Valuation, Valuation.change_amount)
+
+    _scale_legacy_column(db, ExitTrade, ExitTrade.amount)
+    _scale_legacy_column(db, ExitTrade, ExitTrade.price_per_share)
+    _scale_legacy_column(db, ExitTrade, ExitTrade.fees)
+    _scale_legacy_column(db, ExitTrade, ExitTrade.net_amount)
+    _scale_legacy_column(db, ExitTrade, ExitTrade.realized_gain)
+
+    _scale_legacy_column(db, BizReport, BizReport.total_commitment)
+    _scale_legacy_column(db, BizReport, BizReport.total_paid_in)
+    _scale_legacy_column(db, BizReport, BizReport.total_invested)
+    _scale_legacy_column(db, BizReport, BizReport.total_distributed)
+    _scale_legacy_column(db, BizReport, BizReport.fund_nav)
+
+    _scale_legacy_column(db, JournalEntryLine, JournalEntryLine.debit)
+    _scale_legacy_column(db, JournalEntryLine, JournalEntryLine.credit)
+
+    db.commit()
+    print("[seed] currency units: converted from million KRW to KRW")
 
 
 def reset_seed_data_if_requested(db: Session) -> None:
@@ -519,61 +619,307 @@ def seed_tasks(db: Session, funds: list[Fund], investments: list[Investment]) ->
     return db.query(Task).order_by(Task.id.asc()).all()
 
 def seed_workflow_templates(db: Session) -> list[Workflow]:
-    if db.query(Workflow).count() > 0:
-        print("[seed] workflow templates: skip")
-        return db.query(Workflow).order_by(Workflow.id.asc()).all()
+    existing_names = {
+        row[0]
+        for row in db.query(Workflow.name).all()
+        if row[0]
+    }
+    workflows: list[Workflow] = []
 
-    invest = Workflow(
-        name="투자 실행 워크플로우",
-        trigger_description="투자위원회 통과 후 계약/납입/사후관리",
-        category="investment",
-        total_duration="D-7 ~ D+5",
+    def add_workflow(
+        *,
+        name: str,
+        category: str,
+        trigger: str,
+        duration: str,
+        steps: list[tuple[str, str, int, str, str, str | None]],
+        documents: list[str] | None = None,
+        warnings: list[str] | None = None,
+    ) -> None:
+        if name in existing_names:
+            return
+        workflow = Workflow(
+            name=name,
+            trigger_description=trigger,
+            category=category,
+            total_duration=duration,
+        )
+        workflow.steps = [
+            WorkflowStep(
+                order=index + 1,
+                name=step_name,
+                timing=timing,
+                timing_offset_days=offset_days,
+                estimated_time=estimated_time,
+                quadrant=quadrant,
+                memo=memo,
+            )
+            for index, (step_name, timing, offset_days, estimated_time, quadrant, memo) in enumerate(steps)
+        ]
+        workflow.documents = [WorkflowDocument(name=doc, required=True) for doc in (documents or [])]
+        workflow.warnings = [WorkflowWarning(content=warning, category="warning") for warning in (warnings or [])]
+        workflows.append(workflow)
+        existing_names.add(name)
+
+    # investment.md (3)
+    add_workflow(
+        name="투자심의위원회(투심위)",
+        category="투자집행",
+        trigger="투자 결정 확정 시",
+        duration="1~2주",
+        steps=[
+            ("추가출자금 납입 통보", "D-7", -7, "30m", "Q1", "납입 요청 공문 + 조합 통장사본"),
+            ("투심 전 ERP 등록", "D-3", -3, "1~2h", "Q1", "투심 보고서 + 투자계약서 + 준법감시보고서"),
+            ("투심위 개최", "D-day", 0, "1~2h", "Q1", "투심위 결과보고서 + 의사록 작성"),
+            ("투심위 서류 사인 받기", "D-day 13:00", 0, "1h", "Q1", None),
+            ("투심 후 ERP 등록", "D-day", 0, "30m~1h", "Q1", "날인본 결과보고서 + 의사록 등록"),
+            ("농금원 ERP 결과보고서 등록", "D-day", 0, "15m", "Q1", "투심위 직후"),
+            ("투심위 회의록 작성", "D+2", 2, "2h", "Q1", "2일 이내"),
+        ],
+        documents=[
+            "납입 요청 공문",
+            "조합 통장사본",
+            "투심 보고서",
+            "투자 계약서",
+            "준법감시보고서 (3종 중 우선순위)",
+            "투심위 결과보고서 (날인)",
+            "투심위 의사록 (날인)",
+        ],
+        warnings=[
+            "규약 확인: 출자금 통지기한 준수",
+            "규약 확인: ERP 등록기간 준수",
+            "기여율 및 밸류 입력 주의",
+        ],
     )
-    invest.steps = [
-        WorkflowStep(order=1, name="투자심의위원회 안건 준비", timing="D-7", timing_offset_days=-7, estimated_time="2h", quadrant="Q1", memo="notice:ic_agenda"),
-        WorkflowStep(order=2, name="계약서 초안 검토", timing="D-5", timing_offset_days=-5, estimated_time="2h", quadrant="Q1"),
-        WorkflowStep(order=3, name="투자심의위원회 개최", timing="D-3", timing_offset_days=-3, estimated_time="1h", quadrant="Q1"),
-        WorkflowStep(order=4, name="투자 계약 체결", timing="D-day", timing_offset_days=0, estimated_time="1h", quadrant="Q1"),
-        WorkflowStep(order=5, name="납입 및 공시", timing="D+1", timing_offset_days=1, estimated_time="1h", quadrant="Q1"),
-        WorkflowStep(order=6, name="사후 등록", timing="D+3", timing_offset_days=3, estimated_time="1h", quadrant="Q2"),
-    ]
-    invest.documents = [
-        WorkflowDocument(name="투자심의 의결서", required=True, notes="위원회 의결 결과"),
-        WorkflowDocument(name="주주간계약서", required=True),
-        WorkflowDocument(name="투자계약서", required=True),
-        WorkflowDocument(name="납입증명서", required=True),
-    ]
-    invest.warnings = [
-        WorkflowWarning(content="계약서 조항은 법무 검토를 반드시 거쳐야 합니다.", category="warning"),
-        WorkflowWarning(content="투자 조건 변경 시 LP 사전 공지가 필요합니다.", category="tip"),
-    ]
-
-    lp_notice = Workflow(
-        name="LP 보고/통지 워크플로우",
-        trigger_description="조합 의사결정 시 LP 통지 및 보고",
-        category="fund_ops",
-        total_duration="D-14 ~ D+2",
+    add_workflow(
+        name="투자계약 체결",
+        category="투자집행",
+        trigger="투심위 통과 후 계약일 확정 시",
+        duration="3~5일",
+        steps=[
+            ("권리관계서류 요청", "D-3", -3, "30m", "Q1", "프론트 발송 (피투자기업 바이블용)"),
+            ("서류 준비", "D-1", -1, "1h", "Q1", "투자계약서 3부 (천공 필수)"),
+            ("투자계약 체결 및 날인", "D-day", 0, "1~2h", "Q1", "간인 + 인감 날인"),
+            ("계약서 보관/등록", "D-day", 0, "15m", "Q1", "계약 직후"),
+            ("투자계약서 날인본 ERP 업로드", "D-day", 0, "20m", "Q1", "3단계 프로세스"),
+            ("투자금 출금 확인", "D-day", 0, "10m", "Q1", "투자금 납입일 = 계약일"),
+            ("운용지시서 작성", "D+1", 1, "1~2h", "Q1", "6종 서류 필요"),
+            ("운용지시 실행", "D+2", 2, "1h", "Q1", "계약 후 2일 이내"),
+        ],
+        documents=[
+            "투자계약서 3부 (천공 필수)",
+            "법인인감증명서 2부 (피투자사, 이해관계자)",
+            "사용인감계 2부",
+            "신주식(전환사채)청약서·인수증",
+            "운용지시서",
+            "사업자등록증",
+            "계약서 제1조 발췌",
+            "의무기재사항 확인서 (준법감시인 날인)",
+            "투심위 의사록/결과보고서 (날인본)",
+            "주주명부 (투자 전)",
+        ],
+        warnings=[
+            "간인 순서: 조합 인감 -> 피투자사 -> 이해관계인",
+            "배부: 가운데 양옆 날인(피투자사), 맨 오른쪽(이해관계인)",
+            "피투자사 법인계좌 사전 확보 권장",
+            "은행명 정확히 기입 (실수 시 재작성 필요)",
+        ],
     )
-    lp_notice.steps = [
-        WorkflowStep(order=1, name="총회 소집 통지", timing="D-14", timing_offset_days=-14, estimated_time="1h", quadrant="Q1", memo="notice:assembly"),
-        WorkflowStep(order=2, name="배포자료 작성", timing="D-7", timing_offset_days=-7, estimated_time="2h", quadrant="Q2"),
-        WorkflowStep(order=3, name="총회 개최", timing="D-day", timing_offset_days=0, estimated_time="2h", quadrant="Q1"),
-        WorkflowStep(order=4, name="회의록 정리", timing="D+2", timing_offset_days=2, estimated_time="1h", quadrant="Q1"),
-    ]
-    lp_notice.documents = [
-        WorkflowDocument(name="소집 통지문", required=True),
-        WorkflowDocument(name="총회 자료집", required=True),
-        WorkflowDocument(name="회의록", required=True),
-    ]
-    lp_notice.warnings = [
-        WorkflowWarning(content="규약상 통지기한을 준수해야 합니다.", category="warning"),
-    ]
+    add_workflow(
+        name="투자 후 서류처리",
+        category="투자집행",
+        trigger="투자금 출금 완료 후",
+        duration="2~3주",
+        steps=[
+            ("투자 전 서류 취합 (바이블)", "D+3", 3, "1h", "Q1", "권리관계서류 (프론트 전달)"),
+            ("투자 후 서류 취합 (바이블)", "D+7", 7, "2~3h", "Q1", "주주명부, 등기부등본 등"),
+            ("수탁사 실물 송부", "D+15", 15, "1h", "Q1", "투자일로부터 15일 이내"),
+            ("VICS 기업등록", "D+10", 10, "1~2h", "Q1", "프로젝트 시"),
+            ("등록원부 변경 신청", "D+14", 14, "1~2h", "Q1", "LP 회람"),
+            ("출자증서 발급", "D+21", 21, "30m", "Q1", "변경 등록 후"),
+        ],
+        documents=[
+            "주주명부 (투자 전/후 비교)",
+            "법인등기부등본 (증자 후, 말소사항 포함)",
+            "주권미발행확인서",
+            "주금납입영수증",
+            "주식납입금 보관증명서",
+            "법인인감증명서 (3개월 이내)",
+            "주권미발행확인서 (수탁사 송부)",
+            "법인인감증명서 (3개월 이내, 수탁사 송부)",
+            "등기부등본 (변경 후, 수탁사 송부)",
+            "주주명부 (변경 후, 수탁사 송부)",
+        ],
+        warnings=[
+            "등기부등본 확인 후 주식 수와 계약서 일치 여부 검증 필수",
+            "주주명부 비교: 투자 전/후 지분율 투심위 기반 비교",
+            "3개월 이내 발급본: 법인인감증명서, 법인등기부등본",
+            "주민번호 뒷자리 블러처리 필수",
+            "투자 당일 서류 취합 리스트 사전 확인",
+        ],
+    )
 
-    db.add_all([invest, lp_notice])
-    db.commit()
-    print("[seed] workflow templates: created")
+    # fund_formation.md (4)
+    add_workflow(
+        name="고유번호증 발급",
+        category="조합결성",
+        trigger="신규 조합 제안 확정 시",
+        duration="3~5일",
+        steps=[
+            ("조합규약(안) 작성", "D-day", 0, "2~3h", "Q1", None),
+            ("고유번호증 발급 서류 준비", "D-day", 0, "1~2h", "Q1", None),
+            ("고유번호증 발급 신청", "D+1", 1, "30m", "Q1", None),
+            ("고유번호증 수령", "D+3~5", 3, "-", "Q1", None),
+        ],
+        documents=[
+            "조합규약(안)",
+            "단체의 대표자 또는 관리인 임을 확인할 수 있는 서류",
+            "임대차 관련 서류 (임대차 계약서 or 무상사용 승낙서 or 전대차 동의서)",
+        ],
+    )
+    add_workflow(
+        name="수탁계약 체결",
+        category="조합결성",
+        trigger="고유번호증 발급 후",
+        duration="3~5일",
+        steps=[
+            ("VICS 등록", "D-day", 0, "1~2h", "Q1", None),
+            ("수탁계약 서류 준비", "D+1", 1, "1h", "Q1", None),
+            ("수탁계약 체결", "D+2", 2, "1~2h", "Q1", None),
+            ("계좌개설", "D+2", 2, "1h", "Q1", None),
+        ],
+        documents=[
+            "고유번호증",
+            "조합규약(안)",
+            "사업자등록증 (본점)",
+            "법인등기부등본 (3개월 이내)",
+            "법인인감증명서 (3개월 이내)",
+            "사용인감계",
+        ],
+        warnings=[
+            "VICS 등록: 수탁계약 전 등록 완료 필수",
+        ],
+    )
+    add_workflow(
+        name="결성총회 개최",
+        category="조합결성",
+        trigger="수탁계약 체결 후",
+        duration="2~3주",
+        steps=[
+            ("결성총회 공문 발송", "D+10", 10, "2~3h", "Q1", None),
+            ("LP 서류 취합", "D+10~24", 10, "-", "Q1", None),
+            ("출자금 납입 확인", "D+24", 24, "30m", "Q1", None),
+            ("운용지시서 작성", "D+24", 24, "1h", "Q1", None),
+            ("결성총회 개최", "D+25", 25, "1~2h", "Q1", None),
+            ("총회 회람서류 전달", "D+25", 25, "1h", "Q1", None),
+        ],
+        documents=[
+            "조합원 동의서",
+            "개인정보 활용동의서",
+            "고객거래확인서",
+            "서면결의서",
+            "인감증명서 (개인/법인, 3개월 이내)",
+            "신분증 사본 / 등기부등본",
+            "결성총회의사록",
+            "출자금납입확인서",
+            "조합원 명부",
+            "자산보관·관리위탁 계약서",
+            "조합분류기준표",
+        ],
+        warnings=[
+            "출자금 납입: 결성총회 전 전액 납입 확인 필수",
+            "LP 서류 수집: 최소 2주 전 공문 발송",
+            "추가서류: LP 구성(집합투자기구, 창업기획자, LLC, 미성년자 등)에 따라 상이",
+        ],
+    )
+    add_workflow(
+        name="벤처투자조합 등록",
+        category="조합결성",
+        trigger="결성총회 완료 후",
+        duration="3~5일",
+        steps=[
+            ("조합등록 서류 준비", "D+26", 26, "2~3h", "Q1", None),
+            ("조합등록 신청", "D+27", 27, "1h", "Q1", None),
+            ("등록 완료", "D+30~35", 30, "-", "Q1", None),
+        ],
+    )
+
+    # regular_tasks.md (4)
+    add_workflow(
+        name="월간 보고 (농금원·벤처협회)",
+        category="정기보고",
+        trigger="매월 초",
+        duration="매월 5일까지",
+        steps=[
+            ("농금원(농모태) 월보고 작성/제출", "매월 5일(내부) / 7일(공식)", 0, "1h", "Q1", "노션 참조"),
+            ("벤처협회(VICS) 월보고 작성/제출", "매월 5일(내부) / 9일(공식)", 0, "1h", "Q1", "노션 참조"),
+        ],
+    )
+    add_workflow(
+        name="분기 내부보고회",
+        category="정기보고",
+        trigger="분기별",
+        duration="약 2주",
+        steps=[
+            ("자료 취합", "D-10", -10, "-", "Q2", None),
+            ("초안 준비", "D-5", -5, "조합당 2.5h", "Q2", None),
+            ("내부보고회 진행", "D-day", 0, "1h", "Q1", None),
+            ("회의록 작성", "D+2", 2, "2h", "Q1", None),
+        ],
+    )
+    add_workflow(
+        name="기말감사",
+        category="연간업무",
+        trigger="1~2월",
+        duration="약 3개월",
+        steps=[
+            ("자료 준비 (매일)", "시작~마감", 0, "2h/일", "Q1", None),
+            ("조합 출자증서 준비", "요청 시", 0, "-", "Q1", None),
+            ("조합원 명부 준비", "요청 시", 0, "-", "Q1", None),
+            ("금융결제원 기본정보 전송", "요청 시", 0, "30m", "Q1", None),
+            ("co-gp 미흡분 확인", "전송 후", 0, "30m", "Q1", None),
+            ("금융결제원 처리 결과 확인", "마감일", 0, "30m", "Q1", None),
+            ("현장 감사 대응", "3월 초", 0, "-", "Q1", None),
+        ],
+        documents=[
+            "본점 공인인증서",
+            "사업자등록증 (본점)",
+            "사업자등록증 (분점)",
+            "거래 은행 및 지점 정보",
+            "조합 출자증서",
+            "조합원 명부",
+        ],
+        warnings=[
+            "수수료 비용 주체: 회사로 지정",
+            "미흡분은 co-gp에 요청",
+        ],
+    )
+    add_workflow(
+        name="정기 총회",
+        category="연간업무",
+        trigger="매년 3월",
+        duration="약 4주",
+        steps=[
+            ("서류 작성", "3월 초", 0, "-", "Q1", "개최공문, 의안설명서, 영업보고서, 감사보고서"),
+            ("소집 통지", "3월 중순", 0, "-", "Q1", None),
+            ("총회 개최", "3월 하순", 0, "-", "Q1", None),
+            ("의사록 작성", "총회 후 2일 이내", 2, "-", "Q1", None),
+        ],
+        documents=[
+            "개최공문",
+            "의안설명서",
+            "영업보고서",
+            "감사보고서",
+        ],
+    )
+
+    if workflows:
+        db.add_all(workflows)
+        db.commit()
+        print(f"[seed] workflow templates: added ({len(workflows)})")
+    else:
+        print("[seed] workflow templates: no new templates")
     return db.query(Workflow).order_by(Workflow.id.asc()).all()
-
 
 def seed_workflow_instances(
     db: Session,
@@ -592,8 +938,8 @@ def seed_workflow_instances(
     today = date.today()
     by_name = {wf.name: wf for wf in templates}
 
-    invest_workflow = by_name.get("투자 실행 워크플로우", templates[0])
-    notice_workflow = by_name.get("LP 보고/통지 워크플로우", templates[-1])
+    invest_workflow = by_name.get("투자심의위원회(투심위)", templates[0])
+    notice_workflow = by_name.get("정기 총회", templates[-1])
 
     investment_a = investments[0] if investments else None
     fund_a = funds[0] if funds else None
@@ -1182,6 +1528,7 @@ def seed_all(db: Session) -> None:
     seed_exit_committees(db, companies, investments, funds)
     seed_journal_entries(db, funds)
     seed_vote_records(db, companies, investments)
+    normalize_currency_units_to_won(db)
 
 def main() -> None:
     Base.metadata.create_all(bind=engine)
@@ -1194,5 +1541,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -1,6 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, time
 
 from database import get_db
 from models.fund import Fund
@@ -14,11 +14,12 @@ from schemas.workflow import (
     WorkflowCreateRequest,
     WorkflowUpdateRequest,
     WorkflowInstantiateRequest,
+    WorkflowInstanceUpdateRequest,
     WorkflowInstanceResponse,
     WorkflowStepInstanceResponse,
     WorkflowStepCompleteRequest,
 )
-from services.workflow_service import instantiate_workflow
+from services.workflow_service import calculate_step_date, instantiate_workflow
 
 router = APIRouter(tags=["workflows"])
 
@@ -228,6 +229,46 @@ def get_instance(instance_id: int, db: Session = Depends(get_db)):
     return _build_instance_response(instance, db)
 
 
+@router.put("/api/workflow-instances/{instance_id}", response_model=WorkflowInstanceResponse)
+def update_instance(
+    instance_id: int,
+    data: WorkflowInstanceUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if instance.status != "active":
+        raise HTTPException(status_code=400, detail="진행 중 인스턴스만 수정할 수 있습니다")
+
+    old_name = instance.name
+    old_prefix = f"[{old_name}] "
+
+    instance.name = data.name
+    instance.trigger_date = data.trigger_date
+    instance.memo = data.memo
+
+    for step_instance in instance.step_instances:
+        step = step_instance.step
+        if step:
+            recalculated = calculate_step_date(data.trigger_date, step.timing_offset_days)
+            step_instance.calculated_date = recalculated
+        else:
+            recalculated = step_instance.calculated_date
+
+        if step_instance.task_id:
+            task = db.get(Task, step_instance.task_id)
+            if task:
+                if task.title.startswith(old_prefix):
+                    task.title = f"[{data.name}] {task.title[len(old_prefix):]}"
+                if task.status != "completed":
+                    task.deadline = datetime.combine(recalculated, time.min)
+
+    db.commit()
+    db.refresh(instance)
+    return _build_instance_response(instance, db)
+
+
 @router.patch("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/complete")
 def complete_step(
     instance_id: int,
@@ -287,6 +328,43 @@ def complete_step(
     if all_done:
         instance.status = "completed"
         instance.completed_at = datetime.now()
+
+    db.commit()
+    db.refresh(instance)
+    return _build_instance_response(instance, db)
+
+
+@router.put("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/undo", response_model=WorkflowInstanceResponse)
+def undo_step_completion(
+    instance_id: int,
+    step_instance_id: int,
+    db: Session = Depends(get_db),
+):
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+
+    step_instance = db.get(WorkflowStepInstance, step_instance_id)
+    if not step_instance or step_instance.instance_id != instance_id:
+        raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
+    if step_instance.status != "completed":
+        raise HTTPException(status_code=400, detail="완료된 단계만 되돌릴 수 있습니다")
+
+    step_instance.status = "pending"
+    step_instance.completed_at = None
+    step_instance.actual_time = None
+    step_instance.notes = None
+
+    if step_instance.task_id:
+        task = db.get(Task, step_instance.task_id)
+        if task:
+            task.status = "pending"
+            task.completed_at = None
+            task.actual_time = None
+
+    if instance.status == "completed":
+        instance.status = "active"
+        instance.completed_at = None
 
     db.commit()
     db.refresh(instance)

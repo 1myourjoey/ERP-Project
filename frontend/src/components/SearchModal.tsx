@@ -125,7 +125,7 @@ export default function SearchModal({
             <p className="p-2 text-sm text-gray-500">검색 결과가 없습니다.</p>
           )}
           {!query.trim() && (
-            <p className="p-2 text-sm text-gray-500">언제든지 Ctrl+K 또는 Cmd+K로 검색할 수 있습니다.</p>
+            <p className="p-2 text-sm text-gray-500">언제든지 Ctrl+Space 또는 Cmd+Space로 검색할 수 있습니다.</p>
           )}
 
           {Object.entries(grouped).map(([type, items]) => {

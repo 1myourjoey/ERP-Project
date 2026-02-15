@@ -14,10 +14,13 @@ class TaskCreate(BaseModel):
     quadrant: Literal["Q1", "Q2", "Q3", "Q4"] = "Q1"
     memo: Optional[str] = None
     delegate_to: Optional[str] = None
+    category: Optional[str] = None
+    fund_id: Optional[int] = None
+    investment_id: Optional[int] = None
 
     @field_validator("estimated_time")
     @classmethod
-    def validate_estimated_time(cls, value: Optional[str]) -> Optional[str]:
+    def validate_estimated_time_create(cls, value: Optional[str]) -> Optional[str]:
         if value is None or value == "":
             return None
         if not ESTIMATED_TIME_PATTERN.fullmatch(value):
@@ -33,10 +36,13 @@ class TaskUpdate(BaseModel):
     memo: Optional[str] = None
     status: Optional[Literal["pending", "in_progress", "completed"]] = None
     delegate_to: Optional[str] = None
+    category: Optional[str] = None
+    fund_id: Optional[int] = None
+    investment_id: Optional[int] = None
 
     @field_validator("estimated_time")
     @classmethod
-    def validate_estimated_time(cls, value: Optional[str]) -> Optional[str]:
+    def validate_estimated_time_update(cls, value: Optional[str]) -> Optional[str]:
         if value is None or value == "":
             return None
         if not ESTIMATED_TIME_PATTERN.fullmatch(value):
@@ -46,7 +52,8 @@ class TaskUpdate(BaseModel):
 
 class TaskComplete(BaseModel):
     actual_time: str
-    auto_worklog: bool | None = None
+    auto_worklog: bool = True
+    memo: Optional[str] = None
 
 
 class TaskMove(BaseModel):
@@ -67,6 +74,11 @@ class TaskResponse(BaseModel):
     actual_time: Optional[str] = None
     workflow_instance_id: Optional[int] = None
     workflow_step_order: Optional[int] = None
+    category: Optional[str] = None
+    fund_id: Optional[int] = None
+    investment_id: Optional[int] = None
+    fund_name: Optional[str] = None
+    company_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

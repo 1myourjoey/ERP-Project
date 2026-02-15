@@ -1,20 +1,25 @@
 import re
-from datetime import date, timedelta, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.fund import Fund, FundNoticePeriod
+from models.investment import Investment, InvestmentDocument, PortfolioCompany
+from models.regular_report import RegularReport
 from models.task import Task
 from models.workflow_instance import WorkflowInstance
-from models.fund import Fund, FundNoticePeriod
-from models.investment import Investment, PortfolioCompany, InvestmentDocument
-from models.regular_report import RegularReport
 from schemas.task import TaskResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+MONTHLY_REMINDER_TITLES = (
+    "농금원 월보고 ({year_month})",
+    "벤처협회 VICS 월보고 ({year_month})",
+)
 
 
 def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
@@ -44,20 +49,57 @@ def _match_notice_type(step_name: str, step_timing: str, notice_map: dict[str, F
     return None
 
 
+def _dashboard_week_bounds(target: date) -> tuple[date, date]:
+    # Dashboard week is Monday-Sunday.
+    week_start = target - timedelta(days=target.weekday())
+    week_end = week_start + timedelta(days=6)
+    return week_start, week_end
+
+
+def _task_response(db: Session, task: Task) -> TaskResponse:
+    payload = TaskResponse.model_validate(task).model_dump()
+
+    investment = db.get(Investment, task.investment_id) if task.investment_id else None
+    fund_id = task.fund_id or (investment.fund_id if investment else None)
+
+    fund_name = None
+    if fund_id:
+        fund = db.get(Fund, fund_id)
+        fund_name = fund.name if fund else None
+
+    company_name = None
+    if investment:
+        company = db.get(PortfolioCompany, investment.company_id)
+        company_name = company.name if company else None
+
+    if (not fund_name or not company_name) and task.workflow_instance_id:
+        instance = db.get(WorkflowInstance, task.workflow_instance_id)
+        if instance:
+            if not fund_name and instance.fund_id:
+                wf_fund = db.get(Fund, instance.fund_id)
+                fund_name = wf_fund.name if wf_fund else None
+                if fund_id is None:
+                    fund_id = instance.fund_id
+            if not company_name and instance.company_id:
+                wf_company = db.get(PortfolioCompany, instance.company_id)
+                company_name = wf_company.name if wf_company else None
+
+    payload["fund_id"] = fund_id
+    payload["fund_name"] = fund_name
+    payload["company_name"] = company_name
+    return TaskResponse(**payload)
+
+
 @router.get("/today")
 def get_today_dashboard(db: Session = Depends(get_db)):
     today = date.today()
     tomorrow = today + timedelta(days=1)
     current_year_month = today.strftime("%Y-%m")
-    monthly_titles = [
-        f"농금원 월보고 ({current_year_month})",
-        f"벤처협회 VICS 월보고 ({current_year_month})",
-    ]
+    monthly_titles = [title.format(year_month=current_year_month) for title in MONTHLY_REMINDER_TITLES]
     monthly_task_count = db.query(Task).filter(Task.title.in_(monthly_titles)).count()
     monthly_reminder = monthly_task_count < len(monthly_titles)
 
-    days_until_sunday = 6 - today.weekday()
-    week_end = today + timedelta(days=days_until_sunday)
+    week_start, week_end = _dashboard_week_bounds(today)
 
     if today.month == 12:
         upcoming_end = date(today.year + 1, 2, 28)
@@ -83,34 +125,32 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     no_deadline_tasks: list[TaskResponse] = []
 
     for task in pending_tasks:
-        task_resp = TaskResponse.model_validate(task)
+        task_resp = _task_response(db, task)
         deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
         if deadline is None:
             no_deadline_tasks.append(task_resp)
             continue
 
-        # Overdue tasks should stay visible in today's bucket so dashboard/task board counts align.
+        # Overdue tasks stay visible in today's bucket so dashboard/task board counts align.
         if deadline <= today:
             today_tasks.append(task_resp)
         elif deadline == tomorrow:
             tomorrow_tasks.append(task_resp)
-        elif deadline and today < deadline <= week_end:
-            week_tasks.append(task_resp)
-        elif deadline and week_end < deadline <= upcoming_end:
+        elif week_end < deadline <= upcoming_end:
             upcoming_tasks.append(task_resp)
+
+        # "이번 주" is calendar-week based (Mon-Sun), independent from today/tomorrow buckets.
+        if week_start <= deadline <= week_end and task_resp not in week_tasks:
+            week_tasks.append(task_resp)
 
         if task.memo:
             memo_dates = _parse_memo_dates(task.memo, today.year)
             for memo_date in memo_dates:
-                if today <= memo_date <= week_end and task_resp not in week_tasks and deadline != today and deadline != tomorrow:
+                if week_start <= memo_date <= week_end and task_resp not in week_tasks:
                     week_tasks.append(task_resp)
                     break
 
-    active_instances = (
-        db.query(WorkflowInstance)
-        .filter(WorkflowInstance.status == "active")
-        .all()
-    )
+    active_instances = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active").all()
 
     active_workflows = []
     for instance in active_instances:
@@ -122,11 +162,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         for step_instance in instance.step_instances:
             if step_instance.status == "pending":
                 next_step = step_instance.step.name if step_instance.step else None
-                next_step_date = (
-                    step_instance.calculated_date.isoformat()
-                    if step_instance.calculated_date is not None
-                    else None
-                )
+                next_step_date = step_instance.calculated_date.isoformat() if step_instance.calculated_date else None
                 break
 
         company_name = None
@@ -152,30 +188,34 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             if fund:
                 fund_name = fund.name
 
-        active_workflows.append({
-            "id": instance.id,
-            "name": instance.name,
-            "progress": f"{done}/{total}",
-            "next_step": next_step,
-            "next_step_date": next_step_date,
-            "company_name": company_name,
-            "fund_name": fund_name,
-        })
+        active_workflows.append(
+            {
+                "id": instance.id,
+                "name": instance.name,
+                "progress": f"{done}/{total}",
+                "next_step": next_step,
+                "next_step_date": next_step_date,
+                "company_name": company_name,
+                "fund_name": fund_name,
+            }
+        )
 
     fund_summary = []
     funds = db.query(Fund).order_by(Fund.id.desc()).all()
     for fund in funds:
         investment_count = db.query(Investment).filter(Investment.fund_id == fund.id).count()
-        fund_summary.append({
-            "id": fund.id,
-            "name": fund.name,
-            "type": fund.type,
-            "status": fund.status,
-            "commitment_total": fund.commitment_total,
-            "aum": fund.aum,
-            "lp_count": len(fund.lps),
-            "investment_count": investment_count,
-        })
+        fund_summary.append(
+            {
+                "id": fund.id,
+                "name": fund.name,
+                "type": fund.type,
+                "status": fund.status,
+                "commitment_total": fund.commitment_total,
+                "aum": fund.aum,
+                "lp_count": len(fund.lps),
+                "investment_count": investment_count,
+            }
+        )
 
     missing_documents = []
     docs = (
@@ -185,6 +225,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         .limit(20)
         .all()
     )
+
     for doc in docs:
         investment = db.get(Investment, doc.investment_id)
         if not investment:
@@ -193,23 +234,26 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         company = db.get(PortfolioCompany, investment.company_id)
         fund = db.get(Fund, investment.fund_id)
 
-        missing_documents.append({
-            "id": doc.id,
-            "investment_id": investment.id,
-            "document_name": doc.name,
-            "document_type": doc.doc_type,
-            "status": doc.status,
-            "company_name": company.name if company else "",
-            "fund_name": fund.name if fund else "",
-            "due_date": doc.due_date.isoformat() if doc.due_date else None,
-            "days_remaining": (doc.due_date - today).days if doc.due_date else None,
-        })
+        missing_documents.append(
+            {
+                "id": doc.id,
+                "investment_id": investment.id,
+                "document_name": doc.name,
+                "document_type": doc.doc_type,
+                "status": doc.status,
+                "company_name": company.name if company else "",
+                "fund_name": fund.name if fund else "",
+                "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                "days_remaining": (doc.due_date - today).days if doc.due_date else None,
+            }
+        )
 
+    submitted_statuses = ["제출완료", "전송완료"]
     upcoming_reports = []
     report_rows = (
         db.query(RegularReport)
         .filter(
-            RegularReport.status.notin_(["전송완료"]),
+            RegularReport.status.notin_(submitted_statuses),
             RegularReport.due_date.isnot(None),
             RegularReport.due_date <= today + timedelta(days=7),
         )
@@ -219,29 +263,59 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     )
     for report in report_rows:
         fund = db.get(Fund, report.fund_id) if report.fund_id else None
-        upcoming_reports.append({
-            "id": report.id,
-            "report_target": report.report_target,
-            "fund_id": report.fund_id,
-            "fund_name": fund.name if fund else None,
-            "period": report.period,
-            "due_date": report.due_date.isoformat() if report.due_date else None,
-            "status": report.status,
-            "days_remaining": (report.due_date - today).days if report.due_date else None,
-        })
+        upcoming_reports.append(
+            {
+                "id": report.id,
+                "report_target": report.report_target,
+                "fund_id": report.fund_id,
+                "fund_name": fund.name if fund else None,
+                "period": report.period,
+                "due_date": report.due_date.isoformat() if report.due_date else None,
+                "status": report.status,
+                "days_remaining": (report.due_date - today).days if report.due_date else None,
+            }
+        )
+
+    completed_today = (
+        db.query(Task)
+        .filter(
+            Task.status == "completed",
+            Task.completed_at.isnot(None),
+            func.date(Task.completed_at) == today,
+        )
+        .order_by(Task.completed_at.desc())
+        .all()
+    )
+    completed_this_week = (
+        db.query(Task)
+        .filter(
+            Task.status == "completed",
+            Task.completed_at.isnot(None),
+            func.date(Task.completed_at) >= week_start,
+            func.date(Task.completed_at) <= week_end,
+        )
+        .order_by(Task.completed_at.desc())
+        .all()
+    )
+    last_week_start = week_start - timedelta(days=7)
+    completed_last_week = (
+        db.query(Task)
+        .filter(
+            Task.status == "completed",
+            Task.completed_at.isnot(None),
+            func.date(Task.completed_at) >= last_week_start,
+            func.date(Task.completed_at) < week_start,
+        )
+        .order_by(Task.completed_at.desc())
+        .all()
+    )
 
     return {
         "date": today.isoformat(),
         "day_of_week": WEEKDAYS[today.weekday()],
         "monthly_reminder": monthly_reminder,
-        "today": {
-            "tasks": today_tasks,
-            "total_estimated_time": _sum_time(today_tasks),
-        },
-        "tomorrow": {
-            "tasks": tomorrow_tasks,
-            "total_estimated_time": _sum_time(tomorrow_tasks),
-        },
+        "today": {"tasks": today_tasks, "total_estimated_time": _sum_time(today_tasks)},
+        "tomorrow": {"tasks": tomorrow_tasks, "total_estimated_time": _sum_time(tomorrow_tasks)},
         "this_week": week_tasks,
         "upcoming": upcoming_tasks,
         "no_deadline": no_deadline_tasks,
@@ -249,6 +323,11 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         "fund_summary": fund_summary,
         "missing_documents": missing_documents,
         "upcoming_reports": upcoming_reports,
+        "completed_today": [_task_response(db, task) for task in completed_today],
+        "completed_this_week": [_task_response(db, task) for task in completed_this_week],
+        "completed_last_week": [_task_response(db, task) for task in completed_last_week],
+        "completed_today_count": len(completed_today),
+        "completed_this_week_count": len(completed_this_week),
     }
 
 
@@ -257,11 +336,7 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
     today = date.today()
     horizon = today + timedelta(days=max(0, days))
 
-    active_instances = (
-        db.query(WorkflowInstance)
-        .filter(WorkflowInstance.status == "active")
-        .all()
-    )
+    active_instances = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active").all()
 
     notice_cache: dict[int, dict[str, FundNoticePeriod]] = {}
     fund_name_cache: dict[int, str] = {}
@@ -277,12 +352,9 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
             continue
 
         if fund_id not in notice_cache:
-            rows = (
-                db.query(FundNoticePeriod)
-                .filter(FundNoticePeriod.fund_id == fund_id)
-                .all()
-            )
+            rows = db.query(FundNoticePeriod).filter(FundNoticePeriod.fund_id == fund_id).all()
             notice_cache[fund_id] = {row.notice_type.lower(): row for row in rows}
+
         notice_map = notice_cache[fund_id]
         if not notice_map:
             continue
@@ -309,14 +381,16 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
                 continue
 
             notice = notice_map[matched_notice_type]
-            results.append({
-                "fund_name": fund_name,
-                "notice_label": notice.label,
-                "deadline": deadline.isoformat(),
-                "days_remaining": (deadline - today).days,
-                "workflow_instance_name": instance.name,
-                "workflow_instance_id": instance.id,
-            })
+            results.append(
+                {
+                    "fund_name": fund_name,
+                    "notice_label": notice.label,
+                    "deadline": deadline.isoformat(),
+                    "days_remaining": (deadline - today).days,
+                    "workflow_instance_name": instance.name,
+                    "workflow_instance_id": instance.id,
+                }
+            )
 
     results.sort(key=lambda row: (row["deadline"], row["fund_name"], row["notice_label"]))
     return results

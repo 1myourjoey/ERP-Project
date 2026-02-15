@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Clock, GitBranch, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Clock, GitBranch, Plus, Trash2 } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -125,11 +125,6 @@ function TaskItem({
         isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
       }`}
     >
-      <button
-        onClick={() => onComplete(task)}
-        className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-gray-300 transition-colors hover:border-green-500 hover:bg-green-50"
-        title="완료"
-      />
       <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onEdit(task)}>
         <p className="text-sm leading-snug text-gray-800">{task.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
@@ -150,11 +145,24 @@ function TaskItem({
           )}
         </div>
       </div>
-      <div className="flex gap-1 opacity-0 transition-all group-hover:opacity-100">
-        <button onClick={() => onEdit(task)} className="text-gray-400 hover:text-blue-500" title="수정">
-          <Pencil size={14} />
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          onClick={() => onComplete(task)}
+          className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+        >
+          완료
         </button>
-        <button onClick={() => onDelete(task.id)} className="text-gray-400 hover:text-red-500" title="삭제">
+        <button
+          onClick={() => onEdit(task)}
+          className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+        >
+          수정
+        </button>
+        <button
+          onClick={() => onDelete(task.id)}
+          className="text-gray-400 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
+          title="삭제"
+        >
           <Trash2 size={14} />
         </button>
       </div>

@@ -118,7 +118,7 @@ export default function Layout() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const isSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'
+      const isSearchShortcut = (event.ctrlKey || event.metaKey) && event.key === ' '
       if (isSearchShortcut) {
         event.preventDefault()
         setSearchOpen(true)
@@ -233,7 +233,7 @@ export default function Layout() {
           >
             <Search size={14} />
             <span className="hidden sm:inline">검색</span>
-            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+K</kbd>
+            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
           </button>
         </div>
       </nav>

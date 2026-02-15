@@ -15,6 +15,15 @@ function formatNumber(value: number | null | undefined, digits = 0): string {
   })
 }
 
+function toMillionUnit(value: number | null | undefined): number | null | undefined {
+  if (value == null) return value
+  return Math.abs(value) >= 1_000_000 ? value / 1_000_000 : value
+}
+
+function formatMillion(value: number | null | undefined, digits = 0): string {
+  return formatNumber(toMillionUnit(value), digits)
+}
+
 function formatPercent(value: number | null | undefined): string {
   if (value == null) return '-'
   return `${formatNumber(value, 2)}%`
@@ -50,11 +59,11 @@ export default function FundOverviewPage() {
   const summaryCards = useMemo(
     () => [
       { label: '조합 수', value: formatNumber(funds.length) },
-      { label: '약정총액 합계', value: formatNumber(totals?.commitment_total) },
-      { label: '납입총액 합계', value: formatNumber(totals?.total_paid_in) },
-      { label: 'GP출자금 합계', value: formatNumber(totals?.gp_commitment) },
-      { label: '투자총액 합계', value: formatNumber(totals?.total_invested) },
-      { label: '미투자액 합계', value: formatNumber(totals?.uninvested) },
+      { label: '약정총액 합계', value: formatMillion(totals?.commitment_total) },
+      { label: '납입총액 합계', value: formatMillion(totals?.total_paid_in) },
+      { label: 'GP출자금 합계', value: formatMillion(totals?.gp_commitment) },
+      { label: '투자총액 합계', value: formatMillion(totals?.total_invested) },
+      { label: '미투자액 합계', value: formatMillion(totals?.uninvested) },
       { label: '투자업체수 합계', value: formatNumber(totals?.company_count) },
     ],
     [funds.length, totals],
@@ -147,15 +156,15 @@ export default function FundOverviewPage() {
                       {formatPercent(fund.investment_period_progress)}
                     </td>
                     <td className="px-3 py-2 text-gray-600">{fund.maturity_date || '-'}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.commitment_total)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.total_paid_in)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.commitment_total)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.total_paid_in)}</td>
                     <td className={`px-3 py-2 text-right font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
                       {formatPercent(fund.paid_in_ratio)}
                     </td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.gp_commitment)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.total_invested)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.uninvested)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.investment_assets)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.gp_commitment)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.total_invested)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.uninvested)}</td>
+                    <td className="px-3 py-2 text-right">{formatMillion(fund.investment_assets)}</td>
                     <td className="px-3 py-2 text-right">{formatNumber(fund.company_count)}</td>
                     <td className="px-3 py-2 text-right">{formatPercent(fund.hurdle_rate)}</td>
                     <td className="px-3 py-2 text-gray-700">{fund.remaining_period || '-'}</td>
@@ -165,13 +174,13 @@ export default function FundOverviewPage() {
                   <td className="sticky left-0 z-30 bg-gray-100 px-3 py-2" colSpan={8}>
                     합계
                   </td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.commitment_total)}</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.total_paid_in)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.commitment_total)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.total_paid_in)}</td>
                   <td className="px-3 py-2 text-right">-</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.gp_commitment)}</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.total_invested)}</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.uninvested)}</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.investment_assets)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.gp_commitment)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.total_invested)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.uninvested)}</td>
+                  <td className="px-3 py-2 text-right">{formatMillion(totals?.investment_assets)}</td>
                   <td className="px-3 py-2 text-right">{formatNumber(totals?.company_count)}</td>
                   <td className="px-3 py-2 text-right">-</td>
                   <td className="px-3 py-2 text-right">-</td>

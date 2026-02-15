@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Building2, ChevronDown, Clock, FileWarning, GitBranch, Plus, Send } from 'lucide-react'
+import { Building2, ChevronDown, ChevronLeft, ChevronRight, Clock, FileWarning, GitBranch, Plus, Send } from 'lucide-react'
 
 import CompleteModal from '../components/CompleteModal'
 import TimeSelect from '../components/TimeSelect'
@@ -81,6 +81,18 @@ function addDays(baseDate: string, days: number): string {
   const value = new Date(`${baseDate}T00:00:00`)
   value.setDate(value.getDate() + days)
   return value.toISOString().slice(0, 10)
+}
+
+function weekRangeLabelMondayToSunday(baseDate: string): string {
+  const base = new Date(`${baseDate}T00:00:00`)
+  const day = base.getDay() // Sun=0, Mon=1, ... Sat=6
+  const diffToMonday = day === 0 ? 6 : day - 1
+  const monday = new Date(base)
+  monday.setDate(base.getDate() - diffToMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+  return `${fmt(monday)}~${fmt(sunday)}`
 }
 
 function ListPopupModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -209,8 +221,17 @@ function QuickAddTaskModal({ defaultDate, funds, defaultFundId, onAdd, onCancel 
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-xl border border-gray-200 bg-white p-3"><p className="text-xs text-gray-500">{label}</p><p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p></div>
+function StatCard({ label, value, onClick, variant = 'default' }: { label: string; value: number; onClick?: () => void; variant?: 'default' | 'emerald' }) {
+  const isEmerald = variant === 'emerald'
+  return (
+    <div
+      onClick={onClick}
+      className={`rounded-xl border p-3 ${isEmerald ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-white'} ${onClick ? 'cursor-pointer transition-all hover:border-blue-300 hover:shadow-sm' : ''}`}
+    >
+      <p className={`text-xs ${isEmerald ? 'text-emerald-600' : 'text-gray-500'}`}>{label}</p>
+      <p className={`mt-1 text-2xl font-semibold ${isEmerald ? 'text-emerald-700' : 'text-gray-900'}`}>{value}</p>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
@@ -226,6 +247,8 @@ export default function DashboardPage() {
   const [quickAddDefaultFundId, setQuickAddDefaultFundId] = useState<number | null>(null)
   const [upcomingCollapsed, setUpcomingCollapsed] = useState(false)
   const [popupSection, setPopupSection] = useState<PopupSection | null>(null)
+  const [completedFilter, setCompletedFilter] = useState<'today' | 'this_week' | 'last_week'>('today')
+  const [taskPanel, setTaskPanel] = useState<'daily' | 'weekly'>('daily')
 
   const { data, isLoading, error } = useQuery<DashboardResponse>({ queryKey: ['dashboard'], queryFn: fetchDashboard })
   const { data: upcomingNotices = [] } = useQuery<UpcomingNotice[]>({ queryKey: ['dashboardUpcomingNotices'], queryFn: () => fetchUpcomingNotices(30) })
@@ -240,25 +263,58 @@ export default function DashboardPage() {
   if (isLoading) return <div className="loading-state"><div className="loading-spinner" /></div>
   if (error || !data) return <div className="page-container text-sm text-red-500">대시보드 데이터를 불러오지 못했습니다.</div>
 
-  const { date, day_of_week, monthly_reminder, today, tomorrow, this_week, upcoming, no_deadline, active_workflows, fund_summary, missing_documents, upcoming_reports, completed_today, completed_today_count, completed_this_week_count } = data
+  const {
+    date,
+    day_of_week,
+    monthly_reminder,
+    today = { tasks: [], total_estimated_time: '0m' },
+    tomorrow = { tasks: [], total_estimated_time: '0m' },
+    this_week = [],
+    upcoming = [],
+    no_deadline = [],
+    active_workflows = [],
+    fund_summary = [],
+    missing_documents = [],
+    upcoming_reports = [],
+    completed_today = [],
+    completed_today_count = 0,
+    completed_this_week_count = 0,
+    completed_this_week = [],
+    completed_last_week = [],
+  } = data
+  const todayTasks = Array.isArray(today.tasks) ? today.tasks : []
+  const tomorrowTasks = Array.isArray(tomorrow.tasks) ? tomorrow.tasks : []
+  const thisWeekTasks = Array.isArray(this_week) ? this_week : []
+  const upcomingTasks = Array.isArray(upcoming) ? upcoming : []
+  const noDeadlineTasks = Array.isArray(no_deadline) ? no_deadline : []
+  const completedTodayTasks = Array.isArray(completed_today) ? completed_today : []
+  const completedThisWeekTasks = Array.isArray(completed_this_week) ? completed_this_week : []
+  const completedLastWeekTasks = Array.isArray(completed_last_week) ? completed_last_week : []
+  const thisWeekRangeLabel = weekRangeLabelMondayToSunday(date)
   const tabCount = { funds: fund_summary.length, notices: upcomingNotices.length, reports: upcoming_reports.length, documents: missing_documents.length }
-  const upcomingGrouped = Array.from(groupByCategory(upcoming))
+  const upcomingGrouped = Array.from(groupByCategory(upcomingTasks))
+  const filteredCompleted =
+    completedFilter === 'today'
+      ? completedTodayTasks
+      : completedFilter === 'this_week'
+        ? completedThisWeekTasks
+        : completedLastWeekTasks
 
   const openQuickAdd = (target: 'today' | 'tomorrow', fundId?: number | null) => { setQuickAddDefaultDate(target === 'today' ? date : addDays(date, 1)); setQuickAddDefaultFundId(fundId ?? null); setShowQuickAddModal(true) }
 
-  const popupTitle = popupSection === 'today' ? '오늘 업무' : popupSection === 'tomorrow' ? '내일 업무' : popupSection === 'this_week' ? '이번 주 업무' : popupSection === 'workflows' ? '진행 워크플로' : popupSection === 'documents' ? '미수집 서류' : popupSection === 'reports' ? '보고 마감' : '오늘 완료'
+  const popupTitle = popupSection === 'today' ? '오늘 업무' : popupSection === 'tomorrow' ? '내일 업무' : popupSection === 'this_week' ? `이번 주 업무 (${thisWeekRangeLabel})` : popupSection === 'workflows' ? '진행 워크플로' : popupSection === 'documents' ? '미수집 서류' : popupSection === 'reports' ? '보고 마감' : '오늘 완료'
 
   return (
     <div className="page-container space-y-6">
       <div className="page-header mb-0"><div><h2 className="page-title">{new Date(date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ({dayLabel[day_of_week as keyof typeof dayLabel] || day_of_week})</h2><p className="page-subtitle">오늘의 업무와 마감 일정을 확인하세요.</p></div></div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="오늘 업무" value={today.tasks.length} />
-        <StatCard label="이번 주" value={this_week.length} />
-        <StatCard label="진행 워크플로" value={active_workflows.length} />
-        <StatCard label="미수집 서류" value={missing_documents.length} />
-        <StatCard label="보고 마감" value={upcoming_reports.length} />
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs text-emerald-600">오늘 완료</p><p className="mt-1 text-2xl font-semibold text-emerald-700">{completed_today_count}</p></div>
+        <StatCard label="오늘 업무" value={todayTasks.length} onClick={() => setPopupSection('today')} />
+        <StatCard label={`이번 주 (${thisWeekRangeLabel})`} value={thisWeekTasks.length} onClick={() => setPopupSection('this_week')} />
+        <StatCard label="진행 워크플로" value={active_workflows.length} onClick={() => setPopupSection('workflows')} />
+        <StatCard label="미수집 서류" value={missing_documents.length} onClick={() => setPopupSection('documents')} />
+        <StatCard label="보고 마감" value={upcoming_reports.length} onClick={() => setPopupSection('reports')} />
+        <StatCard label="오늘 완료" value={completed_today_count} onClick={() => setPopupSection('completed')} variant="emerald" />
       </div>
 
       {monthly_reminder && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm text-amber-900">이번 달 월간 보고 Task가 아직 생성되지 않았습니다.</p><button onClick={() => monthlyReminderMut.mutate(date.slice(0, 7))} disabled={monthlyReminderMut.isPending} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:bg-amber-300">{monthlyReminderMut.isPending ? '생성 중...' : '지금 생성'}</button></div></div>}
@@ -284,36 +340,51 @@ export default function DashboardPage() {
           )}
 
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <TaskList title={`오늘 (${today.tasks.length}건 ${today.total_estimated_time})`} tasks={today.tasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('today')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('today') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
-              <TaskList title={`내일 (${tomorrow.tasks.length}건 ${tomorrow.total_estimated_time})`} tasks={tomorrow.tasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('tomorrow')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('tomorrow') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
-            </div>
-
-            {completed_today.length > 0 && (
-              <div className="card-base p-3">
-                <button onClick={() => setPopupSection('completed')} className="mb-2 text-sm font-semibold text-gray-600 hover:text-blue-600">오늘 완료 ({completed_today_count}건)</button>
-                <span className="ml-2 text-xs text-gray-400">이번 주 {completed_this_week_count}건</span>
-                <div className="mt-2 space-y-1">
-                  {completed_today.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between text-sm">
-                      <button onClick={() => setSelectedTask(task)} className="truncate text-left line-through text-gray-400 hover:text-blue-600">{task.title}</button>
-                      <div className="ml-2 flex items-center gap-2">{task.actual_time && <span className="text-xs text-gray-400">{task.actual_time}</span>}<button onClick={() => undoCompleteMut.mutate(task.id)} className="text-xs text-blue-500 hover:underline">되돌리기</button></div>
-                    </div>
-                  ))}
+            <div className="relative overflow-hidden">
+              <div className={`px-0.5 transition-all duration-300 ease-out ${taskPanel === 'daily' ? 'relative translate-x-0 opacity-100' : 'pointer-events-none absolute inset-0 -translate-x-8 opacity-0'}`}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <TaskList title={`오늘 (${todayTasks.length}건 ${today.total_estimated_time || '0m'})`} tasks={todayTasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('today')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('today') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
+                  <TaskList title={`내일 (${tomorrowTasks.length}건 ${tomorrow.total_estimated_time || '0m'})`} tasks={tomorrowTasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('tomorrow')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('tomorrow') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
                 </div>
               </div>
-            )}
 
-            <TaskList title={`이번 주 (${this_week.length}건)`} tasks={this_week} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('this_week')} />
+              <div className={`px-0.5 transition-all duration-300 ease-out ${taskPanel === 'weekly' ? 'relative translate-x-0 opacity-100' : 'pointer-events-none absolute inset-0 translate-x-8 opacity-0'}`}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <TaskList title={`이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`} tasks={thisWeekTasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('this_week')} />
 
-            {upcoming.length > 0 && (
-              <div className="card-base">
-                <button onClick={() => setUpcomingCollapsed((prev) => !prev)} className="mb-2 flex w-full items-center justify-between"><h3 className="text-sm font-semibold text-gray-700">예정 업무</h3><div className="flex items-center gap-2"><span className="text-xs text-gray-400">{upcoming.length}건</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${upcomingCollapsed ? '-rotate-90' : ''}`} /></div></button>
-                {!upcomingCollapsed && <div className="space-y-3">{upcomingGrouped.map(([category, tasks]) => <div key={category}><div className="mb-1 flex items-center gap-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span><span className="text-[10px] text-gray-400">{tasks.length}건</span></div><div className="space-y-1">{tasks.map((task) => <div key={task.id} onClick={() => setSelectedTask(task)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm text-gray-800">{task.title}</p><span className="shrink-0 text-xs text-gray-400">{task.deadline ? formatShortDate(task.deadline) : ''}</span></div></div>)}</div></div>)}</div>}
+                  <div className="card-base">
+                    <button onClick={() => setUpcomingCollapsed((prev) => !prev)} className="mb-2 flex w-full items-center justify-between"><h3 className="text-sm font-semibold text-gray-700">예정 업무</h3><div className="flex items-center gap-2"><span className="text-xs text-gray-400">{upcomingTasks.length}건</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${upcomingCollapsed ? '-rotate-90' : ''}`} /></div></button>
+                    {!upcomingTasks.length ? (
+                      <p className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">업무 없음</p>
+                    ) : (
+                      !upcomingCollapsed && <div className="space-y-3">{upcomingGrouped.map(([category, tasks]) => <div key={category}><div className="mb-1 flex items-center gap-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span><span className="text-[10px] text-gray-400">{tasks.length}건</span></div><div className="space-y-1">{tasks.map((task) => <div key={task.id} onClick={() => setSelectedTask(task)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm text-gray-800">{task.title}</p><span className="shrink-0 text-xs text-gray-400">{task.deadline ? formatShortDate(task.deadline) : ''}</span></div></div>)}</div></div>)}</div>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
 
-            {no_deadline.length > 0 && <TaskList title="기한 미지정" tasks={no_deadline} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} defaultCollapsed={true} />}
+              <button
+                onClick={() => setTaskPanel('daily')}
+                aria-label="이전 패널"
+                className={`absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/95 p-1.5 text-gray-500 shadow-sm transition-all hover:bg-white hover:text-gray-700 ${taskPanel === 'weekly' ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={() => setTaskPanel('weekly')}
+                aria-label="다음 패널"
+                className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-gray-200 bg-white/95 p-1.5 text-gray-500 shadow-sm transition-all hover:bg-white hover:text-gray-700 ${taskPanel === 'daily' ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className="flex justify-center gap-1">
+              <button onClick={() => setTaskPanel('daily')} className={`h-1.5 w-6 rounded-full transition-colors ${taskPanel === 'daily' ? 'bg-blue-500' : 'bg-gray-300'}`} aria-label="오늘/내일 패널 보기" />
+              <button onClick={() => setTaskPanel('weekly')} className={`h-1.5 w-6 rounded-full transition-colors ${taskPanel === 'weekly' ? 'bg-blue-500' : 'bg-gray-300'}`} aria-label="이번주/예정 패널 보기" />
+            </div>
+
+            {noDeadlineTasks.length > 0 && <TaskList title="기한 미지정" tasks={noDeadlineTasks} onClickTask={setSelectedTask} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} defaultCollapsed={true} />}
           </div>
         </div>
 
@@ -327,12 +398,45 @@ export default function DashboardPage() {
           {rightTab === 'reports' && <div className="card-base"><button onClick={() => setPopupSection('reports')} className="mb-2 text-sm font-semibold text-gray-700 hover:text-blue-600">보고 마감</button>{!upcoming_reports.length ? <p className="text-sm text-gray-400">임박한 보고 마감이 없습니다.</p> : <><div className="space-y-2">{upcoming_reports.slice(0, 5).map((report: UpcomingReport) => { const badge = dueBadge(report.days_remaining); return <button key={report.id} onClick={() => navigate('/reports', { state: { highlightId: report.id } })} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p>{badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}</div><p className="mt-0.5 text-xs text-gray-500">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p></button>})}</div>{upcoming_reports.length > 5 && <button onClick={() => setPopupSection('reports')} className="mt-2 text-xs text-blue-600 hover:underline">+{upcoming_reports.length - 5}건 더보기</button>}</>}</div>}
 
           {rightTab === 'documents' && <div className="card-base"><button onClick={() => setPopupSection('documents')} className="mb-2 text-sm font-semibold text-gray-700 hover:text-blue-600">미수집 서류</button>{!missing_documents.length ? <p className="text-sm text-gray-400">미수집 서류가 없습니다.</p> : <><div className="space-y-2">{missing_documents.slice(0, 5).map((doc: MissingDocument) => { const badge = dueBadge(doc.days_remaining); return <button key={doc.id} onClick={() => navigate(`/investments/${doc.investment_id}`)} className="w-full rounded-lg border border-amber-200 bg-amber-50 p-2 text-left hover:bg-amber-100"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-amber-900">{doc.document_name}</p>{badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}</div><p className="mt-0.5 text-xs text-amber-700">{doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}</p><p className="mt-0.5 text-[11px] text-amber-700">마감 {formatShortDate(doc.due_date)}</p></button>})}</div>{missing_documents.length > 5 && <button onClick={() => setPopupSection('documents')} className="mt-2 text-xs text-blue-600 hover:underline">+{missing_documents.length - 5}건 더보기</button>}</>}</div>}
+
+          <div className="card-base">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-emerald-700">완료 업무</h3>
+              <div className="flex gap-1 rounded bg-gray-100 p-0.5 text-xs">
+                {(['today', 'this_week', 'last_week'] as const).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => setCompletedFilter(key)}
+                    className={`rounded px-2 py-1 ${completedFilter === key ? 'bg-white font-medium text-emerald-700 shadow' : 'text-gray-500'}`}
+                  >
+                    {key === 'today' ? '오늘' : key === 'this_week' ? '이번 주' : '전주'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="mb-2 text-xs text-gray-400">오늘 {completed_today_count}건 · 이번 주 {completed_this_week_count}건</p>
+            {filteredCompleted.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-400">완료된 업무가 없습니다.</p>
+            ) : (
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {filteredCompleted.map((task) => (
+                  <div key={task.id} className="flex items-center justify-between text-sm">
+                    <button onClick={() => setSelectedTask(task)} className="truncate text-left line-through text-gray-400 hover:text-blue-600">{task.title}</button>
+                    <div className="ml-2 flex items-center gap-2">
+                      {task.actual_time && <span className="text-xs text-gray-400">{task.actual_time}</span>}
+                      <button onClick={() => undoCompleteMut.mutate(task.id)} className="text-xs text-blue-500 hover:underline">되돌리기</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {showQuickAddModal && <QuickAddTaskModal defaultDate={quickAddDefaultDate || date} funds={fund_summary} defaultFundId={quickAddDefaultFundId} onAdd={(task) => createTaskMut.mutate(task)} onCancel={() => setShowQuickAddModal(false)} />}
 
-      {popupSection && <ListPopupModal title={popupTitle} onClose={() => setPopupSection(null)}><div className="space-y-2">{popupSection === 'workflows' && active_workflows.map((wf) => <button key={wf.id} onClick={() => navigate('/workflows', { state: { expandInstanceId: wf.id } })} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{wf.name}</p><p className="text-xs text-gray-500">{wf.fund_name || '-'} | {wf.company_name || '-'} | {wf.progress}</p></button>)}{popupSection === 'documents' && missing_documents.map((doc) => <button key={doc.id} onClick={() => navigate(`/investments/${doc.investment_id}`)} className="w-full rounded-lg border border-amber-200 bg-amber-50 p-2 text-left hover:bg-amber-100"><p className="text-sm font-medium text-amber-900">{doc.document_name}</p><p className="text-xs text-amber-700">{doc.fund_name} | {doc.company_name}</p></button>)}{popupSection === 'reports' && upcoming_reports.map((report) => <button key={report.id} onClick={() => navigate('/reports', { state: { highlightId: report.id } })} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p><p className="text-xs text-gray-500">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p></button>)}{popupSection === 'today' && today.tasks.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'tomorrow' && tomorrow.tasks.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'this_week' && this_week.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'completed' && completed_today.map((task) => <div key={task.id} className="rounded-lg border border-gray-200 p-2"><div className="flex items-center justify-between"><button onClick={() => setSelectedTask(task)} className="truncate text-left text-sm text-gray-500 line-through hover:text-blue-600">{task.title}</button><button onClick={() => undoCompleteMut.mutate(task.id)} className="text-xs text-blue-600 hover:underline">되돌리기</button></div></div>)}</div></ListPopupModal>}
+      {popupSection && <ListPopupModal title={popupTitle} onClose={() => setPopupSection(null)}><div className="space-y-2">{popupSection === 'workflows' && active_workflows.map((wf) => <button key={wf.id} onClick={() => navigate('/workflows', { state: { expandInstanceId: wf.id } })} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{wf.name}</p><p className="text-xs text-gray-500">{wf.fund_name || '-'} | {wf.company_name || '-'} | {wf.progress}</p></button>)}{popupSection === 'documents' && missing_documents.map((doc) => <button key={doc.id} onClick={() => navigate(`/investments/${doc.investment_id}`)} className="w-full rounded-lg border border-amber-200 bg-amber-50 p-2 text-left hover:bg-amber-100"><p className="text-sm font-medium text-amber-900">{doc.document_name}</p><p className="text-xs text-amber-700">{doc.fund_name} | {doc.company_name}</p></button>)}{popupSection === 'reports' && upcoming_reports.map((report) => <button key={report.id} onClick={() => navigate('/reports', { state: { highlightId: report.id } })} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p><p className="text-xs text-gray-500">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p></button>)}{popupSection === 'today' && todayTasks.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'tomorrow' && tomorrowTasks.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'this_week' && thisWeekTasks.map((task) => <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"><p className="text-sm font-medium text-gray-800">{task.title}</p></button>)}{popupSection === 'completed' && completedTodayTasks.map((task) => <div key={task.id} className="rounded-lg border border-gray-200 p-2"><div className="flex items-center justify-between"><button onClick={() => setSelectedTask(task)} className="truncate text-left text-sm text-gray-500 line-through hover:text-blue-600">{task.title}</button><button onClick={() => undoCompleteMut.mutate(task.id)} className="text-xs text-blue-600 hover:underline">되돌리기</button></div></div>)}</div></ListPopupModal>}
 
       {selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} onComplete={(task) => { setSelectedTask(null); setCompletingTask(task) }} onGoTaskBoard={(task) => { setSelectedTask(null); navigate('/tasks', { state: { highlightTaskId: task.id } }) }} />}
 

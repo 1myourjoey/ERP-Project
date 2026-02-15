@@ -46,3 +46,12 @@ export const formatKRW = (amount: number | null): string => {
   if (amount >= 10_000) return `${Math.round(amount / 10_000).toLocaleString()}만`
   return amount.toLocaleString()
 }
+
+export const formatKRWFull = (amount: number | null): { full: string; label: string } => {
+  if (amount == null) return { full: '-', label: '' }
+  const full = `${amount.toLocaleString()}원`
+  let label = ''
+  if (amount >= 100_000_000) label = `${(amount / 100_000_000).toFixed(1)}억원`
+  else if (amount >= 10_000) label = `${Math.round(amount / 10_000).toLocaleString()}만원`
+  return { full, label }
+}

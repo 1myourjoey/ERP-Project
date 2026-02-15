@@ -56,6 +56,8 @@ export const fetchWorkflowInstances = (
 export const fetchWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.get(`/workflow-instances/${id}`).then(r => r.data)
 export const completeWorkflowStep = (instanceId: number, stepId: number, data: WorkflowStepCompleteInput): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/complete`, data).then(r => r.data)
 export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
+export const updateWorkflowInstance = (id: number, data: WorkflowInstanceUpdateInput): Promise<WorkflowInstance> => api.put(`/workflow-instances/${id}`, data).then(r => r.data)
+export const undoWorkflowStep = (instanceId: number, stepId: number): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/steps/${stepId}/undo`).then(r => r.data)
 
 // -- Search --
 export const searchGlobal = (q: string): Promise<SearchResult[]> =>
@@ -149,7 +151,10 @@ export const fetchTrialBalance = (fund_id: number, as_of_date?: string): Promise
   api.get('/accounts/trial-balance', { params: { fund_id, as_of_date } }).then(r => r.data)
 export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: string }): Promise<CapitalCall[]> => api.get('/capital-calls', { params }).then(r => r.data)
 export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
-export const createCapitalCall = (data: CapitalCallInput): Promise<CapitalCall> => api.post('/capital-calls', data).then(r => r.data)
+export const createCapitalCall = (
+  fundId: number,
+  data: { call_date: string; total_amount: number | null; call_type?: string | null; memo?: string | null },
+): Promise<CapitalCall> => api.post('/capital-calls', { ...data, fund_id: fundId }).then(r => r.data)
 export const updateCapitalCall = (id: number, data: Partial<CapitalCallInput>): Promise<CapitalCall> => api.put(`/capital-calls/${id}`, data).then(r => r.data)
 export const deleteCapitalCall = (id: number) => api.delete(`/capital-calls/${id}`)
 export const fetchCapitalCallItems = (capitalCallId: number): Promise<CapitalCallItem[]> => api.get(`/capital-calls/${capitalCallId}/items`).then(r => r.data)
@@ -239,6 +244,8 @@ export interface DashboardResponse {
   upcoming_reports: UpcomingReport[]
   upcoming_notices?: UpcomingNotice[]
   completed_today: Task[]
+  completed_this_week: Task[]
+  completed_last_week: Task[]
   completed_today_count: number
   completed_this_week_count: number
 }
@@ -443,6 +450,12 @@ export interface WorkflowInstantiateInput {
   fund_id?: number
 }
 
+export interface WorkflowInstanceUpdateInput {
+  name: string
+  trigger_date: string
+  memo?: string | null
+}
+
 export interface WorkflowStepCompleteInput {
   actual_time?: string
   notes?: string
@@ -496,6 +509,7 @@ export interface Fund {
   aum: number | null
   investment_period_end: string | null
   maturity_date: string | null
+  dissolution_date?: string | null
   mgmt_fee_rate: number | null
   performance_fee_rate: number | null
   hurdle_rate: number | null
@@ -519,9 +533,9 @@ export interface FundInput {
   commitment_total?: number | null
   gp_commitment?: number | null
   contribution_type?: string | null
-  aum?: number | null
   investment_period_end?: string | null
   maturity_date?: string | null
+  dissolution_date?: string | null
   mgmt_fee_rate?: number | null
   performance_fee_rate?: number | null
   hurdle_rate?: number | null

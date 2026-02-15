@@ -108,6 +108,12 @@ class WorkflowInstantiateRequest(BaseModel):
     fund_id: Optional[int] = None
 
 
+class WorkflowInstanceUpdateRequest(BaseModel):
+    name: str
+    trigger_date: date
+    memo: Optional[str] = None
+
+
 class WorkflowStepInstanceResponse(BaseModel):
     id: int
     workflow_step_id: int
