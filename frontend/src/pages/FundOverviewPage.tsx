@@ -39,6 +39,14 @@ export default function FundOverviewPage() {
   const funds = data?.funds ?? []
   const totals = data?.totals
 
+  const downloadExcel = () => {
+    const params = new URLSearchParams()
+    if (referenceDate) params.set('reference_date', referenceDate)
+    const query = params.toString()
+    const url = query ? `/api/funds/overview/export?${query}` : '/api/funds/overview/export'
+    window.open(url, '_blank')
+  }
+
   const summaryCards = useMemo(
     () => [
       { label: '조합 수', value: formatNumber(funds.length) },
@@ -59,15 +67,23 @@ export default function FundOverviewPage() {
           <h1 className="text-2xl font-semibold text-gray-900">조합 개요</h1>
           <p className="mt-1 text-sm text-gray-500">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          기준일
-          <input
-            type="date"
-            value={referenceDate}
-            onChange={(event) => setReferenceDate(event.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            기준일
+            <input
+              type="date"
+              value={referenceDate}
+              onChange={(event) => setReferenceDate(event.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+            />
+          </label>
+          <button
+            onClick={downloadExcel}
+            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            엑셀 다운로드
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">

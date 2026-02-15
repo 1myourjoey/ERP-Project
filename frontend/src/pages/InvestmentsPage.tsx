@@ -62,6 +62,18 @@ const EMPTY_INVESTMENT: InvestmentInput = {
   board_seat: '',
 }
 
+const INSTRUMENT_OPTIONS = [
+  '보통주',
+  '우선주',
+  '전환사채(CB)',
+  '신주인수권부사채(BW)',
+  '상환전환우선주(RCPS)',
+  '전환우선주(CPS)',
+  '교환사채(EB)',
+  '메자닌',
+  '직접대출',
+]
+
 function CompanyForm({
   initial,
   onSubmit,
@@ -176,17 +188,12 @@ export default function InvestmentsPage() {
 
   const createInvestmentMut = useMutation({
     mutationFn: createInvestment,
-    onSuccess: (created: { id: number }) => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] })
-      setShowInvestmentForm(false)
-      addToast('success', '투자가 등록되었습니다.')
-      navigate(`/investments/${created.id}`)
-    },
   })
 
   const handleCreateInvestment = async (
     investment: InvestmentInput,
     newCompany?: { name: string; business_number?: string | null; ceo?: string | null },
+    instrumentEntries?: Array<{ instrument: string; amount: number }>,
   ) => {
     let companyId = investment.company_id
 
@@ -213,10 +220,33 @@ export default function InvestmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['companies'] })
     }
 
-    await createInvestmentMut.mutateAsync({
-      ...investment,
-      company_id: companyId,
-    })
+    const entries =
+      instrumentEntries && instrumentEntries.length > 0
+        ? instrumentEntries
+        : [{ instrument: investment.instrument || '', amount: Number(investment.amount || 0) }]
+
+    const validEntries = entries.filter((entry) => entry.instrument.trim() && entry.amount > 0)
+    if (!validEntries.length) return
+
+    let firstCreatedId: number | null = null
+    for (const entry of validEntries) {
+      const created = await createInvestmentMut.mutateAsync({
+        ...investment,
+        company_id: companyId,
+        instrument: entry.instrument,
+        amount: entry.amount,
+      })
+      if (firstCreatedId == null) {
+        firstCreatedId = created.id
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['investments'] })
+    setShowInvestmentForm(false)
+    addToast('success', validEntries.length > 1 ? `투자 ${validEntries.length}건이 등록되었습니다.` : '투자가 등록되었습니다.')
+    if (firstCreatedId != null) {
+      navigate(`/investments/${firstCreatedId}`)
+    }
   }
 
   return (
@@ -366,6 +396,7 @@ function InvestmentForm({
   onSubmit: (
     data: InvestmentInput,
     newCompany?: { name: string; business_number?: string | null; ceo?: string | null },
+    instrumentEntries?: Array<{ instrument: string; amount: number }>,
   ) => Promise<void> | void
   onCancel: () => void
 }) {
@@ -373,6 +404,9 @@ function InvestmentForm({
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newCompanyBizNum, setNewCompanyBizNum] = useState('')
   const [newCompanyCeo, setNewCompanyCeo] = useState('')
+  const [instrumentEntries, setInstrumentEntries] = useState<Array<{ instrument: string; amount: number | '' }>>([
+    { instrument: '', amount: '' },
+  ])
 
   return (
     <div className="grid grid-cols-1 gap-2 rounded border bg-gray-50 p-2 md:grid-cols-3">
@@ -395,7 +429,6 @@ function InvestmentForm({
         </div>
       )}
 
-      <input type="number" value={form.amount ?? ''} onChange={e => setForm(prev => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))} placeholder="투자금액" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="주식 수" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.share_price ?? ''} onChange={e => setForm(prev => ({ ...prev, share_price: e.target.value ? Number(e.target.value) : null }))} placeholder="주당 가격" className="px-2 py-1 text-sm border rounded" />
       <input type="number" value={form.valuation ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation: e.target.value ? Number(e.target.value) : null }))} placeholder="밸류에이션" className="px-2 py-1 text-sm border rounded" />
@@ -405,8 +438,60 @@ function InvestmentForm({
       <input type="number" step="0.01" value={form.ownership_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, ownership_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="지분율(%)" className="px-2 py-1 text-sm border rounded" />
       <input value={form.board_seat || ''} onChange={e => setForm(prev => ({ ...prev, board_seat: e.target.value }))} placeholder="이사회 참여" className="px-2 py-1 text-sm border rounded" />
       <input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="기존 지분율" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="투자수단" className="px-2 py-1 text-sm border rounded" />
-      <input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태(예: active)" className="px-2 py-1 text-sm border rounded" />
+      <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="px-2 py-1 text-sm border rounded">
+        <option value="active">{labelStatus('active')}</option>
+        <option value="exited">{labelStatus('exited')}</option>
+        <option value="written_off">{labelStatus('written_off')}</option>
+      </select>
+
+      <div className="md:col-span-3 space-y-2 rounded border border-gray-200 bg-white p-2">
+        <p className="text-xs font-medium text-gray-600">투자수단별 금액</p>
+        {instrumentEntries.map((entry, index) => (
+          <div key={`instrument-${index}`} className="flex items-center gap-2">
+            <select
+              value={entry.instrument}
+              onChange={(e) =>
+                setInstrumentEntries((prev) =>
+                  prev.map((row, rowIndex) => (rowIndex === index ? { ...row, instrument: e.target.value } : row)),
+                )
+              }
+              className="flex-1 px-2 py-1 text-sm border rounded"
+            >
+              <option value="">투자수단 선택</option>
+              {INSTRUMENT_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={entry.amount}
+              onChange={(e) =>
+                setInstrumentEntries((prev) =>
+                  prev.map((row, rowIndex) =>
+                    rowIndex === index ? { ...row, amount: e.target.value ? Number(e.target.value) : '' } : row,
+                  ),
+                )
+              }
+              placeholder="금액"
+              className="w-40 px-2 py-1 text-sm border rounded"
+            />
+            {index > 0 && (
+              <button
+                onClick={() => setInstrumentEntries((prev) => prev.filter((_, rowIndex) => rowIndex !== index))}
+                className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={() => setInstrumentEntries((prev) => [...prev, { instrument: '', amount: '' }])}
+          className="text-xs text-blue-600 hover:underline"
+        >
+          + 투자수단 추가
+        </button>
+      </div>
 
       <div className="md:col-span-3 flex gap-2">
         <button
@@ -415,6 +500,13 @@ function InvestmentForm({
           onClick={() => {
             if (!form.fund_id || !form.company_id) return
             if (form.company_id === -1 && !newCompanyName.trim()) return
+            const entries = instrumentEntries
+              .map((entry) => ({
+                instrument: entry.instrument.trim(),
+                amount: Number(entry.amount || 0),
+              }))
+              .filter((entry) => entry.instrument && entry.amount > 0)
+            if (!entries.length) return
             onSubmit(
               {
                 ...form,
@@ -422,7 +514,8 @@ function InvestmentForm({
                 round: form.round?.trim() || null,
                 board_seat: form.board_seat?.trim() || null,
                 contribution_rate: form.contribution_rate?.trim() || null,
-                instrument: form.instrument?.trim() || null,
+                instrument: entries[0]?.instrument || null,
+                amount: entries[0]?.amount || null,
               },
               form.company_id === -1
                 ? {
@@ -431,6 +524,7 @@ function InvestmentForm({
                     ceo: newCompanyCeo,
                   }
                 : undefined,
+              entries,
             )
           }}
         >

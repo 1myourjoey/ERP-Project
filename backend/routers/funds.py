@@ -1,8 +1,10 @@
-from datetime import date
+﻿from datetime import date
+import io
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import case, func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -75,27 +77,21 @@ def calculate_paid_in_as_of(
     return round(total_paid_in, 2), round(gp_paid_in, 2)
 
 
-@router.get("/api/funds", response_model=list[FundListItem])
-def list_funds(db: Session = Depends(get_db)):
-    funds = db.query(Fund).order_by(Fund.id.desc()).all()
-    return [
-        FundListItem(
-            id=f.id,
-            name=f.name,
-            type=f.type,
-            status=f.status,
-            commitment_total=f.commitment_total,
-            aum=f.aum,
-            lp_count=len(f.lps),
+def build_fund_overview(
+    db: Session,
+    ref_date: date,
+) -> tuple[list[FundOverviewItem], FundOverviewTotals]:
+    funds = (
+        db.query(Fund)
+        .filter(
+            or_(
+                Fund.formation_date.is_(None),
+                Fund.formation_date <= ref_date,
+            )
         )
-        for f in funds
-    ]
-
-
-@router.get("/api/funds/overview", response_model=FundOverviewResponse)
-def fund_overview(reference_date: date | None = None, db: Session = Depends(get_db)):
-    ref_date = reference_date or date.today()
-    funds = db.query(Fund).order_by(Fund.id.asc()).all()
+        .order_by(Fund.id.asc())
+        .all()
+    )
 
     investment_rows = (
         db.query(
@@ -169,9 +165,9 @@ def fund_overview(reference_date: date | None = None, db: Session = Depends(get_
 
         if fund.maturity_date and ref_date < fund.maturity_date:
             delta = relativedelta(fund.maturity_date, ref_date)
-            remaining = f"{delta.years}년 {delta.months}개월"
+            remaining = f"{delta.years}??{delta.months}媛쒖썡"
         elif fund.maturity_date:
-            remaining = "만기 경과"
+            remaining = "留뚭린 寃쎄낵"
         else:
             remaining = "-"
 
@@ -204,12 +200,23 @@ def fund_overview(reference_date: date | None = None, db: Session = Depends(get_
         totals["total_invested"] += float(total_invested or 0)
         totals["uninvested"] += float(uninvested or 0)
         totals["investment_assets"] += float(investment_assets or 0)
-        totals["company_count"] += company_count
 
-    return FundOverviewResponse(
-        reference_date=ref_date.isoformat(),
-        funds=items,
-        totals=FundOverviewTotals(
+    fund_ids = [fund.id for fund in funds]
+    if fund_ids:
+        totals["company_count"] = int(
+            db.query(func.count(func.distinct(Investment.company_id)))
+            .filter(
+                Investment.fund_id.in_(fund_ids),
+                Investment.investment_date.isnot(None),
+                Investment.investment_date <= ref_date,
+            )
+            .scalar()
+            or 0
+        )
+
+    return (
+        items,
+        FundOverviewTotals(
             commitment_total=round(totals["commitment_total"], 2),
             total_paid_in=round(totals["total_paid_in"], 2),
             gp_commitment=round(totals["gp_commitment"], 2),
@@ -221,11 +228,167 @@ def fund_overview(reference_date: date | None = None, db: Session = Depends(get_
     )
 
 
+@router.get("/api/funds", response_model=list[FundListItem])
+def list_funds(db: Session = Depends(get_db)):
+    funds = db.query(Fund).order_by(Fund.id.desc()).all()
+    return [
+        FundListItem(
+            id=f.id,
+            name=f.name,
+            type=f.type,
+            status=f.status,
+            commitment_total=f.commitment_total,
+            aum=f.aum,
+            lp_count=len(f.lps),
+        )
+        for f in funds
+    ]
+
+
+@router.get("/api/funds/overview", response_model=FundOverviewResponse)
+def fund_overview(reference_date: date | None = None, db: Session = Depends(get_db)):
+    ref_date = reference_date or date.today()
+    items, totals = build_fund_overview(db, ref_date)
+    return FundOverviewResponse(reference_date=ref_date.isoformat(), funds=items, totals=totals)
+
+
+@router.get("/api/funds/overview/export")
+def export_fund_overview(reference_date: date | None = None, db: Session = Depends(get_db)):
+    ref_date = reference_date or date.today()
+    overview_items, totals = build_fund_overview(db, ref_date)
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl not installed")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "조합비교표"
+
+    headers = [
+        "NO",
+        "조합명",
+        "조합 구분",
+        "대표 펀드매니저",
+        "등록(성립)일",
+        "투자기간 종료일",
+        "투자기간 경과율",
+        "청산시기(예정)",
+        "약정총액",
+        "납입총액",
+        "납입비율",
+        "GP출자금",
+        "투자총액",
+        "미투자액",
+        "투자자산",
+        "투자업체수",
+        "기준수익률(규약)",
+        "잔존기간",
+    ]
+
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=10)
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for row_idx, item in enumerate(overview_items, start=2):
+        values = [
+            item.no,
+            item.name,
+            item.fund_type,
+            item.fund_manager,
+            item.formation_date,
+            item.investment_period_end,
+            item.investment_period_progress,
+            item.maturity_date,
+            item.commitment_total,
+            item.total_paid_in,
+            item.paid_in_ratio,
+            item.gp_commitment,
+            item.total_invested,
+            item.uninvested,
+            item.investment_assets,
+            item.company_count,
+            item.hurdle_rate,
+            item.remaining_period,
+        ]
+
+        for col_idx, value in enumerate(values, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.border = thin_border
+            if col_idx in (9, 10, 12, 13, 14, 15):
+                cell.number_format = "#,##0"
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            elif col_idx in (7, 11, 17):
+                cell.number_format = '0.00"%"'
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif col_idx == 16:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    totals_row = len(overview_items) + 2
+    total_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    ws.merge_cells(start_row=totals_row, start_column=1, end_row=totals_row, end_column=8)
+    ws.cell(row=totals_row, column=1, value="합계")
+    ws.cell(row=totals_row, column=9, value=totals.commitment_total)
+    ws.cell(row=totals_row, column=10, value=totals.total_paid_in)
+    ws.cell(row=totals_row, column=12, value=totals.gp_commitment)
+    ws.cell(row=totals_row, column=13, value=totals.total_invested)
+    ws.cell(row=totals_row, column=14, value=totals.uninvested)
+    ws.cell(row=totals_row, column=15, value=totals.investment_assets)
+    ws.cell(row=totals_row, column=16, value=totals.company_count)
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=totals_row, column=col_idx)
+        cell.fill = total_fill
+        cell.border = thin_border
+        cell.font = Font(bold=True)
+        if col_idx in (9, 10, 12, 13, 14, 15):
+            cell.number_format = "#,##0"
+            cell.alignment = Alignment(horizontal="right", vertical="center")
+        elif col_idx == 16:
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        else:
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    for idx in range(1, len(headers) + 1):
+        letter = openpyxl.utils.get_column_letter(idx)
+        max_len = 0
+        for row in range(1, totals_row + 1):
+            value = ws.cell(row=row, column=idx).value
+            max_len = max(max_len, len(str(value)) if value is not None else 0)
+        ws.column_dimensions[letter].width = min(max_len + 4, 28)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"fund_overview_{ref_date.isoformat()}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
 @router.get("/api/funds/{fund_id}", response_model=FundResponse)
 def get_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
     return fund
 
 
@@ -242,7 +405,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
 def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(fund, key, val)
@@ -256,7 +419,7 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
 def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
     db.delete(fund)
     db.commit()
 
@@ -265,7 +428,7 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
 def list_lps(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
     return db.query(LP).filter(LP.fund_id == fund_id).order_by(LP.id.desc()).all()
 
 
@@ -273,7 +436,7 @@ def list_lps(fund_id: int, db: Session = Depends(get_db)):
 def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
     lp = LP(fund_id=fund_id, **data.model_dump())
     db.add(lp)
@@ -286,7 +449,7 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
 def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="LP瑜?李얠쓣 ???놁뒿?덈떎")
 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(lp, key, val)
@@ -300,7 +463,7 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
 def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="LP瑜?李얠쓣 ???놁뒿?덈떎")
 
     db.delete(lp)
     db.commit()
@@ -314,7 +477,7 @@ def replace_notice_periods(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
     fund.notice_periods.clear()
     for item in data:
@@ -340,7 +503,7 @@ def replace_key_terms(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
     fund.key_terms.clear()
     for item in data:
@@ -369,7 +532,7 @@ def get_notice_period(fund_id: int, notice_type: str, db: Session = Depends(get_
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="통지기간을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="?듭?湲곌컙??李얠쓣 ???놁뒿?덈떎")
     return period
 
 
@@ -382,7 +545,7 @@ def calculate_deadline(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
     period = (
         db.query(FundNoticePeriod)
@@ -393,7 +556,7 @@ def calculate_deadline(
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="통지기간을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="?듭?湲곌컙??李얠쓣 ???놁뒿?덈떎")
 
     deadline = calculate_business_days_before(target_date, period.business_days)
     return {
@@ -403,3 +566,4 @@ def calculate_deadline(
         "deadline": deadline.isoformat(),
         "label": period.label,
     }
+
