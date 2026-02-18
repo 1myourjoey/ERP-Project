@@ -17,12 +17,14 @@ import {
   Send,
   Landmark,
   Files,
+  FileCode2,
   Menu,
   Search,
   X,
 } from 'lucide-react'
 
 import SearchModal from './SearchModal'
+import { useTheme } from '../contexts/ThemeContext'
 
 type NavItem = {
   to: string
@@ -81,6 +83,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
       { to: '/reports', label: '보고공시', icon: Send },
       { to: '/fund-operations', label: '조합 운영', icon: Landmark },
       { to: '/documents', label: '서류 현황', icon: Files },
+      { to: '/templates', label: '템플릿 관리', icon: FileCode2 },
     ],
   },
 ]
@@ -103,6 +106,7 @@ function isPathActive(pathname: string, to: string): boolean {
 export default function Layout() {
   const location = useLocation()
   const navRef = useRef<HTMLDivElement | null>(null)
+  const { theme, setTheme, themes } = useTheme()
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -115,6 +119,13 @@ export default function Layout() {
       )?.label ?? null,
     [location.pathname],
   )
+
+  const currentThemeIndex = useMemo(
+    () => Math.max(0, themes.findIndex((item) => item.key === theme)),
+    [theme, themes],
+  )
+  const currentTheme = themes[currentThemeIndex]
+  const nextTheme = themes[(currentThemeIndex + 1) % themes.length]
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -136,8 +147,11 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-    setOpenDropdown(null)
-    setMobileMenuOpen(false)
+    const frame = window.requestAnimationFrame(() => {
+      setOpenDropdown(null)
+      setMobileMenuOpen(false)
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [location.pathname])
 
   useEffect(() => {
@@ -164,8 +178,8 @@ export default function Layout() {
             >
               <Menu size={20} />
             </button>
-            <Link to="/dashboard" className="text-lg font-semibold text-gray-900">
-              VC ERP
+            <Link to="/dashboard" className="inline-flex items-center">
+              <img src="/logo.svg" alt="V:ON" className="h-7 w-auto" />
             </Link>
           </div>
 
@@ -210,9 +224,7 @@ export default function Layout() {
                             to={to}
                             onClick={() => setOpenDropdown(null)}
                             className={`mx-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                              active
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-700 hover:bg-gray-50'
+                              active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                             }`}
                           >
                             <Icon size={16} />
@@ -227,14 +239,24 @@ export default function Layout() {
             })}
           </div>
 
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-          >
-            <Search size={14} />
-            <span className="hidden sm:inline">검색</span>
-            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTheme(nextTheme.key)}
+              className="rounded-lg p-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              title={`Theme: ${currentTheme.label} -> ${nextTheme.label}`}
+              aria-label={`Change theme from ${currentTheme.label} to ${nextTheme.label}`}
+            >
+              {currentTheme.icon}
+            </button>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              <Search size={14} />
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -243,7 +265,7 @@ export default function Layout() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
           <div className="absolute inset-0 overflow-auto bg-white px-6 pb-8 pt-5">
             <div className="mb-6 flex items-center justify-between">
-              <p className="text-lg font-semibold text-gray-900">VC ERP</p>
+              <img src="/logo.svg" alt="V:ON" className="h-6 w-auto" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
@@ -266,9 +288,7 @@ export default function Layout() {
                           to={item.to}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`block rounded-xl px-3 py-2.5 text-sm ${
-                            active
-                              ? 'bg-blue-50 font-medium text-blue-600'
-                              : 'text-gray-700 hover:bg-gray-50'
+                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
                           {item.label}
@@ -278,6 +298,26 @@ export default function Layout() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Theme</p>
+              <div className="grid grid-cols-2 gap-2">
+                {themes.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setTheme(item.key)}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                      theme === item.key
+                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -291,4 +331,3 @@ export default function Layout() {
     </div>
   )
 }
-

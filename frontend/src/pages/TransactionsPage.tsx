@@ -15,6 +15,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 interface InvestmentOption {
   id: number
@@ -392,7 +393,7 @@ export default function TransactionsPage() {
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">거래 내역</h3>
         {isLoading ? (
-          <div className="loading-state"><div className="loading-spinner" /></div>
+          <PageLoading />
         ) : !rows?.length ? (
           <p className="p-2 text-sm text-gray-400">거래 내역이 없습니다.</p>
         ) : (
@@ -469,6 +470,8 @@ export default function TransactionsPage() {
     </div>
   )
 }
+
+
 
 
 

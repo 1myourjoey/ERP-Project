@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { searchGlobal, type SearchResult } from '../lib/api'
+import LottieAnimation from './LottieAnimation'
 
 const TYPE_META: Record<string, { label: string; icon: typeof Search }> = {
   task: { label: '업무', icon: CheckSquare },
@@ -122,7 +123,10 @@ export default function SearchModal({
         <div className="max-h-[60vh] overflow-auto p-2">
           {loading && <p className="p-2 text-sm text-gray-500">검색 중...</p>}
           {!loading && query.trim() && results.length === 0 && (
-            <p className="p-2 text-sm text-gray-500">검색 결과가 없습니다.</p>
+            <div className="flex flex-col items-center py-8">
+              <LottieAnimation src="/animations/search-empty.lottie" className="h-20 w-20 opacity-60" />
+              <p className="mt-2 text-sm text-gray-500">'{query.trim()}'에 대한 검색 결과가 없습니다.</p>
+            </div>
           )}
           {!query.trim() && (
             <p className="p-2 text-sm text-gray-500">언제든지 Ctrl+Space 또는 Cmd+Space로 검색할 수 있습니다.</p>

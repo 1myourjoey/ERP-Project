@@ -16,6 +16,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 interface InvestmentListItem {
   id: number
@@ -344,7 +345,7 @@ export default function InvestmentsPage() {
             />
           )}
 
-          {invLoading ? <div className="loading-state"><div className="loading-spinner" /></div> : (
+          {invLoading ? <PageLoading /> : (
             <div className="space-y-2 max-h-[38rem] overflow-auto">
               {investments?.map((inv) => (
                 <div key={inv.id} className="w-full rounded border p-3 text-left hover:bg-gray-50">
@@ -535,6 +536,8 @@ function InvestmentForm({
     </div>
   )
 }
+
+
 
 
 

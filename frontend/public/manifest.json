@@ -1,0 +1,15 @@
+{
+  "name": "V:ON - VC 조합 관리 플랫폼",
+  "short_name": "V:ON",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

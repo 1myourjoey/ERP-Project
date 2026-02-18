@@ -15,7 +15,10 @@ api.interceptors.response.use(
 // -- Tasks --
 export const fetchTaskBoard = (status = 'pending', year?: number, month?: number) =>
   api.get('/tasks/board', { params: { status, year, month } }).then(r => r.data)
-export const fetchTasks = (params?: { quadrant?: string; status?: string; fund_id?: number; category?: string }) => api.get('/tasks', { params }).then(r => r.data)
+export const fetchTasks = (
+  params?: { quadrant?: string; status?: string; fund_id?: number; gp_entity_id?: number; category?: string },
+) => api.get('/tasks', { params }).then(r => r.data)
+export const fetchTask = (id: number): Promise<Task> => api.get(`/tasks/${id}`).then(r => r.data)
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
@@ -43,7 +46,7 @@ export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput):
 export const deleteWorkflowTemplate = (id: number): Promise<{ ok: boolean }> => api.delete(`/workflows/${id}`).then(r => r.data)
 export const instantiateWorkflow = (id: number, data: WorkflowInstantiateInput): Promise<WorkflowInstance> => api.post(`/workflows/${id}/instantiate`, data).then(r => r.data)
 export const fetchWorkflowInstances = (
-  params?: { status?: string; investment_id?: number; company_id?: number; fund_id?: number },
+  params?: { status?: string; investment_id?: number; company_id?: number; fund_id?: number; gp_entity_id?: number },
 ): Promise<WorkflowInstance[]> =>
   api.get('/workflow-instances', {
     params: {
@@ -51,6 +54,7 @@ export const fetchWorkflowInstances = (
       investment_id: params?.investment_id,
       company_id: params?.company_id,
       fund_id: params?.fund_id,
+      gp_entity_id: params?.gp_entity_id,
     },
   }).then(r => r.data)
 export const fetchWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.get(`/workflow-instances/${id}`).then(r => r.data)
@@ -58,6 +62,43 @@ export const completeWorkflowStep = (instanceId: number, stepId: number, data: W
 export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
 export const updateWorkflowInstance = (id: number, data: WorkflowInstanceUpdateInput): Promise<WorkflowInstance> => api.put(`/workflow-instances/${id}`, data).then(r => r.data)
 export const undoWorkflowStep = (instanceId: number, stepId: number): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/steps/${stepId}/undo`).then(r => r.data)
+
+// -- Document Templates --
+export const fetchDocumentTemplates = (category?: string): Promise<DocumentTemplate[]> =>
+  api.get('/document-templates', { params: { category } }).then(r => r.data)
+
+export const updateTemplateCustomData = (
+  templateId: number,
+  customData: Record<string, unknown>,
+): Promise<DocumentTemplate> =>
+  api.put(`/document-templates/${templateId}/custom`, { custom_data: customData }).then(r => r.data)
+
+export const previewTemplate = (
+  templateId: number,
+  fundId?: number,
+  customData?: Record<string, unknown>,
+): Promise<Blob> => {
+  const body = customData === undefined ? undefined : { custom_data: customData }
+  return api.post(`/document-templates/${templateId}/preview`, body, {
+    params: { fund_id: fundId },
+    responseType: 'blob',
+  }).then(r => r.data)
+}
+
+export const generateDocument = (
+  templateId: number,
+  fundId: number,
+  assemblyDate?: string,
+  documentNumber?: string,
+): Promise<Blob> =>
+  api.post(`/document-templates/${templateId}/generate`, null, {
+    params: {
+      fund_id: fundId,
+      assembly_date: assemblyDate,
+      document_number: documentNumber,
+    },
+    responseType: 'blob',
+  }).then(r => r.data)
 
 // -- Search --
 export const searchGlobal = (q: string): Promise<SearchResult[]> =>
@@ -75,6 +116,17 @@ export const fetchFundLPs = (fundId: number): Promise<LP[]> => api.get(`/funds/$
 export const createFundLP = (fundId: number, data: LPInput) => api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
 export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) => api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
 export const deleteFundLP = (fundId: number, lpId: number) => api.delete(`/funds/${fundId}/lps/${lpId}`)
+export const fetchLPTransfers = (fundId: number): Promise<LPTransfer[]> => api.get(`/funds/${fundId}/lp-transfers`).then(r => r.data)
+export const createLPTransfer = (fundId: number, data: LPTransferInput): Promise<LPTransfer> =>
+  api.post(`/funds/${fundId}/lp-transfers`, data).then(r => r.data)
+export const updateLPTransfer = (fundId: number, transferId: number, data: Partial<LPTransferUpdateInput>): Promise<LPTransfer> =>
+  api.patch(`/funds/${fundId}/lp-transfers/${transferId}`, data).then(r => r.data)
+export const completeLPTransfer = (
+  fundId: number,
+  transferId: number,
+  data?: { notes?: string | null; transfer_date?: string | null },
+): Promise<LPTransfer> =>
+  api.post(`/funds/${fundId}/lp-transfers/${transferId}/complete`, data ?? {}).then(r => r.data)
 export const updateFundNoticePeriods = (
   fundId: number,
   data: FundNoticePeriodInput[],
@@ -91,6 +143,13 @@ export const calculateDeadline = (
   api.get(`/funds/${fundId}/calculate-deadline`, {
     params: { target_date: targetDate, notice_type: noticeType },
   }).then(r => r.data)
+
+// -- GP Entities --
+export const fetchGPEntities = (): Promise<GPEntity[]> => api.get('/gp-entities').then(r => r.data)
+export const fetchGPEntity = (id: number): Promise<GPEntity> => api.get(`/gp-entities/${id}`).then(r => r.data)
+export const createGPEntity = (data: GPEntityInput): Promise<GPEntity> => api.post('/gp-entities', data).then(r => r.data)
+export const updateGPEntity = (id: number, data: Partial<GPEntityInput>): Promise<GPEntity> => api.patch(`/gp-entities/${id}`, data).then(r => r.data)
+export const deleteGPEntity = (id: number) => api.delete(`/gp-entities/${id}`)
 
 // -- Investments --
 export const fetchCompanies = (): Promise<Company[]> => api.get('/companies').then(r => r.data)
@@ -153,10 +212,12 @@ export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: strin
 export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
 export const createCapitalCall = (
   fundId: number,
-  data: { call_date: string; total_amount: number | null; call_type?: string | null; memo?: string | null },
+  data: { call_date: string; total_amount: number | null; call_type?: string | null; request_percent?: number | null; memo?: string | null },
 ): Promise<CapitalCall> => api.post('/capital-calls', { ...data, fund_id: fundId }).then(r => r.data)
+export const createCapitalCallBatch = (data: CapitalCallBatchInput): Promise<CapitalCall> => api.post('/capital-calls/batch', data).then(r => r.data)
 export const updateCapitalCall = (id: number, data: Partial<CapitalCallInput>): Promise<CapitalCall> => api.put(`/capital-calls/${id}`, data).then(r => r.data)
 export const deleteCapitalCall = (id: number) => api.delete(`/capital-calls/${id}`)
+export const fetchCapitalCallSummary = (fundId: number): Promise<CapitalCallSummary> => api.get(`/capital-calls/summary/${fundId}`).then(r => r.data)
 export const fetchCapitalCallItems = (capitalCallId: number): Promise<CapitalCallItem[]> => api.get(`/capital-calls/${capitalCallId}/items`).then(r => r.data)
 export const createCapitalCallItem = (capitalCallId: number, data: CapitalCallItemInput): Promise<CapitalCallItem> => api.post(`/capital-calls/${capitalCallId}/items`, data).then(r => r.data)
 export const updateCapitalCallItem = (capitalCallId: number, itemId: number, data: Partial<CapitalCallItemInput>): Promise<CapitalCallItem> => api.put(`/capital-calls/${capitalCallId}/items/${itemId}`, data).then(r => r.data)
@@ -227,6 +288,8 @@ export const fetchWorkLogCategories = (): Promise<string[]> => api.get('/worklog
 export const createWorkLog = (data: WorkLogInput): Promise<WorkLog> => api.post('/worklogs', data).then(r => r.data)
 export const updateWorkLog = (id: number, data: Partial<WorkLogInput>): Promise<WorkLog> => api.put(`/worklogs/${id}`, data).then(r => r.data)
 export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
+export const fetchWorkLogInsights = (period: 'week' | 'month' | 'quarter' = 'month'): Promise<WorkLogInsights> =>
+  api.get('/worklogs/insights', { params: { period } }).then(r => r.data)
 
 // -- Types --
 export interface DashboardResponse {
@@ -258,6 +321,7 @@ export interface ActiveWorkflow {
   next_step_date: string | null
   company_name: string | null
   fund_name: string | null
+  gp_entity_name: string | null
 }
 
 export interface FundSummary {
@@ -278,6 +342,7 @@ export interface FundOverviewItem {
   fund_type: string
   fund_manager: string | null
   formation_date: string | null
+  registration_date: string | null
   investment_period_end: string | null
   investment_period_progress: number | null
   maturity_date: string | null
@@ -331,6 +396,9 @@ export interface TaskCreate {
   category?: string | null
   fund_id?: number | null
   investment_id?: number | null
+  gp_entity_id?: number | null
+  is_notice?: boolean
+  is_report?: boolean
 }
 
 export interface Task {
@@ -350,7 +418,11 @@ export interface Task {
   category: string | null
   fund_id: number | null
   investment_id: number | null
+  gp_entity_id: number | null
+  is_notice: boolean
+  is_report: boolean
   fund_name: string | null
+  gp_entity_name: string | null
   company_name: string | null
 }
 
@@ -372,6 +444,7 @@ export interface WorkflowListItem {
 
 export interface WorkflowStep {
   id: number
+  workflow_id: number
   order: number
   name: string
   timing: string
@@ -379,10 +452,13 @@ export interface WorkflowStep {
   estimated_time: string | null
   quadrant: string
   memo: string | null
+  is_notice?: boolean
+  is_report?: boolean
 }
 
 export interface WorkflowDocument {
   id: number
+  workflow_id: number
   name: string
   required: boolean
   timing: string | null
@@ -391,6 +467,7 @@ export interface WorkflowDocument {
 
 export interface WorkflowWarning {
   id: number
+  workflow_id: number
   content: string
   category: 'warning' | 'lesson' | 'tip'
 }
@@ -406,8 +483,23 @@ export interface WorkflowTemplate {
   warnings: WorkflowWarning[]
 }
 
+export interface DocumentTemplate {
+  id: number
+  name: string
+  category: string
+  file_path: string
+  builder_name: string | null
+  description: string
+  variables: string
+  custom_data: string | null
+  workflow_step_label: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export interface WorkflowStepInstance {
   id: number
+  instance_id: number
   workflow_step_id: number
   step_name: string
   step_timing: string
@@ -434,9 +526,11 @@ export interface WorkflowInstance {
   investment_id: number | null
   company_id: number | null
   fund_id: number | null
+  gp_entity_id: number | null
   investment_name: string | null
   company_name: string | null
   fund_name: string | null
+  gp_entity_name: string | null
   step_instances: WorkflowStepInstance[]
   progress: string
 }
@@ -448,6 +542,7 @@ export interface WorkflowInstantiateInput {
   investment_id?: number
   company_id?: number
   fund_id?: number
+  gp_entity_id?: number
 }
 
 export interface WorkflowInstanceUpdateInput {
@@ -469,6 +564,8 @@ export interface WorkflowStepInput {
   estimated_time?: string | null
   quadrant?: string
   memo?: string | null
+  is_notice?: boolean
+  is_report?: boolean
 }
 
 export interface WorkflowDocumentInput {
@@ -498,12 +595,15 @@ export interface Fund {
   name: string
   type: string
   formation_date: string | null
+  registration_number: string | null
+  registration_date: string | null
   status: string
   gp: string | null
   fund_manager: string | null
   co_gp: string | null
   trustee: string | null
   commitment_total: number | null
+  paid_in_total?: number | null
   gp_commitment: number | null
   contribution_type: string | null
   aum: number | null
@@ -525,6 +625,8 @@ export interface FundInput {
   name: string
   type: string
   formation_date?: string | null
+  registration_number?: string | null
+  registration_date?: string | null
   status?: string
   gp?: string | null
   fund_manager?: string | null
@@ -533,6 +635,7 @@ export interface FundInput {
   commitment_total?: number | null
   gp_commitment?: number | null
   contribution_type?: string | null
+  aum?: number | null
   investment_period_end?: string | null
   maturity_date?: string | null
   dissolution_date?: string | null
@@ -548,6 +651,8 @@ export interface LPInput {
   commitment?: number | null
   paid_in?: number | null
   contact?: string | null
+  business_number?: string | null
+  address?: string | null
 }
 
 export interface LP {
@@ -558,6 +663,79 @@ export interface LP {
   commitment: number | null
   paid_in: number | null
   contact: string | null
+  business_number: string | null
+  address: string | null
+}
+
+export interface LPTransferInput {
+  from_lp_id: number
+  to_lp_id?: number | null
+  to_lp_name?: string | null
+  to_lp_type?: string | null
+  to_lp_business_number?: string | null
+  to_lp_address?: string | null
+  to_lp_contact?: string | null
+  transfer_amount: number
+  transfer_date?: string | null
+  notes?: string | null
+}
+
+export interface LPTransferUpdateInput {
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  transfer_date?: string | null
+  notes?: string | null
+}
+
+export interface LPTransfer {
+  id: number
+  fund_id: number
+  from_lp_id: number
+  from_lp_name: string | null
+  to_lp_id: number | null
+  to_lp_name: string | null
+  to_lp_type: string | null
+  to_lp_business_number: string | null
+  to_lp_address: string | null
+  to_lp_contact: string | null
+  transfer_amount: number
+  transfer_date: string | null
+  status: string
+  workflow_instance_id: number | null
+  notes: string | null
+  created_at: string | null
+}
+
+export interface GPEntityInput {
+  name: string
+  entity_type: 'vc' | 'llc_vc' | 'nksa' | 'other'
+  business_number?: string | null
+  registration_number?: string | null
+  representative?: string | null
+  address?: string | null
+  phone?: string | null
+  email?: string | null
+  founding_date?: string | null
+  license_date?: string | null
+  capital?: number | null
+  notes?: string | null
+  is_primary?: number
+}
+
+export interface GPEntity {
+  id: number
+  name: string
+  entity_type: 'vc' | 'llc_vc' | 'nksa' | 'other'
+  business_number: string | null
+  registration_number: string | null
+  representative: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  founding_date: string | null
+  license_date: string | null
+  capital: number | null
+  notes: string | null
+  is_primary: number
 }
 
 export interface FundNoticePeriodInput {
@@ -823,6 +1001,7 @@ export interface UpcomingReport {
   due_date: string | null
   status: string
   days_remaining: number | null
+  task_id?: number | null
 }
 
 export interface UpcomingNotice {
@@ -832,6 +1011,7 @@ export interface UpcomingNotice {
   days_remaining: number
   workflow_instance_name: string
   workflow_instance_id?: number | null
+  task_id?: number | null
 }
 
 export interface NoticeDeadlineResult {
@@ -923,6 +1103,7 @@ export interface CapitalCallInput {
   call_date: string
   call_type: string
   total_amount?: number
+  request_percent?: number | null
   memo?: string | null
 }
 
@@ -932,9 +1113,46 @@ export interface CapitalCall {
   call_date: string
   call_type: string
   total_amount: number
+  request_percent?: number | null
   memo: string | null
   created_at: string
   fund_name?: string
+}
+
+export interface CapitalCallBatchInput {
+  fund_id: number
+  call_date: string
+  call_type: string
+  total_amount: number
+  request_percent?: number | null
+  memo?: string | null
+  items: CapitalCallItemInput[]
+}
+
+export interface CapitalCallSummaryCall {
+  id: number
+  round: number
+  call_date: string | null
+  call_type: string
+  total_amount: number
+  request_percent: number | null
+  paid_count: number
+  total_count: number
+  paid_amount: number
+  latest_paid_date: string | null
+  is_fully_paid: boolean
+  paid_on_time: boolean
+  is_due: boolean
+  is_overdue_unpaid: boolean
+  commitment_ratio: number
+  memo: string | null
+}
+
+export interface CapitalCallSummary {
+  fund_id: number
+  commitment_total: number
+  total_paid_in: number
+  calls: CapitalCallSummaryCall[]
 }
 
 export interface CapitalCallItemInput {
@@ -942,6 +1160,7 @@ export interface CapitalCallItemInput {
   amount?: number
   paid?: boolean
   paid_date?: string | null
+  memo?: string | null
 }
 
 export interface CapitalCallItem {
@@ -951,6 +1170,7 @@ export interface CapitalCallItem {
   amount: number
   paid: boolean
   paid_date: string | null
+  memo?: string | null
   lp_name?: string
 }
 
@@ -1024,6 +1244,7 @@ export interface ExitCommitteeInput {
   exit_strategy?: string | null
   analyst_opinion?: string | null
   vote_result?: string | null
+  performance_fee?: number | null
   memo?: string | null
 }
 
@@ -1037,6 +1258,7 @@ export interface ExitCommittee {
   exit_strategy: string | null
   analyst_opinion: string | null
   vote_result: string | null
+  performance_fee: number | null
   memo: string | null
   created_at: string
   company_name?: string
@@ -1211,18 +1433,21 @@ export interface WorkLogInput {
 
 export interface WorkLogDetail {
   id: number
+  worklog_id: number
   content: string
   order: number
 }
 
 export interface WorkLogLesson {
   id: number
+  worklog_id: number
   content: string
   order: number
 }
 
 export interface WorkLogFollowUp {
   id: number
+  worklog_id: number
   content: string
   target_date: string | null
   order: number
@@ -1243,6 +1468,20 @@ export interface WorkLog {
   details: WorkLogDetail[]
   lessons: WorkLogLesson[]
   follow_ups: WorkLogFollowUp[]
+}
+
+export interface WorkLogInsights {
+  period: string
+  total_logs: number
+  time_by_category: Record<string, number>
+  time_accuracy: { over: number; under: number; accurate: number }
+  daily_counts: Record<string, number>
+  category_counts: Record<string, number>
+  status_counts: { completed: number; in_progress: number }
+  weekday_counts: Record<number, number>
+  recent_lessons: string[]
+  follow_up_rate: { total: number; completed: number }
+  category_avg_time: Record<string, number>
 }
 
 

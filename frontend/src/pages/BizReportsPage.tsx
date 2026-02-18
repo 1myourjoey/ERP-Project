@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createBizReport,
@@ -15,6 +15,8 @@ import {
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
+import PageLoading from '../components/PageLoading'
 
 interface FilterState {
   fund_id: number | null
@@ -313,13 +315,9 @@ export default function BizReportsPage() {
 
       <div className="space-y-3">
         {isLoading ? (
-          <div className="loading-state">
-            <div className="loading-spinner" />
-          </div>
+          <PageLoading />
         ) : !(reports?.length) ? (
-          <div className="empty-state">
-            <p className="text-sm">영업보고가 없습니다.</p>
-          </div>
+          <EmptyState message="영업보고가 없습니다." />
         ) : (
           reports.map((report) => (
             <div key={report.id} className="card-base">
@@ -423,3 +421,4 @@ export default function BizReportsPage() {
     </div>
   )
 }
+

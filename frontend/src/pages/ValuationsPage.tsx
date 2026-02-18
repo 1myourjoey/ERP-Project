@@ -15,6 +15,7 @@ import {
 } from '../lib/api'
 import { formatKRW } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 interface InvestmentOption {
   id: number
@@ -391,7 +392,7 @@ export default function ValuationsPage() {
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">평가 이력</h3>
         {isLoading ? (
-          <div className="loading-state"><div className="loading-spinner" /></div>
+          <PageLoading />
         ) : !rows?.length ? (
           <p className="p-2 text-sm text-gray-400">가치평가 이력이 없습니다.</p>
         ) : (
@@ -462,6 +463,8 @@ export default function ValuationsPage() {
     </div>
   )
 }
+
+
 
 
 

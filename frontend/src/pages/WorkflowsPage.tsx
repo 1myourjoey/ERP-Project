@@ -8,19 +8,23 @@ import {
   createWorkflowTemplate,
   deleteWorkflowTemplate,
   fetchCompanies,
+  fetchDocumentTemplates,
   fetchFund,
   fetchFunds,
   fetchInvestments,
   fetchWorkflow,
   fetchWorkflowInstances,
   fetchWorkflows,
+  generateDocument,
   instantiateWorkflow,
   undoWorkflowStep,
   updateWorkflowInstance,
   updateWorkflowTemplate,
   type Company,
+  type DocumentTemplate,
   type Fund,
-  type NoticeDeadlineResult,  type WorkflowInstance,
+  type NoticeDeadlineResult,
+  type WorkflowInstance,
   type WorkflowListItem,
   type WorkflowStep,
   type WorkflowStepInstance,
@@ -30,6 +34,7 @@ import {
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Check, ChevronRight, Play, Plus, Printer, X } from 'lucide-react'
+import PageLoading from '../components/PageLoading'
 
 type WorkflowLocationState = {
   expandInstanceId?: number
@@ -74,7 +79,7 @@ function renderPrintWindow(title: string, body: string) {
         <style>
           body { font-family: 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; padding: 24px; color: #111827; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .sheet { max-width: 900px; margin: 0 auto; }
-          h1 { margin: 0; font-size: 20px; }
+          h1 { margin: 0; font-size: 20px; color: #1E3A5F; }
           .meta { margin-top: 8px; color: #4b5563; font-size: 13px; line-height: 1.6; }
           h2 { margin-top: 20px; margin-bottom: 8px; font-size: 14px; color: #374151; }
           table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -124,7 +129,7 @@ function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: W
     .join('')
 
   const body = `
-    <h1>VC ERP 워크플로우 체크리스트</h1>
+    <h1>V:ON 워크플로우 체크리스트</h1>
     <div class="meta">
       <strong>${escapeHtml(instance.name)}</strong><br />
       ${instance.fund_name ? `조합: ${escapeHtml(instance.fund_name)}<br />` : ''}
@@ -195,7 +200,7 @@ const EMPTY_TEMPLATE: WorkflowTemplateInput = {
   trigger_description: '',
   category: '',
   total_duration: '',
-  steps: [{ order: 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '' }],
+  steps: [{ order: 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false }],
   documents: [],
   warnings: [],
 }
@@ -214,6 +219,8 @@ function normalizeTemplate(wf: WorkflowTemplate | null | undefined): WorkflowTem
       estimated_time: s.estimated_time ?? '',
       quadrant: s.quadrant ?? 'Q1',
       memo: s.memo ?? '',
+      is_notice: s.is_notice ?? false,
+      is_report: s.is_report ?? false,
     })),
     documents: (wf?.documents ?? []).map((d) => ({ name: d.name, required: d.required, timing: d.timing ?? '', notes: d.notes ?? '' })),
     warnings: (wf?.warnings ?? []).map((w) => ({ content: w.content, category: (w.category as 'warning' | 'lesson' | 'tip') || 'warning' })),
@@ -257,6 +264,8 @@ function TemplateModal({
           estimated_time: s.estimated_time || null,
           quadrant: s.quadrant || 'Q1',
           memo: s.memo || null,
+          is_notice: Boolean(s.is_notice),
+          is_report: Boolean(s.is_report),
         })),
       documents: form.documents.map((d) => ({
         name: d.name?.trim() || '',
@@ -274,32 +283,54 @@ function TemplateModal({
   }
 
   return (
-    <div className="card-base space-y-3">
+    <div className="card-base flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-800">{title}</h3>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="템플릿 이름" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="카테고리" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="총 기간" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="트리거 설명" className="px-3 py-2 text-sm border rounded-lg" />
+      <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="템플릿 이름" className="px-3 py-2 text-sm border rounded-lg" />
+          <input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="카테고리" className="px-3 py-2 text-sm border rounded-lg" />
+          <input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="총 기간" className="px-3 py-2 text-sm border rounded-lg" />
+          <input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="트리거 설명" className="px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div className="space-y-2">
+          {form.steps.map((step, idx) => (
+            <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
+              <input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="단계 이름" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
+              <input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="시점" className="px-2 py-1 text-sm border rounded" />
+              <input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="오프셋" className="px-2 py-1 text-sm border rounded" />
+              <input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예상 시간" className="px-2 py-1 text-sm border rounded" />
+              <input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="사분면" className="px-2 py-1 text-sm border rounded" />
+              <input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="메모" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
+              <div className="md:col-span-2 flex items-center gap-3">
+                <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(step.is_notice)}
+                    onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, is_notice: e.target.checked } : it) }))}
+                    className="rounded border-gray-300"
+                  />
+                  통지
+                </label>
+                <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(step.is_report)}
+                    onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, is_report: e.target.checked } : it) }))}
+                    className="rounded border-gray-300"
+                  />
+                  보고
+                </label>
+                <button onClick={() => setForm(prev => ({ ...prev, steps: prev.steps.filter((_, itIdx) => itIdx !== idx) }))} className="text-xs text-red-600 hover:text-red-700 text-left">단계 삭제</button>
+              </div>
+            </div>
+          ))}
+          <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false }] }))} className="secondary-btn">+ 단계 추가</button>
+        </div>
       </div>
-      <div className="space-y-2">
-        {form.steps.map((step, idx) => (
-          <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 border rounded-lg p-2">
-            <input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="단계 이름" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
-            <input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="시점" className="px-2 py-1 text-sm border rounded" />
-            <input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="오프셋" className="px-2 py-1 text-sm border rounded" />
-            <input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예상 시간" className="px-2 py-1 text-sm border rounded" />
-            <input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="사분면" className="px-2 py-1 text-sm border rounded" />
-            <input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="메모" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
-            <button onClick={() => setForm(prev => ({ ...prev, steps: prev.steps.filter((_, itIdx) => itIdx !== idx) }))} className="text-xs text-red-600 hover:text-red-700 text-left">단계 삭제</button>
-          </div>
-        ))}
-        <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '' }] }))} className="secondary-btn">+ 단계 추가</button>
-      </div>
-      <div className="flex gap-2">
+      <div className="mt-3 flex shrink-0 gap-2">
         <button onClick={submit} disabled={loading} className="primary-btn">{submitLabel}</button>
         <button onClick={onClose} className="secondary-btn">취소</button>
       </div>
@@ -342,9 +373,12 @@ function WorkflowDetail({
   }, [selectedFund?.notice_periods])
 
   useEffect(() => {
-    if (!options.some((o) => o.notice_type === instNoticeType)) {
-      setInstNoticeType(options[0]?.notice_type ?? 'assembly')
-    }
+    if (options.some((o) => o.notice_type === instNoticeType)) return
+    const nextType = options[0]?.notice_type ?? 'assembly'
+    const frame = window.requestAnimationFrame(() => {
+      setInstNoticeType(nextType)
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [options, instNoticeType])
 
   const filteredInvestments = useMemo(() => (investments ?? []).filter((inv) => {
@@ -383,7 +417,7 @@ function WorkflowDetail({
     },
   })
 
-  if (isLoading) return <div className="loading-state"><div className="loading-spinner" /></div>
+  if (isLoading) return <PageLoading />
   if (!wf) return null
 
   return (
@@ -466,13 +500,60 @@ function InstanceList({
   const [editInstance, setEditInstance] = useState<{ name: string; trigger_date: string; memo: string } | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['workflowInstances', { status }], queryFn: () => fetchWorkflowInstances({ status }) })
+  const { data: docTemplates = [] } = useQuery<DocumentTemplate[]>({
+    queryKey: ['documentTemplates'],
+    queryFn: () => fetchDocumentTemplates(),
+  })
+
+  const handleGenerateDocuments = async (
+    templates: DocumentTemplate[],
+    instance: WorkflowInstance,
+  ) => {
+    if (!instance.fund_id) {
+      addToast('error', '연결된 조합이 없습니다.')
+      return
+    }
+
+    let successCount = 0
+    for (const template of templates) {
+      try {
+        const blob = await generateDocument(template.id, instance.fund_id, instance.trigger_date)
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${template.name}.docx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
+        successCount += 1
+      } catch {
+        addToast('error', `${template.name} 생성 실패`)
+      }
+    }
+
+    if (successCount > 0) {
+      addToast('success', `${successCount}종 문서가 생성되었습니다.`)
+    }
+  }
 
   const completeMut = useMutation({
     mutationFn: ({ instanceId, stepId, estimated }: { instanceId: number; stepId: number; estimated?: string | null }) => completeWorkflowStep(instanceId, stepId, { actual_time: estimated || undefined }),
-    onSuccess: () => {
+    onSuccess: (instance) => {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      addToast('success', '단계가 완료되었습니다.')
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+      queryClient.invalidateQueries({ queryKey: ['fund'] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      const isFormationWorkflow = instance.workflow_name.includes('결성')
+      if (instance.status === 'completed' && isFormationWorkflow) {
+        addToast('success', "워크플로우가 완료되어 조합 상태가 '운용 중'으로 변경되었습니다.")
+      } else {
+        addToast('success', '단계가 완료되었습니다.')
+      }
     },
   })
 
@@ -481,6 +562,12 @@ function InstanceList({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+      queryClient.invalidateQueries({ queryKey: ['fund'] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       addToast('success', '단계 완료가 취소되었습니다.')
     },
   })
@@ -529,7 +616,7 @@ function InstanceList({
     })
   }
 
-  if (isLoading) return <div className="loading-state"><div className="loading-spinner" /></div>
+  if (isLoading) return <PageLoading />
   if (!(data?.length)) return <p className="text-sm text-gray-400">인스턴스가 없습니다.</p>
 
   return (
@@ -642,6 +729,25 @@ function InstanceList({
                   <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.step_name}</span>
                   <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
                   <span className="text-xs text-gray-500">{step.calculated_date}</span>
+                  {(() => {
+                    const matchingDocs = docTemplates.filter(
+                      (template) =>
+                        template.workflow_step_label &&
+                        step.step_name.includes(template.workflow_step_label),
+                    )
+                    if (matchingDocs.length === 0 || !inst.fund_id) return null
+                    return (
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleGenerateDocuments(matchingDocs, inst)
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                      >
+                        📄 문서 ({matchingDocs.length}종)
+                      </button>
+                    )
+                  })()}
                   {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
                 </div>
               ))}
@@ -663,12 +769,37 @@ export default function WorkflowsPage() {
   const [tab, setTab] = useState<'templates' | 'active' | 'completed'>('templates')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
   const { data: templates, isLoading } = useQuery({ queryKey: ['workflows'], queryFn: fetchWorkflows })
   const { data: selected } = useQuery({ queryKey: ['workflow', selectedId], queryFn: () => fetchWorkflow(selectedId as number), enabled: !!selectedId })
 
+  const groupedTemplates = useMemo(() => {
+    if (!templates) return new Map<string, WorkflowListItem[]>()
+    const map = new Map<string, WorkflowListItem[]>()
+    for (const template of templates) {
+      const category = template.category || '미분류'
+      if (!map.has(category)) map.set(category, [])
+      map.get(category)!.push(template)
+    }
+    return map
+  }, [templates])
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
+      return next
+    })
+  }
+
   useEffect(() => {
-    if (locationState?.expandInstanceId) setTab('active')
+    if (!locationState?.expandInstanceId) return
+    const frame = window.requestAnimationFrame(() => {
+      setTab('active')
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [locationState?.expandInstanceId])
 
   const createMut = useMutation({
@@ -754,43 +885,63 @@ export default function WorkflowsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <div className="card-base space-y-2">
             {isLoading ? (
-              <div className="loading-state"><div className="loading-spinner" /></div>
+              <PageLoading />
             ) : !(templates?.length) ? (
               <p className="text-sm text-gray-400">등록된 템플릿이 없습니다.</p>
             ) : (
-              templates.map((row: WorkflowListItem) => (
-                <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
-                      <p className="text-sm font-medium text-gray-800">{row.name}</p>
-                      <p className="text-xs text-gray-500">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
-                    </button>
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setSelectedId(selectedId === row.id ? null : row.id)
-                      }}
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                        selectedId === row.id
-                          ? 'border-emerald-500 bg-emerald-500 text-white'
-                          : 'border-gray-300 bg-white hover:border-gray-400'
-                      }`}
-                      aria-label="템플릿 체크"
-                      title={selectedId === row.id ? '체크 해제' : '체크'}
-                    >
-                      {selectedId === row.id && <Check size={12} />}
-                    </button>
-                  </div>
-                  <div className="mt-2 flex gap-1">
-                    <button
-                      onClick={() => handlePrintTemplateById(row.id)}
-                      className="secondary-btn inline-flex items-center gap-1"
-                    >
-                      <Printer size={14} /> 인쇄
-                    </button>
-                    <button onClick={() => { setSelectedId(row.id); setMode('edit') }} className="secondary-btn">수정</button>
-                    <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
-                  </div>
+              Array.from(groupedTemplates.entries()).map(([category, items]) => (
+                <div key={category} className="space-y-1">
+                  <button
+                    onClick={() => toggleCategory(category)}
+                    className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-2 py-1 text-left hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      <ChevronRight
+                        size={12}
+                        className={`text-gray-400 transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
+                      />
+                      <span className="text-xs font-semibold text-gray-600">{category}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-400">{items.length}개</span>
+                  </button>
+                  {!collapsedCategories.has(category) && (
+                    <div className="space-y-2">
+                      {items.map((row: WorkflowListItem) => (
+                        <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
+                              <p className="text-sm font-medium text-gray-800">{row.name}</p>
+                              <p className="text-xs text-gray-500">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setSelectedId(selectedId === row.id ? null : row.id)
+                              }}
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selectedId === row.id
+                                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                                  : 'border-gray-300 bg-white hover:border-gray-400'
+                                }`}
+                              aria-label="템플릿 체크"
+                              title={selectedId === row.id ? '체크 해제' : '체크'}
+                            >
+                              {selectedId === row.id && <Check size={12} />}
+                            </button>
+                          </div>
+                          <div className="mt-2 flex gap-1">
+                            <button
+                              onClick={() => handlePrintTemplateById(row.id)}
+                              className="secondary-btn inline-flex items-center gap-1"
+                            >
+                              <Printer size={14} /> 인쇄
+                            </button>
+                            <button onClick={() => { setSelectedId(row.id); setMode('edit') }} className="secondary-btn">수정</button>
+                            <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -821,16 +972,16 @@ export default function WorkflowsPage() {
       {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
 
       {mode === 'create' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMode(null)}>
-          <div className="w-full max-w-3xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
+          <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
             <TemplateModal initial={EMPTY_TEMPLATE} title="템플릿 생성" submitLabel="생성" loading={createMut.isPending} onSubmit={(data) => createMut.mutate(data)} onClose={() => setMode(null)} />
           </div>
         </div>
       )}
 
       {mode === 'edit' && selectedId && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMode(null)}>
-          <div className="w-full max-w-3xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
+          <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
             <TemplateModal initial={normalizeTemplate(selected)} title="템플릿 수정" submitLabel="저장" loading={updateMut.isPending} onSubmit={(data) => updateMut.mutate({ id: selectedId, data })} onClose={() => setMode(null)} />
           </div>
         </div>

@@ -2,13 +2,13 @@ from datetime import date
 import math
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.fund import Fund, LP
 from models.investment import Investment
-from models.phase3 import CapitalCall, Distribution
+from models.phase3 import CapitalCall, CapitalCallItem, Distribution, DistributionItem
 from models.transaction import Transaction
 from models.valuation import Valuation
 from schemas.phase3 import FundPerformanceResponse
@@ -117,8 +117,22 @@ def get_fund_performance(
 
     cutoff = as_of_date or date.today()
 
-    paid_in_total = float(
-        db.query(func.coalesce(func.sum(LP.paid_in), 0)).filter(LP.fund_id == fund_id).scalar() or 0
+    paid_in_from_call_items = float(
+        db.query(func.coalesce(func.sum(CapitalCallItem.amount), 0))
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        .filter(
+            CapitalCall.fund_id == fund_id,
+            CapitalCall.call_date <= cutoff,
+            CapitalCallItem.paid == 1,
+            or_(CapitalCallItem.paid_date.is_(None), CapitalCallItem.paid_date <= cutoff),
+        )
+        .scalar()
+        or 0
+    )
+    paid_in_total = (
+        paid_in_from_call_items
+        if paid_in_from_call_items > 0
+        else float(db.query(func.coalesce(func.sum(LP.paid_in), 0)).filter(LP.fund_id == fund_id).scalar() or 0)
     )
 
     invested_from_transactions = float(
@@ -139,15 +153,25 @@ def get_fund_performance(
     )
     total_invested = invested_from_transactions if invested_from_transactions > 0 else invested_from_investments
 
-    distribution_totals = (
-        db.query(
-            func.coalesce(func.sum(Distribution.principal_total), 0),
-            func.coalesce(func.sum(Distribution.profit_total), 0),
-        )
+    distributed_from_items = float(
+        db.query(func.coalesce(func.sum(DistributionItem.principal + DistributionItem.profit), 0))
+        .join(Distribution, Distribution.id == DistributionItem.distribution_id)
         .filter(Distribution.fund_id == fund_id, Distribution.dist_date <= cutoff)
-        .first()
+        .scalar()
+        or 0
     )
-    total_distributed = float((distribution_totals[0] or 0) + (distribution_totals[1] or 0))
+    if distributed_from_items > 0:
+        total_distributed = distributed_from_items
+    else:
+        distribution_totals = (
+            db.query(
+                func.coalesce(func.sum(Distribution.principal_total), 0),
+                func.coalesce(func.sum(Distribution.profit_total), 0),
+            )
+            .filter(Distribution.fund_id == fund_id, Distribution.dist_date <= cutoff)
+            .first()
+        )
+        total_distributed = float((distribution_totals[0] or 0) + (distribution_totals[1] or 0))
 
     residual_value = _latest_residual_value(db, fund_id=fund_id, as_of_date=cutoff)
     total_value = total_distributed + residual_value

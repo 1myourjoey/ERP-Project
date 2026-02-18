@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime, ForeignKey, func
 from database import Base
 
 
@@ -24,3 +24,6 @@ class Task(Base):
     category = Column(String, nullable=True)
     fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
     investment_id = Column(Integer, ForeignKey("investments.id"), nullable=True)
+    gp_entity_id = Column(Integer, ForeignKey("gp_entities.id"), nullable=True)
+    is_notice = Column(Boolean, nullable=False, default=False)
+    is_report = Column(Boolean, nullable=False, default=False)

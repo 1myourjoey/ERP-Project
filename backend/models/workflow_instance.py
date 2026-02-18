@@ -17,11 +17,13 @@ class WorkflowInstance(Base):
     investment_id = Column(Integer, ForeignKey("investments.id"), nullable=True)
     company_id = Column(Integer, ForeignKey("portfolio_companies.id"), nullable=True)
     fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
+    gp_entity_id = Column(Integer, ForeignKey("gp_entities.id"), nullable=True)
 
     workflow = relationship("Workflow")
     investment = relationship("Investment")
     company = relationship("PortfolioCompany")
     fund = relationship("Fund")
+    gp_entity = relationship("GPEntity")
     step_instances = relationship("WorkflowStepInstance", back_populates="instance",
                                   cascade="all, delete-orphan",
                                   order_by="WorkflowStepInstance.calculated_date")

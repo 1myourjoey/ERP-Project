@@ -13,6 +13,8 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
+import PageLoading from '../components/PageLoading'
 
 interface FilterState {
   report_target: string
@@ -181,9 +183,9 @@ export default function ReportsPage() {
 
       <div className="space-y-3">
         {isLoading ? (
-          <div className="loading-state"><div className="loading-spinner" /></div>
+          <PageLoading />
         ) : !rows?.length ? (
-          <div className="empty-state"><p className="text-sm">보고 기록이 없습니다.</p></div>
+          <EmptyState message="보고 기록이 없습니다." />
         ) : (
           rows.map((row) => {
             const badge = dueBadge(row)

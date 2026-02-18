@@ -150,7 +150,7 @@ export default function FundOverviewPage() {
                     <td className="px-3 py-2 font-medium text-gray-900">{fund.name}</td>
                     <td className="px-3 py-2 text-gray-700">{fund.fund_type}</td>
                     <td className="px-3 py-2 text-gray-700">{fund.fund_manager || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{fund.formation_date || '-'}</td>
+                    <td className="px-3 py-2 text-gray-600">{fund.registration_date || fund.formation_date || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{fund.investment_period_end || '-'}</td>
                     <td className={`px-3 py-2 font-medium ${getRatioClass(fund.investment_period_progress)}`}>
                       {formatPercent(fund.investment_period_progress)}

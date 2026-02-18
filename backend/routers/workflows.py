@@ -1,10 +1,14 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
+import re
+from datetime import date, datetime, time
+
 from sqlalchemy.orm import Session
-from datetime import datetime, time
 
 from database import get_db
-from models.fund import Fund
+from models.fund import Fund, LP
+from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
+from models.phase3 import CapitalCall, CapitalCallItem
 from models.workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from models.task import Task
@@ -19,9 +23,74 @@ from schemas.workflow import (
     WorkflowStepInstanceResponse,
     WorkflowStepCompleteRequest,
 )
-from services.workflow_service import calculate_step_date, instantiate_workflow
+from services.workflow_service import (
+    calculate_step_date,
+    instantiate_workflow,
+    reconcile_workflow_instance_state,
+)
+from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
 
 router = APIRouter(tags=["workflows"])
+
+
+CAPITAL_CALL_ID_PATTERN = re.compile(r"capital_call_id=(\d+)")
+
+
+def _extract_capital_call_id(memo: str | None) -> int | None:
+    if not memo:
+        return None
+    match = CAPITAL_CALL_ID_PATTERN.search(memo)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
+def _mark_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
+    call = db.get(CapitalCall, capital_call_id)
+    if not call:
+        return
+    unpaid_items = (
+        db.query(CapitalCallItem)
+        .filter(
+            CapitalCallItem.capital_call_id == capital_call_id,
+            CapitalCallItem.paid == 0,
+        )
+        .all()
+    )
+    if not unpaid_items:
+        return
+    paid_date = date.today()
+    for item in unpaid_items:
+        lp = db.get(LP, item.lp_id)
+        item.paid = 1
+        item.paid_date = paid_date
+        if lp:
+            lp.paid_in = int((lp.paid_in or 0) + (item.amount or 0))
+
+
+def _rollback_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
+    call = db.get(CapitalCall, capital_call_id)
+    if not call:
+        return
+    paid_items = (
+        db.query(CapitalCallItem)
+        .filter(
+            CapitalCallItem.capital_call_id == capital_call_id,
+            CapitalCallItem.paid == 1,
+        )
+        .all()
+    )
+    if not paid_items:
+        return
+    for item in paid_items:
+        lp = db.get(LP, item.lp_id)
+        if lp:
+            lp.paid_in = max(0, int((lp.paid_in or 0) - (item.amount or 0)))
+        item.paid = 0
+        item.paid_date = None
 
 
 # --- Templates ---
@@ -69,6 +138,8 @@ def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
             estimated_time=step.estimated_time,
             quadrant=step.quadrant,
             memo=step.memo,
+            is_notice=step.is_notice,
+            is_report=step.is_report,
         ))
 
     for doc in data.documents:
@@ -114,6 +185,8 @@ def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session =
             estimated_time=step.estimated_time,
             quadrant=step.quadrant,
             memo=step.memo,
+            is_notice=step.is_notice,
+            is_report=step.is_report,
         ))
 
     wf.documents.clear()
@@ -168,8 +241,11 @@ def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session 
     investment_id = data.investment_id
     company_id = data.company_id
     fund_id = data.fund_id
+    gp_entity_id = data.gp_entity_id
 
     if investment_id is not None:
+        if gp_entity_id is not None:
+            raise HTTPException(status_code=400, detail="투자 기반 워크플로우와 고유계정을 동시에 선택할 수 없습니다")
         investment = db.get(Investment, investment_id)
         if not investment:
             raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
@@ -179,11 +255,16 @@ def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session 
             raise HTTPException(status_code=400, detail="선택한 조합이 투자 정보와 일치하지 않습니다")
         company_id = investment.company_id
         fund_id = investment.fund_id
+        gp_entity_id = None
     else:
+        if gp_entity_id is not None and fund_id is not None:
+            raise HTTPException(status_code=400, detail="조합과 고유계정을 동시에 선택할 수 없습니다")
         if company_id is not None and not db.get(PortfolioCompany, company_id):
             raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
         if fund_id is not None and not db.get(Fund, fund_id):
             raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        if gp_entity_id is not None and not db.get(GPEntity, gp_entity_id):
+            raise HTTPException(status_code=404, detail="고유계정을 찾을 수 없습니다")
 
     instance = instantiate_workflow(
         db,
@@ -194,6 +275,7 @@ def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session 
         investment_id=investment_id,
         company_id=company_id,
         fund_id=fund_id,
+        gp_entity_id=gp_entity_id,
     )
     return _build_instance_response(instance, db)
 
@@ -206,18 +288,32 @@ def list_instances(
     investment_id: int | None = None,
     company_id: int | None = None,
     fund_id: int | None = None,
+    gp_entity_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(WorkflowInstance)
-    if status != "all":
-        query = query.filter(WorkflowInstance.status == status)
     if investment_id is not None:
         query = query.filter(WorkflowInstance.investment_id == investment_id)
     if company_id is not None:
         query = query.filter(WorkflowInstance.company_id == company_id)
     if fund_id is not None:
         query = query.filter(WorkflowInstance.fund_id == fund_id)
+    if gp_entity_id is not None:
+        query = query.filter(WorkflowInstance.gp_entity_id == gp_entity_id)
+
     instances = query.order_by(WorkflowInstance.created_at.desc()).all()
+
+    needs_commit = False
+    for instance in instances:
+        if reconcile_workflow_instance_state(db, instance):
+            needs_commit = True
+
+    if needs_commit:
+        db.commit()
+
+    if status != "all":
+        instances = [instance for instance in instances if instance.status == status]
+
     return [_build_instance_response(i, db) for i in instances]
 
 
@@ -226,6 +322,9 @@ def get_instance(instance_id: int, db: Session = Depends(get_db)):
     instance = db.get(WorkflowInstance, instance_id)
     if not instance:
         raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if reconcile_workflow_instance_state(db, instance):
+        db.commit()
+        db.refresh(instance)
     return _build_instance_response(instance, db)
 
 
@@ -321,6 +420,13 @@ def complete_step(
             if next_task and next_task.status == "pending":
                 next_task.status = "in_progress"
 
+    completed_wf_step = db.get(WorkflowStep, si.workflow_step_id)
+    if completed_wf_step and "납입 확인" in (completed_wf_step.name or ""):
+        capital_call_id = _extract_capital_call_id(instance.memo)
+        if capital_call_id is not None:
+            _mark_capital_call_items_paid(db, capital_call_id)
+    workflow_template = db.get(Workflow, instance.workflow_id)
+
     all_done = all(
         s.status in ("completed", "skipped")
         for s in instance.step_instances
@@ -328,6 +434,22 @@ def complete_step(
     if all_done:
         instance.status = "completed"
         instance.completed_at = datetime.now()
+        if workflow_template and workflow_template.category == "LP교체":
+            try:
+                apply_transfer_by_workflow_instance_id(db, instance.id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if instance.fund_id:
+            fund = db.get(Fund, instance.fund_id)
+            if (
+                fund
+                and fund.status == "forming"
+                and workflow_template
+                and workflow_template.category == "조합결성"
+            ):
+                fund.status = "active"
+                if not fund.formation_date:
+                    fund.formation_date = datetime.now().date()
 
     db.commit()
     db.refresh(instance)
@@ -362,6 +484,12 @@ def undo_step_completion(
             task.completed_at = None
             task.actual_time = None
 
+    completed_wf_step = db.get(WorkflowStep, step_instance.workflow_step_id)
+    if completed_wf_step and "납입 확인" in (completed_wf_step.name or ""):
+        capital_call_id = _extract_capital_call_id(instance.memo)
+        if capital_call_id is not None:
+            _rollback_capital_call_items_paid(db, capital_call_id)
+
     if instance.status == "completed":
         instance.status = "active"
         instance.completed_at = None
@@ -390,13 +518,21 @@ def cancel_instance(instance_id: int, db: Session = Depends(get_db)):
 
 
 def _build_instance_response(instance: WorkflowInstance, db: Session) -> WorkflowInstanceResponse:
-    total = len(instance.step_instances)
-    completed = sum(1 for s in instance.step_instances if s.status in ("completed", "skipped"))
+    ordered_steps = sorted(
+        instance.step_instances,
+        key=lambda s: (
+            s.step.order if s.step and s.step.order is not None else 10**9,
+            s.id or 0,
+        ),
+    )
+    total = len(ordered_steps)
+    completed = sum(1 for s in ordered_steps if s.status in ("completed", "skipped"))
 
     step_responses = []
-    for si in instance.step_instances:
+    for si in ordered_steps:
         step_responses.append(WorkflowStepInstanceResponse(
             id=si.id,
+            instance_id=si.instance_id,
             workflow_step_id=si.workflow_step_id,
             step_name=si.step.name if si.step else "",
             step_timing=si.step.timing if si.step else "",
@@ -413,6 +549,7 @@ def _build_instance_response(instance: WorkflowInstance, db: Session) -> Workflo
     investment_name = None
     company_name = None
     fund_name = None
+    gp_entity_name = None
 
     if instance.investment_id is not None:
         investment = db.get(Investment, instance.investment_id)
@@ -434,6 +571,10 @@ def _build_instance_response(instance: WorkflowInstance, db: Session) -> Workflo
         fund = db.get(Fund, instance.fund_id)
         if fund:
             fund_name = fund.name
+    if instance.gp_entity_id is not None:
+        gp_entity = db.get(GPEntity, instance.gp_entity_id)
+        if gp_entity:
+            gp_entity_name = gp_entity.name
 
     return WorkflowInstanceResponse(
         id=instance.id,
@@ -448,9 +589,11 @@ def _build_instance_response(instance: WorkflowInstance, db: Session) -> Workflo
         investment_id=instance.investment_id,
         company_id=instance.company_id,
         fund_id=instance.fund_id,
+        gp_entity_id=instance.gp_entity_id,
         investment_name=investment_name,
         company_name=company_name,
-        fund_name=fund_name,
+        fund_name=fund_name or gp_entity_name,
+        gp_entity_name=gp_entity_name,
         step_instances=step_responses,
         progress=f"{completed}/{total}",
     )

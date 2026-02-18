@@ -1,3 +1,5 @@
+from datetime import date as dt_date
+
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 
@@ -22,6 +24,8 @@ class Fund(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     formation_date = Column(Date, nullable=True)
+    registration_number = Column(String, nullable=True)
+    registration_date = Column(Date, nullable=True)
     status = Column(String, nullable=False, default="active")
     gp = Column(String, nullable=True)
     fund_manager = Column(String, nullable=True)
@@ -40,6 +44,7 @@ class Fund(Base):
     account_number = Column(String, nullable=True)
 
     lps = relationship("LP", back_populates="fund", cascade="all, delete-orphan")
+    lp_transfers = relationship("LPTransfer", back_populates="fund", cascade="all, delete-orphan")
     notice_periods = relationship("FundNoticePeriod", back_populates="fund", cascade="all, delete-orphan")
     key_terms = relationship("FundKeyTerm", back_populates="fund", cascade="all, delete-orphan")
     biz_reports = relationship("BizReport", backref="fund", cascade="all, delete-orphan")
@@ -55,8 +60,36 @@ class LP(Base):
     commitment = Column(Integer, nullable=True)
     paid_in = Column(Integer, nullable=True)
     contact = Column(String, nullable=True)
+    business_number = Column(String, nullable=True)
+    address = Column(String, nullable=True)
 
     fund = relationship("Fund", back_populates="lps")
+    transfers_from = relationship("LPTransfer", foreign_keys="LPTransfer.from_lp_id", back_populates="from_lp")
+    transfers_to = relationship("LPTransfer", foreign_keys="LPTransfer.to_lp_id", back_populates="to_lp")
+
+
+class LPTransfer(Base):
+    __tablename__ = "lp_transfers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_id = Column(Integer, ForeignKey("funds.id"), nullable=False)
+    from_lp_id = Column(Integer, ForeignKey("lps.id"), nullable=False)
+    to_lp_id = Column(Integer, ForeignKey("lps.id"), nullable=True)
+    to_lp_name = Column(String, nullable=True)
+    to_lp_type = Column(String, nullable=True)
+    to_lp_business_number = Column(String, nullable=True)
+    to_lp_address = Column(String, nullable=True)
+    to_lp_contact = Column(String, nullable=True)
+    transfer_amount = Column(Integer, nullable=False)
+    transfer_date = Column(Date, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    workflow_instance_id = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(Date, nullable=True, default=dt_date.today)
+
+    fund = relationship("Fund", back_populates="lp_transfers")
+    from_lp = relationship("LP", foreign_keys=[from_lp_id], back_populates="transfers_from")
+    to_lp = relationship("LP", foreign_keys=[to_lp_id], back_populates="transfers_to")
 
 
 class FundNoticePeriod(Base):

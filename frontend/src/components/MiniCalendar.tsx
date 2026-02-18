@@ -135,6 +135,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
         {cells.map(({ date, inCurrentMonth }) => {
           const key = formatDate(date)
           const dateEvents = eventsByDate.get(key) || []
+          const dotEvents = dateEvents.filter((event) => event.status !== 'completed')
           return (
             <button
               key={key}
@@ -145,7 +146,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
             >
               <p className="text-[10px]">{date.getDate()}</p>
               <div className="mt-0.5 flex flex-wrap gap-[2px]">
-                {dateEvents.slice(0, 3).map((event) => (
+                {dotEvents.slice(0, 3).map((event) => (
                   <span key={`${event.id}-${event.title}`} className={`h-1.5 w-1.5 rounded-full ${dotClass(event)}`} />
                 ))}
               </div>
@@ -208,7 +209,10 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
                 key={`${event.id}-${event.title}`}
                 onClick={() => {
                   if (event.task_id && onTaskClick) {
-                    onTaskClick(event.task_id)
+                    const taskId = Number(event.task_id)
+                    if (Number.isFinite(taskId) && taskId > 0) {
+                      onTaskClick(taskId)
+                    }
                   }
                 }}
                 className={`rounded border border-gray-200 bg-white p-1.5 ${
@@ -216,7 +220,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
                 }`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <p className="truncate text-xs text-gray-800">{event.title}</p>
+                  <p className={`truncate text-xs text-gray-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                   {event.id > 0 ? (
                     <button
                       onClick={(e) => {

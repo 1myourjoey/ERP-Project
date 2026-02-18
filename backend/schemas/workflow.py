@@ -13,6 +13,8 @@ class WorkflowStepCreate(BaseModel):
     estimated_time: Optional[str] = None
     quadrant: str = "Q1"
     memo: Optional[str] = None
+    is_notice: bool = False
+    is_report: bool = False
 
 
 class WorkflowDocumentCreate(BaseModel):
@@ -49,6 +51,7 @@ class WorkflowUpdateRequest(BaseModel):
 
 class WorkflowStepResponse(BaseModel):
     id: int
+    workflow_id: int
     order: int
     name: str
     timing: str
@@ -56,11 +59,14 @@ class WorkflowStepResponse(BaseModel):
     estimated_time: Optional[str] = None
     quadrant: str
     memo: Optional[str] = None
+    is_notice: bool = False
+    is_report: bool = False
     model_config = {"from_attributes": True}
 
 
 class WorkflowDocumentResponse(BaseModel):
     id: int
+    workflow_id: int
     name: str
     required: bool
     timing: Optional[str] = None
@@ -70,6 +76,7 @@ class WorkflowDocumentResponse(BaseModel):
 
 class WorkflowWarningResponse(BaseModel):
     id: int
+    workflow_id: int
     content: str
     category: str = "warning"
     model_config = {"from_attributes": True}
@@ -106,6 +113,7 @@ class WorkflowInstantiateRequest(BaseModel):
     investment_id: Optional[int] = None
     company_id: Optional[int] = None
     fund_id: Optional[int] = None
+    gp_entity_id: Optional[int] = None
 
 
 class WorkflowInstanceUpdateRequest(BaseModel):
@@ -116,6 +124,7 @@ class WorkflowInstanceUpdateRequest(BaseModel):
 
 class WorkflowStepInstanceResponse(BaseModel):
     id: int
+    instance_id: int
     workflow_step_id: int
     step_name: str = ""
     step_timing: str = ""
@@ -143,9 +152,11 @@ class WorkflowInstanceResponse(BaseModel):
     investment_id: Optional[int] = None
     company_id: Optional[int] = None
     fund_id: Optional[int] = None
+    gp_entity_id: Optional[int] = None
     investment_name: Optional[str] = None
     company_name: Optional[str] = None
     fund_name: Optional[str] = None
+    gp_entity_name: Optional[str] = None
     step_instances: list[WorkflowStepInstanceResponse] = []
     progress: str = ""  # e.g. "3/7"
     model_config = {"from_attributes": True}

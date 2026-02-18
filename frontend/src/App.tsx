@@ -18,6 +18,7 @@ import ExitsPage from './pages/ExitsPage'
 import ReportsPage from './pages/ReportsPage'
 import ChecklistsPage from './pages/ChecklistsPage'
 import DocumentsPage from './pages/DocumentsPage'
+import TemplateManagementPage from './pages/TemplateManagementPage'
 
 export default function App() {
   return (
@@ -42,6 +43,8 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/checklists" element={<ChecklistsPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/documents/generate" element={<DocumentsPage />} />
+        <Route path="/templates" element={<TemplateManagementPage />} />
       </Route>
     </Routes>
   )

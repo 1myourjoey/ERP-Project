@@ -17,6 +17,9 @@ class TaskCreate(BaseModel):
     category: Optional[str] = None
     fund_id: Optional[int] = None
     investment_id: Optional[int] = None
+    gp_entity_id: Optional[int] = None
+    is_notice: bool = False
+    is_report: bool = False
 
     @field_validator("estimated_time")
     @classmethod
@@ -39,6 +42,9 @@ class TaskUpdate(BaseModel):
     category: Optional[str] = None
     fund_id: Optional[int] = None
     investment_id: Optional[int] = None
+    gp_entity_id: Optional[int] = None
+    is_notice: Optional[bool] = None
+    is_report: Optional[bool] = None
 
     @field_validator("estimated_time")
     @classmethod
@@ -77,7 +83,11 @@ class TaskResponse(BaseModel):
     category: Optional[str] = None
     fund_id: Optional[int] = None
     investment_id: Optional[int] = None
+    gp_entity_id: Optional[int] = None
+    is_notice: bool = False
+    is_report: bool = False
     fund_name: Optional[str] = None
+    gp_entity_name: Optional[str] = None
     company_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

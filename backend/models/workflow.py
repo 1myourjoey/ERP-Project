@@ -32,6 +32,8 @@ class WorkflowStep(Base):
     estimated_time = Column(String, nullable=True)
     quadrant = Column(String, default="Q1")
     memo = Column(Text, nullable=True)
+    is_notice = Column(Boolean, nullable=False, default=False)
+    is_report = Column(Boolean, nullable=False, default=False)
 
     workflow = relationship("Workflow", back_populates="steps")
 

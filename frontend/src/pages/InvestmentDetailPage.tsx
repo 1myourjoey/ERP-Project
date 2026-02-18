@@ -33,6 +33,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 interface InvestmentDocument {
   id: number
@@ -287,7 +288,7 @@ export default function InvestmentDetailPage() {
       </div>
 
       {isLoading ? (
-        <div className="loading-state"><div className="loading-spinner" /></div>
+        <PageLoading />
       ) : !selectedInvestment ? (
         <p className="text-sm text-gray-500">투자를 찾을 수 없습니다.</p>
       ) : (
@@ -754,6 +755,8 @@ function ValuationForm({
     </div>
   )
 }
+
+
 
 
 

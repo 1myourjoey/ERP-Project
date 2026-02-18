@@ -7,11 +7,14 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.fund import Fund, FundNoticePeriod
+from models.gp_entity import GPEntity
 from models.investment import Investment, InvestmentDocument, PortfolioCompany
 from models.regular_report import RegularReport
 from models.task import Task
 from models.workflow_instance import WorkflowInstance
+from schemas.dashboard import DashboardTodayResponse, UpcomingNoticeItem
 from schemas.task import TaskResponse
+from services.workflow_service import reconcile_workflow_instance_state
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -56,23 +59,38 @@ def _dashboard_week_bounds(target: date) -> tuple[date, date]:
     return week_start, week_end
 
 
+def _step_instance_order_key(step_instance) -> tuple[int, int]:
+    step_order = (
+        step_instance.step.order
+        if step_instance.step and step_instance.step.order is not None
+        else 10**9
+    )
+    return (step_order, step_instance.id or 0)
+
+
 def _task_response(db: Session, task: Task) -> TaskResponse:
     payload = TaskResponse.model_validate(task).model_dump()
 
     investment = db.get(Investment, task.investment_id) if task.investment_id else None
     fund_id = task.fund_id or (investment.fund_id if investment else None)
+    gp_entity_id = task.gp_entity_id
 
     fund_name = None
     if fund_id:
         fund = db.get(Fund, fund_id)
         fund_name = fund.name if fund else None
 
+    gp_entity_name = None
+    if gp_entity_id:
+        gp_entity = db.get(GPEntity, gp_entity_id)
+        gp_entity_name = gp_entity.name if gp_entity else None
+
     company_name = None
     if investment:
         company = db.get(PortfolioCompany, investment.company_id)
         company_name = company.name if company else None
 
-    if (not fund_name or not company_name) and task.workflow_instance_id:
+    if (not fund_name or not company_name or not gp_entity_name) and task.workflow_instance_id:
         instance = db.get(WorkflowInstance, task.workflow_instance_id)
         if instance:
             if not fund_name and instance.fund_id:
@@ -80,17 +98,24 @@ def _task_response(db: Session, task: Task) -> TaskResponse:
                 fund_name = wf_fund.name if wf_fund else None
                 if fund_id is None:
                     fund_id = instance.fund_id
+            if not gp_entity_name and instance.gp_entity_id:
+                gp_entity = db.get(GPEntity, instance.gp_entity_id)
+                gp_entity_name = gp_entity.name if gp_entity else None
+                if gp_entity_id is None:
+                    gp_entity_id = instance.gp_entity_id
             if not company_name and instance.company_id:
                 wf_company = db.get(PortfolioCompany, instance.company_id)
                 company_name = wf_company.name if wf_company else None
 
     payload["fund_id"] = fund_id
-    payload["fund_name"] = fund_name
+    payload["gp_entity_id"] = gp_entity_id
+    payload["fund_name"] = fund_name or gp_entity_name
+    payload["gp_entity_name"] = gp_entity_name
     payload["company_name"] = company_name
     return TaskResponse(**payload)
 
 
-@router.get("/today")
+@router.get("/today", response_model=DashboardTodayResponse)
 def get_today_dashboard(db: Session = Depends(get_db)):
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -110,6 +135,19 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             upcoming_month -= 12
             upcoming_year += 1
         upcoming_end = date(upcoming_year, upcoming_month, 28)
+
+    # Heal legacy mismatches between task-completion and workflow status.
+    sync_targets = (
+        db.query(WorkflowInstance)
+        .filter(WorkflowInstance.status.in_(["active", "completed"]))
+        .all()
+    )
+    needs_commit = False
+    for instance in sync_targets:
+        if reconcile_workflow_instance_state(db, instance):
+            needs_commit = True
+    if needs_commit:
+        db.commit()
 
     pending_tasks = (
         db.query(Task)
@@ -154,19 +192,28 @@ def get_today_dashboard(db: Session = Depends(get_db)):
 
     active_workflows = []
     for instance in active_instances:
-        total = len(instance.step_instances)
-        done = sum(1 for step in instance.step_instances if step.status in ("completed", "skipped"))
+        ordered_steps = sorted(instance.step_instances, key=_step_instance_order_key)
+        total = len(ordered_steps)
+        done = sum(1 for step in ordered_steps if step.status in ("completed", "skipped"))
 
-        next_step = None
-        next_step_date = None
-        for step_instance in instance.step_instances:
-            if step_instance.status == "pending":
-                next_step = step_instance.step.name if step_instance.step else None
-                next_step_date = step_instance.calculated_date.isoformat() if step_instance.calculated_date else None
-                break
+        next_step_instance = next(
+            (
+                step_instance
+                for step_instance in ordered_steps
+                if step_instance.status in ("in_progress", "pending")
+            ),
+            None,
+        )
+        next_step = next_step_instance.step.name if next_step_instance and next_step_instance.step else None
+        next_step_date = (
+            next_step_instance.calculated_date.isoformat()
+            if next_step_instance and next_step_instance.calculated_date
+            else None
+        )
 
         company_name = None
         fund_name = None
+        gp_entity_name = None
 
         if instance.investment_id is not None:
             inv = db.get(Investment, instance.investment_id)
@@ -187,6 +234,10 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             fund = db.get(Fund, instance.fund_id)
             if fund:
                 fund_name = fund.name
+        if instance.gp_entity_id is not None:
+            gp_entity = db.get(GPEntity, instance.gp_entity_id)
+            if gp_entity:
+                gp_entity_name = gp_entity.name
 
         active_workflows.append(
             {
@@ -196,7 +247,8 @@ def get_today_dashboard(db: Session = Depends(get_db)):
                 "next_step": next_step,
                 "next_step_date": next_step_date,
                 "company_name": company_name,
-                "fund_name": fund_name,
+                "fund_name": fund_name or gp_entity_name,
+                "gp_entity_name": gp_entity_name,
             }
         )
 
@@ -273,8 +325,42 @@ def get_today_dashboard(db: Session = Depends(get_db)):
                 "due_date": report.due_date.isoformat() if report.due_date else None,
                 "status": report.status,
                 "days_remaining": (report.due_date - today).days if report.due_date else None,
+                "task_id": None,
             }
         )
+
+    report_tasks = (
+        db.query(Task)
+        .filter(
+            Task.is_report == True,
+            Task.status.in_(["pending", "in_progress"]),
+            Task.deadline.isnot(None),
+            func.date(Task.deadline) <= today + timedelta(days=7),
+        )
+        .order_by(Task.deadline.asc(), Task.id.desc())
+        .limit(20)
+        .all()
+    )
+    for task in report_tasks:
+        deadline_date = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
+        if deadline_date is None:
+            continue
+        task_payload = _task_response(db, task)
+        upcoming_reports.append(
+            {
+                "id": -task.id,
+                "report_target": task.title,
+                "fund_id": task_payload.fund_id,
+                "fund_name": task_payload.fund_name,
+                "period": "업무",
+                "due_date": deadline_date.isoformat(),
+                "status": task.status,
+                "days_remaining": (deadline_date - today).days,
+                "task_id": task.id,
+            }
+        )
+    upcoming_reports.sort(key=lambda row: (row["days_remaining"] if row["days_remaining"] is not None else 999, row["due_date"] or "9999-12-31"))
+    upcoming_reports = upcoming_reports[:20]
 
     completed_today = (
         db.query(Task)
@@ -331,7 +417,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/upcoming-notices")
+@router.get("/upcoming-notices", response_model=list[UpcomingNoticeItem])
 def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
     today = date.today()
     horizon = today + timedelta(days=max(0, days))
@@ -389,8 +475,38 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
                     "days_remaining": (deadline - today).days,
                     "workflow_instance_name": instance.name,
                     "workflow_instance_id": instance.id,
+                    "task_id": None,
                 }
             )
+
+    notice_tasks = (
+        db.query(Task)
+        .filter(
+            Task.is_notice == True,
+            Task.status.in_(["pending", "in_progress"]),
+            Task.deadline.isnot(None),
+            func.date(Task.deadline) >= today,
+            func.date(Task.deadline) <= horizon,
+        )
+        .order_by(Task.deadline.asc(), Task.id.desc())
+        .all()
+    )
+    for task in notice_tasks:
+        deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
+        if deadline is None:
+            continue
+        task_payload = _task_response(db, task)
+        results.append(
+            {
+                "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "업무",
+                "notice_label": task.title,
+                "deadline": deadline.isoformat(),
+                "days_remaining": (deadline - today).days,
+                "workflow_instance_name": "업무",
+                "workflow_instance_id": task.workflow_instance_id,
+                "task_id": task.id,
+            }
+        )
 
     results.sort(key=lambda row: (row["deadline"], row["fund_name"], row["notice_label"]))
     return results

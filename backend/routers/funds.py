@@ -78,6 +78,32 @@ def calculate_paid_in_as_of(
     return round(total_paid_in, 2), round(gp_paid_in, 2)
 
 
+def calculate_lp_paid_in_from_calls(db: Session, fund_id: int, lp_id: int) -> tuple[bool, int]:
+    base_query = (
+        db.query(CapitalCallItem.id)
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        .filter(
+            CapitalCall.fund_id == fund_id,
+            CapitalCallItem.lp_id == lp_id,
+        )
+    )
+    has_call_items = base_query.first() is not None
+    if not has_call_items:
+        return False, 0
+
+    paid_in_total = (
+        db.query(func.coalesce(func.sum(CapitalCallItem.amount), 0))
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        .filter(
+            CapitalCall.fund_id == fund_id,
+            CapitalCallItem.lp_id == lp_id,
+            CapitalCallItem.paid == 1,
+        )
+        .scalar()
+    )
+    return True, int(paid_in_total or 0)
+
+
 def to_overview_unit(value: float | None) -> float | None:
     if value is None:
         return None
@@ -199,6 +225,7 @@ def build_fund_overview(
             fund_type=fund.type,
             fund_manager=fund.fund_manager,
             formation_date=fund.formation_date.isoformat() if fund.formation_date else None,
+            registration_date=fund.registration_date.isoformat() if fund.registration_date else None,
             investment_period_end=fund.investment_period_end.isoformat() if fund.investment_period_end else None,
             investment_period_progress=progress,
             maturity_date=fund.maturity_date.isoformat() if fund.maturity_date else None,
@@ -260,6 +287,14 @@ def list_funds(db: Session = Depends(get_db)):
             .all()
         )
     }
+    paid_in_totals = {
+        int(fund_id): float(total or 0)
+        for fund_id, total in (
+            db.query(LP.fund_id, func.coalesce(func.sum(LP.paid_in), 0))
+            .group_by(LP.fund_id)
+            .all()
+        )
+    }
     return [
         FundListItem(
             id=f.id,
@@ -267,10 +302,13 @@ def list_funds(db: Session = Depends(get_db)):
             type=f.type,
             status=f.status,
             formation_date=f.formation_date,
+            registration_number=f.registration_number,
+            registration_date=f.registration_date,
             maturity_date=f.maturity_date,
             dissolution_date=f.dissolution_date,
             commitment_total=f.commitment_total,
             aum=f.aum,
+            paid_in_total=paid_in_totals.get(f.id, 0),
             lp_count=len(f.lps),
             investment_count=investment_counts.get(f.id, 0),
         )
@@ -484,7 +522,13 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
     if not lp or lp.fund_id != fund_id:
         raise HTTPException(status_code=404, detail="LP瑜?李얠쓣 ???놁뒿?덈떎")
 
-    for key, val in data.model_dump(exclude_unset=True).items():
+    payload = data.model_dump(exclude_unset=True)
+    if "paid_in" in payload:
+        has_call_items, paid_in_total = calculate_lp_paid_in_from_calls(db, fund_id, lp_id)
+        if has_call_items:
+            payload["paid_in"] = paid_in_total
+
+    for key, val in payload.items():
         setattr(lp, key, val)
 
     db.commit()

@@ -14,6 +14,7 @@ class CapitalCall(Base):
     call_date = Column(Date, nullable=False)
     call_type = Column(String, nullable=False)
     total_amount = Column(Float, nullable=False, default=0)
+    request_percent = Column(Float, nullable=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -29,6 +30,7 @@ class CapitalCallItem(Base):
     amount = Column(Integer, nullable=False, default=0)
     paid = Column(Integer, nullable=False, default=0)  # 0/1
     paid_date = Column(Date, nullable=True)
+    memo = Column(Text, nullable=True)
 
     capital_call = relationship("CapitalCall", back_populates="items")
 

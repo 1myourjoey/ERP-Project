@@ -24,6 +24,7 @@ import {
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
+import PageLoading from '../components/PageLoading'
 
 interface FundInvestmentListItem {
   id: number
@@ -436,7 +437,7 @@ export default function FundDetailPage() {
       </div>
 
       {isLoading ? (
-        <div className="loading-state"><div className="loading-spinner" /></div>
+        <PageLoading />
       ) : !fundDetail ? (
         <p className="text-sm text-gray-500">조합을 찾을 수 없습니다.</p>
       ) : (

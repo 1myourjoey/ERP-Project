@@ -8,9 +8,12 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.calendar_event import CalendarEvent
 from models.fund import Fund
+from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
 from models.task import Task
-from models.workflow_instance import WorkflowInstance
+from models.workflow import Workflow, WorkflowStep
+from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
+from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
 from schemas.task import (
     TaskBoardResponse,
     TaskComplete,
@@ -32,7 +35,8 @@ def _resolve_task_links(
     db: Session,
     fund_id: int | None,
     investment_id: int | None,
-) -> tuple[int | None, int | None]:
+    gp_entity_id: int | None,
+) -> tuple[int | None, int | None, int | None]:
     fund = db.get(Fund, fund_id) if fund_id else None
     if fund_id and not fund:
         raise HTTPException(status_code=404, detail='조합을 찾을 수 없습니다')
@@ -41,6 +45,15 @@ def _resolve_task_links(
     if investment_id and not investment:
         raise HTTPException(status_code=404, detail='투자 건을 찾을 수 없습니다')
 
+    gp_entity = db.get(GPEntity, gp_entity_id) if gp_entity_id else None
+    if gp_entity_id and not gp_entity:
+        raise HTTPException(status_code=404, detail='고유계정을 찾을 수 없습니다')
+
+    if gp_entity_id and investment_id:
+        raise HTTPException(status_code=409, detail='투자 건과 고유계정을 동시에 연결할 수 없습니다')
+    if gp_entity_id and fund_id:
+        raise HTTPException(status_code=409, detail='조합과 고유계정을 동시에 연결할 수 없습니다')
+
     if investment and fund_id and investment.fund_id != fund_id:
         raise HTTPException(status_code=409, detail='투자 건과 조합이 일치하지 않습니다')
 
@@ -48,7 +61,11 @@ def _resolve_task_links(
     if investment and resolved_fund_id is None:
         resolved_fund_id = investment.fund_id
 
-    return resolved_fund_id, investment_id
+    resolved_gp_entity_id = gp_entity_id
+    if resolved_fund_id is not None:
+        resolved_gp_entity_id = None
+
+    return resolved_fund_id, investment_id, resolved_gp_entity_id
 
 
 def _to_task_response(db: Session, task: Task) -> TaskResponse:
@@ -56,18 +73,24 @@ def _to_task_response(db: Session, task: Task) -> TaskResponse:
 
     investment = db.get(Investment, task.investment_id) if task.investment_id else None
     fund_id = task.fund_id or (investment.fund_id if investment else None)
+    gp_entity_id = task.gp_entity_id
 
     fund_name = None
     if fund_id:
         fund = db.get(Fund, fund_id)
         fund_name = fund.name if fund else None
 
+    gp_entity_name = None
+    if gp_entity_id:
+        gp_entity = db.get(GPEntity, gp_entity_id)
+        gp_entity_name = gp_entity.name if gp_entity else None
+
     company_name = None
     if investment:
         company = db.get(PortfolioCompany, investment.company_id)
         company_name = company.name if company else None
 
-    if (not fund_name or not company_name) and task.workflow_instance_id:
+    if (not fund_name or not company_name or not gp_entity_name) and task.workflow_instance_id:
         instance = db.get(WorkflowInstance, task.workflow_instance_id)
         if instance:
             if not fund_name and instance.fund_id:
@@ -75,14 +98,144 @@ def _to_task_response(db: Session, task: Task) -> TaskResponse:
                 fund_name = wf_fund.name if wf_fund else None
                 if fund_id is None:
                     fund_id = instance.fund_id
+            if not gp_entity_name and instance.gp_entity_id:
+                gp_entity = db.get(GPEntity, instance.gp_entity_id)
+                gp_entity_name = gp_entity.name if gp_entity else None
+                if gp_entity_id is None:
+                    gp_entity_id = instance.gp_entity_id
             if not company_name and instance.company_id:
                 wf_company = db.get(PortfolioCompany, instance.company_id)
                 company_name = wf_company.name if wf_company else None
 
     payload['fund_id'] = fund_id
-    payload['fund_name'] = fund_name
+    payload['gp_entity_id'] = gp_entity_id
+    payload['fund_name'] = fund_name or gp_entity_name
+    payload['gp_entity_name'] = gp_entity_name
     payload['company_name'] = company_name
     return TaskResponse(**payload)
+
+
+def _find_workflow_step_instance_for_task(db: Session, task: Task) -> WorkflowStepInstance | None:
+    if not task.workflow_instance_id:
+        return None
+
+    linked = (
+        db.query(WorkflowStepInstance)
+        .filter(
+            WorkflowStepInstance.instance_id == task.workflow_instance_id,
+            WorkflowStepInstance.task_id == task.id,
+        )
+        .first()
+    )
+    if linked:
+        return linked
+
+    # Backward compatibility for legacy data created before task_id linkage.
+    if task.workflow_step_order is None:
+        return None
+
+    return (
+        db.query(WorkflowStepInstance)
+        .join(WorkflowStep, WorkflowStep.id == WorkflowStepInstance.workflow_step_id)
+        .filter(
+            WorkflowStepInstance.instance_id == task.workflow_instance_id,
+            WorkflowStep.order == task.workflow_step_order,
+        )
+        .order_by(WorkflowStepInstance.id.asc())
+        .first()
+    )
+
+
+def _sync_workflow_on_task_complete(
+    db: Session,
+    task: Task,
+    actual_time: str | None,
+    notes: str | None,
+) -> None:
+    if not task.workflow_instance_id:
+        return
+
+    instance = db.get(WorkflowInstance, task.workflow_instance_id)
+    if not instance:
+        return
+
+    step_instance = _find_workflow_step_instance_for_task(db, task)
+    if not step_instance:
+        return
+
+    step_instance.status = 'completed'
+    step_instance.completed_at = task.completed_at
+    step_instance.actual_time = actual_time
+    step_instance.notes = notes
+
+    # Session autoflush is disabled globally, so persist step completion
+    # before finding the next pending step.
+    db.flush()
+
+    next_step = (
+        db.query(WorkflowStepInstance)
+        .join(WorkflowStep, WorkflowStep.id == WorkflowStepInstance.workflow_step_id)
+        .filter(
+            WorkflowStepInstance.instance_id == instance.id,
+            WorkflowStepInstance.status == 'pending',
+            WorkflowStepInstance.id != step_instance.id,
+        )
+        .order_by(WorkflowStep.order.asc(), WorkflowStepInstance.id.asc())
+        .first()
+    )
+    if next_step:
+        next_step.status = 'in_progress'
+        if next_step.task_id:
+            next_task = db.get(Task, next_step.task_id)
+            if next_task and next_task.status == 'pending':
+                next_task.status = 'in_progress'
+
+    all_done = all(
+        row.status in ('completed', 'skipped')
+        for row in instance.step_instances
+    )
+    if all_done:
+        instance.status = 'completed'
+        instance.completed_at = datetime.now()
+        workflow_template = db.get(Workflow, instance.workflow_id)
+        if workflow_template and workflow_template.category == 'LP교체':
+            try:
+                apply_transfer_by_workflow_instance_id(db, instance.id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if instance.fund_id:
+            fund = db.get(Fund, instance.fund_id)
+            if (
+                fund
+                and fund.status == 'forming'
+                and workflow_template
+                and workflow_template.category == '조합결성'
+            ):
+                fund.status = 'active'
+                if not fund.formation_date:
+                    fund.formation_date = datetime.now().date()
+
+
+def _sync_workflow_on_task_undo(db: Session, task: Task) -> None:
+    if not task.workflow_instance_id:
+        return
+
+    instance = db.get(WorkflowInstance, task.workflow_instance_id)
+    if not instance:
+        return
+
+    step_instance = _find_workflow_step_instance_for_task(db, task)
+    if not step_instance:
+        return
+
+    step_instance.status = 'pending'
+    step_instance.completed_at = None
+    step_instance.actual_time = None
+    step_instance.notes = None
+
+    if instance.status == 'completed':
+        instance.status = 'active'
+        instance.completed_at = None
 
 
 @router.get('/board', response_model=TaskBoardResponse)
@@ -116,6 +269,7 @@ def list_tasks(
     quadrant: str | None = None,
     status: str | None = None,
     fund_id: int | None = None,
+    gp_entity_id: int | None = None,
     category: str | None = None,
     db: Session = Depends(get_db),
 ):
@@ -126,6 +280,8 @@ def list_tasks(
         query = query.filter(Task.status == status)
     if fund_id:
         query = query.filter(Task.fund_id == fund_id)
+    if gp_entity_id:
+        query = query.filter(Task.gp_entity_id == gp_entity_id)
     if category:
         query = query.filter(Task.category == category)
 
@@ -189,13 +345,15 @@ def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
 @router.post('', response_model=TaskResponse, status_code=201)
 def create_task(data: TaskCreate, db: Session = Depends(get_db)):
     payload = data.model_dump()
-    resolved_fund_id, resolved_investment_id = _resolve_task_links(
+    resolved_fund_id, resolved_investment_id, resolved_gp_entity_id = _resolve_task_links(
         db,
         payload.get('fund_id'),
         payload.get('investment_id'),
+        payload.get('gp_entity_id'),
     )
     payload['fund_id'] = resolved_fund_id
     payload['investment_id'] = resolved_investment_id
+    payload['gp_entity_id'] = resolved_gp_entity_id
 
     task = Task(**payload)
     db.add(task)
@@ -225,10 +383,17 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     payload = data.model_dump(exclude_unset=True)
     next_fund_id = payload.get('fund_id', task.fund_id)
     next_investment_id = payload.get('investment_id', task.investment_id)
-    resolved_fund_id, resolved_investment_id = _resolve_task_links(db, next_fund_id, next_investment_id)
+    next_gp_entity_id = payload.get('gp_entity_id', task.gp_entity_id)
+    resolved_fund_id, resolved_investment_id, resolved_gp_entity_id = _resolve_task_links(
+        db,
+        next_fund_id,
+        next_investment_id,
+        next_gp_entity_id,
+    )
 
     payload['fund_id'] = resolved_fund_id
     payload['investment_id'] = resolved_investment_id
+    payload['gp_entity_id'] = resolved_gp_entity_id
 
     for key, val in payload.items():
         setattr(task, key, val)
@@ -284,6 +449,12 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
     task.status = 'completed'
     task.completed_at = datetime.now()
     task.actual_time = data.actual_time
+    _sync_workflow_on_task_complete(
+        db=db,
+        task=task,
+        actual_time=data.actual_time,
+        notes=data.memo,
+    )
 
     if data.auto_worklog:
         from models.worklog import WorkLog, WorkLogDetail
@@ -322,6 +493,7 @@ def undo_complete_task(task_id: int, db: Session = Depends(get_db)):
     task.status = 'pending'
     task.completed_at = None
     task.actual_time = None
+    _sync_workflow_on_task_undo(db=db, task=task)
     db.commit()
     db.refresh(task)
     return _to_task_response(db, task)

@@ -9,6 +9,8 @@ class LPCreate(BaseModel):
     commitment: Optional[float] = Field(default=None, ge=0)
     paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
+    business_number: Optional[str] = None
+    address: Optional[str] = None
 
     @field_validator("type")
     @classmethod
@@ -25,6 +27,8 @@ class LPUpdate(BaseModel):
     commitment: Optional[float] = Field(default=None, ge=0)
     paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
+    business_number: Optional[str] = None
+    address: Optional[str] = None
 
     @field_validator("type")
     @classmethod
@@ -45,6 +49,8 @@ class LPResponse(BaseModel):
     commitment: Optional[float] = Field(default=None, ge=0)
     paid_in: Optional[float] = Field(default=None, ge=0)
     contact: Optional[str] = None
+    business_number: Optional[str] = None
+    address: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -89,6 +95,8 @@ class FundCreate(BaseModel):
     name: str
     type: str
     formation_date: Optional[date] = None
+    registration_number: Optional[str] = None
+    registration_date: Optional[date] = None
     status: str = "active"
     gp: Optional[str] = None
     fund_manager: Optional[str] = None
@@ -119,6 +127,8 @@ class FundUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
     formation_date: Optional[date] = None
+    registration_number: Optional[str] = None
+    registration_date: Optional[date] = None
     status: Optional[str] = None
     gp: Optional[str] = None
     fund_manager: Optional[str] = None
@@ -153,10 +163,13 @@ class FundListItem(BaseModel):
     type: str
     status: str
     formation_date: Optional[date] = None
+    registration_number: Optional[str] = None
+    registration_date: Optional[date] = None
     maturity_date: Optional[date] = None
     dissolution_date: Optional[date] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     aum: Optional[float] = Field(default=None, ge=0)
+    paid_in_total: Optional[float] = Field(default=None, ge=0)
     lp_count: int = 0
     investment_count: int = 0
 
@@ -170,6 +183,7 @@ class FundOverviewItem(BaseModel):
     fund_type: str
     fund_manager: Optional[str] = None
     formation_date: Optional[str] = None
+    registration_date: Optional[str] = None
     investment_period_end: Optional[str] = None
     investment_period_progress: Optional[float] = None
     maturity_date: Optional[str] = None
@@ -206,6 +220,8 @@ class FundResponse(BaseModel):
     name: str
     type: str
     formation_date: Optional[date] = None
+    registration_number: Optional[str] = None
+    registration_date: Optional[date] = None
     status: str
     gp: Optional[str] = None
     fund_manager: Optional[str] = None

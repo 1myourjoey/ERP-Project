@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" fill="none">
+  <!-- V:ON Logo — Minimal Style -->
+  <text x="0" y="36" font-family="'Inter', 'Noto Sans KR', system-ui, sans-serif" font-size="36" font-weight="700" fill="#1E3A5F" letter-spacing="-1">
+    V
+  </text>
+  <!-- Colon as clock dots -->
+  <circle cx="30" cy="16" r="3.5" fill="#3B82F6"/>
+  <circle cx="30" cy="32" r="3.5" fill="#3B82F6"/>
+  <!-- ON -->
+  <text x="40" y="36" font-family="'Inter', 'Noto Sans KR', system-ui, sans-serif" font-size="36" font-weight="500" fill="#1E3A5F" letter-spacing="-1">
+    ON
+  </text>
+</svg>

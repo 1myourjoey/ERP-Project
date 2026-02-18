@@ -2,6 +2,7 @@
   pending: '대기',
   in_progress: '진행중',
   completed: '완료',
+  forming: '결성예정',
   active: '운용중',
   closed: '청산',
   collected: '수집완료',

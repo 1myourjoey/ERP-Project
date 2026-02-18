@@ -9,6 +9,7 @@ class CapitalCallCreate(BaseModel):
     call_date: date
     call_type: str
     total_amount: float = 0
+    request_percent: Optional[float] = None
     memo: Optional[str] = None
 
 
@@ -17,6 +18,7 @@ class CapitalCallUpdate(BaseModel):
     call_date: Optional[date] = None
     call_type: Optional[str] = None
     total_amount: Optional[float] = None
+    request_percent: Optional[float] = None
     memo: Optional[str] = None
 
 
@@ -26,6 +28,7 @@ class CapitalCallResponse(BaseModel):
     call_date: date
     call_type: str
     total_amount: float
+    request_percent: Optional[float] = None
     memo: Optional[str] = None
     created_at: datetime
 
@@ -41,6 +44,17 @@ class CapitalCallItemCreate(BaseModel):
     amount: int = 0
     paid: bool = False
     paid_date: Optional[date] = None
+    memo: Optional[str] = None
+
+
+class CapitalCallBatchCreate(BaseModel):
+    fund_id: int
+    call_date: date
+    call_type: str
+    total_amount: float = 0
+    request_percent: Optional[float] = None
+    memo: Optional[str] = None
+    items: list[CapitalCallItemCreate]
 
 
 class CapitalCallItemUpdate(BaseModel):
@@ -48,6 +62,7 @@ class CapitalCallItemUpdate(BaseModel):
     amount: Optional[int] = None
     paid: Optional[bool] = None
     paid_date: Optional[date] = None
+    memo: Optional[str] = None
 
 
 class CapitalCallItemResponse(BaseModel):
@@ -57,12 +72,39 @@ class CapitalCallItemResponse(BaseModel):
     amount: int
     paid: bool
     paid_date: Optional[date] = None
+    memo: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
 
 class CapitalCallItemListItem(CapitalCallItemResponse):
     lp_name: str = ""
+
+
+class CapitalCallSummaryCall(BaseModel):
+    id: int
+    round: int
+    call_date: Optional[str] = None
+    call_type: str
+    total_amount: float
+    request_percent: Optional[float] = None
+    paid_count: int
+    total_count: int
+    paid_amount: float
+    latest_paid_date: Optional[str] = None
+    is_fully_paid: bool
+    paid_on_time: bool
+    is_due: bool
+    is_overdue_unpaid: bool
+    commitment_ratio: float
+    memo: Optional[str] = None
+
+
+class CapitalCallSummaryResponse(BaseModel):
+    fund_id: int
+    commitment_total: float
+    total_paid_in: float
+    calls: list[CapitalCallSummaryCall]
 
 
 class DistributionCreate(BaseModel):

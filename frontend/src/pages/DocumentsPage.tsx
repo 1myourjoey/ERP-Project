@@ -10,6 +10,7 @@ import {
   type Company,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 function dueBadge(daysRemaining: number | null) {
   if (daysRemaining == null) return null
@@ -110,7 +111,7 @@ export default function DocumentsPage() {
 
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         {isLoading ? (
-          <div className="loading-state"><div className="loading-spinner" /></div>
+          <PageLoading />
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs">
@@ -166,6 +167,8 @@ export default function DocumentsPage() {
     </div>
   )
 }
+
+
 
 
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 
 class WorkLogDetailItem(BaseModel):
@@ -43,6 +43,7 @@ class WorkLogUpdate(BaseModel):
     estimated_time: Optional[str] = None
     actual_time: Optional[str] = None
     time_diff: Optional[str] = None
+    task_id: Optional[int] = None
     details: Optional[list[WorkLogDetailItem]] = None
     lessons: Optional[list[WorkLogLessonItem]] = None
     follow_ups: Optional[list[WorkLogFollowUpItem]] = None
@@ -50,6 +51,7 @@ class WorkLogUpdate(BaseModel):
 
 class WorkLogDetailResponse(BaseModel):
     id: int
+    worklog_id: int
     content: str
     order: int
     model_config = {"from_attributes": True}
@@ -57,6 +59,7 @@ class WorkLogDetailResponse(BaseModel):
 
 class WorkLogLessonResponse(BaseModel):
     id: int
+    worklog_id: int
     content: str
     order: int
     model_config = {"from_attributes": True}
@@ -64,6 +67,7 @@ class WorkLogLessonResponse(BaseModel):
 
 class WorkLogFollowUpResponse(BaseModel):
     id: int
+    worklog_id: int
     content: str
     target_date: Optional[date] = None
     order: int
@@ -87,6 +91,43 @@ class WorkLogResponse(BaseModel):
     follow_ups: list[WorkLogFollowUpResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class WorkLogStatsResponse(BaseModel):
+    total: int
+    completed: int
+    in_progress: int
+    by_category: dict[str, int]
+
+
+class WorkLogTimeAccuracy(BaseModel):
+    over: int
+    under: int
+    accurate: int
+
+
+class WorkLogStatusCounts(BaseModel):
+    completed: int
+    in_progress: int
+
+
+class WorkLogFollowUpRate(BaseModel):
+    total: int
+    completed: int
+
+
+class WorkLogInsightsResponse(BaseModel):
+    period: Literal["week", "month", "quarter"]
+    total_logs: int
+    time_by_category: dict[str, int]
+    time_accuracy: WorkLogTimeAccuracy
+    daily_counts: dict[str, int]
+    category_counts: dict[str, int]
+    status_counts: WorkLogStatusCounts
+    weekday_counts: dict[int, int]
+    recent_lessons: list[str]
+    follow_up_rate: WorkLogFollowUpRate
+    category_avg_time: dict[str, int]
 
 
 WORKLOG_CATEGORIES = [

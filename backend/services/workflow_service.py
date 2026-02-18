@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from functools import lru_cache
 
 from sqlalchemy.orm import Session
@@ -143,6 +143,7 @@ def instantiate_workflow(
     investment_id: int | None = None,
     company_id: int | None = None,
     fund_id: int | None = None,
+    gp_entity_id: int | None = None,
     notice_overrides: dict[str, int] | None = None,
 ) -> WorkflowInstance:
     instance = WorkflowInstance(
@@ -153,6 +154,7 @@ def instantiate_workflow(
         investment_id=investment_id,
         company_id=company_id,
         fund_id=fund_id,
+        gp_entity_id=gp_entity_id,
     )
     db.add(instance)
     db.flush()  # Get instance.id.
@@ -181,6 +183,11 @@ def instantiate_workflow(
             status="pending",
             workflow_instance_id=instance.id,
             workflow_step_order=step.order,
+            fund_id=fund_id,
+            investment_id=investment_id,
+            gp_entity_id=gp_entity_id,
+            is_notice=step.is_notice,
+            is_report=step.is_report,
         )
         db.add(task)
         db.flush()
@@ -232,3 +239,77 @@ def instantiate_workflow(
     db.commit()
     db.refresh(instance)
     return instance
+
+
+def _step_sort_key(step_instance: WorkflowStepInstance) -> tuple[int, int]:
+    step_order = (
+        step_instance.step.order
+        if step_instance.step and step_instance.step.order is not None
+        else 10**9
+    )
+    return (step_order, step_instance.id or 0)
+
+
+def reconcile_workflow_instance_state(db: Session, instance: WorkflowInstance) -> bool:
+    """Reconcile workflow-step status with linked task status.
+
+    Historical data may contain mismatches caused by task-level complete/undo calls.
+    We treat linked task status as source of truth for completed/pending transitions.
+    """
+    if instance.status == "cancelled":
+        return False
+
+    changed = False
+
+    for step_instance in instance.step_instances:
+        if step_instance.status == "skipped" or not step_instance.task_id:
+            continue
+
+        task = db.get(Task, step_instance.task_id)
+        if not task:
+            continue
+
+        is_task_completed = task.status == "completed"
+
+        if is_task_completed and step_instance.status != "completed":
+            step_instance.status = "completed"
+            step_instance.completed_at = task.completed_at or datetime.now()
+            step_instance.actual_time = task.actual_time
+            changed = True
+            continue
+
+        if (not is_task_completed) and step_instance.status == "completed":
+            step_instance.status = "pending"
+            step_instance.completed_at = None
+            step_instance.actual_time = None
+            step_instance.notes = None
+            changed = True
+
+    ordered_steps = sorted(instance.step_instances, key=_step_sort_key)
+    open_steps = [row for row in ordered_steps if row.status not in ("completed", "skipped")]
+
+    if open_steps:
+        first_open = open_steps[0]
+        for row in ordered_steps:
+            if row.status == "in_progress" and row.id != first_open.id:
+                row.status = "pending"
+                changed = True
+        if first_open.status == "pending":
+            first_open.status = "in_progress"
+            changed = True
+
+        if instance.status != "active":
+            instance.status = "active"
+            changed = True
+        if instance.completed_at is not None:
+            instance.completed_at = None
+            changed = True
+    else:
+        if instance.status != "completed":
+            instance.status = "completed"
+            changed = True
+        if instance.completed_at is None:
+            instance.completed_at = datetime.now()
+            changed = True
+
+    return changed

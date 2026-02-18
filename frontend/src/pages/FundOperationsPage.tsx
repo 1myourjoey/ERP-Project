@@ -8,11 +8,14 @@ import {
   createCapitalCallItem,
   createDistribution,
   createDistributionItem,
+  createFundLP,
+  createLPTransfer,
   deleteAssembly,
   deleteCapitalCall,
   deleteCapitalCallItem,
   deleteDistribution,
   deleteDistributionItem,
+  deleteFundLP,
   fetchAssemblies,
   fetchCapitalCallItems,
   fetchCapitalCalls,
@@ -21,11 +24,15 @@ import {
   fetchFund,
   fetchFundPerformance,
   fetchFunds,
+  fetchLPTransfers,
+  completeLPTransfer,
   updateAssembly,
   updateCapitalCall,
   updateCapitalCallItem,
   updateDistribution,
   updateDistributionItem,
+  updateFundLP,
+  updateLPTransfer,
   type Assembly,
   type AssemblyInput,
   type CapitalCall,
@@ -39,9 +46,13 @@ import {
   type Fund,
   type FundPerformance,
   type LP,
+  type LPInput,
+  type LPTransfer,
+  type LPTransferInput,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import CapitalCallDetail from '../components/CapitalCallDetail'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -92,6 +103,22 @@ const CALL_TYPE_OPTIONS = ['regular', 'additional', 'manager_closure', 'other']
 const DIST_TYPE_OPTIONS = ['cash', 'principal', 'profit', 'in_kind']
 const ASSEMBLY_TYPE_OPTIONS = ['founding', 'regular', 'special']
 const ASSEMBLY_STATUS_OPTIONS = ['planned', 'scheduled', 'deliberating', 'approved', 'rejected', 'completed']
+const LP_TRANSFER_STATUS_LABEL: Record<string, string> = {
+  pending: '대기',
+  in_progress: '진행 중',
+  completed: '완료',
+  cancelled: '취소',
+}
+
+const EMPTY_LP_FORM: LPInput = {
+  name: '',
+  type: '기관투자자',
+  commitment: null,
+  paid_in: null,
+  business_number: '',
+  address: '',
+  contact: '',
+}
 
 function labelCallType(value: string | null | undefined): string {
   if (!value) return '-'
@@ -116,6 +143,113 @@ function Section({ title, right, children }: { title: string; right?: ReactNode;
         {right}
       </div>
       {children}
+    </div>
+  )
+}
+
+function LPTransferModal({
+  fromLp,
+  lps,
+  loading,
+  onSubmit,
+  onCancel,
+}: {
+  fromLp: LP
+  lps: LP[]
+  loading: boolean
+  onSubmit: (data: LPTransferInput) => void
+  onCancel: () => void
+}) {
+  const [useExistingLp, setUseExistingLp] = useState(true)
+  const [toLpId, setToLpId] = useState<number | ''>('')
+  const [toLpName, setToLpName] = useState('')
+  const [toLpType, setToLpType] = useState('기관투자자')
+  const [toLpBusinessNumber, setToLpBusinessNumber] = useState('')
+  const [toLpAddress, setToLpAddress] = useState('')
+  const [toLpContact, setToLpContact] = useState('')
+  const [transferAmount, setTransferAmount] = useState<number>(0)
+  const [transferDate, setTransferDate] = useState(todayIso())
+  const [notes, setNotes] = useState('')
+
+  const submit = () => {
+    if (transferAmount <= 0) return
+    if (useExistingLp) {
+      if (!toLpId || toLpId === fromLp.id) return
+      onSubmit({
+        from_lp_id: fromLp.id,
+        to_lp_id: toLpId,
+        transfer_amount: transferAmount,
+        transfer_date: transferDate || null,
+        notes: notes.trim() || null,
+      })
+      return
+    }
+    if (!toLpName.trim() || !toLpType.trim()) return
+    onSubmit({
+      from_lp_id: fromLp.id,
+      to_lp_name: toLpName.trim(),
+      to_lp_type: toLpType.trim(),
+      to_lp_business_number: toLpBusinessNumber.trim() || null,
+      to_lp_address: toLpAddress.trim() || null,
+      to_lp_contact: toLpContact.trim() || null,
+      transfer_amount: transferAmount,
+      transfer_date: transferDate || null,
+      notes: notes.trim() || null,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900">LP 양수양도</h3>
+          <button onClick={onCancel} className="secondary-btn">닫기</button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded border border-gray-200 bg-gray-50 p-2 text-sm">
+            양도인: <span className="font-medium text-gray-800">{fromLp.name}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <input type="number" value={transferAmount || ''} onChange={(e) => setTransferAmount(Number(e.target.value || 0))} placeholder="양도 금액" className="rounded border px-2 py-1.5 text-sm" />
+            <input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} className="rounded border px-2 py-1.5 text-sm" />
+          </div>
+          <div className="rounded border border-gray-200 p-2">
+            <div className="mb-2 flex items-center gap-3 text-xs">
+              <label className="inline-flex items-center gap-1">
+                <input type="radio" checked={useExistingLp} onChange={() => setUseExistingLp(true)} />
+                기존 LP
+              </label>
+              <label className="inline-flex items-center gap-1">
+                <input type="radio" checked={!useExistingLp} onChange={() => setUseExistingLp(false)} />
+                신규 LP
+              </label>
+            </div>
+            {useExistingLp ? (
+              <select value={toLpId} onChange={(e) => setToLpId(e.target.value ? Number(e.target.value) : '')} className="w-full rounded border px-2 py-1.5 text-sm">
+                <option value="">양수 LP 선택</option>
+                {lps.filter((lp) => lp.id !== fromLp.id).map((lp) => (
+                  <option key={lp.id} value={lp.id}>{lp.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <input value={toLpName} onChange={(e) => setToLpName(e.target.value)} placeholder="양수 LP명" className="rounded border px-2 py-1.5 text-sm" />
+                <input value={toLpType} onChange={(e) => setToLpType(e.target.value)} placeholder="양수 LP 유형" className="rounded border px-2 py-1.5 text-sm" />
+                <input value={toLpBusinessNumber} onChange={(e) => setToLpBusinessNumber(e.target.value)} placeholder="사업자등록번호/생년월일" className="rounded border px-2 py-1.5 text-sm" />
+                <input value={toLpAddress} onChange={(e) => setToLpAddress(e.target.value)} placeholder="주소" className="rounded border px-2 py-1.5 text-sm" />
+                <input value={toLpContact} onChange={(e) => setToLpContact(e.target.value)} placeholder="연락처" className="rounded border px-2 py-1.5 text-sm md:col-span-2" />
+              </div>
+            )}
+          </div>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="비고" className="w-full rounded border px-2 py-1.5 text-sm" />
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onCancel} className="secondary-btn">취소</button>
+          <button onClick={submit} disabled={loading} className="primary-btn">{loading ? '처리 중...' : '양수양도 시작'}</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -179,6 +313,10 @@ export default function FundOperationsPage() {
   const [editDistribution, setEditDistribution] = useState<DistributionEditState | null>(null)
   const [editDistributionItem, setEditDistributionItem] = useState<DistributionItemEditState | null>(null)
   const [editAssembly, setEditAssembly] = useState<AssemblyEditState | null>(null)
+  const [showCreateLP, setShowCreateLP] = useState(false)
+  const [editingLPId, setEditingLPId] = useState<number | null>(null)
+  const [lpForm, setLpForm] = useState<LPInput>(EMPTY_LP_FORM)
+  const [transferSourceLp, setTransferSourceLp] = useState<LP | null>(null)
 
   const [newCall, setNewCall] = useState<CapitalCallInput>({ fund_id: 0, call_date: todayIso(), call_type: 'regular', total_amount: 0, memo: '' })
   const [newCallItem, setNewCallItem] = useState<CapitalCallItemInput>({ lp_id: 0, amount: 0, paid: false, paid_date: null })
@@ -207,6 +345,16 @@ export default function FundOperationsPage() {
   const { data: distributions } = useQuery<Distribution[]>({ queryKey: ['distributions', selectedFundId], queryFn: () => fetchDistributions({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
   const { data: distributionItems } = useQuery({ queryKey: ['distributionItems', distExpandedId], queryFn: () => fetchDistributionItems(distExpandedId as number), enabled: !!distExpandedId })
   const { data: assemblies } = useQuery<Assembly[]>({ queryKey: ['assemblies', selectedFundId], queryFn: () => fetchAssemblies({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
+  const { data: lpTransfers = [] } = useQuery<LPTransfer[]>({
+    queryKey: ['lpTransfers', selectedFundId],
+    queryFn: () => fetchLPTransfers(selectedFundId as number),
+    enabled: !!selectedFundId,
+  })
+
+  const lpCommitmentSum = useMemo(() => lps.reduce((sum, lp) => sum + Number(lp.commitment ?? 0), 0), [lps])
+  const commitmentTotal = Number(fundDetail?.commitment_total ?? 0)
+  const commitmentDiff = commitmentTotal - lpCommitmentSum
+  const isCommitmentMatched = Math.abs(commitmentDiff) < 1
 
   const createCallMut = useMutation({
     mutationFn: (data: CapitalCallInput) => createCapitalCall(data.fund_id, {
@@ -223,9 +371,39 @@ export default function FundOperationsPage() {
   })
   const updateCallMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<CapitalCallInput> }) => updateCapitalCall(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); setEditingCallId(null); setEditCall(null); addToast('success', '출자 요청을 수정했습니다.') } })
   const deleteCallMut = useMutation({ mutationFn: (id: number) => deleteCapitalCall(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); addToast('success', '출자 요청을 삭제했습니다.') } })
-  const createCallItemMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: CapitalCallItemInput }) => createCapitalCallItem(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] }); addToast('success', 'LP 항목을 추가했습니다.') } })
-  const deleteCallItemMut = useMutation({ mutationFn: ({ callId, itemId }: { callId: number; itemId: number }) => deleteCapitalCallItem(callId, itemId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] }); addToast('success', 'LP 항목을 삭제했습니다.') } })
-  const updateCallItemMut = useMutation({ mutationFn: ({ callId, itemId, data }: { callId: number; itemId: number; data: Partial<CapitalCallItemInput> }) => updateCapitalCallItem(callId, itemId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] }); setEditingCallItemId(null); setEditCallItem(null); addToast('success', 'LP 항목을 수정했습니다.') } })
+  const createCallItemMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CapitalCallItemInput }) => createCapitalCallItem(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      addToast('success', 'LP 항목을 추가했습니다.')
+    },
+  })
+  const deleteCallItemMut = useMutation({
+    mutationFn: ({ callId, itemId }: { callId: number; itemId: number }) => deleteCapitalCallItem(callId, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      addToast('success', 'LP 항목을 삭제했습니다.')
+    },
+  })
+  const updateCallItemMut = useMutation({
+    mutationFn: ({ callId, itemId, data }: { callId: number; itemId: number; data: Partial<CapitalCallItemInput> }) =>
+      updateCapitalCallItem(callId, itemId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      setEditingCallItemId(null)
+      setEditCallItem(null)
+      addToast('success', 'LP 항목을 수정했습니다.')
+    },
+  })
 
   const createDistMut = useMutation({ mutationFn: (data: DistributionInput) => createDistribution(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['distributions', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); addToast('success', '배분을 등록했습니다.') } })
   const updateDistMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<DistributionInput> }) => updateDistribution(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['distributions', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); setEditingDistId(null); setEditDistribution(null); addToast('success', '배분을 수정했습니다.') } })
@@ -237,6 +415,62 @@ export default function FundOperationsPage() {
   const createAssemblyMut = useMutation({ mutationFn: (data: AssemblyInput) => createAssembly(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assemblies', selectedFundId] }); addToast('success', '총회를 등록했습니다.') } })
   const updateAssemblyMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<AssemblyInput> }) => updateAssembly(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assemblies', selectedFundId] }); setEditingAssemblyId(null); setEditAssembly(null); addToast('success', '총회를 수정했습니다.') } })
   const deleteAssemblyMut = useMutation({ mutationFn: (id: number) => deleteAssembly(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assemblies', selectedFundId] }); addToast('success', '총회를 삭제했습니다.') } })
+  const createLPMut = useMutation({
+    mutationFn: (data: LPInput) => createFundLP(selectedFundId as number, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      setShowCreateLP(false)
+      setLpForm(EMPTY_LP_FORM)
+      addToast('success', 'LP를 추가했습니다.')
+    },
+  })
+  const updateLPMut = useMutation({
+    mutationFn: ({ lpId, data }: { lpId: number; data: Partial<LPInput> }) => updateFundLP(selectedFundId as number, lpId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      setEditingLPId(null)
+      addToast('success', 'LP를 수정했습니다.')
+    },
+  })
+  const deleteLPMut = useMutation({
+    mutationFn: (lpId: number) => deleteFundLP(selectedFundId as number, lpId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      addToast('success', 'LP를 삭제했습니다.')
+    },
+  })
+  const createLPTransferMut = useMutation({
+    mutationFn: (data: LPTransferInput) => createLPTransfer(selectedFundId as number, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setTransferSourceLp(null)
+      addToast('success', 'LP 양수양도 워크플로우를 시작했습니다.')
+    },
+  })
+  const completeLPTransferMut = useMutation({
+    mutationFn: (transferId: number) => completeLPTransfer(selectedFundId as number, transferId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      addToast('success', 'LP 양수양도를 완료 처리했습니다.')
+    },
+  })
+  const cancelLPTransferMut = useMutation({
+    mutationFn: (transferId: number) => updateLPTransfer(selectedFundId as number, transferId, { status: 'cancelled' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', selectedFundId] })
+      addToast('success', 'LP 양수양도를 취소 처리했습니다.')
+    },
+  })
 
   const toggleCallEdit = (row: CapitalCall) => {
     if (editingCallId === row.id) {
@@ -314,6 +548,32 @@ export default function FundOperationsPage() {
     })
   }
 
+  const startCreateLP = () => {
+    setShowCreateLP(true)
+    setEditingLPId(null)
+    setLpForm(EMPTY_LP_FORM)
+  }
+
+  const startEditLP = (lp: LP) => {
+    setShowCreateLP(false)
+    setEditingLPId(lp.id)
+    setLpForm({
+      name: lp.name,
+      type: lp.type,
+      commitment: lp.commitment,
+      paid_in: lp.paid_in,
+      business_number: lp.business_number,
+      address: lp.address,
+      contact: lp.contact,
+    })
+  }
+
+  const resetLPForm = () => {
+    setEditingLPId(null)
+    setShowCreateLP(false)
+    setLpForm(EMPTY_LP_FORM)
+  }
+
   return (
     <div className="page-container space-y-4">
       <div className="page-header">
@@ -348,6 +608,138 @@ export default function FundOperationsPage() {
           )}
         </div>
       </div>
+
+      <Section title="LP 관리" right={<button onClick={startCreateLP} className="primary-btn">LP 추가</button>}>
+        {(showCreateLP || editingLPId !== null) && (
+          <div className="mb-3 rounded border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+              <input value={lpForm.name || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="LP명" className="rounded border px-2 py-1.5 text-sm" />
+              <input value={lpForm.type || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, type: e.target.value }))} placeholder="유형" className="rounded border px-2 py-1.5 text-sm" />
+              <input type="number" value={lpForm.commitment ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="출자약정액" className="rounded border px-2 py-1.5 text-sm" />
+              <input type="number" value={lpForm.paid_in ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입출자금" className="rounded border px-2 py-1.5 text-sm" />
+              <input value={lpForm.business_number || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, business_number: e.target.value }))} placeholder="사업자등록번호/생년월일" className="rounded border px-2 py-1.5 text-sm" />
+              <input value={lpForm.address || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="주소" className="rounded border px-2 py-1.5 text-sm" />
+              <input value={lpForm.contact || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="rounded border px-2 py-1.5 text-sm md:col-span-2" />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const payload: LPInput = {
+                    name: lpForm.name?.trim() || '',
+                    type: lpForm.type?.trim() || '',
+                    commitment: lpForm.commitment ?? null,
+                    paid_in: lpForm.paid_in ?? null,
+                    business_number: lpForm.business_number?.trim() || null,
+                    address: lpForm.address?.trim() || null,
+                    contact: lpForm.contact?.trim() || null,
+                  }
+                  if (!payload.name || !payload.type || !selectedFundId) return
+                  if (editingLPId != null) {
+                    updateLPMut.mutate({ lpId: editingLPId, data: payload })
+                  } else {
+                    createLPMut.mutate(payload)
+                  }
+                }}
+                className="primary-btn"
+                disabled={createLPMut.isPending || updateLPMut.isPending || !selectedFundId}
+              >
+                저장
+              </button>
+              <button onClick={resetLPForm} className="secondary-btn">취소</button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500">
+              <tr>
+                <th className="px-2 py-2 text-left">LP명</th>
+                <th className="px-2 py-2 text-left">유형</th>
+                <th className="px-2 py-2 text-right">출자약정액</th>
+                <th className="px-2 py-2 text-right">납입출자금</th>
+                <th className="px-2 py-2 text-left">사업자등록번호</th>
+                <th className="px-2 py-2 text-left">주소</th>
+                <th className="px-2 py-2 text-left">연락처</th>
+                <th className="px-2 py-2 text-left">관리</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {lps.map((lp) => (
+                <tr key={lp.id}>
+                  <td className="px-2 py-2">{lp.name}</td>
+                  <td className="px-2 py-2">{lp.type}</td>
+                  <td className="px-2 py-2 text-right">{formatKRW(lp.commitment ?? null)}</td>
+                  <td className="px-2 py-2 text-right">{formatKRW(lp.paid_in ?? null)}</td>
+                  <td className="px-2 py-2">{lp.business_number || '-'}</td>
+                  <td className="px-2 py-2">{lp.address || '-'}</td>
+                  <td className="px-2 py-2">{lp.contact || '-'}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => startEditLP(lp)} className="secondary-btn">수정</button>
+                      <button onClick={() => setTransferSourceLp(lp)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">양수양도</button>
+                      <button onClick={() => deleteLPMut.mutate(lp.id)} className="danger-btn">삭제</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!lps.length && (
+                <tr>
+                  <td colSpan={8} className="px-2 py-4 text-center text-gray-400">등록된 LP가 없습니다.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-2 text-xs text-gray-500">
+          LP 약정 합계: {formatKRW(lpCommitmentSum)} | 총 약정액: {formatKRW(fundDetail?.commitment_total ?? null)} | {isCommitmentMatched ? '✅ 정합' : '⚠️ 차이 있음'}
+        </div>
+
+        <div className="mt-3 rounded border border-gray-200 p-2">
+          <p className="mb-2 text-xs font-semibold text-gray-600">LP 양수양도 이력</p>
+          {!lpTransfers.length ? (
+            <p className="text-xs text-gray-400">등록된 양수양도 이력이 없습니다.</p>
+          ) : (
+            <div className="space-y-1">
+              {lpTransfers.map((transfer) => (
+                <div key={transfer.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2 text-xs">
+                  <div className="min-w-0">
+                    <p className="truncate text-gray-700">{transfer.from_lp_name || transfer.from_lp_id} → {transfer.to_lp_name || transfer.to_lp_id || '신규 LP'} | {formatKRW(transfer.transfer_amount)}</p>
+                    <p className="text-gray-500">{transfer.transfer_date || '-'} | {transfer.workflow_instance_id ? `WF #${transfer.workflow_instance_id}` : '워크플로 미연결'}</p>
+                  </div>
+                  <div className="ml-2 flex items-center gap-1">
+                    <span className={`rounded px-1.5 py-0.5 ${
+                      transfer.status === 'completed'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : transfer.status === 'cancelled'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {LP_TRANSFER_STATUS_LABEL[transfer.status] || transfer.status}
+                    </span>
+                    {transfer.status !== 'completed' && (
+                      <button onClick={() => completeLPTransferMut.mutate(transfer.id)} className="rounded px-2 py-0.5 text-[11px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                        완료
+                      </button>
+                    )}
+                    {transfer.status !== 'cancelled' && transfer.status !== 'completed' && (
+                      <button onClick={() => cancelLPTransferMut.mutate(transfer.id)} className="rounded px-2 py-0.5 text-[11px] bg-red-50 text-red-700 hover:bg-red-100">
+                        취소
+                      </button>
+                    )}
+                    {transfer.workflow_instance_id && (
+                      <button onClick={() => navigate('/workflows', { state: { expandInstanceId: transfer.workflow_instance_id } })} className="rounded px-2 py-0.5 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        이동
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
 
       <Section title="성과지표" right={<input type="date" value={performanceDate} onChange={(e) => setPerformanceDate(e.target.value)} className="rounded border px-2 py-1 text-xs" />}>
         {!performance ? <p className="text-sm text-gray-400">데이터가 없습니다.</p> : (
@@ -399,6 +791,14 @@ export default function FundOperationsPage() {
               )}
               {callExpandedId === row.id && (
                 <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
+                  <CapitalCallDetail
+                    capitalCallId={row.id}
+                    commitmentTotal={Number(fundDetail?.commitment_total ?? 0)}
+                    editable={true}
+                  />
+                  <div className="border-t border-gray-200 pt-2">
+                    <p className="mb-1 text-xs font-semibold text-gray-500">LP 항목 관리</p>
+                  </div>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                     <select value={newCallItem.lp_id || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
                       <option value="">LP</option>
@@ -556,6 +956,15 @@ export default function FundOperationsPage() {
           ))}
         </div>
       </Section>
+      {transferSourceLp && selectedFundId && (
+        <LPTransferModal
+          fromLp={transferSourceLp}
+          lps={lps}
+          loading={createLPTransferMut.isPending}
+          onSubmit={(data) => createLPTransferMut.mutate(data)}
+          onCancel={() => setTransferSourceLp(null)}
+        />
+      )}
     </div>
   )
 }

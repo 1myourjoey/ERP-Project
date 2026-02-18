@@ -5,11 +5,14 @@ import {
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
+  fetchTask,
   type CalendarEventInput,
   type CalendarEvent,
+  type Task,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import PageLoading from '../components/PageLoading'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -70,8 +73,8 @@ function isUrgentDate(date: string) {
 }
 
 function eventTone(event: CalendarEvent) {
-  if (event.event_type === 'task') return 'bg-blue-100 text-blue-700'
   if (event.status === 'completed') return 'bg-green-100 text-green-700'
+  if (event.event_type === 'task') return 'bg-blue-100 text-blue-700'
   if (event.status !== 'completed' && isUrgentDate(event.date)) return 'bg-red-100 text-red-700'
   return 'bg-indigo-100 text-indigo-700'
 }
@@ -84,6 +87,9 @@ export default function CalendarPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [createDate, setCreateDate] = useState(formatDate(new Date()))
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [taskDetail, setTaskDetail] = useState<Task | null>(null)
+  const [completionTask, setCompletionTask] = useState<Task | null>(null)
+  const [taskModalLoading, setTaskModalLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()))
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
@@ -151,6 +157,22 @@ export default function CalendarPage() {
     setCreateDate(date)
     setEditingId(null)
     setShowCreate(true)
+  }
+
+  const openTaskDetailModal = async (taskId: number) => {
+    setTaskModalLoading(true)
+    try {
+      const task = await fetchTask(taskId)
+      if (task.status === 'completed') {
+        setCompletionTask(task)
+      } else {
+        setTaskDetail(task)
+      }
+    } catch {
+      addToast('error', '업무 상세 정보를 불러오지 못했습니다.')
+    } finally {
+      setTaskModalLoading(false)
+    }
   }
 
   return (
@@ -238,38 +260,67 @@ export default function CalendarPage() {
             ))}
 
             {isLoading ? (
-              <div className="col-span-7 loading-state"><div className="loading-spinner" /></div>
+              <div className="col-span-7"><PageLoading /></div>
             ) : (
               cells.map(({ date, inCurrentMonth }) => {
                 const dateKey = formatDate(date)
-                const dayEvents = eventsByDate.get(dateKey) || []
+                const dayEvents = (eventsByDate.get(dateKey) || []).filter((event) => event.status !== 'completed')
                 const isToday = isSameDate(date, new Date())
                 const isSelected = selectedDate === dateKey
 
                 return (
-                  <button
+                  <div
                     key={dateKey}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedDate(dateKey)
                       setEditingId(null)
                     }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedDate(dateKey)
+                        setEditingId(null)
+                      }
+                    }}
                     className={`bg-white p-2 min-h-[110px] text-left align-top transition-colors ${
                       inCurrentMonth ? '' : 'text-gray-300 bg-gray-50'
-                    } ${isSelected ? 'ring-2 ring-inset ring-blue-400' : 'hover:bg-gray-50'}`}
+                    } ${isSelected ? 'ring-2 ring-inset ring-blue-400' : 'hover:bg-gray-50'} cursor-pointer`}
                   >
                     <div className={`text-sm ${isToday ? 'bg-blue-50 font-bold text-blue-700 inline-block px-1.5 rounded' : ''}`}>
                       {date.getDate()}
                     </div>
                     <div className="mt-1 space-y-1">
-                      {dayEvents.slice(0, 2).map(event => (
-                        <div key={event.id} className={`text-[11px] px-1.5 py-0.5 rounded truncate ${eventTone(event)}`}>
-                          {event.task_id && event.quadrant ? `[${event.quadrant}] ` : ''}
-                          {event.title}
-                        </div>
-                      ))}
+                      {dayEvents.slice(0, 2).map(event => {
+                        const className = `text-[11px] px-1.5 py-0.5 rounded truncate ${eventTone(event)} ${
+                          event.status === 'completed' ? 'line-through opacity-60' : ''
+                        }`
+                        if (event.task_id) {
+                          return (
+                            <button
+                              key={event.id}
+                              onClick={(clickEvent) => {
+                                clickEvent.stopPropagation()
+                                openTaskDetailModal(event.task_id!)
+                              }}
+                              className={`w-full text-left ${className}`}
+                            >
+                              {event.task_id && event.quadrant ? `[${event.quadrant}] ` : ''}
+                              {event.title}
+                            </button>
+                          )
+                        }
+                        return (
+                          <div key={event.id} className={className}>
+                            {event.task_id && event.quadrant ? `[${event.quadrant}] ` : ''}
+                            {event.title}
+                          </div>
+                        )
+                      })}
                       {dayEvents.length > 2 && <p className="text-[11px] text-gray-400">+{dayEvents.length - 2}개 더</p>}
                     </div>
-                  </button>
+                  </div>
                 )
               })
             )}
@@ -307,7 +358,7 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className="text-sm font-medium text-gray-800">{event.title}</p>
+                            <p className={`text-sm font-medium text-gray-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">
                             {event.time || '-'} | {event.duration != null ? `${event.duration}분` : '-'} | {event.description || '-'}
@@ -318,7 +369,13 @@ export default function CalendarPage() {
                         </div>
                         <div className="flex gap-1 shrink-0">
                           {event.task_id ? (
-                            <span className="text-xs text-gray-400">업무 보드에서 관리</span>
+                            <button
+                              onClick={() => openTaskDetailModal(event.task_id!)}
+                              className="secondary-btn"
+                              disabled={taskModalLoading}
+                            >
+                              {taskModalLoading ? '로딩 중...' : event.status === 'completed' ? '완료 정보' : '상세 보기'}
+                            </button>
                           ) : (
                             <>
                               <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
@@ -340,7 +397,7 @@ export default function CalendarPage() {
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           {isLoading ? (
-            <div className="loading-state"><div className="loading-spinner" /></div>
+            <PageLoading />
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs">
@@ -368,7 +425,7 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className="font-medium text-gray-800">{event.title}</p>
+                            <p className={`font-medium text-gray-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                           </div>
                           <p className="text-xs text-gray-500">{event.description || '-'}</p>
                         </div>
@@ -383,7 +440,13 @@ export default function CalendarPage() {
                       {editingId !== event.id && (
                         <div className="flex gap-1">
                           {event.task_id ? (
-                            <span className="text-xs text-gray-400">업무 보드에서 관리</span>
+                            <button
+                              className="secondary-btn"
+                              onClick={() => openTaskDetailModal(event.task_id!)}
+                              disabled={taskModalLoading}
+                            >
+                              {taskModalLoading ? '로딩 중...' : event.status === 'completed' ? '완료 정보' : '상세 보기'}
+                            </button>
                           ) : (
                             <>
                               <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
@@ -408,6 +471,9 @@ export default function CalendarPage() {
           )}
         </div>
       )}
+
+      {taskDetail && <CalendarTaskDetailModal task={taskDetail} onClose={() => setTaskDetail(null)} />}
+      {completionTask && <CompletionInfoModal task={completionTask} onClose={() => setCompletionTask(null)} />}
     </div>
   )
 }
@@ -456,6 +522,51 @@ function EventForm({
     </div>
   )
 }
+
+function CalendarTaskDetailModal({ task, onClose }: { task: Task; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">업무 상세</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+        </div>
+        <div className="space-y-2 text-sm text-gray-700">
+          <div><span className="font-medium">업무명:</span> {task.title}</div>
+          <div><span className="font-medium">마감:</span> {task.deadline ? new Date(task.deadline).toLocaleString('ko-KR') : '-'}</div>
+          <div><span className="font-medium">예상 시간:</span> {task.estimated_time || '-'}</div>
+          <div><span className="font-medium">사분면:</span> {task.quadrant}</div>
+          <div><span className="font-medium">카테고리:</span> {task.category || '-'}</div>
+          <div><span className="font-medium">관련 대상:</span> {task.fund_name || task.gp_entity_name || '-'}</div>
+          {task.memo && <div><span className="font-medium">메모:</span> {task.memo}</div>}
+        </div>
+        <button onClick={onClose} className="mt-4 w-full primary-btn">닫기</button>
+      </div>
+    </div>
+  )
+}
+
+function CompletionInfoModal({ task, onClose }: { task: Task; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-emerald-700">완료된 업무</h3>
+        <div className="mt-3 space-y-2 text-sm">
+          <div><span className="text-gray-500">업무명:</span> {task.title}</div>
+          <div><span className="text-gray-500">완료 시간:</span> {task.completed_at ? new Date(task.completed_at).toLocaleString('ko-KR') : '-'}</div>
+          <div><span className="text-gray-500">실제 소요:</span> {task.actual_time || '-'}</div>
+          {task.memo && <div><span className="text-gray-500">업무 기록:</span> {task.memo}</div>}
+          {(task.fund_name || task.gp_entity_name) && (
+            <div><span className="text-gray-500">관련 대상:</span> {task.fund_name || task.gp_entity_name}</div>
+          )}
+        </div>
+        <button onClick={onClose} className="mt-4 w-full primary-btn">닫기</button>
+      </div>
+    </div>
+  )
+}
+
+
 
 
 

@@ -36,6 +36,7 @@ from models.vote_record import VoteRecord
 from models.workflow import Workflow, WorkflowDocument, WorkflowStep, WorkflowWarning
 from models.workflow_instance import WorkflowInstance
 from seed.seed_accounts import seed_accounts
+from seeds.document_templates import seed_document_templates
 from services.workflow_service import instantiate_workflow
 
 KRW_UNIT_SCALE = 1_000_000
@@ -912,6 +913,28 @@ def seed_workflow_templates(db: Session) -> list[Workflow]:
             "감사보고서",
         ],
     )
+    add_workflow(
+        name="조합 의사결정 시 LP 통지 및 보고",
+        category="LP보고",
+        trigger="조합 출자 요청 등록 시",
+        duration="약 1~2주",
+        steps=[
+            ("출자요청 확정 및 회람 대상 점검", "D-day", 0, "30m", "Q1", "대상 LP, 금액, 납입기한 최종 확인"),
+            ("LP 통지 공문 발송", "D-day", 0, "1h", "Q1", "출자요청 공문/납입 안내 발송"),
+            ("LP 회신 및 문의 대응", "D+1", 1, "1h", "Q1", "문의사항 답변 및 발송 누락 점검"),
+            ("납입 현황 점검 및 리마인드", "D+3", 3, "1h", "Q1", "미납 LP 대상 리마인드"),
+            ("납입 결과 보고 및 마감", "D+7", 7, "30m", "Q1", "납입 완료율 및 예외사항 보고"),
+        ],
+        documents=[
+            "출자금 납입 요청 공문",
+            "LP별 납입 요청 내역",
+            "납입 현황 점검표",
+        ],
+        warnings=[
+            "규약상 통지기간(영업일) 준수 여부를 반드시 확인하세요.",
+            "미납 LP 리마인드는 납입기한 전까지 반복 점검이 필요합니다.",
+        ],
+    )
 
     if workflows:
         db.add_all(workflows)
@@ -1517,6 +1540,7 @@ def seed_all(db: Session) -> None:
     seed_calendar_events(db, tasks)
 
     templates = seed_workflow_templates(db)
+    seed_document_templates(db)
     seed_workflow_instances(db, templates, funds, investments)
 
     seed_biz_reports(db, funds)

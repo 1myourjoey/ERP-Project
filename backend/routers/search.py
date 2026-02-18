@@ -10,11 +10,12 @@ from models.regular_report import RegularReport
 from models.task import Task
 from models.worklog import WorkLog
 from models.workflow_instance import WorkflowInstance
+from schemas.search import SearchResultResponse
 
 router = APIRouter(tags=["search"])
 
 
-@router.get("/api/search")
+@router.get("/api/search", response_model=list[SearchResultResponse])
 def search(q: str, db: Session = Depends(get_db)):
     keyword = (q or "").strip()
     if not keyword:

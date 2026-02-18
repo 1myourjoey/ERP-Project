@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, Plus, Trash2 } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import MiniCalendar from '../components/MiniCalendar'
-import TimeSelect, { HOUR_OPTIONS } from '../components/TimeSelect'
+import TimeSelect from '../components/TimeSelect'
+import { HOUR_OPTIONS } from '../components/timeOptions'
+import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import {
   completeTask,
   createTask,
   deleteTask,
   fetchFunds,
+  fetchTask,
   fetchTasks,
   fetchWorkflows,
   fetchTaskBoard,
@@ -770,7 +773,22 @@ export default function TaskBoardPage() {
     }
   }
 
-  if (isLoading) return <div className="loading-state"><div className="loading-spinner" /></div>
+  const handleMiniCalendarTaskClick = async (taskId: number) => {
+    const target = calendarTaskMap.get(taskId)
+    if (target) {
+      setDetailTask(target)
+      return
+    }
+
+    try {
+      const fetched = await fetchTask(taskId)
+      setDetailTask(fetched)
+    } catch {
+      addToast('error', '업무 상세 정보를 찾지 못했습니다.')
+    }
+  }
+
+  if (isLoading) return <PageLoading />
 
   return (
     <div className="page-container">
@@ -841,12 +859,7 @@ export default function TaskBoardPage() {
         <div className="w-full">
           <MiniCalendar
             onTaskClick={(taskId) => {
-              const target = calendarTaskMap.get(taskId)
-              if (!target) {
-                addToast('error', '업무 상세 정보를 찾지 못했습니다.')
-                return
-              }
-              setDetailTask(target)
+              void handleMiniCalendarTaskClick(taskId)
             }}
           />
         </div>
@@ -951,3 +964,4 @@ export default function TaskBoardPage() {
     </div>
   )
 }
+

@@ -1,4 +1,10 @@
-﻿# Python
+﻿# Templates (실제 문서 양식 원본 — 민감 자료)
+templates/
+
+# Embedded Python
+.python312-embed/
+
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/

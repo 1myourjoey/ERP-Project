@@ -32,19 +32,31 @@ from routers import (
     regular_reports,
     accounting,
     vote_records,
+    documents,
+    lp_transfers,
+    gp_entities,
 )
 
 def ensure_sqlite_compat_columns():
     if engine.dialect.name != "sqlite":
         return
 
+    def has_table(table: str) -> bool:
+        row = conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (table,),
+        ).fetchone()
+        return row is not None
+
     def has_column(table: str, col: str) -> bool:
+        if not has_table(table):
+            return False
         cols = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").fetchall()
         col_names = {row[1] for row in cols}
         return col in col_names
 
     with engine.begin() as conn:
-        if not has_column("workflow_warnings", "category"):
+        if has_table("workflow_warnings") and not has_column("workflow_warnings", "category"):
             conn.exec_driver_sql(
                 "ALTER TABLE workflow_warnings ADD COLUMN category VARCHAR DEFAULT 'warning'"
             )
@@ -52,15 +64,25 @@ def ensure_sqlite_compat_columns():
                 "UPDATE workflow_warnings SET category = 'warning' WHERE category IS NULL"
             )
 
-        if not has_column("workflow_instances", "investment_id"):
-            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN investment_id INTEGER")
-        if not has_column("workflow_instances", "company_id"):
-            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN company_id INTEGER")
-        if not has_column("workflow_instances", "fund_id"):
-            conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN fund_id INTEGER")
+        if has_table("workflow_instances"):
+            if not has_column("workflow_instances", "investment_id"):
+                conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN investment_id INTEGER")
+            if not has_column("workflow_instances", "company_id"):
+                conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN company_id INTEGER")
+            if not has_column("workflow_instances", "fund_id"):
+                conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN fund_id INTEGER")
+            if not has_column("workflow_instances", "gp_entity_id"):
+                conn.exec_driver_sql("ALTER TABLE workflow_instances ADD COLUMN gp_entity_id INTEGER")
 
-        if not has_column("investment_documents", "due_date"):
+        if has_table("investment_documents") and not has_column("investment_documents", "due_date"):
             conn.exec_driver_sql("ALTER TABLE investment_documents ADD COLUMN due_date DATE")
+
+        if has_table("document_templates") and not has_column("document_templates", "builder_name"):
+            conn.exec_driver_sql("ALTER TABLE document_templates ADD COLUMN builder_name VARCHAR")
+
+        if has_table("document_templates") and not has_column("document_templates", "custom_data"):
+            conn.exec_driver_sql("ALTER TABLE document_templates ADD COLUMN custom_data TEXT DEFAULT '{}'")
+            conn.exec_driver_sql("UPDATE document_templates SET custom_data = '{}' WHERE custom_data IS NULL")
 
         for table, column, sql_type in [
             ("funds", "maturity_date", "DATE"),
@@ -91,16 +113,25 @@ def ensure_sqlite_compat_columns():
             ("tasks", "category", "TEXT"),
             ("tasks", "fund_id", "INTEGER"),
             ("tasks", "investment_id", "INTEGER"),
+            ("tasks", "gp_entity_id", "INTEGER"),
+            ("capital_calls", "request_percent", "REAL"),
+            ("capital_call_items", "memo", "TEXT"),
+            ("lps", "business_number", "TEXT"),
+            ("lps", "address", "TEXT"),
         ]:
-            if not has_column(table, column):
+            if has_table(table) and not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
+    auto_create_tables = os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true"
+    if auto_create_tables:
         Base.metadata.create_all(bind=engine)
-        ensure_sqlite_compat_columns()
+
+    ensure_sqlite_compat_columns()
+
+    if auto_create_tables:
         db = SessionLocal()
         try:
             seed_accounts(db)
@@ -141,6 +172,9 @@ app.include_router(biz_reports.router)
 app.include_router(regular_reports.router)
 app.include_router(accounting.router)
 app.include_router(vote_records.router)
+app.include_router(documents.router)
+app.include_router(lp_transfers.router)
+app.include_router(gp_entities.router)
 
 
 @app.exception_handler(RequestValidationError)
