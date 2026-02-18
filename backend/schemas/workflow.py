@@ -24,6 +24,13 @@ class WorkflowDocumentCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class WorkflowDocumentInput(BaseModel):
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class WorkflowWarningCreate(BaseModel):
     content: str
     category: Optional[Literal["warning", "lesson", "tip"]] = "warning"

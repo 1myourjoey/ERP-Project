@@ -245,10 +245,52 @@ function TemplateModal({
   onClose: () => void
 }) {
   const [form, setForm] = useState<WorkflowTemplateInput>(initial)
+  const [documentDraft, setDocumentDraft] = useState({
+    name: '',
+    required: true,
+    timing: '',
+    notes: '',
+  })
 
   useEffect(() => {
     setForm(initial)
+    setDocumentDraft({
+      name: '',
+      required: true,
+      timing: '',
+      notes: '',
+    })
   }, [initial])
+
+  const addDocument = () => {
+    const name = documentDraft.name.trim()
+    if (!name) return
+    setForm((prev) => ({
+      ...prev,
+      documents: [
+        ...prev.documents,
+        {
+          name,
+          required: documentDraft.required,
+          timing: documentDraft.timing.trim() || null,
+          notes: documentDraft.notes.trim() || null,
+        },
+      ],
+    }))
+    setDocumentDraft({
+      name: '',
+      required: true,
+      timing: '',
+      notes: '',
+    })
+  }
+
+  const removeDocument = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((_, docIndex) => docIndex !== index),
+    }))
+  }
 
   const submit = () => {
     const payload: WorkflowTemplateInput = {
@@ -330,6 +372,72 @@ function TemplateModal({
             </div>
           ))}
           <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false }] }))} className="secondary-btn">+ 단계 추가</button>
+        </div>
+        <div className="space-y-2 rounded-lg border p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">서류</p>
+            <span className="text-xs text-gray-400">{form.documents.length}개</span>
+          </div>
+          {form.documents.length === 0 ? (
+            <p className="text-xs text-gray-400">등록된 서류가 없습니다.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {form.documents.map((doc, idx) => (
+                <div key={`${doc.name}-${idx}`} className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-gray-50 p-2 md:grid-cols-6">
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-medium text-gray-700">{doc.name || '-'}</p>
+                    <p className="text-[11px] text-gray-500">{doc.notes || '-'}</p>
+                  </div>
+                  <div className="text-xs text-gray-600">{doc.required ? '필수' : '선택'}</div>
+                  <div className="text-xs text-gray-600">{doc.timing || '-'}</div>
+                  <div className="md:col-span-2 text-right">
+                    <button onClick={() => removeDocument(idx)} className="text-xs text-red-600 hover:text-red-700">삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-2 rounded border border-dashed border-gray-300 p-2 md:grid-cols-6">
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">서류명</label>
+              <input
+                value={documentDraft.name}
+                onChange={e => setDocumentDraft(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="예: 출자 요청 공문"
+                className="w-full rounded border px-2 py-1 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label>
+              <input
+                value={documentDraft.timing}
+                onChange={e => setDocumentDraft(prev => ({ ...prev, timing: e.target.value }))}
+                placeholder="예: D-day"
+                className="w-full rounded border px-2 py-1 text-sm"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label>
+              <input
+                value={documentDraft.notes}
+                onChange={e => setDocumentDraft(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="선택 입력"
+                className="w-full rounded border px-2 py-1 text-sm"
+              />
+            </div>
+            <div className="flex items-end justify-between gap-2">
+              <label className="mb-1 flex items-center gap-1 text-xs text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={documentDraft.required}
+                  onChange={e => setDocumentDraft(prev => ({ ...prev, required: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                필수
+              </label>
+              <button onClick={addDocument} className="secondary-btn text-xs">추가</button>
+            </div>
+          </div>
         </div>
       </div>
       <div className="mt-3 flex shrink-0 gap-2">
@@ -581,6 +689,7 @@ function InstanceList({
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
       queryClient.invalidateQueries({ queryKey: ['fund'] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
@@ -601,6 +710,7 @@ function InstanceList({
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
       queryClient.invalidateQueries({ queryKey: ['fund'] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })

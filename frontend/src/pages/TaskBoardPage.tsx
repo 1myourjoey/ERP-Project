@@ -899,56 +899,50 @@ export default function TaskBoardPage() {
 
           {statusFilter === 'completed' && (
             <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1">
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-gray-500">연도</label>
-                <select
-                  value={completedYear}
-                  onChange={(e) => setCompletedYear(Number(e.target.value))}
-                  className="rounded border border-gray-200 px-2 py-1 text-xs"
-                >
-                  {completedYearOptions.map((year) => (
-                    <option key={year} value={year}>{year}년</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-gray-500">월</label>
-                <select
-                  value={completedMonth}
-                  onChange={(e) => setCompletedMonth(e.target.value ? Number(e.target.value) : '')}
-                  className="rounded border border-gray-200 px-2 py-1 text-xs"
-                >
-                  <option value="">전체 월</option>
-                  {Array.from({ length: 12 }, (_, idx) => (
-                    <option key={idx + 1} value={idx + 1}>{idx + 1}월</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                aria-label="완료 업무 연도 필터"
+                value={completedYear}
+                onChange={(e) => setCompletedYear(Number(e.target.value))}
+                className="rounded border border-gray-200 px-2 py-1 text-xs"
+              >
+                {completedYearOptions.map((year) => (
+                  <option key={year} value={year}>{year}년</option>
+                ))}
+              </select>
+              <select
+                aria-label="완료 업무 월 필터"
+                value={completedMonth}
+                onChange={(e) => setCompletedMonth(e.target.value ? Number(e.target.value) : '')}
+                className="rounded border border-gray-200 px-2 py-1 text-xs"
+              >
+                <option value="">전체 월</option>
+                {Array.from({ length: 12 }, (_, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{idx + 1}월</option>
+                ))}
+              </select>
             </div>
           )}
 
-          <div>
-            <label className="mb-1 block text-[10px] font-medium text-gray-500">대상</label>
-            <select
-              value={fundFilter}
-              onChange={(e) => setFundFilter(e.target.value)}
-              className="rounded border border-gray-200 px-2 py-1 text-xs"
-            >
-              <option value="">전체 대상</option>
-              {gpEntities.length > 0 && (
-                <optgroup label="고유계정">
-                  {gpEntities.map((entity) => (
-                    <option key={`gp-filter-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label="조합">
-                {fundsForFilter.map((fund) => (
-                  <option key={`fund-filter-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+          <select
+            aria-label="업무 대상 필터"
+            value={fundFilter}
+            onChange={(e) => setFundFilter(e.target.value)}
+            className="rounded border border-gray-200 px-2 py-1 text-xs"
+          >
+            <option value="">전체 대상</option>
+            {gpEntities.length > 0 && (
+              <optgroup label="고유계정">
+                {gpEntities.map((entity) => (
+                  <option key={`gp-filter-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
                 ))}
               </optgroup>
-            </select>
-          </div>
+            )}
+            <optgroup label="조합">
+              {fundsForFilter.map((fund) => (
+                <option key={`fund-filter-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+              ))}
+            </optgroup>
+          </select>
 
           <button
             onClick={() => setShowMiniCalendar((prev) => !prev)}

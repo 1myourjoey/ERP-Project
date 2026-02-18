@@ -41,6 +41,16 @@ export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
 // -- Workflows --
 export const fetchWorkflows = (): Promise<WorkflowListItem[]> => api.get('/workflows').then(r => r.data)
 export const fetchWorkflow = (id: number): Promise<WorkflowTemplate> => api.get(`/workflows/${id}`).then(r => r.data)
+export const listWorkflowDocuments = (workflowId: number): Promise<WorkflowDocument[]> =>
+  api.get(`/workflows/${workflowId}/documents`).then(r => r.data)
+export const addWorkflowDocument = (
+  workflowId: number,
+  data: WorkflowDocumentInput,
+): Promise<WorkflowDocument> => api.post(`/workflows/${workflowId}/documents`, data).then(r => r.data)
+export const deleteWorkflowDocument = (
+  workflowId: number,
+  documentId: number,
+): Promise<{ ok: boolean }> => api.delete(`/workflows/${workflowId}/documents/${documentId}`).then(r => r.data)
 export const createWorkflowTemplate = (data: WorkflowTemplateInput): Promise<WorkflowTemplate> => api.post('/workflows', data).then(r => r.data)
 export const updateWorkflowTemplate = (id: number, data: WorkflowTemplateInput): Promise<WorkflowTemplate> => api.put(`/workflows/${id}`, data).then(r => r.data)
 export const deleteWorkflowTemplate = (id: number): Promise<{ ok: boolean }> => api.delete(`/workflows/${id}`).then(r => r.data)

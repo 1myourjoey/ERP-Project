@@ -16,6 +16,8 @@ from schemas.workflow import (
     WorkflowResponse,
     WorkflowListItem,
     WorkflowCreateRequest,
+    WorkflowDocumentInput,
+    WorkflowDocumentResponse,
     WorkflowUpdateRequest,
     WorkflowInstantiateRequest,
     WorkflowInstanceUpdateRequest,
@@ -33,7 +35,7 @@ from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
 router = APIRouter(tags=["workflows"])
 
 
-CAPITAL_CALL_ID_PATTERN = re.compile(r"capital_call_id=(\d+)")
+CAPITAL_CALL_ID_PATTERN = re.compile(r"capital_call_id\s*[:=]\s*(\d+)")
 
 
 def _extract_capital_call_id(memo: str | None) -> int | None:
@@ -46,6 +48,11 @@ def _extract_capital_call_id(memo: str | None) -> int | None:
         return int(match.group(1))
     except (TypeError, ValueError):
         return None
+
+
+def _is_capital_call_payment_step(step_name: str | None) -> bool:
+    normalized = "".join((step_name or "").split())
+    return "납입확인" in normalized
 
 
 def _mark_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
@@ -118,6 +125,67 @@ def get_workflow(workflow_id: int, db: Session = Depends(get_db)):
     if not wf:
         raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
     return wf
+
+
+@router.get("/api/workflows/{workflow_id}/documents", response_model=list[WorkflowDocumentResponse])
+def list_workflow_documents(workflow_id: int, db: Session = Depends(get_db)):
+    workflow = db.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
+    return (
+        db.query(WorkflowDocument)
+        .filter(WorkflowDocument.workflow_id == workflow_id)
+        .order_by(WorkflowDocument.id.asc())
+        .all()
+    )
+
+
+@router.post("/api/workflows/{workflow_id}/documents", response_model=WorkflowDocumentResponse, status_code=201)
+def add_workflow_document(
+    workflow_id: int,
+    data: WorkflowDocumentInput,
+    db: Session = Depends(get_db),
+):
+    workflow = db.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="워크플로우를 찾을 수 없습니다")
+
+    name = (data.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="서류명은 필수입니다")
+
+    document = WorkflowDocument(
+        workflow_id=workflow_id,
+        name=name,
+        required=bool(data.required),
+        timing=data.timing,
+        notes=data.notes,
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+@router.delete("/api/workflows/{workflow_id}/documents/{document_id}")
+def delete_workflow_document(
+    workflow_id: int,
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    document = (
+        db.query(WorkflowDocument)
+        .filter(
+            WorkflowDocument.id == document_id,
+            WorkflowDocument.workflow_id == workflow_id,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
+    db.delete(document)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/api/workflows", response_model=WorkflowResponse, status_code=201)
@@ -421,7 +489,7 @@ def complete_step(
                 next_task.status = "in_progress"
 
     completed_wf_step = db.get(WorkflowStep, si.workflow_step_id)
-    if completed_wf_step and "납입 확인" in (completed_wf_step.name or ""):
+    if completed_wf_step and _is_capital_call_payment_step(completed_wf_step.name):
         capital_call_id = _extract_capital_call_id(instance.memo)
         if capital_call_id is not None:
             _mark_capital_call_items_paid(db, capital_call_id)
@@ -485,7 +553,7 @@ def undo_step_completion(
             task.actual_time = None
 
     completed_wf_step = db.get(WorkflowStep, step_instance.workflow_step_id)
-    if completed_wf_step and "납입 확인" in (completed_wf_step.name or ""):
+    if completed_wf_step and _is_capital_call_payment_step(completed_wf_step.name):
         capital_call_id = _extract_capital_call_id(instance.memo)
         if capital_call_id is not None:
             _rollback_capital_call_items_paid(db, capital_call_id)

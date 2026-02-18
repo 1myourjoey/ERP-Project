@@ -641,7 +641,7 @@ export default function DashboardPage() {
   const popupTitle = popupSection === 'today' ? '오늘 업무' : popupSection === 'tomorrow' ? '내일 업무' : popupSection === 'this_week' ? `이번 주 업무 (${thisWeekRangeLabel})` : popupSection === 'workflows' ? '진행 워크플로' : popupSection === 'documents' ? '미수집 서류' : popupSection === 'reports' ? '보고 마감' : '오늘 완료'
 
   return (
-    <div className={`page-container ${dashboardView === 'pipeline' ? 'space-y-4' : 'space-y-6'}`}>
+    <div className={dashboardView === 'pipeline' ? 'mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6' : 'page-container space-y-6'}>
       <div className="page-header mb-0">
         <div>
           <h2 className="page-title">
