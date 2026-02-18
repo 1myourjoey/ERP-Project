@@ -19,6 +19,7 @@ import {
   type TrialBalanceItem,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 
 type TabKey = 'accounts' | 'journal' | 'trial'
 
@@ -360,7 +361,7 @@ export default function AccountingPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">회계 관리</h2>
+      <h2 className="page-title">🧮 회계 관리</h2>
           <p className="page-subtitle">계정과목, 전표, 합계잔액표를 관리합니다.</p>
         </div>
         <div>
@@ -594,7 +595,7 @@ export default function AccountingPage() {
                   </div>
                 </div>
               ))}
-              {!entries?.length && <p className="text-sm text-gray-400">전표가 없습니다.</p>}
+          {!entries?.length && <EmptyState emoji="🧮" message="전표가 없어요" className="py-8" />}
             </div>
           </div>
         </div>
@@ -639,7 +640,9 @@ export default function AccountingPage() {
                   ))}
                   {!trialBalance?.length && (
                     <tr>
-                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-gray-400">데이터가 없습니다.</td>
+                <td colSpan={6} className="px-2 py-1">
+                  <EmptyState emoji="🧮" message="데이터가 없어요" className="py-8" />
+                </td>
                     </tr>
                   )}
                 </tbody>

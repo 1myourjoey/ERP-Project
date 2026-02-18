@@ -357,7 +357,7 @@ export default function InvestmentDetailPage() {
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-900">{instance.name}</p>
-                      <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{instance.progress}</span>
+                <span className="tag tag-indigo">{instance.progress}</span>
                     </div>
                     <p className="text-xs text-indigo-700 mt-0.5">{instance.workflow_name} | {labelStatus(instance.status)} | 시작일 {formatDate(instance.trigger_date)}</p>
                   </button>

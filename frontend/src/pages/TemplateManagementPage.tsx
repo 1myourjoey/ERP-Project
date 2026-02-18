@@ -245,7 +245,7 @@ export default function TemplateManagementPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Template Management</h2>
+      <h2 className="page-title">🧩 Template Management</h2>
           <p className="page-subtitle">Edit official templates and preview output before generating documents.</p>
         </div>
       </div>

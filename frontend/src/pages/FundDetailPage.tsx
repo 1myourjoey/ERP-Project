@@ -1286,7 +1286,7 @@ export default function FundDetailPage() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
                         {dueText(doc) && (
-                          <span className={`text-[11px] px-1.5 py-0.5 rounded ${doc.days_remaining != null && doc.days_remaining < 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
                             {dueText(doc)}
                           </span>
                         )}

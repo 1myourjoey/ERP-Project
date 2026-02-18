@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Building2, ChevronDown, ChevronLeft, ChevronRight, Clock, FileWarning, GitBranch, Pin, Plus, Send } from 'lucide-react'
 
 import CompleteModal from '../components/CompleteModal'
+import EmptyState from '../components/EmptyState'
 import EditTaskModal from '../components/EditTaskModal'
 import TaskPipelineView from '../components/TaskPipelineView'
 import TimeSelect from '../components/TimeSelect'
@@ -62,26 +63,26 @@ function safeFormatDate(value: string | null | undefined): string {
 
 function dueBadge(daysRemaining: number | null): { text: string; className: string } | null {
   if (daysRemaining == null) return null
-  if (daysRemaining < 0) return { text: `지연 D+${Math.abs(daysRemaining)}`, className: 'bg-red-100 text-red-700' }
-  if (daysRemaining <= 3) return { text: `D-${daysRemaining}`, className: 'bg-red-100 text-red-700' }
-  if (daysRemaining <= 7) return { text: `D-${daysRemaining}`, className: 'bg-amber-100 text-amber-700' }
-  return { text: `D-${daysRemaining}`, className: 'bg-gray-100 text-gray-700' }
+  if (daysRemaining < 0) return { text: `지연 D+${Math.abs(daysRemaining)}`, className: 'tag tag-red' }
+  if (daysRemaining <= 3) return { text: `D-${daysRemaining}`, className: 'tag tag-red' }
+  if (daysRemaining <= 7) return { text: `D-${daysRemaining}`, className: 'tag tag-amber' }
+  return { text: `D-${daysRemaining}`, className: 'tag tag-gray' }
 }
 
 function categoryBadgeClass(category: string): string {
   switch (category) {
     case '투자실행':
-      return 'bg-red-50 text-red-700'
+      return 'tag tag-red'
     case 'LP보고':
-      return 'bg-green-50 text-green-700'
+      return 'tag tag-green'
     case '사후관리':
-      return 'bg-amber-50 text-amber-700'
+      return 'tag tag-amber'
     case '규약/총회':
-      return 'bg-indigo-50 text-indigo-700'
+      return 'tag tag-indigo'
     case '서류관리':
-      return 'bg-orange-50 text-orange-700'
+      return 'tag tag-purple'
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'tag tag-gray'
   }
 }
 
@@ -231,14 +232,14 @@ function TaskDetailModal({
 function workflowStepBadgeClass(status: string): string {
   switch (status) {
     case 'completed':
-      return 'bg-emerald-100 text-emerald-700'
+      return 'tag tag-emerald'
     case 'in_progress':
-      return 'bg-blue-100 text-blue-700'
+      return 'tag tag-blue'
     case 'skipped':
-      return 'bg-amber-100 text-amber-700'
+      return 'tag tag-amber'
     case 'pending':
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'tag tag-gray'
   }
 }
 
@@ -312,6 +313,10 @@ function TaskList({
   onHeaderClick,
   headerAction,
   defaultCollapsed = false,
+  emptyEmoji = '📋',
+  emptyMessage = '등록된 업무가 없어요',
+  emptyAction,
+  emptyActionLabel,
 }: {
   title: string
   tasks: Task[]
@@ -322,6 +327,10 @@ function TaskList({
   onHeaderClick?: () => void
   headerAction?: React.ReactNode
   defaultCollapsed?: boolean
+  emptyEmoji?: string
+  emptyMessage?: string
+  emptyAction?: () => void
+  emptyActionLabel?: string
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const groupedTasks = useMemo(() => Array.from(groupByCategory(tasks).entries()), [tasks])
@@ -338,12 +347,22 @@ function TaskList({
         </div>
       </div>
       {!collapsed && (
-        !hasAnyTasks ? <p className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">업무 없음</p> : (
+        !hasAnyTasks ? (
+          <div className="rounded-lg border border-dashed border-gray-200">
+            <EmptyState
+              emoji={emptyEmoji}
+              message={emptyMessage}
+              action={emptyAction}
+              actionLabel={emptyActionLabel}
+              className="py-6"
+            />
+          </div>
+        ) : (
           <div className="space-y-3">
             {groupedTasks.map(([category, categoryTasks]) => (
               <div key={`${title}-${category}`}>
                 <div className="mb-1 flex items-center gap-2">
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                  <span className={categoryBadgeClass(category)}>{category}</span>
                   <span className="text-[10px] text-gray-400">{categoryTasks.length}건</span>
                 </div>
                 <div className="space-y-2">
@@ -389,7 +408,7 @@ function TaskList({
                   {groupedNoDeadlineTasks.map(([category, categoryTasks]) => (
                     <div key={`${title}-no-deadline-${category}`}>
                       <div className="mb-1 flex items-center gap-2">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                        <span className={categoryBadgeClass(category)}>{category}</span>
                         <span className="text-[10px] text-gray-400">{categoryTasks.length}건</span>
                       </div>
                       <div className="space-y-1.5">
@@ -680,7 +699,7 @@ export default function DashboardPage() {
 
   const openQuickAdd = (target: 'today' | 'tomorrow', fundId?: number | null) => { setQuickAddDefaultDate(target === 'today' ? date : addDays(date, 1)); setQuickAddDefaultFundId(fundId ?? null); setShowQuickAddModal(true) }
 
-  const popupTitle = popupSection === 'today' ? '오늘 업무' : popupSection === 'tomorrow' ? '내일 업무' : popupSection === 'this_week' ? `이번 주 업무 (${thisWeekRangeLabel})` : popupSection === 'workflows' ? '진행 워크플로' : popupSection === 'documents' ? '미수집 서류' : popupSection === 'reports' ? '보고 마감' : '오늘 완료'
+  const popupTitle = popupSection === 'today' ? '📋 오늘 업무' : popupSection === 'tomorrow' ? '📆 내일 업무' : popupSection === 'this_week' ? `📅 이번 주 업무 (${thisWeekRangeLabel})` : popupSection === 'workflows' ? '🔄 진행 워크플로' : popupSection === 'documents' ? '📁 미수집 서류' : popupSection === 'reports' ? '📊 보고 마감' : '✅ 오늘 완료'
 
   return (
     <div className={dashboardView === 'pipeline' ? 'mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6' : 'page-container space-y-6'}>
@@ -714,50 +733,71 @@ export default function DashboardPage() {
       {dashboardView === 'default' ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="오늘 업무" value={todayTasks.length} onClick={() => setPopupSection('today')} />
-        <StatCard label={`이번 주 (${thisWeekRangeLabel})`} value={thisWeekTasks.length} onClick={() => setPopupSection('this_week')} />
-        <StatCard label="진행 워크플로" value={active_workflows.length} onClick={() => setPopupSection('workflows')} />
-        <StatCard label="미수집 서류" value={missing_documents.length} onClick={() => setPopupSection('documents')} />
-        <StatCard label="보고 마감" value={upcoming_reports.length} onClick={() => setPopupSection('reports')} />
-        <StatCard label="오늘 완료" value={completed_today_count} onClick={() => setPopupSection('completed')} variant="emerald" />
+        <StatCard label="📋 오늘 업무" value={todayTasks.length} onClick={() => setPopupSection('today')} />
+        <StatCard label={`📅 이번 주 (${thisWeekRangeLabel})`} value={thisWeekTasks.length} onClick={() => setPopupSection('this_week')} />
+        <StatCard label="🔄 진행 워크플로" value={active_workflows.length} onClick={() => setPopupSection('workflows')} />
+        <StatCard label="📁 미수집 서류" value={missing_documents.length} onClick={() => setPopupSection('documents')} />
+        <StatCard label="📊 보고 마감" value={upcoming_reports.length} onClick={() => setPopupSection('reports')} />
+        <StatCard label="✅ 오늘 완료" value={completed_today_count} onClick={() => setPopupSection('completed')} variant="emerald" />
           </div>
 
-          {monthly_reminder && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm text-amber-900">이번 달 월간 보고 Task가 아직 생성되지 않았습니다.</p><button onClick={() => monthlyReminderMut.mutate(date.slice(0, 7))} disabled={monthlyReminderMut.isPending} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:bg-amber-300">{monthlyReminderMut.isPending ? '생성 중...' : '지금 생성'}</button></div></div>}
+          {monthly_reminder && (
+            <div className="warning-banner">
+              <p className="flex-1 text-sm text-amber-900">이번 달 월간 보고 Task가 아직 생성되지 않았습니다.</p>
+              <button
+                onClick={() => monthlyReminderMut.mutate(date.slice(0, 7))}
+                disabled={monthlyReminderMut.isPending}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:bg-amber-300"
+              >
+                {monthlyReminderMut.isPending ? '생성 중...' : '지금 생성'}
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
-          {active_workflows.length > 0 && (
-            <div className="card-base">
-              <button onClick={() => setPopupSection('workflows')} className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"><GitBranch size={16} /> 진행 중인 워크플로 <span className="ml-auto text-xs text-gray-400">{active_workflows.length}건</span></button>
-              <div className="max-h-[160px] overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {active_workflows.map((wf: ActiveWorkflow) => {
-                    const { percent } = parseWorkflowProgress(wf.progress)
-                    return (
-                      <div key={wf.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-left hover:bg-indigo-100">
-                        <button onClick={() => openWorkflowModal(wf)} className="w-full text-left">
-                          <div className="flex items-center justify-between gap-1">
-                            <p className="truncate text-xs font-medium text-indigo-800">{wf.name}</p>
-                            <span className="shrink-0 text-[11px] text-indigo-600">{wf.progress}</span>
-                          </div>
-                          <p className="mt-0.5 truncate text-[11px] text-indigo-600">{wf.fund_name || '-'} | {wf.company_name || '-'}</p>
-                          {wf.next_step && <p className="mt-0.5 truncate text-[11px] text-indigo-700">다음: {wf.next_step} {wf.next_step_date ? `(${formatShortDate(wf.next_step_date)})` : ''}</p>}
-                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-indigo-200/60">
-                            <div className="h-full rounded-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }} />
-                          </div>
-                        </button>
-                      </div>
-                    )
-                  })}
+          <div className="card-base">
+            <button onClick={() => setPopupSection('workflows')} className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"><GitBranch size={16} /> 🔄 진행 중인 워크플로 <span className="ml-auto text-xs text-gray-400">{active_workflows.length}건</span></button>
+            {active_workflows.length > 0 ? (
+              <>
+                <div className="max-h-[160px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {active_workflows.map((wf: ActiveWorkflow) => {
+                      const { percent } = parseWorkflowProgress(wf.progress)
+                      return (
+                        <div key={wf.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-left hover:bg-indigo-100">
+                          <button onClick={() => openWorkflowModal(wf)} className="w-full cursor-pointer text-left">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="truncate text-xs font-medium text-indigo-800">{wf.name}</p>
+                              <span className="tag tag-indigo">{wf.progress}</span>
+                            </div>
+                            <p className="mt-0.5 truncate text-[11px] text-indigo-600">{wf.fund_name || '-'} | {wf.company_name || '-'}</p>
+                            {wf.next_step && <p className="mt-0.5 truncate text-[11px] text-indigo-700">다음: {wf.next_step} {wf.next_step_date ? `(${formatShortDate(wf.next_step_date)})` : ''}</p>}
+                            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-indigo-200/60">
+                              <div className="h-full rounded-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                            </div>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-              {active_workflows.length > 4 && (
-                <div className="mt-2 text-center text-[10px] text-gray-400">
-                  ↓ 스크롤하여 {active_workflows.length - 4}건 더보기
-                </div>
-              )}
-            </div>
-          )}
+                {active_workflows.length > 4 && (
+                  <div className="mt-2 text-center text-[10px] text-gray-400">
+                    ↓ 스크롤하여 {active_workflows.length - 4}건 더보기
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyState
+                emoji="🔄"
+                message="진행 중인 워크플로가 없어요"
+                action={() => navigate('/workflows')}
+                actionLabel="워크플로 시작"
+                className="py-8"
+              />
+            )}
+          </div>
 
           <div className="space-y-3">
             <div className="mb-3 flex items-center justify-between">
@@ -766,7 +806,7 @@ export default function DashboardPage() {
 
             <div className="space-y-3 md:hidden">
               <TaskList
-                title={`오늘 (${todayTasks.length}건 ${today.total_estimated_time || '0m'})`}
+                title={`📋 오늘 (${todayTasks.length}건 ${today.total_estimated_time || '0m'})`}
                 tasks={todayTasks}
                 noDeadlineTasks={noDeadlineTasks}
                 onClickTask={(task) => openTaskDetail(task, true)}
@@ -774,6 +814,10 @@ export default function DashboardPage() {
                 completingTaskId={completeTaskMut.variables?.id ?? null}
                 onHeaderClick={() => setPopupSection('today')}
                 headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('today') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>}
+                emptyEmoji="🎉"
+                emptyMessage="오늘 예정된 업무가 없어요"
+                emptyAction={() => openQuickAdd('today')}
+                emptyActionLabel="업무 추가"
               />
               <TaskList
                 title={`내일 (${tomorrowTasks.length}건 ${tomorrow.total_estimated_time || '0m'})`}
@@ -786,7 +830,7 @@ export default function DashboardPage() {
                 defaultCollapsed={true}
               />
               <TaskList
-                title={`이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`}
+                title={`📅 이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`}
                 tasks={thisWeekTasks}
                 onClickTask={(task) => openTaskDetail(task, true)}
                 onQuickComplete={setCompletingTask}
@@ -814,21 +858,23 @@ export default function DashboardPage() {
             <div className="relative hidden overflow-hidden md:block">
               <div className={`px-0.5 transition-all duration-300 ease-out ${taskPanel === 'daily' ? 'relative translate-x-0 opacity-100' : 'pointer-events-none absolute inset-0 -translate-x-8 opacity-0'}`}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <TaskList title={`오늘 (${todayTasks.length}건 ${today.total_estimated_time || '0m'})`} tasks={todayTasks} noDeadlineTasks={noDeadlineTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('today')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('today') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
+                  <TaskList title={`📋 오늘 (${todayTasks.length}건 ${today.total_estimated_time || '0m'})`} tasks={todayTasks} noDeadlineTasks={noDeadlineTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('today')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('today') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} emptyEmoji="🎉" emptyMessage="오늘 예정된 업무가 없어요" emptyAction={() => openQuickAdd('today')} emptyActionLabel="업무 추가" />
                   <TaskList title={`내일 (${tomorrowTasks.length}건 ${tomorrow.total_estimated_time || '0m'})`} tasks={tomorrowTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('tomorrow')} headerAction={<button onClick={(e) => { e.stopPropagation(); openQuickAdd('tomorrow') }} className="flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100" title="업무 추가"><Plus size={14} /></button>} />
                 </div>
               </div>
 
               <div className={`px-0.5 transition-all duration-300 ease-out ${taskPanel === 'weekly' ? 'relative translate-x-0 opacity-100' : 'pointer-events-none absolute inset-0 translate-x-8 opacity-0'}`}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <TaskList title={`이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`} tasks={thisWeekTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('this_week')} />
+                  <TaskList title={`📅 이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`} tasks={thisWeekTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('this_week')} />
 
                   <div className="card-base">
                     <button onClick={() => setUpcomingCollapsed((prev) => !prev)} className="mb-2 flex w-full items-center justify-between"><h3 className="text-sm font-semibold text-gray-700">예정 업무</h3><div className="flex items-center gap-2"><span className="text-xs text-gray-400">{upcomingTasks.length}건</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${upcomingCollapsed ? '-rotate-90' : ''}`} /></div></button>
                     {!upcomingTasks.length ? (
-                      <p className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">업무 없음</p>
+                      <div className="rounded-lg border border-dashed border-gray-200">
+                        <EmptyState emoji="📅" message="등록된 일정이 없어요" className="py-6" />
+                      </div>
                     ) : (
-                      !upcomingCollapsed && <div className="space-y-3">{upcomingGrouped.map(([category, tasks]) => <div key={category}><div className="mb-1 flex items-center gap-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span><span className="text-[10px] text-gray-400">{tasks.length}건</span></div><div className="space-y-1">{tasks.map((task) => <div key={task.id} onClick={() => openTaskDetail(task, true)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm text-gray-800">{task.title}</p><span className="shrink-0 text-xs text-gray-400">{task.deadline ? formatShortDate(task.deadline) : ''}</span></div></div>)}</div></div>)}</div>
+                      !upcomingCollapsed && <div className="space-y-3">{upcomingGrouped.map(([category, tasks]) => <div key={category}><div className="mb-1 flex items-center gap-2"><span className={categoryBadgeClass(category)}>{category}</span><span className="text-[10px] text-gray-400">{tasks.length}건</span></div><div className="space-y-1">{tasks.map((task) => <div key={task.id} onClick={() => openTaskDetail(task, true)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm text-gray-800">{task.title}</p><span className="shrink-0 text-xs text-gray-400">{task.deadline ? formatShortDate(task.deadline) : ''}</span></div></div>)}</div></div>)}</div>
                     )}
                   </div>
                 </div>
@@ -864,7 +910,7 @@ export default function DashboardPage() {
           {rightTab === 'funds' && (
             <div className="card-base">
               {!fund_summary.length ? (
-                <p className="text-sm text-gray-400">등록된 조합이 없습니다.</p>
+                <EmptyState emoji="🏦" message="등록된 조합이 없어요" className="py-8" />
               ) : (
                 <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">
                   {fund_summary.map((fund: FundSummary) => (
@@ -885,7 +931,7 @@ export default function DashboardPage() {
           {rightTab === 'notices' && (
             <div className="card-base">
               {!upcomingNotices.length ? (
-                <p className="text-sm text-gray-400">다가오는 통지 기한이 없습니다.</p>
+                <EmptyState emoji="🗓️" message="다가오는 통지 기한이 없어요" className="py-8" />
               ) : (
                 <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">
                   {upcomingNotices.map((notice, idx) => {
@@ -902,13 +948,13 @@ export default function DashboardPage() {
                             state: notice.workflow_instance_id ? { expandInstanceId: notice.workflow_instance_id } : undefined,
                           })
                         }}
-                        className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                        className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-medium text-gray-800">{notice.fund_name} | {notice.notice_label}</p>
-                          {badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}
+                          {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-500">{notice.workflow_instance_name}</p>
+                        <p className="feed-card-meta">{notice.workflow_instance_name}</p>
                         <p className="mt-0.5 text-[11px] text-gray-500">기한 {formatShortDate(notice.deadline)}</p>
                       </button>
                     )
@@ -921,7 +967,7 @@ export default function DashboardPage() {
           {rightTab === 'reports' && (
             <div className="card-base">
               {!upcoming_reports.length ? (
-                <p className="text-sm text-gray-400">임박한 보고 마감이 없습니다.</p>
+                <EmptyState emoji="📊" message="임박한 보고 마감이 없어요" className="py-8" />
               ) : (
                 <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">
                   {upcoming_reports.map((report: UpcomingReport) => {
@@ -936,13 +982,13 @@ export default function DashboardPage() {
                           }
                           navigate('/reports', { state: { highlightId: report.id } })
                         }}
-                        className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                        className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p>
-                          {badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}
+                          <p className="feed-card-title">{report.report_target} | {report.period}</p>
+                          {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-500">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
+                        <p className="feed-card-meta">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
                       </button>
                     )
                   })}
@@ -954,7 +1000,7 @@ export default function DashboardPage() {
           {rightTab === 'documents' && (
             <div className="card-base">
               {!missing_documents.length ? (
-                <p className="text-sm text-gray-400">미수집 서류가 없습니다.</p>
+                <EmptyState emoji="📄" message="미수집 서류가 없어요" className="py-8" />
               ) : (
                 <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">
                   {missing_documents.map((doc: MissingDocument) => {
@@ -963,14 +1009,14 @@ export default function DashboardPage() {
                       <button
                         key={doc.id}
                         onClick={() => navigate(`/investments/${doc.investment_id}`)}
-                        className="w-full rounded-lg border border-amber-200 bg-amber-50 p-2 text-left hover:bg-amber-100"
+                        className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-amber-900">{doc.document_name}</p>
-                          {badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}
+                          <p className="feed-card-title">{doc.document_name}</p>
+                          {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="mt-0.5 text-xs text-amber-700">{doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}</p>
-                        <p className="mt-0.5 text-[11px] text-amber-700">마감 {formatShortDate(doc.due_date)}</p>
+                        <p className="feed-card-meta">{doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}</p>
+                        <p className="mt-0.5 text-[11px] text-gray-500">마감 {formatShortDate(doc.due_date)}</p>
                       </button>
                     )
                   })}
@@ -996,7 +1042,7 @@ export default function DashboardPage() {
             </div>
             <p className="mb-2 text-xs text-gray-400">오늘 {completed_today_count}건 · 이번 주 {completed_this_week_count}건</p>
             {filteredCompleted.length === 0 ? (
-              <p className="py-4 text-center text-sm text-gray-400">완료된 업무가 없습니다.</p>
+              <EmptyState emoji="✅" message="완료된 업무가 없어요" className="py-6" />
             ) : (
               <div className="max-h-64 space-y-1 overflow-y-auto">
                 {filteredCompleted.map((task) => (
@@ -1050,7 +1096,7 @@ export default function DashboardPage() {
               return Array.from(grouped.entries()).map(([category, tasks]) => (
                 <div key={category} className="mb-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                    <span className={categoryBadgeClass(category)}>{category}</span>
                     <span className="text-[10px] text-gray-400">{tasks.length}건</span>
                   </div>
                   <div className="space-y-1">
@@ -1074,7 +1120,7 @@ export default function DashboardPage() {
               return Array.from(grouped.entries()).map(([category, tasks]) => (
                 <div key={category} className="mb-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                    <span className={categoryBadgeClass(category)}>{category}</span>
                     <span className="text-[10px] text-gray-400">{tasks.length}건</span>
                   </div>
                   <div className="space-y-1">
@@ -1204,7 +1250,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-gray-800">{report.report_target} | {report.period}</p>
-                      {badge && <span className={`rounded px-1.5 py-0.5 text-[11px] ${badge.className}`}>{badge.text}</span>}
+                      {badge && <span className={badge.className}>{badge.text}</span>}
                     </div>
                     <p className="mt-0.5 text-xs text-gray-500">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
                   </button>
@@ -1217,7 +1263,7 @@ export default function DashboardPage() {
               return Array.from(grouped.entries()).map(([category, tasks]) => (
                 <div key={category} className="mb-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                    <span className={categoryBadgeClass(category)}>{category}</span>
                     <span className="text-[10px] text-gray-400">{tasks.length}건</span>
                   </div>
                   <div className="space-y-1">

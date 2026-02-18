@@ -19,6 +19,7 @@ import {
   type ChecklistListItem,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 const CHECKLIST_CATEGORY_OPTIONS = ['투자점검', '결성준비', '연말결산', '감사준비', '규약관리', '일반']
@@ -179,7 +180,7 @@ export default function ChecklistsPage() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h2 className="page-title">체크리스트</h2>
+      <h2 className="page-title">☑️ 체크리스트</h2>
           <p className="page-subtitle">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
         </div>
         <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
@@ -230,7 +231,7 @@ export default function ChecklistsPage() {
                   <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
                 </button>
               ))}
-              {!filteredChecklists.length && <p className="text-sm text-gray-400">검색 결과가 없습니다.</p>}
+              {!filteredChecklists.length && <EmptyState emoji="☑️" message="체크리스트가 없어요" className="py-8" />}
             </div>
           )}
         </div>
@@ -332,7 +333,7 @@ export default function ChecklistsPage() {
                       )}
                     </div>
                   ))}
-                  {!checklist.items?.length && <p className="text-sm text-gray-400">항목이 없습니다.</p>}
+              {!checklist.items?.length && <EmptyState emoji="☑️" message="항목이 없어요" className="py-8" />}
                 </div>
               </div>
             </div>

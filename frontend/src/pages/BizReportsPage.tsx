@@ -236,7 +236,7 @@ export default function BizReportsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">영업보고</h2>
+      <h2 className="page-title">🏢 영업보고</h2>
           <p className="page-subtitle">조합 단위 연간 영업보고를 작성하고 관리합니다.</p>
         </div>
         <button onClick={() => setShowCreate((prev) => !prev)} className="primary-btn">+ 영업보고 작성</button>
@@ -340,7 +340,7 @@ export default function BizReportsPage() {
         {isLoading ? (
           <PageLoading />
         ) : !(reports?.length) ? (
-          <EmptyState message="영업보고가 없습니다." />
+          <EmptyState emoji="🏢" message="영업보고가 없어요" action={() => setShowCreate(true)} actionLabel="영업보고 작성" />
         ) : (
           reports.map((report) => (
             <div key={report.id} className="card-base">

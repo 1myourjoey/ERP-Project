@@ -1,6 +1,7 @@
 ﻿import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import EmptyState from '../components/EmptyState'
 import { fetchFundOverview, type FundOverviewItem } from '../lib/api'
 
 function todayIso(): string {
@@ -73,7 +74,7 @@ export default function FundOverviewPage() {
     <div className="mx-auto max-w-[1500px] space-y-6 px-6 py-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">조합 개요</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">🏦 조합 개요</h1>
           <p className="mt-1 text-sm text-gray-500">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -95,6 +96,11 @@ export default function FundOverviewPage() {
         </div>
       </div>
 
+      <div className="info-banner">
+        <div className="info-banner-icon" aria-hidden="true">ℹ️</div>
+        <p className="info-banner-text">조합을 클릭하여 상세 정보를 확인하세요.</p>
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {summaryCards.map((card) => (
           <div key={card.label} className="rounded-xl border border-gray-200 bg-white p-3">
@@ -113,7 +119,7 @@ export default function FundOverviewPage() {
         {isLoading ? (
           <div className="p-8 text-center text-sm text-gray-500">데이터를 불러오는 중...</div>
         ) : funds.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">표시할 조합이 없습니다.</div>
+          <EmptyState emoji="🏦" message="표시할 조합이 없어요" className="py-10" />
         ) : (
           <div className="max-h-[calc(100vh-320px)] overflow-auto">
             <table className="min-w-[1800px] w-full text-sm">

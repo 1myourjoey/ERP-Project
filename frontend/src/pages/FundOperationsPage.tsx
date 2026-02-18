@@ -53,6 +53,7 @@ import {
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import CapitalCallDetail from '../components/CapitalCallDetail'
+import EmptyState from '../components/EmptyState'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -650,7 +651,7 @@ export default function FundOperationsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">조합 운영</h2>
+      <h2 className="page-title">🏛️ 조합 운영</h2>
           <p className="page-subtitle">출자, 배분, 총회 운영과 성과지표를 확인합니다.</p>
         </div>
       </div>
@@ -682,7 +683,7 @@ export default function FundOperationsPage() {
       </div>
 
       <Section
-        title="LP 및 출자"
+        title="👥 LP 관리 · 💰 출자"
         right={(
           <div className="flex items-center gap-2">
             <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
@@ -725,6 +726,14 @@ export default function FundOperationsPage() {
             </p>
           </div>
         </div>
+        {!isCommitmentMatched && (
+          <div className="warning-banner mb-3">
+            <div className="text-xl" aria-hidden="true">⚠️</div>
+            <p className="flex-1 text-sm text-amber-900">
+              LP 약정 합계가 조합 약정총액과 일치하지 않습니다. 현재 차이: {formatKRW(commitmentDiff)}
+            </p>
+          </div>
+        )}
 
         {lpCallTab === 'lp' && (
           <>
@@ -838,7 +847,9 @@ export default function FundOperationsPage() {
               })}
               {!lps.length && (
                 <tr>
-                  <td colSpan={11} className="px-2 py-4 text-center text-gray-400">등록된 LP가 없습니다.</td>
+                  <td colSpan={11} className="px-2 py-1">
+                    <EmptyState emoji="👥" message="등록된 LP가 없어요" className="py-6" />
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -848,7 +859,7 @@ export default function FundOperationsPage() {
         <div className="mt-3 rounded border border-gray-200 p-2">
           <p className="mb-2 text-xs font-semibold text-gray-600">LP 양수양도 이력</p>
           {!lpTransfers.length ? (
-            <p className="text-xs text-gray-400">등록된 양수양도 이력이 없습니다.</p>
+            <EmptyState emoji="👥" message="등록된 양수양도 이력이 없어요" className="py-6" />
           ) : (
             <div className="space-y-1">
               {lpTransfers.map((transfer) => (
@@ -858,27 +869,27 @@ export default function FundOperationsPage() {
                     <p className="text-gray-500">{transfer.transfer_date || '-'} | {transfer.workflow_instance_id ? `WF #${transfer.workflow_instance_id}` : '워크플로 미연결'}</p>
                   </div>
                   <div className="ml-2 flex items-center gap-1">
-                    <span className={`rounded px-1.5 py-0.5 ${
+                    <span className={`${
                       transfer.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-700'
+                        ? 'tag tag-emerald'
                         : transfer.status === 'cancelled'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-indigo-100 text-indigo-700'
+                          ? 'tag tag-gray'
+                          : 'tag tag-indigo'
                     }`}>
                       {LP_TRANSFER_STATUS_LABEL[transfer.status] || transfer.status}
                     </span>
                     {transfer.status !== 'completed' && (
-                      <button onClick={() => completeLPTransferMut.mutate(transfer.id)} className="rounded px-2 py-0.5 text-[11px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                      <button onClick={() => completeLPTransferMut.mutate(transfer.id)} className="tag tag-emerald hover:opacity-90">
                         완료
                       </button>
                     )}
                     {transfer.status !== 'cancelled' && transfer.status !== 'completed' && (
-                      <button onClick={() => cancelLPTransferMut.mutate(transfer.id)} className="rounded px-2 py-0.5 text-[11px] bg-red-50 text-red-700 hover:bg-red-100">
+                      <button onClick={() => cancelLPTransferMut.mutate(transfer.id)} className="tag tag-red hover:opacity-90">
                         취소
                       </button>
                     )}
                     {transfer.workflow_instance_id && (
-                      <button onClick={() => navigate('/workflows', { state: { expandInstanceId: transfer.workflow_instance_id } })} className="rounded px-2 py-0.5 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100">
+                      <button onClick={() => navigate('/workflows', { state: { expandInstanceId: transfer.workflow_instance_id } })} className="tag tag-blue hover:opacity-90">
                         이동
                       </button>
                     )}
@@ -1058,13 +1069,14 @@ export default function FundOperationsPage() {
               )}
             </div>
           ))}
+          {!calls?.length && <EmptyState emoji="💰" message="등록된 출자 내역이 없어요" className="py-8" />}
         </div>
           </>
         )}
       </Section>
 
       <Section
-        title="성과지표"
+        title="📈 성과지표"
         right={(
           <div>
             <label className="mb-1 block text-[10px] font-medium text-gray-500">기준일</label>
@@ -1072,7 +1084,7 @@ export default function FundOperationsPage() {
           </div>
         )}
       >
-        {!performance ? <p className="text-sm text-gray-400">데이터가 없습니다.</p> : (
+        {!performance ? <EmptyState emoji="📈" message="성과 데이터가 없어요" className="py-8" /> : (
           <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
             <div className="rounded bg-gray-50 p-2">납입 총액: {formatKRW(performance.paid_in_total)}</div>
             <div className="rounded bg-gray-50 p-2">투자 총액: {formatKRW(performance.total_invested)}</div>
@@ -1086,7 +1098,7 @@ export default function FundOperationsPage() {
         )}
       </Section>
 
-      <Section title="배분">
+      <Section title="💸 배분">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5 mb-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
@@ -1201,10 +1213,11 @@ export default function FundOperationsPage() {
               )}
             </div>
           ))}
+          {!distributions?.length && <EmptyState emoji="💸" message="등록된 배분 내역이 없어요" className="py-8" />}
         </div>
       </Section>
 
-      <Section title="총회">
+      <Section title="🏛️ 총회">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5 mb-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
@@ -1270,6 +1283,7 @@ export default function FundOperationsPage() {
               )}
             </div>
           ))}
+          {!assemblies?.length && <EmptyState emoji="🏛️" message="등록된 총회가 없어요" className="py-8" />}
         </div>
       </Section>
       {transferSourceLp && selectedFundId && (

@@ -16,6 +16,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 interface InvestmentListItem {
@@ -27,6 +28,18 @@ interface InvestmentListItem {
   amount?: number | null
   instrument?: string | null
   status?: string
+}
+
+function investmentStatusTagClass(status: string | undefined): string {
+  switch (status) {
+    case 'exited':
+      return 'tag tag-green'
+    case 'written_off':
+      return 'tag tag-gray'
+    case 'active':
+    default:
+      return 'tag tag-blue'
+  }
 }
 
 const EMPTY_COMPANY: CompanyInput = {
@@ -257,7 +270,7 @@ export default function InvestmentsPage() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h2 className="page-title">투자 관리</h2>
+      <h2 className="page-title">🏢 투자 관리</h2>
           <p className="page-subtitle">투자 포트폴리오와 기업 정보를 관리합니다.</p>
         </div>
       </div>
@@ -378,11 +391,22 @@ export default function InvestmentsPage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} | {labelStatus(inv.status || 'active')}
+                    {inv.instrument || '-'} | {inv.amount?.toLocaleString?.() ?? '-'} |{' '}
+                    <span className={investmentStatusTagClass(inv.status || 'active')}>
+                      {labelStatus(inv.status || 'active')}
+                    </span>
                   </p>
                 </div>
               ))}
-              {!investments?.length && <p className="text-sm text-gray-400">투자 건이 없습니다.</p>}
+              {!investments?.length && (
+                <EmptyState
+                  emoji="🏢"
+                  message="등록된 투자건이 없어요"
+                  action={() => setShowInvestmentForm(true)}
+                  actionLabel="투자 등록"
+                  className="py-8"
+                />
+              )}
             </div>
           )}
         </div>

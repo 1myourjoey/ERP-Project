@@ -15,6 +15,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 interface InvestmentOption {
@@ -244,7 +245,7 @@ export default function TransactionsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">거래원장</h2>
+      <h2 className="page-title">💳 거래원장</h2>
           <p className="page-subtitle">투자 거래 이력을 검색하고 관리합니다.</p>
         </div>
         <button
@@ -336,7 +337,7 @@ export default function TransactionsPage() {
         {isLoading ? (
           <PageLoading />
         ) : !rows?.length ? (
-          <p className="p-2 text-sm text-gray-400">거래 내역이 없습니다.</p>
+            <EmptyState emoji="💳" message="거래 내역이 없어요" className="py-8" />
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (

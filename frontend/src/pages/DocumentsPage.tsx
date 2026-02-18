@@ -10,20 +10,21 @@ import {
   type Company,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 function dueBadge(daysRemaining: number | null) {
   if (daysRemaining == null) return null
   if (daysRemaining < 0) {
-    return { text: `지연 D+${Math.abs(daysRemaining)}`, className: 'bg-red-100 text-red-700' }
+    return { text: `지연 D+${Math.abs(daysRemaining)}`, className: 'tag tag-red' }
   }
   if (daysRemaining === 0) {
-    return { text: 'D-Day', className: 'bg-red-100 text-red-700' }
+    return { text: 'D-Day', className: 'tag tag-red' }
   }
   if (daysRemaining <= 7) {
-    return { text: `D-${daysRemaining}`, className: 'bg-amber-100 text-amber-700' }
+    return { text: `D-${daysRemaining}`, className: 'tag tag-amber' }
   }
-  return { text: `D-${daysRemaining}`, className: 'bg-gray-100 text-gray-600' }
+  return { text: `D-${daysRemaining}`, className: 'tag tag-gray' }
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
@@ -77,7 +78,7 @@ export default function DocumentsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">서류 현황</h2>
+      <h2 className="page-title">📄 서류 현황</h2>
           <p className="page-subtitle">서류 수집 상태와 마감 일정을 추적합니다.</p>
         </div>
       </div>
@@ -159,7 +160,7 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-3 py-2">{doc.due_date || '-'}</td>
                     <td className="px-3 py-2">
-                      {badge ? <span className={`text-[11px] px-1.5 py-0.5 rounded ${badge.className}`}>{badge.text}</span> : '-'}
+                  {badge ? <span className={badge.className}>{badge.text}</span> : '-'}
                     </td>
                     <td className="px-3 py-2">{doc.note || '-'}</td>
                   </tr>
@@ -167,7 +168,9 @@ export default function DocumentsPage() {
               })}
               {!docs?.length && (
                 <tr>
-                  <td className="px-3 py-4 text-gray-400" colSpan={7}>서류가 없습니다.</td>
+                  <td className="px-3 py-1" colSpan={7}>
+                    <EmptyState emoji="📄" message="등록된 서류가 없어요" className="py-8" />
+                  </td>
                 </tr>
               )}
             </tbody>

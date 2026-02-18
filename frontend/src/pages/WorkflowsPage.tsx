@@ -29,6 +29,7 @@ import {
   type WorkflowInstance,
   type WorkflowListItem,
   type WorkflowStep,
+  type WorkflowStepDocumentInput,
   type WorkflowStepInstance,
   type WorkflowTemplate,
   type WorkflowTemplateInput,
@@ -36,6 +37,7 @@ import {
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Check, ChevronRight, Play, Plus, Printer, X } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 type WorkflowLocationState = {
@@ -104,6 +106,9 @@ function renderPrintWindow(title: string, body: string) {
 }
 
 function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: WorkflowTemplate) {
+  const stepDocsByStepId = new Map<number, WorkflowTemplate['steps'][number]['step_documents']>(
+    (template?.steps ?? []).map((step) => [step.id, step.step_documents ?? []]),
+  )
   const stepRows = instance.step_instances
     .map((step) => {
       const statusMark = step.status === 'completed' ? '[x]' : '[ ]'
@@ -111,11 +116,17 @@ function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: W
         month: 'numeric',
         day: 'numeric',
       })
+      const stepDocuments = stepDocsByStepId.get(step.workflow_step_id) ?? []
+      const stepDocumentsHtml = stepDocuments.length > 0
+        ? `<div style="margin-top:4px; color:#6b7280; font-size:11px;">${stepDocuments
+          .map((doc) => `• ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
+          .join('<br />')}</div>`
+        : ''
       return `<tr>
         <td>${statusMark}</td>
         <td>${escapeHtml(step.step_timing || '')}</td>
         <td>${escapeHtml(dateText)}</td>
-        <td>${escapeHtml(step.step_name || '')}</td>
+        <td>${escapeHtml(step.step_name || '')}${stepDocumentsHtml}</td>
         <td>${escapeHtml(step.memo || '')}</td>
       </tr>`
     })
@@ -156,13 +167,21 @@ function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: W
 function printWorkflowTemplateChecklist(template: WorkflowTemplate) {
   const stepRows = template.steps
     .map(
-      (step) => `<tr>
+      (step) => {
+        const stepDocuments = step.step_documents ?? []
+        const stepDocumentsHtml = stepDocuments.length > 0
+          ? `<div style="margin-top:4px; color:#6b7280; font-size:11px;">${stepDocuments
+            .map((doc) => `• ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
+            .join('<br />')}</div>`
+          : ''
+        return `<tr>
         <td>[ ]</td>
         <td>${escapeHtml(step.timing || '')}</td>
         <td></td>
-        <td>${escapeHtml(step.name || '')}</td>
+        <td>${escapeHtml(step.name || '')}${stepDocumentsHtml}</td>
         <td>${escapeHtml(step.memo || '')}</td>
-      </tr>`,
+      </tr>`
+      },
     )
     .join('')
 
@@ -202,7 +221,18 @@ const EMPTY_TEMPLATE: WorkflowTemplateInput = {
   trigger_description: '',
   category: '',
   total_duration: '',
-  steps: [{ order: 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false }],
+  steps: [{
+    order: 1,
+    name: '',
+    timing: 'D-day',
+    timing_offset_days: 0,
+    estimated_time: '',
+    quadrant: 'Q1',
+    memo: '',
+    is_notice: false,
+    is_report: false,
+    step_documents: [],
+  }],
   documents: [],
   warnings: [],
 }
@@ -223,6 +253,13 @@ function normalizeTemplate(wf: WorkflowTemplate | null | undefined): WorkflowTem
       memo: s.memo ?? '',
       is_notice: s.is_notice ?? false,
       is_report: s.is_report ?? false,
+      step_documents: (s.step_documents ?? []).map((doc) => ({
+        name: doc.name,
+        required: doc.required,
+        timing: doc.timing ?? '',
+        notes: doc.notes ?? '',
+        document_template_id: doc.document_template_id ?? null,
+      })),
     })),
     documents: (wf?.documents ?? []).map((d) => ({ name: d.name, required: d.required, timing: d.timing ?? '', notes: d.notes ?? '' })),
     warnings: (wf?.warnings ?? []).map((w) => ({ content: w.content, category: (w.category as 'warning' | 'lesson' | 'tip') || 'warning' })),
@@ -245,12 +282,23 @@ function TemplateModal({
   onClose: () => void
 }) {
   const [form, setForm] = useState<WorkflowTemplateInput>(initial)
+  const { data: docTemplates = [] } = useQuery<DocumentTemplate[]>({
+    queryKey: ['documentTemplates'],
+    queryFn: () => fetchDocumentTemplates(),
+  })
   const [documentDraft, setDocumentDraft] = useState({
     name: '',
     required: true,
     timing: '',
     notes: '',
   })
+  const [stepDocDrafts, setStepDocDrafts] = useState<Record<number, {
+    name: string
+    required: boolean
+    timing: string
+    notes: string
+    documentTemplateId: string
+  }>>({})
 
   useEffect(() => {
     setForm(initial)
@@ -260,6 +308,7 @@ function TemplateModal({
       timing: '',
       notes: '',
     })
+    setStepDocDrafts({})
   }, [initial])
 
   const addDocument = () => {
@@ -292,6 +341,121 @@ function TemplateModal({
     }))
   }
 
+  const ensureStepDocDraft = (stepIdx: number) => {
+    const existing = stepDocDrafts[stepIdx]
+    if (existing) return existing
+    return {
+      name: '',
+      required: true,
+      timing: '',
+      notes: '',
+      documentTemplateId: '',
+    }
+  }
+
+  const setStepDocDraft = (
+    stepIdx: number,
+    patch: Partial<{
+      name: string
+      required: boolean
+      timing: string
+      notes: string
+      documentTemplateId: string
+    }>,
+  ) => {
+    setStepDocDrafts((prev) => {
+      const base = prev[stepIdx] ?? {
+        name: '',
+        required: true,
+        timing: '',
+        notes: '',
+        documentTemplateId: '',
+      }
+      return {
+        ...prev,
+        [stepIdx]: {
+          ...base,
+          ...patch,
+        },
+      }
+    })
+  }
+
+  const resetStepDocDraft = (stepIdx: number) => {
+    setStepDocDrafts((prev) => ({
+      ...prev,
+      [stepIdx]: {
+        name: '',
+        required: true,
+        timing: '',
+        notes: '',
+        documentTemplateId: '',
+      },
+    }))
+  }
+
+  const addStepDocument = (stepIdx: number, data: WorkflowStepDocumentInput) => {
+    const trimmedName = (data.name || '').trim()
+    if (!trimmedName) return
+    setForm((prev) => ({
+      ...prev,
+      steps: prev.steps.map((step, idx) => {
+        if (idx !== stepIdx) return step
+        const nextDocs = [...(step.step_documents ?? []), {
+          name: trimmedName,
+          required: data.required ?? true,
+          timing: data.timing ?? null,
+          notes: data.notes ?? null,
+          document_template_id: data.document_template_id ?? null,
+        }]
+        return { ...step, step_documents: nextDocs }
+      }),
+    }))
+  }
+
+  const removeStepDocument = (stepIdx: number, docIdx: number) => {
+    setForm((prev) => ({
+      ...prev,
+      steps: prev.steps.map((step, idx) => {
+        if (idx !== stepIdx) return step
+        return {
+          ...step,
+          step_documents: (step.step_documents ?? []).filter((_, index) => index !== docIdx),
+        }
+      }),
+    }))
+  }
+
+  const addStepDocumentDirect = (stepIdx: number) => {
+    const draft = ensureStepDocDraft(stepIdx)
+    const name = draft.name.trim()
+    if (!name) return
+    addStepDocument(stepIdx, {
+      name,
+      required: draft.required,
+      timing: draft.timing.trim() || null,
+      notes: draft.notes.trim() || null,
+      document_template_id: null,
+    })
+    resetStepDocDraft(stepIdx)
+  }
+
+  const addStepDocumentFromTemplate = (stepIdx: number) => {
+    const draft = ensureStepDocDraft(stepIdx)
+    const templateId = Number(draft.documentTemplateId || 0)
+    if (!templateId) return
+    const template = docTemplates.find((row) => row.id === templateId)
+    if (!template) return
+    addStepDocument(stepIdx, {
+      name: (draft.name || template.name).trim(),
+      required: draft.required,
+      timing: draft.timing.trim() || null,
+      notes: draft.notes.trim() || null,
+      document_template_id: template.id,
+    })
+    resetStepDocDraft(stepIdx)
+  }
+
   const submit = () => {
     const payload: WorkflowTemplateInput = {
       name: form.name.trim(),
@@ -310,6 +474,15 @@ function TemplateModal({
           memo: s.memo || null,
           is_notice: Boolean(s.is_notice),
           is_report: Boolean(s.is_report),
+          step_documents: (s.step_documents ?? [])
+            .map((doc) => ({
+              name: doc.name?.trim() || '',
+              required: doc.required ?? true,
+              timing: doc.timing?.trim() || null,
+              notes: doc.notes?.trim() || null,
+              document_template_id: doc.document_template_id ?? null,
+            }))
+            .filter((doc) => doc.name),
         })),
       documents: form.documents.map((d) => ({
         name: d.name?.trim() || '',
@@ -369,9 +542,104 @@ function TemplateModal({
                 </label>
                 <button onClick={() => setForm(prev => ({ ...prev, steps: prev.steps.filter((_, itIdx) => itIdx !== idx) }))} className="text-xs text-red-600 hover:text-red-700 text-left">단계 삭제</button>
               </div>
+              <div className="md:col-span-4 space-y-2 rounded border border-dashed border-gray-300 bg-gray-50/60 p-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-700">📄 단계 서류</p>
+                  <span className="text-[10px] text-gray-400">{step.step_documents?.length ?? 0}개</span>
+                </div>
+                {(step.step_documents?.length ?? 0) === 0 ? (
+                  <p className="text-[11px] text-gray-400">연결된 서류가 없습니다.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {(step.step_documents ?? []).map((doc, docIdx) => (
+                      <div key={`${doc.name}-${docIdx}`} className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-2 md:grid-cols-6">
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-medium text-gray-700">{doc.name}</p>
+                          <p className="text-[11px] text-gray-500">{doc.notes || '-'}</p>
+                        </div>
+                        <div className="text-xs text-gray-600">{doc.required ? '필수' : '선택'}</div>
+                        <div className="text-xs text-gray-600">{doc.timing || '-'}</div>
+                        <div className="text-xs text-blue-600">{doc.document_template_id ? '[템플릿]' : '[직접]'}</div>
+                        <div className="text-right">
+                          <button
+                            onClick={() => removeStepDocument(idx, docIdx)}
+                            className="text-xs text-red-600 hover:text-red-700"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-2 md:grid-cols-6">
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-[10px] font-medium text-gray-500">서류명</label>
+                    <input
+                      value={ensureStepDocDraft(idx).name}
+                      onChange={e => setStepDocDraft(idx, { name: e.target.value })}
+                      placeholder="예: 투심 보고서"
+                      className="w-full rounded border px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label>
+                    <input
+                      value={ensureStepDocDraft(idx).timing}
+                      onChange={e => setStepDocDraft(idx, { timing: e.target.value })}
+                      placeholder="예: D-1"
+                      className="w-full rounded border px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label>
+                    <input
+                      value={ensureStepDocDraft(idx).notes}
+                      onChange={e => setStepDocDraft(idx, { notes: e.target.value })}
+                      placeholder="선택 입력"
+                      className="w-full rounded border px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <div className="flex items-end justify-between gap-1">
+                    <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={ensureStepDocDraft(idx).required}
+                        onChange={e => setStepDocDraft(idx, { required: e.target.checked })}
+                        className="rounded border-gray-300"
+                      />
+                      필수
+                    </label>
+                    <button onClick={() => addStepDocumentDirect(idx)} className="secondary-btn text-xs">직접 추가</button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:items-end">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-[10px] font-medium text-gray-500">템플릿에서 선택</label>
+                    <select
+                      value={ensureStepDocDraft(idx).documentTemplateId}
+                      onChange={e => {
+                        const nextTemplateId = e.target.value
+                        const selectedTemplate = docTemplates.find((row) => row.id === Number(nextTemplateId))
+                        setStepDocDraft(idx, {
+                          documentTemplateId: nextTemplateId,
+                          name: selectedTemplate ? selectedTemplate.name : ensureStepDocDraft(idx).name,
+                        })
+                      }}
+                      className="w-full rounded border px-2 py-1 text-xs"
+                    >
+                      <option value="">템플릿 선택...</option>
+                      {docTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>{template.category} - {template.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button onClick={() => addStepDocumentFromTemplate(idx)} className="secondary-btn text-xs">템플릿 추가</button>
+                </div>
+              </div>
             </div>
           ))}
-          <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false }] }))} className="secondary-btn">+ 단계 추가</button>
+          <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false, step_documents: [] }] }))} className="secondary-btn">+ 단계 추가</button>
         </div>
         <div className="space-y-2 rounded-lg border p-3">
           <div className="flex items-center justify-between">
@@ -550,10 +818,23 @@ function WorkflowDetail({
 
       <div className="space-y-1">
         {wf.steps.map((s: WorkflowStep) => (
-          <div key={s.id} className="flex items-center gap-2 rounded bg-gray-50 p-2 text-sm">
-            <span className="w-6 text-center text-xs text-gray-500">{s.order}</span>
-            <span className="flex-1">{s.name}</span>
-            <span className="text-xs text-gray-500">{s.timing}</span>
+          <div key={s.id} className="rounded bg-gray-50 p-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-6 text-center text-xs text-gray-500">{s.order}</span>
+              <span className="flex-1">{s.name}</span>
+              <span className="text-xs text-gray-500">{s.timing}</span>
+            </div>
+            {(s.step_documents?.length ?? 0) > 0 && (
+              <div className="ml-8 mt-1 space-y-0.5">
+                {(s.step_documents ?? []).map((doc, docIdx) => (
+                  <div key={`${s.id}-doc-${doc.id ?? docIdx}`} className="flex items-center gap-1 text-xs text-gray-500">
+                    <span>📄</span>
+                    <span>{doc.name}</span>
+                    {doc.document_template_id ? <span className="text-blue-500">[템플릿]</span> : null}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -764,7 +1045,7 @@ function InstanceList({
   }
 
   if (isLoading) return <PageLoading />
-  if (!(data?.length)) return <p className="text-sm text-gray-400">인스턴스가 없습니다.</p>
+  if (!(data?.length)) return <EmptyState emoji="🔄" message="진행 중인 워크플로가 없어요" className="py-10" />
 
   return (
     <div className="space-y-3">
@@ -796,7 +1077,7 @@ function InstanceList({
                   수정
                 </button>
               )}
-              <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{inst.progress}</span>
+              <span className="tag tag-gray">{inst.progress}</span>
               <ChevronRight size={16} className={`text-gray-400 transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
             </div>
           </div>
@@ -1019,7 +1300,7 @@ export default function WorkflowsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">워크플로우</h2>
+      <h2 className="page-title">⚙️ 워크플로우</h2>
           <p className="page-subtitle">템플릿 및 인스턴스 관리</p>
         </div>
         <button onClick={() => setMode('create')} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> + 새 템플릿</button>
@@ -1043,7 +1324,7 @@ export default function WorkflowsPage() {
             {isLoading ? (
               <PageLoading />
             ) : !(templates?.length) ? (
-              <p className="text-sm text-gray-400">등록된 템플릿이 없습니다.</p>
+              <EmptyState emoji="⚙️" message="등록된 템플릿이 없어요" className="py-10" />
             ) : (
               Array.from(groupedTemplates.entries()).map(([category, items]) => (
                 <div key={category} className="space-y-1">

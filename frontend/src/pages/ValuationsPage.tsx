@@ -15,6 +15,7 @@ import {
 } from '../lib/api'
 import { formatKRW } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 interface InvestmentOption {
@@ -223,7 +224,7 @@ export default function ValuationsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">가치평가</h2>
+      <h2 className="page-title">💎 가치평가</h2>
           <p className="page-subtitle">평가 방법별 밸류에이션 이력을 관리합니다.</p>
         </div>
         <button
@@ -318,7 +319,7 @@ export default function ValuationsPage() {
         {isLoading ? (
           <PageLoading />
         ) : !rows?.length ? (
-          <p className="p-2 text-sm text-gray-400">가치평가 이력이 없습니다.</p>
+            <EmptyState emoji="💎" message="가치평가 이력이 없어요" className="py-8" />
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (

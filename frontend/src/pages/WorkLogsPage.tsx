@@ -13,7 +13,8 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Plus, Trash2, Clock, BookOpen, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
+import { Plus, Trash2, Clock, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 function DynamicList({
@@ -214,7 +215,7 @@ function WorkLogEntry({
           {log.actual_time && (
             <span className="flex items-center gap-0.5"><Clock size={11} />{log.actual_time}</span>
           )}
-          <span className={`rounded px-1.5 py-0.5 text-xs ${log.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+          <span className={log.status === 'completed' ? 'tag tag-green' : 'tag tag-amber'}>
             {labelStatus(log.status)}
           </span>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -469,9 +470,7 @@ export default function WorkLogsPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title flex items-center gap-2">
-          <BookOpen size={24} /> 업무 기록
-        </h2>
+        <h2 className="page-title">📝 업무일지</h2>
         {activeTab === 'logs' && (
           <button
             onClick={() => {
@@ -546,7 +545,7 @@ export default function WorkLogsPage() {
           {isLogsLoading ? (
             <PageLoading />
           ) : Object.keys(grouped).length === 0 ? (
-            <p className="py-12 text-center text-sm text-gray-400">기록이 없습니다.</p>
+            <EmptyState emoji="📝" message="작성된 업무일지가 없어요" className="py-12" />
           ) : (
             <div className="space-y-6">
               {Object.entries(grouped).map(([dateKey, items]) => (

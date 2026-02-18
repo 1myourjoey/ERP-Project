@@ -27,6 +27,7 @@ import {
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 
 interface InvestmentOption {
   id: number
@@ -209,7 +210,7 @@ export default function ExitsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">회수 관리</h2>
+      <h2 className="page-title">🚪 회수 관리</h2>
           <p className="page-subtitle">위원회 심의와 회수 거래를 통합 관리합니다.</p>
         </div>
       </div>
@@ -343,7 +344,7 @@ export default function ExitsPage() {
               )}
             </div>
           ))}
-          {!committees?.length && <p className="text-sm text-gray-400">위원회가 없습니다.</p>}
+          {!committees?.length && <EmptyState emoji="🚪" message="위원회가 없어요" className="py-8" />}
         </div>
       </div>
 
@@ -442,7 +443,7 @@ export default function ExitsPage() {
               )}
             </div>
           ))}
-          {!trades?.length && <p className="text-sm text-gray-400">회수 거래가 없습니다.</p>}
+          {!trades?.length && <EmptyState emoji="🚪" message="회수 거래가 없어요" className="py-8" />}
         </div>
       </div>
     </div>

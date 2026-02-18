@@ -49,13 +49,13 @@ function formatDate(value: string | null | undefined): string {
 
 function dueBadge(report: RegularReport): { text: string; className: string } | null {
   if (report.status === '제출완료' || report.status === '확인완료' || report.status === '전송완료') {
-    return { text: '제출 완료', className: 'bg-green-100 text-green-700' }
+    return { text: '제출 완료', className: 'tag tag-green' }
   }
   if (report.days_remaining == null) return null
-  if (report.days_remaining < 0) return { text: `지연 D+${Math.abs(report.days_remaining)}`, className: 'bg-red-100 text-red-700' }
-  if (report.days_remaining <= 3) return { text: `D-${report.days_remaining}`, className: 'bg-red-100 text-red-700' }
-  if (report.days_remaining <= 7) return { text: `D-${report.days_remaining}`, className: 'bg-amber-100 text-amber-700' }
-  return { text: `D-${report.days_remaining}`, className: 'bg-gray-100 text-gray-700' }
+  if (report.days_remaining < 0) return { text: `지연 D+${Math.abs(report.days_remaining)}`, className: 'tag tag-red' }
+  if (report.days_remaining <= 3) return { text: `D-${report.days_remaining}`, className: 'tag tag-red' }
+  if (report.days_remaining <= 7) return { text: `D-${report.days_remaining}`, className: 'tag tag-amber' }
+  return { text: `D-${report.days_remaining}`, className: 'tag tag-gray' }
 }
 
 export default function ReportsPage() {
@@ -117,7 +117,7 @@ export default function ReportsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">보고·공시 관리</h2>
+      <h2 className="page-title">📑 보고·공시 관리</h2>
           <p className="page-subtitle">정기/수시 보고 일정과 제출 상태를 관리합니다.</p>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function ReportsPage() {
         {isLoading ? (
           <PageLoading />
         ) : !rows?.length ? (
-          <EmptyState message="보고 기록이 없습니다." />
+          <EmptyState emoji="📑" message="보고 기록이 없어요" action={() => setShowCreate(true)} actionLabel="보고 등록" />
         ) : (
           rows.map((row) => {
             const badge = dueBadge(row)
@@ -242,7 +242,7 @@ export default function ReportsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-gray-800">{row.report_target} · {row.period}</p>
                       <div className="flex items-center gap-1">
-                        {badge && <span className={`rounded px-2 py-0.5 text-xs ${badge.className}`}>{badge.text}</span>}
+                      {badge && <span className={badge.className}>{badge.text}</span>}
                         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{labelStatus(row.status)}</span>
                       </div>
                     </div>

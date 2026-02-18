@@ -17,6 +17,7 @@ import {
 import { formatKRWFull, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Plus, X } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
 
 const FUND_TYPE_OPTIONS = [
   '투자조합',
@@ -460,7 +461,7 @@ export default function FundsPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">조합 관리</h2>
+      <h2 className="page-title">🏦 조합 관리</h2>
         <button onClick={() => setShowCreateFund(v => !v)} className="primary-btn inline-flex items-center gap-1"><Plus size={14} /> 조합 추가</button>
       </div>
 
@@ -580,7 +581,7 @@ export default function FundsPage() {
                 </div>
               )
             })}
-            {!funds?.length && <p className="text-sm text-gray-400 p-2">등록된 조합이 없습니다.</p>}
+            {!funds?.length && <EmptyState emoji="🏦" message="등록된 조합이 없어요" className="py-8" />}
           </div>
         )}
       </div>

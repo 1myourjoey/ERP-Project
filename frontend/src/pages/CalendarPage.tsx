@@ -12,6 +12,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
@@ -73,10 +74,10 @@ function isUrgentDate(date: string) {
 }
 
 function eventTone(event: CalendarEvent) {
-  if (event.status === 'completed') return 'bg-green-100 text-green-700'
-  if (event.event_type === 'task') return 'bg-blue-100 text-blue-700'
-  if (event.status !== 'completed' && isUrgentDate(event.date)) return 'bg-red-100 text-red-700'
-  return 'bg-indigo-100 text-indigo-700'
+  if (event.status === 'completed') return 'tag tag-green'
+  if (event.event_type === 'task') return 'tag tag-blue'
+  if (event.status !== 'completed' && isUrgentDate(event.date)) return 'tag tag-red'
+  return 'tag tag-indigo'
 }
 
 export default function CalendarPage() {
@@ -179,7 +180,7 @@ export default function CalendarPage() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h2 className="page-title">캘린더</h2>
+      <h2 className="page-title">🗓️ 캘린더</h2>
           <p className="page-subtitle">일정과 업무 마감 일정을 한 화면에서 확인합니다.</p>
         </div>
         <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>
@@ -340,7 +341,7 @@ export default function CalendarPage() {
             </div>
 
             {!selectedDateEvents.length ? (
-              <p className="text-sm text-gray-400">이 날짜의 일정이 없습니다.</p>
+              <EmptyState emoji="🗓️" message="등록된 일정이 없어요" className="py-8" />
             ) : (
               <div className="space-y-2">
                 {selectedDateEvents.map(event => (
@@ -357,7 +358,7 @@ export default function CalendarPage() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             {event.task_id && (
-                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                              <span className="tag tag-indigo">
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
@@ -366,7 +367,7 @@ export default function CalendarPage() {
                           <p className="text-xs text-gray-500 mt-0.5">
                             {event.time || '-'} | {event.duration != null ? `${event.duration}분` : '-'} | {event.description || '-'}
                           </p>
-                          <span className={`inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded ${eventTone(event)}`}>
+                          <span className={`inline-block mt-1 ${eventTone(event)}`}>
                             {labelStatus(event.status)}
                           </span>
                         </div>
@@ -424,7 +425,7 @@ export default function CalendarPage() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             {event.task_id && (
-                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                              <span className="tag tag-indigo">
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
@@ -437,7 +438,7 @@ export default function CalendarPage() {
                     <td className="px-3 py-2">{event.time || '-'}</td>
                     <td className="px-3 py-2">{event.duration != null ? `${event.duration}분` : '-'}</td>
                     <td className="px-3 py-2">
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded ${eventTone(event)}`}>{labelStatus(event.status)}</span>
+                      <span className={eventTone(event)}>{labelStatus(event.status)}</span>
                     </td>
                     <td className="px-3 py-2">
                       {editingId !== event.id && (
@@ -466,7 +467,9 @@ export default function CalendarPage() {
                 ))}
                 {!sortedEvents.length && (
                   <tr>
-                    <td className="px-3 py-4 text-gray-400" colSpan={6}>일정이 없습니다.</td>
+                    <td className="px-3 py-1" colSpan={6}>
+                      <EmptyState emoji="🗓️" message="등록된 일정이 없어요" className="py-8" />
+                    </td>
                   </tr>
                 )}
               </tbody>

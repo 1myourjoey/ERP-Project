@@ -4,6 +4,7 @@ import { ChevronDown, Clock, GitBranch, Plus, Trash2 } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
+import EmptyState from '../components/EmptyState'
 import MiniCalendar from '../components/MiniCalendar'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
@@ -44,17 +45,17 @@ interface WorkflowGroup {
 function categoryBadgeClass(category: string): string {
   switch (category) {
     case '투자실행':
-      return 'bg-red-50 text-red-700'
+      return 'tag tag-red'
     case 'LP보고':
-      return 'bg-green-50 text-green-700'
+      return 'tag tag-green'
     case '사후관리':
-      return 'bg-amber-50 text-amber-700'
+      return 'tag tag-amber'
     case '규약/총회':
-      return 'bg-indigo-50 text-indigo-700'
+      return 'tag tag-indigo'
     case '서류관리':
-      return 'bg-orange-50 text-orange-700'
+      return 'tag tag-purple'
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'tag tag-gray'
   }
 }
 
@@ -140,14 +141,14 @@ function TaskItem({
               <Clock size={11} /> {task.estimated_time}
             </span>
           )}
-          {task.workflow_instance_id && <span className="text-indigo-500">WF</span>}
+          {task.workflow_instance_id && <span className="tag tag-indigo">WF</span>}
           {task.category && (
-            <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${categoryBadgeClass(task.category)}`}>
+            <span className={categoryBadgeClass(task.category)}>
               {task.category}
             </span>
           )}
           {task.fund_name && (
-            <span className="rounded bg-blue-50 px-1 py-0.5 text-[10px] text-blue-600">{task.fund_name}</span>
+            <span className="tag tag-blue">{task.fund_name}</span>
           )}
         </div>
       </div>
@@ -208,7 +209,7 @@ function WorkflowGroupCard({
           <p className="truncate text-sm font-medium text-indigo-800">{group.currentStep?.fund_name || '워크플로'}</p>
           <p className="truncate text-xs text-indigo-600">현재: {group.currentStep?.title || '-'}</p>
         </div>
-        <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+        <span className="tag tag-indigo shrink-0">
           {group.progress}
         </span>
         <ChevronDown size={14} className={`text-indigo-400 transition-transform ${expanded ? '' : '-rotate-90'}`} />
@@ -957,11 +958,19 @@ export default function TaskBoardPage() {
   }
 
   if (isLoading) return <PageLoading />
+  const allVisibleTasks = QUADRANTS.flatMap((quadrant) => filterByFund(board?.[quadrant.key] || []))
+  const urgentTasks = allVisibleTasks.filter((task) => {
+    if (task.status === 'completed' || !task.deadline) return false
+    const deadline = new Date(task.deadline).getTime()
+    if (Number.isNaN(deadline)) return false
+    const nowMs = Date.now()
+    return deadline >= nowMs && deadline <= nowMs + 24 * 60 * 60 * 1000
+  })
 
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">업무 보드</h2>
+        <h2 className="page-title">📌 업무 보드</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {['pending', 'all', 'completed'].map((status) => (
@@ -1034,6 +1043,23 @@ export default function TaskBoardPage() {
           </button>
         </div>
       </div>
+      {urgentTasks.length > 0 && (
+        <div className="info-banner mb-4">
+          <div className="info-banner-icon" aria-hidden="true">⏰</div>
+          <p className="info-banner-text">기한 24시간 이내 업무가 {urgentTasks.length}건 있습니다.</p>
+          <div className="info-banner-action">
+            <button
+              onClick={() => {
+                setStatusFilter('pending')
+                setShowMiniCalendar(false)
+              }}
+              className="secondary-btn text-xs"
+            >
+              업무 확인
+            </button>
+          </div>
+        </div>
+      )}
 
       {showMiniCalendar ? (
         <div className="w-full">
@@ -1097,6 +1123,11 @@ export default function TaskBoardPage() {
                       blinkingId={blinkingId}
                     />
                   ))}
+                  {allTasks.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-gray-200">
+                      <EmptyState emoji="📋" message="등록된 업무가 없어요" className="py-6" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-2">
