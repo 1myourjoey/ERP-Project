@@ -37,23 +37,26 @@ def list_events(
     task_ids = [event.task_id for event in rows if event.task_id is not None]
     tasks = db.query(Task).filter(Task.id.in_(task_ids)).all() if task_ids else []
     quadrant_by_task_id = {task.id: task.quadrant for task in tasks}
+    valid_task_ids = set(quadrant_by_task_id.keys())
 
-    events = [
-        {
-            "id": event.id,
-            "title": event.title,
-            "date": event.date,
-            "time": event.time,
-            "duration": event.duration,
-            "description": event.description,
-            "status": event.status,
-            "task_id": event.task_id,
-            "quadrant": quadrant_by_task_id.get(event.task_id) if event.task_id else None,
-            "event_type": "event",
-            "color": None,
-        }
-        for event in rows
-    ]
+    events = []
+    for event in rows:
+        linked_task_id = event.task_id if event.task_id in valid_task_ids else None
+        events.append(
+            {
+                "id": event.id,
+                "title": event.title,
+                "date": event.date,
+                "time": event.time,
+                "duration": event.duration,
+                "description": event.description,
+                "status": event.status,
+                "task_id": linked_task_id,
+                "quadrant": quadrant_by_task_id.get(linked_task_id) if linked_task_id else None,
+                "event_type": "event",
+                "color": None,
+            }
+        )
 
     if include_tasks and status != "completed":
         task_query = db.query(Task).filter(

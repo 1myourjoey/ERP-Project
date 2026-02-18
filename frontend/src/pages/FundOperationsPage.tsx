@@ -258,6 +258,7 @@ interface CallEditState {
   call_date: string
   call_type: string
   total_amount: number
+  request_percent: number | null
   memo: string
 }
 
@@ -318,7 +319,14 @@ export default function FundOperationsPage() {
   const [lpForm, setLpForm] = useState<LPInput>(EMPTY_LP_FORM)
   const [transferSourceLp, setTransferSourceLp] = useState<LP | null>(null)
 
-  const [newCall, setNewCall] = useState<CapitalCallInput>({ fund_id: 0, call_date: todayIso(), call_type: 'regular', total_amount: 0, memo: '' })
+  const [newCall, setNewCall] = useState<CapitalCallInput>({
+    fund_id: 0,
+    call_date: todayIso(),
+    call_type: 'regular',
+    total_amount: 0,
+    request_percent: null,
+    memo: '',
+  })
   const [newCallItem, setNewCallItem] = useState<CapitalCallItemInput>({ lp_id: 0, amount: 0, paid: false, paid_date: null })
   const [newDistribution, setNewDistribution] = useState<DistributionInput>({ fund_id: 0, dist_date: todayIso(), dist_type: 'cash', principal_total: 0, profit_total: 0, performance_fee: 0, memo: '' })
   const [newDistributionItem, setNewDistributionItem] = useState<DistributionItemInput>({ lp_id: 0, principal: 0, profit: 0 })
@@ -361,6 +369,7 @@ export default function FundOperationsPage() {
       call_date: data.call_date,
       total_amount: data.total_amount ?? null,
       call_type: data.call_type,
+      request_percent: data.request_percent ?? null,
       memo: data.memo,
     }),
     onSuccess: () => {
@@ -483,6 +492,7 @@ export default function FundOperationsPage() {
       call_date: row.call_date,
       call_type: row.call_type,
       total_amount: row.total_amount,
+      request_percent: row.request_percent ?? null,
       memo: row.memo || '',
     })
   }
@@ -757,19 +767,31 @@ export default function FundOperationsPage() {
       </Section>
 
       <Section title="출자">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-4 mb-2">
+        <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-5">
           <input type="date" value={newCall.call_date} onChange={(e) => setNewCall((p) => ({ ...p, call_date: e.target.value }))} className="rounded border px-2 py-1 text-sm" />
           <select value={newCall.call_type} onChange={(e) => setNewCall((p) => ({ ...p, call_type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
             {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
           </select>
           <input type="number" value={newCall.total_amount || 0} onChange={(e) => setNewCall((p) => ({ ...p, total_amount: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" placeholder="출자 총액" />
+          <input
+            type="number"
+            min={0}
+            step="0.1"
+            value={newCall.request_percent ?? ''}
+            onChange={(e) => setNewCall((p) => ({ ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) }))}
+            className="rounded border px-2 py-1 text-sm"
+            placeholder="요청 비율(%)"
+          />
           <button onClick={() => selectedFundId && createCallMut.mutate({ ...newCall, fund_id: selectedFundId, memo: newCall.memo?.trim() || null })} className="primary-btn">등록</button>
         </div>
         <div className="space-y-2">
           {calls?.map((row) => (
             <div key={row.id} className="rounded border border-gray-200 p-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-gray-800">{toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}</p>
+                <p className="text-sm text-gray-800">
+                  {toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}
+                  {row.request_percent != null ? ` | ${row.request_percent}%` : ''}
+                </p>
                 <div className="flex gap-1">
                   <button onClick={() => setCallExpandedId(callExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
                   <button onClick={() => toggleCallEdit(row)} className="secondary-btn">수정</button>
@@ -777,14 +799,39 @@ export default function FundOperationsPage() {
                 </div>
               </div>
               {editingCallId === row.id && editCall && (
-                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
                   <input type="date" value={editCall.call_date} onChange={(e) => setEditCall((p) => (p ? { ...p, call_date: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
                   <select value={editCall.call_type} onChange={(e) => setEditCall((p) => (p ? { ...p, call_type: e.target.value } : p))} className="rounded border px-2 py-1 text-sm">
                     {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
                   </select>
                   <input type="number" value={editCall.total_amount} onChange={(e) => setEditCall((p) => (p ? { ...p, total_amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={editCall.request_percent ?? ''}
+                    onChange={(e) => setEditCall((p) => (p ? { ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) } : p))}
+                    className="rounded border px-2 py-1 text-sm"
+                    placeholder="요청 비율(%)"
+                  />
                   <div className="flex gap-1">
-                    <button onClick={() => updateCallMut.mutate({ id: row.id, data: { call_date: editCall.call_date, call_type: editCall.call_type, total_amount: editCall.total_amount, memo: editCall.memo.trim() || null } })} className="primary-btn">저장</button>
+                    <button
+                      onClick={() =>
+                        updateCallMut.mutate({
+                          id: row.id,
+                          data: {
+                            call_date: editCall.call_date,
+                            call_type: editCall.call_type,
+                            total_amount: editCall.total_amount,
+                            request_percent: editCall.request_percent,
+                            memo: editCall.memo.trim() || null,
+                          },
+                        })
+                      }
+                      className="primary-btn"
+                    >
+                      저장
+                    </button>
                     <button onClick={() => { setEditingCallId(null); setEditCall(null) }} className="secondary-btn">취소</button>
                   </div>
                 </div>

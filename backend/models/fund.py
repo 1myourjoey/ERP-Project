@@ -100,6 +100,7 @@ class FundNoticePeriod(Base):
     notice_type = Column(String, nullable=False)
     label = Column(String, nullable=False)
     business_days = Column(Integer, nullable=False)
+    day_basis = Column(String, nullable=False, default="business")
     memo = Column(Text, nullable=True)
 
     fund = relationship("Fund", back_populates="notice_periods")

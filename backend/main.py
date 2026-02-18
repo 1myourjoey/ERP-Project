@@ -118,9 +118,16 @@ def ensure_sqlite_compat_columns():
             ("capital_call_items", "memo", "TEXT"),
             ("lps", "business_number", "TEXT"),
             ("lps", "address", "TEXT"),
+            ("fund_notice_periods", "day_basis", "TEXT DEFAULT 'business'"),
         ]:
             if has_table(table) and not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+
+        if has_table("fund_notice_periods") and has_column("fund_notice_periods", "day_basis"):
+            conn.exec_driver_sql(
+                "UPDATE fund_notice_periods SET day_basis = 'business' "
+                "WHERE day_basis IS NULL OR TRIM(day_basis) = ''"
+            )
 
 
 @asynccontextmanager

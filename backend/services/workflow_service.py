@@ -114,7 +114,7 @@ def _extract_notice_type(step: WorkflowStep, alias_to_notice_type: dict[str, str
     return None
 
 
-def _fund_notice_overrides(db: Session, fund_id: int | None) -> tuple[dict[str, int], dict[str, str]]:
+def _fund_notice_overrides(db: Session, fund_id: int | None) -> tuple[dict[str, tuple[int, str]], dict[str, str]]:
     if fund_id is None:
         return {}, {}
     rows = (
@@ -122,11 +122,14 @@ def _fund_notice_overrides(db: Session, fund_id: int | None) -> tuple[dict[str, 
         .filter(FundNoticePeriod.fund_id == fund_id)
         .all()
     )
-    overrides: dict[str, int] = {}
+    overrides: dict[str, tuple[int, str]] = {}
     alias_to_notice_type: dict[str, str] = {}
     for row in rows:
         notice_type = _normalize_notice_key(row.notice_type)
-        overrides[notice_type] = row.business_days
+        day_basis = _normalize_notice_key(getattr(row, "day_basis", "business") or "business")
+        if day_basis not in {"business", "calendar"}:
+            day_basis = "business"
+        overrides[notice_type] = (row.business_days, day_basis)
         alias_to_notice_type[notice_type] = notice_type
         label_key = _normalize_notice_key(row.label) if row.label else ""
         if label_key:
@@ -163,13 +166,17 @@ def instantiate_workflow(
     if notice_overrides:
         for key, value in notice_overrides.items():
             normalized_key = _normalize_notice_key(key)
-            overrides[normalized_key] = value
+            overrides[normalized_key] = (value, "business")
             alias_to_notice_type[normalized_key] = normalized_key
 
     for step in workflow.steps:
         matched_notice_type = _extract_notice_type(step, alias_to_notice_type)
         if matched_notice_type is not None:
-            calc_date = calculate_business_days_before(trigger_date, overrides[matched_notice_type])
+            notice_days, day_basis = overrides.get(matched_notice_type, (0, "business"))
+            if day_basis == "calendar":
+                calc_date = trigger_date - timedelta(days=notice_days)
+            else:
+                calc_date = calculate_business_days_before(trigger_date, notice_days)
         else:
             calc_date = calculate_step_date(trigger_date, step.timing_offset_days)
 

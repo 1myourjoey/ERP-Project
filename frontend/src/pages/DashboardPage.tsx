@@ -393,6 +393,7 @@ function QuickAddTaskModal({
   defaultDate,
   baseDate,
   funds,
+  gpEntities,
   defaultFundId,
   onAdd,
   onCancel,
@@ -400,6 +401,7 @@ function QuickAddTaskModal({
   defaultDate: string
   baseDate: string
   funds: FundSummary[]
+  gpEntities: GPEntity[]
   defaultFundId?: number | null
   onAdd: (data: TaskCreate) => void
   onCancel: () => void
@@ -407,7 +409,9 @@ function QuickAddTaskModal({
   const [title, setTitle] = useState('')
   const [estimatedTime, setEstimatedTime] = useState('')
   const [category, setCategory] = useState('')
-  const [fundId, setFundId] = useState<number | ''>(defaultFundId ?? '')
+  const [relatedTarget, setRelatedTarget] = useState<string>(
+    defaultFundId ? `fund:${defaultFundId}` : '',
+  )
   const [isNotice, setIsNotice] = useState(false)
   const [isReport, setIsReport] = useState(false)
   return (
@@ -464,17 +468,48 @@ function QuickAddTaskModal({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500">관련 조합</label>
-                <select value={fundId} onChange={(e) => setFundId(e.target.value ? Number(e.target.value) : '')} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm">
+                <label className="mb-1 block text-xs text-gray-500">관련 대상</label>
+                <select
+                  value={relatedTarget}
+                  onChange={(e) => setRelatedTarget(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                >
                   <option value="">선택</option>
-                  {funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+                  {gpEntities.length > 0 && (
+                    <optgroup label="고유계정">
+                      {gpEntities.map((entity) => <option key={`gp-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="조합">
+                    {funds.map((fund) => <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>)}
+                  </optgroup>
                 </select>
               </div>
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button onClick={onCancel} className="secondary-btn">취소</button>
-            <button onClick={() => { if (!title.trim()) return; onAdd({ title: title.trim(), quadrant: 'Q1', deadline: defaultDate, estimated_time: estimatedTime || null, category: category || null, fund_id: fundId || null, is_notice: isNotice, is_report: isReport }) }} className="primary-btn">추가</button>
+            <button
+              onClick={() => {
+                if (!title.trim()) return
+                const selectedFundId = relatedTarget.startsWith('fund:') ? Number(relatedTarget.slice(5)) : null
+                const selectedGpEntityId = relatedTarget.startsWith('gp:') ? Number(relatedTarget.slice(3)) : null
+                onAdd({
+                  title: title.trim(),
+                  quadrant: 'Q1',
+                  deadline: defaultDate,
+                  estimated_time: estimatedTime || null,
+                  category: category || null,
+                  fund_id: selectedFundId || null,
+                  gp_entity_id: selectedGpEntityId || null,
+                  is_notice: isNotice,
+                  is_report: isReport,
+                })
+              }}
+              className="primary-btn"
+            >
+              추가
+            </button>
           </div>
         </div>
       </div>
@@ -948,7 +983,17 @@ export default function DashboardPage() {
         />
       )}
 
-      {showQuickAddModal && <QuickAddTaskModal defaultDate={quickAddDefaultDate || date} baseDate={date} funds={fund_summary} defaultFundId={quickAddDefaultFundId} onAdd={(task) => createTaskMut.mutate(task)} onCancel={() => setShowQuickAddModal(false)} />}
+      {showQuickAddModal && (
+        <QuickAddTaskModal
+          defaultDate={quickAddDefaultDate || date}
+          baseDate={date}
+          funds={fund_summary}
+          gpEntities={gpEntities}
+          defaultFundId={quickAddDefaultFundId}
+          onAdd={(task) => createTaskMut.mutate(task)}
+          onCancel={() => setShowQuickAddModal(false)}
+        />
+      )}
 
       {popupSection && (
         <ListPopupModal title={popupTitle} onClose={() => setPopupSection(null)}>

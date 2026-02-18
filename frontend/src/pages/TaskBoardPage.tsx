@@ -14,6 +14,7 @@ import {
   createTask,
   deleteTask,
   fetchFunds,
+  fetchGPEntities,
   fetchTask,
   fetchTasks,
   fetchWorkflows,
@@ -22,7 +23,7 @@ import {
   moveTask,
   updateTask,
 } from '../lib/api'
-import type { Fund, Task, TaskBoard, TaskCreate, WorkflowListItem } from '../lib/api'
+import type { Fund, GPEntity, Task, TaskBoard, TaskCreate, WorkflowListItem } from '../lib/api'
 
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -237,12 +238,16 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
   const [deadlineDate, setDeadlineDate] = useState('')
   const [deadlineHour, setDeadlineHour] = useState('')
   const [estimatedTime, setEstimatedTime] = useState('')
-  const [selectedFundId, setSelectedFundId] = useState<number | ''>('')
+  const [relatedTarget, setRelatedTarget] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('')
 
   const { data: funds = [] } = useQuery<Fund[]>({
     queryKey: ['funds'],
     queryFn: fetchFunds,
+  })
+  const { data: gpEntities = [] } = useQuery<GPEntity[]>({
+    queryKey: ['gp-entities'],
+    queryFn: fetchGPEntities,
   })
 
   const { data: templates = [] } = useQuery<WorkflowListItem[]>({
@@ -255,7 +260,13 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
   })
 
   const instantiateMut = useMutation({
-    mutationFn: ({ workflowId, data }: { workflowId: number; data: { name: string; trigger_date: string; fund_id?: number; memo?: string } }) =>
+    mutationFn: ({
+      workflowId,
+      data,
+    }: {
+      workflowId: number
+      data: { name: string; trigger_date: string; fund_id?: number; gp_entity_id?: number; memo?: string }
+    }) =>
       instantiateWorkflow(workflowId, data),
   })
 
@@ -264,15 +275,18 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
     setDeadlineDate('')
     setDeadlineHour('')
     setEstimatedTime('')
-    setSelectedFundId('')
+    setRelatedTarget('')
     setSelectedTemplateId('')
     setOpen(false)
   }
 
   const submit = async () => {
     if (!title.trim()) return
-    if (selectedTemplateId && !selectedFundId) {
-      addToast('error', '워크플로 템플릿 실행 시 관련 조합을 선택해 주세요.')
+    const selectedFundId = relatedTarget.startsWith('fund:') ? Number(relatedTarget.slice(5)) : null
+    const selectedGpEntityId = relatedTarget.startsWith('gp:') ? Number(relatedTarget.slice(3)) : null
+
+    if (selectedTemplateId && !relatedTarget) {
+      addToast('error', '워크플로 템플릿 실행 시 관련 대상(조합/고유계정)을 선택해 주세요.')
       return
     }
     if (selectedTemplateId && !deadlineDate) {
@@ -288,6 +302,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
             name: title.trim(),
             trigger_date: deadlineDate,
             fund_id: selectedFundId || undefined,
+            gp_entity_id: selectedGpEntityId || undefined,
             memo: '',
           },
         })
@@ -301,6 +316,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           deadline: combineDeadline(deadlineDate, deadlineHour),
           estimated_time: estimatedTime || null,
           fund_id: selectedFundId || null,
+          gp_entity_id: selectedGpEntityId || null,
         })
         addToast('success', '작업이 추가되었습니다.')
       }
@@ -359,14 +375,23 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
       </div>
       <div className="grid grid-cols-2 gap-1">
         <select
-          value={selectedFundId}
-          onChange={(e) => setSelectedFundId(e.target.value ? Number(e.target.value) : '')}
+          value={relatedTarget}
+          onChange={(e) => setRelatedTarget(e.target.value)}
           className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
         >
-          <option value="">관련 조합</option>
-          {funds.map((fund) => (
-            <option key={fund.id} value={fund.id}>{fund.name}</option>
-          ))}
+          <option value="">관련 대상</option>
+          {gpEntities.length > 0 && (
+            <optgroup label="고유계정">
+              {gpEntities.map((entity) => (
+                <option key={`gp-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+              ))}
+            </optgroup>
+          )}
+          <optgroup label="조합">
+            {funds.map((fund) => (
+              <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+            ))}
+          </optgroup>
         </select>
         <select
           value={selectedTemplateId}
@@ -379,7 +404,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           ))}
         </select>
       </div>
-      {selectedFundId && selectedTemplateId && (
+      {relatedTarget.startsWith('fund:') && selectedTemplateId && (
         <p className="text-xs text-gray-500">
           선택한 조합의 통지기간을 반영해 단계 일정이 자동 계산됩니다.
         </p>
@@ -403,11 +428,13 @@ function EditTaskModal({
   onSave,
   onCancel,
   fundsForFilter,
+  gpEntities,
 }: {
   task: Task
   onSave: (id: number, data: Partial<TaskCreate>) => void
   onCancel: () => void
   fundsForFilter: Fund[]
+  gpEntities: GPEntity[]
 }) {
   const initialDeadline = splitDeadline(task.deadline)
   const [title, setTitle] = useState(task.title)
@@ -418,10 +445,14 @@ function EditTaskModal({
   const [memo, setMemo] = useState(task.memo || '')
   const [delegateTo, setDelegateTo] = useState(task.delegate_to || '')
   const [category, setCategory] = useState(task.category || '')
-  const [fundId, setFundId] = useState<number | ''>(task.fund_id || '')
+  const [relatedTarget, setRelatedTarget] = useState(
+    task.fund_id ? `fund:${task.fund_id}` : task.gp_entity_id ? `gp:${task.gp_entity_id}` : '',
+  )
 
   const submit = () => {
     if (!title.trim()) return
+    const fundId = relatedTarget.startsWith('fund:') ? Number(relatedTarget.slice(5)) : null
+    const gpEntityId = relatedTarget.startsWith('gp:') ? Number(relatedTarget.slice(3)) : null
     onSave(task.id, {
       title: title.trim(),
       deadline: combineDeadline(deadlineDate, deadlineHour),
@@ -431,6 +462,7 @@ function EditTaskModal({
       delegate_to: delegateTo || null,
       category: category || null,
       fund_id: fundId || null,
+      gp_entity_id: gpEntityId || null,
     })
   }
 
@@ -518,16 +550,25 @@ function EditTaskModal({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500">관련 조합</label>
+                <label className="mb-1 block text-xs text-gray-500">관련 대상</label>
                 <select
-                  value={fundId}
-                  onChange={(e) => setFundId(e.target.value ? Number(e.target.value) : '')}
+                  value={relatedTarget}
+                  onChange={(e) => setRelatedTarget(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">없음</option>
-                  {fundsForFilter.map((fund) => (
-                    <option key={fund.id} value={fund.id}>{fund.name}</option>
-                  ))}
+                  {gpEntities.length > 0 && (
+                    <optgroup label="고유계정">
+                      {gpEntities.map((entity) => (
+                        <option key={`gp-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="조합">
+                    {fundsForFilter.map((fund) => (
+                      <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             </div>
@@ -595,6 +636,9 @@ function TaskDetailModal({
           {task.fund_name && (
             <div><span className="font-medium">조합:</span> {task.fund_name}</div>
           )}
+          {task.gp_entity_name && (
+            <div><span className="font-medium">고유계정:</span> {task.gp_entity_name}</div>
+          )}
           {task.company_name && (
             <div><span className="font-medium">피투자사:</span> {task.company_name}</div>
           )}
@@ -652,7 +696,7 @@ export default function TaskBoardPage() {
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState<'pending' | 'all' | 'completed'>('pending')
-  const [fundFilter, setFundFilter] = useState<number | ''>('')
+  const [fundFilter, setFundFilter] = useState('')
   const [completedYear, setCompletedYear] = useState(currentYear)
   const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
   const [showMiniCalendar, setShowMiniCalendar] = useState(false)
@@ -676,6 +720,10 @@ export default function TaskBoardPage() {
   const { data: fundsForFilter = [] } = useQuery<Fund[]>({
     queryKey: ['funds'],
     queryFn: fetchFunds,
+  })
+  const { data: gpEntities = [] } = useQuery<GPEntity[]>({
+    queryKey: ['gp-entities'],
+    queryFn: fetchGPEntities,
   })
   const { data: calendarTasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks', { status: 'all' }],
@@ -716,7 +764,16 @@ export default function TaskBoardPage() {
 
   const filterByFund = (tasks: Task[]) => {
     if (fundFilter === '') return tasks
-    return tasks.filter((task) => task.fund_id === fundFilter)
+    if (fundFilter.startsWith('gp:')) {
+      const gpEntityId = Number(fundFilter.slice(3))
+      return tasks.filter((task) => task.gp_entity_id === gpEntityId)
+    }
+    if (fundFilter.startsWith('fund:')) {
+      const fundId = Number(fundFilter.slice(5))
+      return tasks.filter((task) => task.fund_id === fundId)
+    }
+    const numeric = Number(fundFilter)
+    return Number.isFinite(numeric) ? tasks.filter((task) => task.fund_id === numeric) : tasks
   }
 
   const updateMutation = useMutation({
@@ -774,16 +831,29 @@ export default function TaskBoardPage() {
   }
 
   const handleMiniCalendarTaskClick = async (taskId: number) => {
-    const target = calendarTaskMap.get(taskId)
+    const normalizedTaskId = Math.abs(Number(taskId))
+    if (!Number.isFinite(normalizedTaskId) || normalizedTaskId <= 0) return
+
+    const target = calendarTaskMap.get(normalizedTaskId)
     if (target) {
       setDetailTask(target)
       return
     }
 
     try {
-      const fetched = await fetchTask(taskId)
+      const fetched = await fetchTask(normalizedTaskId)
       setDetailTask(fetched)
     } catch {
+      try {
+        const allTasks = await fetchTasks()
+        const fallback = allTasks.find((task: Task) => task.id === normalizedTaskId)
+        if (fallback) {
+          setDetailTask(fallback)
+          return
+        }
+      } catch {
+        // fallback query failed, show default toast below
+      }
       addToast('error', '업무 상세 정보를 찾지 못했습니다.')
     }
   }
@@ -835,13 +905,22 @@ export default function TaskBoardPage() {
 
           <select
             value={fundFilter}
-            onChange={(e) => setFundFilter(e.target.value ? Number(e.target.value) : '')}
+            onChange={(e) => setFundFilter(e.target.value)}
             className="rounded border border-gray-200 px-2 py-1 text-xs"
           >
-            <option value="">전체 조합</option>
-            {fundsForFilter.map((fund) => (
-              <option key={fund.id} value={fund.id}>{fund.name}</option>
-            ))}
+            <option value="">전체 대상</option>
+            {gpEntities.length > 0 && (
+              <optgroup label="고유계정">
+                {gpEntities.map((entity) => (
+                  <option key={`gp-filter-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="조합">
+              {fundsForFilter.map((fund) => (
+                <option key={`fund-filter-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+              ))}
+            </optgroup>
           </select>
 
           <button
@@ -932,6 +1011,7 @@ export default function TaskBoardPage() {
         <EditTaskModal
           task={editingTask}
           fundsForFilter={fundsForFilter}
+          gpEntities={gpEntities}
           onSave={(id, data) => updateMutation.mutate({ id, data })}
           onCancel={() => setEditingTask(null)}
         />

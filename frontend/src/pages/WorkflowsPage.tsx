@@ -11,6 +11,7 @@ import {
   fetchDocumentTemplates,
   fetchFund,
   fetchFunds,
+  fetchGPEntities,
   fetchInvestments,
   fetchWorkflow,
   fetchWorkflowInstances,
@@ -23,6 +24,7 @@ import {
   type Company,
   type DocumentTemplate,
   type Fund,
+  type GPEntity,
   type NoticeDeadlineResult,
   type WorkflowInstance,
   type WorkflowListItem,
@@ -356,12 +358,14 @@ function WorkflowDetail({
   const [instDate, setInstDate] = useState('')
   const [instMemo, setInstMemo] = useState('')
   const [instFundId, setInstFundId] = useState<number | ''>('')
+  const [instGpEntityId, setInstGpEntityId] = useState<number | ''>('')
   const [instCompanyId, setInstCompanyId] = useState<number | ''>('')
   const [instInvestmentId, setInstInvestmentId] = useState<number | ''>('')
   const [instNoticeType, setInstNoticeType] = useState('assembly')
 
   const { data: wf, isLoading } = useQuery({ queryKey: ['workflow', workflowId], queryFn: () => fetchWorkflow(workflowId) })
   const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
+  const { data: gpEntities } = useQuery<GPEntity[]>({ queryKey: ['gp-entities'], queryFn: fetchGPEntities })
   const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
   const { data: investments } = useQuery<InvestmentListItem[]>({ queryKey: ['investments'], queryFn: () => fetchInvestments() })
   const { data: selectedFund } = useQuery({ queryKey: ['fund', instFundId], queryFn: () => fetchFund(instFundId as number), enabled: instFundId !== '' })
@@ -400,6 +404,7 @@ function WorkflowDetail({
       trigger_date: instDate,
       memo: instMemo || undefined,
       fund_id: instFundId === '' ? undefined : instFundId,
+      gp_entity_id: instGpEntityId === '' ? undefined : instGpEntityId,
       company_id: instCompanyId === '' ? undefined : instCompanyId,
       investment_id: instInvestmentId === '' ? undefined : instInvestmentId,
     }),
@@ -412,6 +417,7 @@ function WorkflowDetail({
       setInstDate('')
       setInstMemo('')
       setInstFundId('')
+      setInstGpEntityId('')
       setInstCompanyId('')
       setInstInvestmentId('')
     },
@@ -450,9 +456,22 @@ function WorkflowDetail({
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
           <input value={instName} onChange={e => setInstName(e.target.value)} placeholder="인스턴스 이름" className="w-full px-3 py-2 text-sm border rounded-lg" />
           <input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg" />
-          <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+          <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
             <option value="">관련 조합 (선택)</option>
             {(funds ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          <select
+            value={instGpEntityId}
+            onChange={e => {
+              const next = e.target.value ? Number(e.target.value) : ''
+              setInstGpEntityId(next)
+              setInstFundId('')
+              if (instInvestmentId !== '') setInstInvestmentId('')
+            }}
+            className="w-full px-3 py-2 text-sm border rounded-lg bg-white"
+          >
+            <option value="">관련 고유계정 (선택)</option>
+            {(gpEntities ?? []).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}
           </select>
           <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
             <option value="">관련 회사 (선택)</option>

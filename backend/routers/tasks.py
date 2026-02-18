@@ -276,7 +276,7 @@ def list_tasks(
     query = db.query(Task)
     if quadrant:
         query = query.filter(Task.quadrant == quadrant)
-    if status:
+    if status and status != 'all':
         query = query.filter(Task.status == status)
     if fund_id:
         query = query.filter(Task.fund_id == fund_id)

@@ -59,7 +59,16 @@ class FundNoticePeriodCreate(BaseModel):
     notice_type: str
     label: str
     business_days: int = Field(ge=0)
+    day_basis: str = "business"
     memo: Optional[str] = None
+
+    @field_validator("day_basis")
+    @classmethod
+    def validate_day_basis(cls, value: str) -> str:
+        normalized = (value or "").strip().lower()
+        if normalized not in {"business", "calendar"}:
+            raise ValueError("day_basis must be one of: business, calendar")
+        return normalized
 
 
 class FundNoticePeriodResponse(BaseModel):
@@ -68,6 +77,7 @@ class FundNoticePeriodResponse(BaseModel):
     notice_type: str
     label: str
     business_days: int
+    day_basis: str = "business"
     memo: Optional[str] = None
 
     model_config = {"from_attributes": True}

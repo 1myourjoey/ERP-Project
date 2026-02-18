@@ -742,6 +742,7 @@ export interface FundNoticePeriodInput {
   notice_type: string
   label: string
   business_days: number
+  day_basis?: 'business' | 'calendar'
   memo?: string | null
 }
 
@@ -751,6 +752,7 @@ export interface FundNoticePeriodResponse {
   notice_type: string
   label: string
   business_days: number
+  day_basis: 'business' | 'calendar'
   memo: string | null
 }
 
@@ -1018,6 +1020,8 @@ export interface NoticeDeadlineResult {
   target_date: string
   notice_type: string
   business_days: number
+  notice_days?: number
+  day_basis?: 'business' | 'calendar'
   deadline: string
   label: string
 }

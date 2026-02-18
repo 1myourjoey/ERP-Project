@@ -209,7 +209,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
                 key={`${event.id}-${event.title}`}
                 onClick={() => {
                   if (event.task_id && onTaskClick) {
-                    const taskId = Number(event.task_id)
+                    const taskId = Math.abs(Number(event.task_id))
                     if (Number.isFinite(taskId) && taskId > 0) {
                       onTaskClick(taskId)
                     }

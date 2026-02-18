@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date, timedelta
 import io
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -563,6 +563,7 @@ def replace_notice_periods(
                 notice_type=item.notice_type.strip(),
                 label=item.label.strip(),
                 business_days=item.business_days,
+                day_basis=(item.day_basis or "business").strip().lower(),
                 memo=item.memo.strip() if item.memo else None,
             )
         )
@@ -635,11 +636,17 @@ def calculate_deadline(
     if not period:
         raise HTTPException(status_code=404, detail="?듭?湲곌컙??李얠쓣 ???놁뒿?덈떎")
 
-    deadline = calculate_business_days_before(target_date, period.business_days)
+    day_basis = (period.day_basis or "business").strip().lower()
+    if day_basis == "calendar":
+        deadline = target_date - timedelta(days=period.business_days)
+    else:
+        deadline = calculate_business_days_before(target_date, period.business_days)
     return {
         "target_date": target_date.isoformat(),
         "notice_type": notice_type,
         "business_days": period.business_days,
+        "notice_days": period.business_days,
+        "day_basis": day_basis,
         "deadline": deadline.isoformat(),
         "label": period.label,
     }

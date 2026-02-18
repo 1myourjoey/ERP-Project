@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
+  calculateDeadline,
+  createCapitalCallBatch,
   createFundLP,
   deleteFund,
   deleteFundLP,
@@ -19,7 +21,9 @@ import {
   type FundKeyTermInput,
   type FundNoticePeriodInput,
   type CapitalCall,
+  type LP,
   type LPInput,
+  type NoticeDeadlineResult,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -90,6 +94,7 @@ function buildNoticeDraft(fund: Fund | undefined): EditableNoticePeriod[] {
       notice_type: row.notice_type,
       label: row.label,
       business_days: row.business_days,
+      day_basis: row.day_basis ?? 'business',
       memo: row.memo ?? '',
     }))
   }
@@ -98,6 +103,7 @@ function buildNoticeDraft(fund: Fund | undefined): EditableNoticePeriod[] {
     notice_type: item.notice_type,
     label: item.label,
     business_days: item.default_days,
+    day_basis: 'business',
     memo: '',
   }))
 }
@@ -250,6 +256,275 @@ function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; lo
   )
 }
 
+function subtractBusinessDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  let remaining = Math.max(0, days)
+  while (remaining > 0) {
+    result.setDate(result.getDate() - 1)
+    const day = result.getDay()
+    if (day !== 0 && day !== 6) {
+      remaining -= 1
+    }
+  }
+  return result
+}
+
+function subtractCalendarDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() - Math.max(0, days))
+  return result
+}
+
+function parseIsoDateAsLocal(value: string): Date {
+  const [year, month, day] = value.split('-').map((v) => Number(v))
+  return new Date(year, (month || 1) - 1, day || 1)
+}
+
+interface LpAmountDraft {
+  lp_id: number
+  lp_name: string
+  commitment: number
+  amount: number
+}
+
+interface CapitalCallWizardProps {
+  fund: Fund
+  lps: LP[]
+  noticePeriods: FundNoticePeriodInput[]
+  existingCalls: CapitalCall[]
+  initialPaidIn: number
+  onClose: () => void
+}
+
+function CapitalCallWizard({
+  fund,
+  lps,
+  noticePeriods,
+  existingCalls,
+  initialPaidIn,
+  onClose,
+}: CapitalCallWizardProps) {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+  const [callDate, setCallDate] = useState('')
+  const [callType, setCallType] = useState<'initial' | 'additional' | 'regular'>('additional')
+  const [requestPercent, setRequestPercent] = useState(0)
+  const [lpAmounts, setLpAmounts] = useState<LpAmountDraft[]>([])
+  const [submitting, setSubmitting] = useState(false)
+
+  const commitmentTotal = Number(fund.commitment_total ?? 0)
+  const existingPaidIn = useMemo(
+    () => initialPaidIn + existingCalls.reduce((sum, call) => sum + Number(call.total_amount ?? 0), 0),
+    [existingCalls, initialPaidIn],
+  )
+  const remainingCommitment = Math.max(0, commitmentTotal - existingPaidIn)
+  const remainingPercent = commitmentTotal ? Math.max(0, Math.round((remainingCommitment / commitmentTotal) * 100)) : 0
+
+  const noticeTypeForCall = useMemo(() => {
+    if (callType === 'initial') return 'capital_call_initial'
+    if (callType === 'additional') return 'capital_call_additional'
+    return noticePeriods.some((item) => item.notice_type === 'capital_call_regular')
+      ? 'capital_call_regular'
+      : 'capital_call_additional'
+  }, [callType, noticePeriods])
+
+  const selectedNoticePeriod = useMemo<FundNoticePeriodInput>(() => {
+    const row = noticePeriods.find((item) => item.notice_type === noticeTypeForCall)
+    if (row) return row
+    return {
+      notice_type: noticeTypeForCall,
+      label: '출자 요청 통지',
+      business_days: 10,
+      day_basis: 'business',
+      memo: null,
+    }
+  }, [noticePeriods, noticeTypeForCall])
+
+  const hasNoticeRule = useMemo(
+    () => noticePeriods.some((item) => item.notice_type === noticeTypeForCall),
+    [noticePeriods, noticeTypeForCall],
+  )
+
+  const { data: deadlineResult } = useQuery<NoticeDeadlineResult>({
+    queryKey: ['noticeDeadline', fund.id, callDate, noticeTypeForCall],
+    queryFn: () => calculateDeadline(fund.id, callDate, noticeTypeForCall),
+    enabled: !!callDate && hasNoticeRule,
+    retry: false,
+  })
+
+  const noticeDays = Number(selectedNoticePeriod.business_days ?? 0)
+  const noticeDayBasis = selectedNoticePeriod.day_basis ?? 'business'
+
+  const sendDeadline = useMemo(() => {
+    if (!callDate) return null
+    if (deadlineResult?.deadline) return parseIsoDateAsLocal(deadlineResult.deadline)
+    const targetDate = parseIsoDateAsLocal(callDate)
+    if (noticeDayBasis === 'calendar') return subtractCalendarDays(targetDate, noticeDays)
+    return subtractBusinessDays(targetDate, noticeDays)
+  }, [callDate, deadlineResult?.deadline, noticeDayBasis, noticeDays])
+
+  const isBylawViolation = useMemo(() => {
+    if (!callDate || !sendDeadline) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today > sendDeadline
+  }, [callDate, sendDeadline])
+
+  useEffect(() => {
+    setLpAmounts(
+      lps.map((lp) => ({
+        lp_id: lp.id,
+        lp_name: lp.name,
+        commitment: Number(lp.commitment ?? 0),
+        amount: Math.round(Number(lp.commitment ?? 0) * (requestPercent / 100)),
+      })),
+    )
+  }, [lps, requestPercent])
+
+  const totalAmount = useMemo(
+    () => lpAmounts.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    [lpAmounts],
+  )
+
+  const canSubmit = requestPercent > 0
+    && requestPercent <= remainingPercent
+    && !!callDate
+    && totalAmount > 0
+    && !isBylawViolation
+    && !submitting
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+    try {
+      setSubmitting(true)
+      await createCapitalCallBatch({
+        fund_id: fund.id,
+        call_date: callDate,
+        call_type: callType,
+        total_amount: totalAmount,
+        request_percent: requestPercent,
+        memo: `${requestPercent}% 출자 요청`,
+        items: lpAmounts.map((row) => ({
+          lp_id: row.lp_id,
+          amount: Math.max(0, Number(row.amount || 0)),
+          paid: false,
+          paid_date: null,
+        })),
+      })
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls', { fund_id: fund.id }] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fund.id] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fund.id] })
+      addToast('success', '출자 요청을 등록했습니다.')
+      onClose()
+    } catch {
+      addToast('error', '출자 요청 등록에 실패했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-900">출자 요청 위저드</h3>
+          <button onClick={onClose} className="secondary-btn">닫기</button>
+        </div>
+
+        <div className="space-y-4 px-5 py-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
+              <input type="date" value={callDate} onChange={(e) => setCallDate(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">출자 유형</label>
+              <select value={callType} onChange={(e) => setCallType(e.target.value as 'initial' | 'additional' | 'regular')} className="w-full rounded border px-2 py-1.5 text-sm">
+                <option value="initial">최초 출자</option>
+                <option value="additional">수시 출자</option>
+                <option value="regular">정기 출자</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">요청 비율 (%)</label>
+              <input type="number" min={0} max={remainingPercent} value={requestPercent} onChange={(e) => setRequestPercent(Number(e.target.value || 0))} className="w-full rounded border px-2 py-1.5 text-sm" />
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+            <p>통지 유형: {selectedNoticePeriod.label || noticeTypeForCall}</p>
+            <p>통지 기간: {noticeDays}{noticeDayBasis === 'calendar' ? '일' : '영업일'}</p>
+            <p>발송 마감: {sendDeadline ? sendDeadline.toLocaleDateString('ko-KR') : '-'}</p>
+            {selectedNoticePeriod.memo ? <p className="mt-1 text-xs text-blue-800">규약 메모: {selectedNoticePeriod.memo}</p> : null}
+            {isBylawViolation ? <p className="mt-1 font-semibold text-red-600">규약 위반: 통지기간을 충족하지 못하는 일정입니다.</p> : null}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-lg bg-gray-50 p-3">
+              <p className="text-xs text-gray-500">총 약정</p>
+              <p className="text-sm font-semibold text-gray-800">{formatKRW(commitmentTotal)}</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3">
+              <p className="text-xs text-gray-500">기납입</p>
+              <p className="text-sm font-semibold text-gray-800">{formatKRW(existingPaidIn)}</p>
+            </div>
+            <div className="rounded-lg bg-emerald-50 p-3">
+              <p className="text-xs text-emerald-600">잔여 약정</p>
+              <p className="text-sm font-semibold text-emerald-700">{formatKRW(remainingCommitment)} ({remainingPercent}%)</p>
+            </div>
+          </div>
+
+          <div className="max-h-60 overflow-auto rounded border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 text-left">LP명</th>
+                  <th className="px-3 py-2 text-right">약정금액</th>
+                  <th className="px-3 py-2 text-right">요청금액</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {lpAmounts.map((row, idx) => (
+                  <tr key={row.lp_id}>
+                    <td className="px-3 py-2">{row.lp_name}</td>
+                    <td className="px-3 py-2 text-right">{formatKRW(row.commitment)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <input
+                        type="number"
+                        value={row.amount}
+                        onChange={(e) => {
+                          const amount = Math.max(0, Number(e.target.value || 0))
+                          setLpAmounts((prev) => {
+                            const copy = [...prev]
+                            copy[idx] = { ...copy[idx], amount }
+                            return copy
+                          })
+                        }}
+                        className="w-36 rounded border px-2 py-1 text-right text-sm"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t px-5 py-4">
+          <p className="text-sm text-gray-600">총 요청금액: <span className="font-semibold text-gray-900">{formatKRW(totalAmount)}</span></p>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="secondary-btn">취소</button>
+            <button onClick={handleSubmit} disabled={!canSubmit} className="primary-btn disabled:cursor-not-allowed disabled:opacity-50">
+              {submitting ? '등록 중...' : '등록'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FundDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -262,6 +537,7 @@ export default function FundDetailPage() {
   const [editingLPId, setEditingLPId] = useState<number | null>(null)
   const [editingNotices, setEditingNotices] = useState(false)
   const [editingKeyTerms, setEditingKeyTerms] = useState(false)
+  const [showCapCallWizard, setShowCapCallWizard] = useState(false)
   const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
@@ -351,6 +627,7 @@ export default function FundDetailPage() {
           notice_type: row.notice_type.trim(),
           label: row.label.trim(),
           business_days: Math.max(0, Number(row.business_days) || 0),
+          day_basis: row.day_basis === 'calendar' ? 'calendar' : 'business',
           memo: row.memo?.trim() || null,
         }))
       return updateFundNoticePeriods(fundId, payload)
@@ -488,7 +765,10 @@ export default function FundDetailPage() {
           )}
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">출자 이력</h3>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-gray-700">출자 이력</h3>
+              <button onClick={() => setShowCapCallWizard(true)} className="primary-btn">출자요청 위저드</button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
@@ -536,7 +816,7 @@ export default function FundDetailPage() {
 
           <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">통지기간 (영업일)</h3>
+              <h3 className="text-sm font-semibold text-gray-700">통지기간</h3>
               {!editingNotices ? (
                 <button
                   onClick={() => {
@@ -570,9 +850,14 @@ export default function FundDetailPage() {
                 <div className="space-y-2">
                   {(fundDetail.notice_periods ?? []).map((row) => (
                     <div key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 text-sm border border-gray-200 rounded-lg p-2">
-                      <div className="md:col-span-5 font-medium text-gray-800">{row.label}</div>
-                      <div className="md:col-span-2 text-gray-700">{row.business_days}영업일</div>
-                      <div className="md:col-span-5 text-gray-500">{row.memo || '-'}</div>
+                      <div className="md:col-span-4 font-medium text-gray-800">{row.label}</div>
+                      <div className="md:col-span-2 text-gray-700">
+                        {row.business_days}{row.day_basis === 'calendar' ? '일' : '영업일'}
+                      </div>
+                      <div className="md:col-span-2 text-gray-500">
+                        {row.day_basis === 'calendar' ? '일반일' : '영업일'}
+                      </div>
+                      <div className="md:col-span-4 text-gray-500">{row.memo || '-'}</div>
                     </div>
                   ))}
                 </div>
@@ -586,7 +871,7 @@ export default function FundDetailPage() {
                 </datalist>
 
                 {noticeDraft.map((row, idx) => (
-                  <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-12 gap-2 border border-gray-200 rounded-lg p-2">
+                  <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-gray-200 rounded-lg p-2">
                     <input
                       value={row.notice_type}
                       onChange={(e) => {
@@ -597,6 +882,7 @@ export default function FundDetailPage() {
                           notice_type: nextType,
                           label: item.label || standard?.label || '',
                           business_days: Number.isFinite(item.business_days) ? item.business_days : (standard?.default_days ?? 0),
+                          day_basis: item.day_basis === 'calendar' ? 'calendar' : 'business',
                         } : item))
                       }}
                       list="notice-type-options"
@@ -614,9 +900,17 @@ export default function FundDetailPage() {
                       min={0}
                       value={row.business_days}
                       onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, business_days: Math.max(0, Number(e.target.value || 0)) } : item))}
-                      placeholder="영업일"
+                      placeholder="통지일수"
                       className="md:col-span-2 px-2 py-1 text-sm border rounded"
                     />
+                    <select
+                      value={row.day_basis === 'calendar' ? 'calendar' : 'business'}
+                      onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, day_basis: e.target.value as 'business' | 'calendar' } : item))}
+                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
+                    >
+                      <option value="business">영업일</option>
+                      <option value="calendar">일반일</option>
+                    </select>
                     <input
                       value={row.memo || ''}
                       onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
@@ -638,6 +932,7 @@ export default function FundDetailPage() {
                     notice_type: '',
                     label: '',
                     business_days: 0,
+                    day_basis: 'business',
                     memo: '',
                   }])}
                   className="secondary-btn"
@@ -919,6 +1214,17 @@ export default function FundDetailPage() {
               )}
             </div>
           </div>
+
+          {showCapCallWizard && (
+            <CapitalCallWizard
+              fund={fundDetail}
+              lps={fundDetail.lps ?? []}
+              noticePeriods={fundDetail.notice_periods ?? []}
+              existingCalls={sortedCapitalCalls}
+              initialPaidIn={initialPaidIn}
+              onClose={() => setShowCapCallWizard(false)}
+            />
+          )}
         </>
       )}
     </div>
