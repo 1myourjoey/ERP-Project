@@ -168,18 +168,24 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
 
         {showCreate && (
           <div className="mb-2 space-y-1 rounded border border-blue-200 bg-white p-2">
-            <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="일정 제목"
-              className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
-            />
-            <input
-              type="time"
-              value={newTime}
-              onChange={(e) => setNewTime(e.target.value)}
-              className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
-            />
+            <div>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">일정 제목</label>
+              <input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="일정 제목"
+                className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">시간</label>
+              <input
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
+              />
+            </div>
             <button
               onClick={() => {
                 if (!newTitle.trim()) return

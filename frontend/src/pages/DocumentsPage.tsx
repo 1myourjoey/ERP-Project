@@ -90,22 +90,31 @@ export default function DocumentsPage() {
 
       <div className="card-base">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
-            <option value="">전체 상태</option>
-            <option value="pending">미수집</option>
-            <option value="requested">요청중</option>
-            <option value="collected">수집완료</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-2 py-1 text-sm border rounded">
+              <option value="">전체 상태</option>
+              <option value="pending">미수집</option>
+              <option value="requested">요청중</option>
+              <option value="collected">수집완료</option>
+            </select>
+          </div>
 
-          <select value={fundId} onChange={e => setFundId(e.target.value ? Number(e.target.value) : '')} className="px-2 py-1 text-sm border rounded">
-            <option value="">전체 조합</option>
-            {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <select value={fundId} onChange={e => setFundId(e.target.value ? Number(e.target.value) : '')} className="w-full px-2 py-1 text-sm border rounded">
+              <option value="">전체 조합</option>
+              {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+            </select>
+          </div>
 
-          <select value={companyId} onChange={e => setCompanyId(e.target.value ? Number(e.target.value) : '')} className="px-2 py-1 text-sm border rounded">
-            <option value="">전체 회사</option>
-            {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">회사</label>
+            <select value={companyId} onChange={e => setCompanyId(e.target.value ? Number(e.target.value) : '')} className="w-full px-2 py-1 text-sm border rounded">
+              <option value="">전체 회사</option>
+              {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -135,11 +144,12 @@ export default function DocumentsPage() {
                     <td className="px-3 py-2">{doc.company_name}</td>
                     <td className="px-3 py-2">{doc.fund_name}</td>
                     <td className="px-3 py-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">상태</label>
                       <select
                         value={doc.status}
                         disabled={isUpdating}
                         onChange={e => updateStatusMut.mutate({ doc, nextStatus: e.target.value })}
-                        className="px-2 py-1 text-xs border rounded bg-white"
+                        className="w-full px-2 py-1 text-xs border rounded bg-white"
                       >
                         <option value="pending">미수집</option>
                         <option value="requested">요청중</option>

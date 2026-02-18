@@ -425,19 +425,22 @@ function QuickAddTaskModal({
             {defaultDate !== baseDate && <span className="ml-1 text-blue-500">(내일)</span>}
           </p>
           <div className="space-y-3">
-            <input
-              autoFocus
-              value={title}
-              onChange={(e) => {
-                const nextTitle = e.target.value
-                setTitle(nextTitle)
-                const detected = detectNoticeReport(nextTitle)
-                setIsNotice(detected.is_notice)
-                setIsReport(detected.is_report)
-              }}
-              placeholder="업무 제목"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">업무 제목</label>
+              <input
+                autoFocus
+                value={title}
+                onChange={(e) => {
+                  const nextTitle = e.target.value
+                  setTitle(nextTitle)
+                  const detected = detectNoticeReport(nextTitle)
+                  setIsNotice(detected.is_notice)
+                  setIsReport(detected.is_report)
+                }}
+                placeholder="예: 정기 보고서 작성"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input
@@ -684,20 +687,20 @@ export default function DashboardPage() {
           {active_workflows.length > 0 && (
             <div className="card-base">
               <button onClick={() => setPopupSection('workflows')} className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"><GitBranch size={16} /> 진행 중인 워크플로 <span className="ml-auto text-xs text-gray-400">{active_workflows.length}건</span></button>
-              <div className="max-h-[190px] overflow-y-auto pr-1">
+              <div className="max-h-[160px] overflow-y-auto pr-1">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {active_workflows.map((wf: ActiveWorkflow) => {
                     const { percent } = parseWorkflowProgress(wf.progress)
                     return (
-                      <div key={wf.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-left hover:bg-indigo-100">
+                      <div key={wf.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-left hover:bg-indigo-100">
                         <button onClick={() => openWorkflowModal(wf)} className="w-full text-left">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-indigo-800">{wf.name}</p>
-                            <span className="text-xs text-indigo-600">{wf.progress}</span>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="truncate text-xs font-medium text-indigo-800">{wf.name}</p>
+                            <span className="shrink-0 text-[11px] text-indigo-600">{wf.progress}</span>
                           </div>
-                          <p className="mt-1 text-xs text-indigo-600">{wf.fund_name || '-'} | {wf.company_name || '-'}</p>
-                          {wf.next_step && <p className="mt-1 text-xs text-indigo-700">다음: {wf.next_step} {wf.next_step_date ? `(${formatShortDate(wf.next_step_date)})` : ''}</p>}
-                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-200/60">
+                          <p className="mt-0.5 truncate text-[11px] text-indigo-600">{wf.fund_name || '-'} | {wf.company_name || '-'}</p>
+                          {wf.next_step && <p className="mt-0.5 truncate text-[11px] text-indigo-700">다음: {wf.next_step} {wf.next_step_date ? `(${formatShortDate(wf.next_step_date)})` : ''}</p>}
+                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-indigo-200/60">
                             <div className="h-full rounded-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }} />
                           </div>
                         </button>
@@ -970,17 +973,19 @@ export default function DashboardPage() {
       </div>
         </>
       ) : (
-        <TaskPipelineView
-          todayTasks={todayTasks}
-          tomorrowTasks={tomorrowTasks}
-          thisWeekTasks={thisWeekTasks}
-          upcomingTasks={upcomingTasks}
-          noDeadlineTasks={noDeadlineTasks}
-          activeWorkflows={active_workflows}
-          onClickTask={(task, options) => openTaskDetail(task, options?.editable ?? true)}
-          onClickWorkflow={(workflow) => openWorkflowModal(workflow)}
-          fullScreen
-        />
+        <div className="mx-auto w-full max-w-[1400px] px-4">
+          <TaskPipelineView
+            todayTasks={todayTasks}
+            tomorrowTasks={tomorrowTasks}
+            thisWeekTasks={thisWeekTasks}
+            upcomingTasks={upcomingTasks}
+            noDeadlineTasks={noDeadlineTasks}
+            activeWorkflows={active_workflows}
+            onClickTask={(task, options) => openTaskDetail(task, options?.editable ?? true)}
+            onClickWorkflow={(workflow) => openWorkflowModal(workflow)}
+            fullScreen
+          />
+        </div>
       )}
 
       {showQuickAddModal && (

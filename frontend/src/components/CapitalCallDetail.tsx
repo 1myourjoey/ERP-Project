@@ -174,12 +174,15 @@ export default function CapitalCallDetail({
             <tr>
               {editable && (
                 <th className="w-8 px-2 py-1 text-center">
-                  <input
-                    type="checkbox"
-                    checked={visibleUnpaidItems.length > 0 && visibleUnpaidItems.every((item) => selectedIds.has(item.id))}
-                    onChange={(e) => toggleSelectAllVisibleUnpaid(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
+                  <label className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                    전체
+                    <input
+                      type="checkbox"
+                      checked={visibleUnpaidItems.length > 0 && visibleUnpaidItems.every((item) => selectedIds.has(item.id))}
+                      onChange={(e) => toggleSelectAllVisibleUnpaid(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                  </label>
                 </th>
               )}
               <th className="px-2 py-1 text-left">LP명</th>
@@ -196,12 +199,15 @@ export default function CapitalCallDetail({
                 {editable && (
                   <td className="px-2 py-1 text-center">
                     {!item.paid ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={(e) => toggleSelectOne(item.id, e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
+                      <label className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                        선택
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={(e) => toggleSelectOne(item.id, e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                      </label>
                     ) : (
                       <span className="text-[10px] text-gray-300">-</span>
                     )}
@@ -237,25 +243,31 @@ export default function CapitalCallDetail({
                 </td>
                 <td className="px-2 py-1 text-gray-500">
                   {editable && !item.paid ? (
-                    <input
-                      type="date"
-                      value={item.paid_date ?? ''}
-                      onChange={(e) => handlePaidDateChange(item, e.target.value)}
-                      className="w-28 rounded border px-1 py-0.5 text-xs"
-                    />
+                    <div>
+                      <label className="mb-0.5 block text-[10px] font-medium text-gray-500">납입일</label>
+                      <input
+                        type="date"
+                        value={item.paid_date ?? ''}
+                        onChange={(e) => handlePaidDateChange(item, e.target.value)}
+                        className="w-28 rounded border px-1 py-0.5 text-xs"
+                      />
+                    </div>
                   ) : (
                     formatDate(item.paid_date)
                   )}
                 </td>
                 <td className="px-2 py-1 text-gray-500">
                   {editable ? (
-                    <input
-                      type="text"
-                      defaultValue={item.memo ?? ''}
-                      onBlur={(e) => handleMemoBlur(item, e.target.value)}
-                      placeholder="비고 입력"
-                      className="w-32 rounded border px-1 py-0.5 text-xs"
-                    />
+                    <div>
+                      <label className="mb-0.5 block text-[10px] font-medium text-gray-500">비고</label>
+                      <input
+                        type="text"
+                        defaultValue={item.memo ?? ''}
+                        onBlur={(e) => handleMemoBlur(item, e.target.value)}
+                        placeholder="비고 입력"
+                        className="w-32 rounded border px-1 py-0.5 text-xs"
+                      />
+                    </div>
                   ) : (
                     item.memo || '-'
                   )}

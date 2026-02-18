@@ -545,7 +545,7 @@ export default function TaskPipelineView({
 
   return (
     <div className={fullScreen ? '' : 'card-base'}>
-      <div ref={pipelineRef} className={`relative flex gap-2 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[560px]'}`}>
+      <div ref={pipelineRef} className={`relative mx-auto flex w-full max-w-[1400px] gap-3 px-2 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[560px]'}`}>
         <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" aria-hidden="true">
           {linkPaths.map((link) => {
             const isActive = activeCardKey ? link.fromKey === activeCardKey || link.toKey === activeCardKey : false

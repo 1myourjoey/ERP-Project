@@ -85,62 +85,74 @@ function ReportForm({
       <h3 className="mb-3 text-sm font-semibold text-gray-700">{title}</h3>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <select
-          value={form.fund_id || ''}
-          onChange={(e) => onChange({ ...form, fund_id: Number(e.target.value) || 0 })}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">조합 선택</option>
-          {funds.map((fund) => (
-            <option key={fund.id} value={fund.id}>{fund.name}</option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+          <select
+            value={form.fund_id || ''}
+            onChange={(e) => onChange({ ...form, fund_id: Number(e.target.value) || 0 })}
+            className="w-full rounded border px-2 py-1 text-sm"
+          >
+            <option value="">조합 선택</option>
+            {funds.map((fund) => (
+              <option key={fund.id} value={fund.id}>{fund.name}</option>
+            ))}
+          </select>
+        </div>
 
-        <input
-          type="number"
-          value={form.report_year}
-          onChange={(e) => onChange({ ...form, report_year: Number(e.target.value || new Date().getFullYear()) })}
-          className="rounded border px-2 py-1 text-sm"
-          placeholder="보고 연도"
-        />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">보고 연도</label>
+          <input
+            type="number"
+            value={form.report_year}
+            onChange={(e) => onChange({ ...form, report_year: Number(e.target.value || new Date().getFullYear()) })}
+            className="w-full rounded border px-2 py-1 text-sm"
+            placeholder="보고 연도"
+          />
+        </div>
 
-        <select
-          value={form.status || '작성중'}
-          onChange={(e) => onChange({ ...form, status: e.target.value })}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+          <select
+            value={form.status || '작성중'}
+            onChange={(e) => onChange({ ...form, status: e.target.value })}
+            className="w-full rounded border px-2 py-1 text-sm"
+          >
+            {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </div>
 
-        <input
-          type="date"
-          value={form.submission_date || ''}
-          onChange={(e) => onChange({ ...form, submission_date: e.target.value || null })}
-          className="rounded border px-2 py-1 text-sm"
-        />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">제출일</label>
+          <input
+            type="date"
+            value={form.submission_date || ''}
+            onChange={(e) => onChange({ ...form, submission_date: e.target.value || null })}
+            className="w-full rounded border px-2 py-1 text-sm"
+          />
+        </div>
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
-        <input type="number" value={numInput(form.total_commitment)} onChange={(e) => onChange({ ...form, total_commitment: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="총 약정액" />
-        <input type="number" value={numInput(form.total_paid_in)} onChange={(e) => onChange({ ...form, total_paid_in: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="총 납입액" />
-        <input type="number" value={numInput(form.total_invested)} onChange={(e) => onChange({ ...form, total_invested: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="총 투자액" />
-        <input type="number" value={numInput(form.total_distributed)} onChange={(e) => onChange({ ...form, total_distributed: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="총 분배액" />
-        <input type="number" value={numInput(form.fund_nav)} onChange={(e) => onChange({ ...form, fund_nav: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="NAV" />
-        <input type="number" step="0.01" value={numInput(form.irr)} onChange={(e) => onChange({ ...form, irr: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="IRR(%)" />
-        <input type="number" step="0.01" value={numInput(form.tvpi)} onChange={(e) => onChange({ ...form, tvpi: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="TVPI(x)" />
-        <input type="number" step="0.01" value={numInput(form.dpi)} onChange={(e) => onChange({ ...form, dpi: toNumber(e.target.value) })} className="rounded border px-2 py-1 text-sm" placeholder="DPI(x)" />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label><input type="number" value={numInput(form.total_commitment)} onChange={(e) => onChange({ ...form, total_commitment: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 약정액" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 납입액</label><input type="number" value={numInput(form.total_paid_in)} onChange={(e) => onChange({ ...form, total_paid_in: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 납입액" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 투자액</label><input type="number" value={numInput(form.total_invested)} onChange={(e) => onChange({ ...form, total_invested: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 투자액" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 분배액</label><input type="number" value={numInput(form.total_distributed)} onChange={(e) => onChange({ ...form, total_distributed: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 분배액" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">NAV</label><input type="number" value={numInput(form.fund_nav)} onChange={(e) => onChange({ ...form, fund_nav: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="NAV" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">IRR(%)</label><input type="number" step="0.01" value={numInput(form.irr)} onChange={(e) => onChange({ ...form, irr: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="IRR(%)" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">TVPI(x)</label><input type="number" step="0.01" value={numInput(form.tvpi)} onChange={(e) => onChange({ ...form, tvpi: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="TVPI(x)" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">DPI(x)</label><input type="number" step="0.01" value={numInput(form.dpi)} onChange={(e) => onChange({ ...form, dpi: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="DPI(x)" /></div>
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-        <textarea value={form.market_overview || ''} onChange={(e) => onChange({ ...form, market_overview: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="시장 현황" />
-        <textarea value={form.portfolio_summary || ''} onChange={(e) => onChange({ ...form, portfolio_summary: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="포트폴리오 요약" />
-        <textarea value={form.investment_activity || ''} onChange={(e) => onChange({ ...form, investment_activity: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="투자 활동" />
-        <textarea value={form.key_issues || ''} onChange={(e) => onChange({ ...form, key_issues: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="주요 이슈" />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">시장 현황</label><textarea value={form.market_overview || ''} onChange={(e) => onChange({ ...form, market_overview: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="시장 현황" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">포트폴리오 요약</label><textarea value={form.portfolio_summary || ''} onChange={(e) => onChange({ ...form, portfolio_summary: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="포트폴리오 요약" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자 활동</label><textarea value={form.investment_activity || ''} onChange={(e) => onChange({ ...form, investment_activity: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="투자 활동" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">주요 이슈</label><textarea value={form.key_issues || ''} onChange={(e) => onChange({ ...form, key_issues: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="주요 이슈" /></div>
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-        <textarea value={form.outlook || ''} onChange={(e) => onChange({ ...form, outlook: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="향후 계획" />
-        <textarea value={form.memo || ''} onChange={(e) => onChange({ ...form, memo: e.target.value })} rows={3} className="rounded border px-2 py-1 text-sm" placeholder="메모" />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">향후 계획</label><textarea value={form.outlook || ''} onChange={(e) => onChange({ ...form, outlook: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="향후 계획" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={form.memo || ''} onChange={(e) => onChange({ ...form, memo: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="메모" /></div>
       </div>
 
       <div className="mt-3 flex gap-2">
@@ -232,33 +244,44 @@ export default function BizReportsPage() {
 
       <div className="card-base space-y-2">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <select
-            value={filters.fund_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 조합</option>
-            {funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <select
+              value={filters.fund_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 조합</option>
+              {funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+            </select>
+          </div>
 
-          <input
-            type="number"
-            value={filters.year || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, year: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-            placeholder="연도"
-          />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+            <input
+              type="number"
+              value={filters.year || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, year: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+              placeholder="연도"
+            />
+          </div>
 
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 상태</option>
-            {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 상태</option>
+              {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </div>
 
-          <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">필터 초기화</button>
+          <div className="flex items-end">
+            <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">필터 초기화</button>
+          </div>
         </div>
       </div>
 

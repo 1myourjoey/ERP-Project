@@ -342,67 +342,85 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
 
   return (
     <div className="space-y-2 rounded-md border border-gray-200 bg-white p-2">
-      <input
-        autoFocus
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="작업 제목"
-        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-      />
-      <div className="flex gap-1">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">작업 제목</label>
         <input
-          type="date"
-          value={deadlineDate}
-          onChange={(e) => setDeadlineDate(e.target.value)}
-          className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-        />
-        <select
-          value={deadlineHour}
-          onChange={(e) => setDeadlineHour(e.target.value)}
-          className="w-20 rounded border border-gray-200 px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-        >
-          <option value="">시간</option>
-          {HOUR_OPTIONS.map((hour) => (
-            <option key={hour} value={hour}>{hour}</option>
-          ))}
-        </select>
-        <TimeSelect
-          value={estimatedTime}
-          onChange={setEstimatedTime}
-          className="w-24 rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          autoFocus
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="예: 투자자 업데이트 메일 발송"
+          className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       </div>
+      <div className="grid grid-cols-3 gap-1">
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">마감일</label>
+          <input
+            type="date"
+            value={deadlineDate}
+            onChange={(e) => setDeadlineDate(e.target.value)}
+            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">시간</label>
+          <select
+            value={deadlineHour}
+            onChange={(e) => setDeadlineHour(e.target.value)}
+            className="w-full rounded border border-gray-200 px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">선택</option>
+            {HOUR_OPTIONS.map((hour) => (
+              <option key={hour} value={hour}>{hour}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label>
+          <TimeSelect
+            value={estimatedTime}
+            onChange={setEstimatedTime}
+            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-1">
-        <select
-          value={relatedTarget}
-          onChange={(e) => setRelatedTarget(e.target.value)}
-          className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-        >
-          <option value="">관련 대상</option>
-          {gpEntities.length > 0 && (
-            <optgroup label="고유계정">
-              {gpEntities.map((entity) => (
-                <option key={`gp-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">관련 대상</label>
+          <select
+            value={relatedTarget}
+            onChange={(e) => setRelatedTarget(e.target.value)}
+            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">관련 대상 선택</option>
+            {gpEntities.length > 0 && (
+              <optgroup label="고유계정">
+                {gpEntities.map((entity) => (
+                  <option key={`gp-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="조합">
+              {funds.map((fund) => (
+                <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
               ))}
             </optgroup>
-          )}
-          <optgroup label="조합">
-            {funds.map((fund) => (
-              <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">워크플로 템플릿</label>
+          <select
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value ? Number(e.target.value) : '')}
+            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">템플릿 선택</option>
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>{template.name}</option>
             ))}
-          </optgroup>
-        </select>
-        <select
-          value={selectedTemplateId}
-          onChange={(e) => setSelectedTemplateId(e.target.value ? Number(e.target.value) : '')}
-          className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-        >
-          <option value="">워크플로 템플릿</option>
-          {templates.map((template) => (
-            <option key={template.id} value={template.id}>{template.name}</option>
-          ))}
-        </select>
+          </select>
+        </div>
       </div>
       {relatedTarget.startsWith('fund:') && selectedTemplateId && (
         <p className="text-xs text-gray-500">
@@ -881,47 +899,56 @@ export default function TaskBoardPage() {
 
           {statusFilter === 'completed' && (
             <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1">
-              <select
-                value={completedYear}
-                onChange={(e) => setCompletedYear(Number(e.target.value))}
-                className="rounded border border-gray-200 px-2 py-1 text-xs"
-              >
-                {completedYearOptions.map((year) => (
-                  <option key={year} value={year}>{year}년</option>
-                ))}
-              </select>
-              <select
-                value={completedMonth}
-                onChange={(e) => setCompletedMonth(e.target.value ? Number(e.target.value) : '')}
-                className="rounded border border-gray-200 px-2 py-1 text-xs"
-              >
-                <option value="">전체 월</option>
-                {Array.from({ length: 12 }, (_, idx) => (
-                  <option key={idx + 1} value={idx + 1}>{idx + 1}월</option>
-                ))}
-              </select>
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-gray-500">연도</label>
+                <select
+                  value={completedYear}
+                  onChange={(e) => setCompletedYear(Number(e.target.value))}
+                  className="rounded border border-gray-200 px-2 py-1 text-xs"
+                >
+                  {completedYearOptions.map((year) => (
+                    <option key={year} value={year}>{year}년</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-gray-500">월</label>
+                <select
+                  value={completedMonth}
+                  onChange={(e) => setCompletedMonth(e.target.value ? Number(e.target.value) : '')}
+                  className="rounded border border-gray-200 px-2 py-1 text-xs"
+                >
+                  <option value="">전체 월</option>
+                  {Array.from({ length: 12 }, (_, idx) => (
+                    <option key={idx + 1} value={idx + 1}>{idx + 1}월</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 
-          <select
-            value={fundFilter}
-            onChange={(e) => setFundFilter(e.target.value)}
-            className="rounded border border-gray-200 px-2 py-1 text-xs"
-          >
-            <option value="">전체 대상</option>
-            {gpEntities.length > 0 && (
-              <optgroup label="고유계정">
-                {gpEntities.map((entity) => (
-                  <option key={`gp-filter-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-500">대상</label>
+            <select
+              value={fundFilter}
+              onChange={(e) => setFundFilter(e.target.value)}
+              className="rounded border border-gray-200 px-2 py-1 text-xs"
+            >
+              <option value="">전체 대상</option>
+              {gpEntities.length > 0 && (
+                <optgroup label="고유계정">
+                  {gpEntities.map((entity) => (
+                    <option key={`gp-filter-${entity.id}`} value={`gp:${entity.id}`}>{entity.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="조합">
+                {fundsForFilter.map((fund) => (
+                  <option key={`fund-filter-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
                 ))}
               </optgroup>
-            )}
-            <optgroup label="조합">
-              {fundsForFilter.map((fund) => (
-                <option key={`fund-filter-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
-              ))}
-            </optgroup>
-          </select>
+            </select>
+          </div>
 
           <button
             onClick={() => setShowMiniCalendar((prev) => !prev)}

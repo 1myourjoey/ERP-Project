@@ -194,10 +194,11 @@ export default function ChecklistsPage() {
           </div>
 
           <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">체크리스트 검색</label>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="체크리스트 검색..."
+              placeholder="이름/카테고리로 검색"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
@@ -300,13 +301,16 @@ export default function ChecklistsPage() {
                         />
                       ) : (
                         <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={item.checked}
-                            onChange={(event) =>
-                              updateItemMut.mutate({ checklistId: selectedId, itemId: item.id, data: { checked: event.target.checked } })
-                            }
-                          />
+                          <div className="flex flex-col items-center">
+                            <label className="mb-1 block text-[10px] font-medium text-gray-500">완료</label>
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              onChange={(event) =>
+                                updateItemMut.mutate({ checklistId: selectedId, itemId: item.id, data: { checked: event.target.checked } })
+                              }
+                            />
+                          </div>
                           <div className="flex-1">
                             <p className={`text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                               {item.order}. {item.name}
@@ -360,21 +364,27 @@ function ChecklistForm({
   return (
     <div className="mb-3 rounded border border-gray-200 bg-gray-50 p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="체크리스트 이름"
-          className="px-2 py-1 text-sm border rounded"
-        />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">체크리스트 이름</label>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="예: 투자 심사 체크리스트"
+            className="w-full px-2 py-1 text-sm border rounded"
+          />
+        </div>
 
         {customCategory ? (
           <div className="flex gap-1">
-            <input
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              placeholder="카테고리 직접 입력"
-              className="flex-1 px-2 py-1 text-sm border rounded"
-            />
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+              <input
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                placeholder="직접 입력"
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
             <button
               onClick={() => {
                 setCustomCategory(false)
@@ -386,36 +396,42 @@ function ChecklistForm({
             </button>
           </div>
         ) : (
-          <select
-            value={category}
-            onChange={(event) => {
-              if (event.target.value === '__custom__') {
-                setCustomCategory(true)
-                setCategory('')
-              } else {
-                setCategory(event.target.value)
-              }
-            }}
-            className="px-2 py-1 text-sm border rounded"
-          >
-            <option value="">카테고리 선택</option>
-            {CHECKLIST_CATEGORY_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-            <option value="__custom__">직접 입력</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+            <select
+              value={category}
+              onChange={(event) => {
+                if (event.target.value === '__custom__') {
+                  setCustomCategory(true)
+                  setCategory('')
+                } else {
+                  setCategory(event.target.value)
+                }
+              }}
+              className="w-full px-2 py-1 text-sm border rounded"
+            >
+              <option value="">카테고리 선택</option>
+              {CHECKLIST_CATEGORY_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+              <option value="__custom__">직접 입력</option>
+            </select>
+          </div>
         )}
 
-        <select
-          value={investmentId}
-          onChange={(event) => setInvestmentId(event.target.value ? Number(event.target.value) : '')}
-          className="px-2 py-1 text-sm border rounded"
-        >
-          <option value="">투자 연결 없음</option>
-          {investments.map((investment) => (
-            <option key={investment.id} value={investment.id}>#{investment.id} {investment.company_name || '-'}</option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">연결 투자건</label>
+          <select
+            value={investmentId}
+            onChange={(event) => setInvestmentId(event.target.value ? Number(event.target.value) : '')}
+            className="w-full px-2 py-1 text-sm border rounded"
+          >
+            <option value="">투자 연결 없음</option>
+            {investments.map((investment) => (
+              <option key={investment.id} value={investment.id}>#{investment.id} {investment.company_name || '-'}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="mt-2 flex gap-2">
         <button
@@ -451,9 +467,9 @@ function ItemForm({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-2 bg-gray-50 border border-gray-200 rounded p-2">
-      <input type="number" value={form.order} onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))} className="px-2 py-1 text-sm border rounded" placeholder="순서" />
-      <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} className="px-2 py-1 text-sm border rounded" placeholder="항목 이름" />
-      <input value={form.notes || ''} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} className="px-2 py-1 text-sm border rounded" placeholder="비고" />
+      <div><label className="mb-1 block text-xs font-medium text-gray-600">순서</label><input type="number" value={form.order} onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="숫자 입력" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-gray-600">항목 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="예: 실사 보고서 확인" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-gray-600">비고</label><input value={form.notes || ''} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="선택 입력" /></div>
       <label className="text-sm flex items-center gap-2 px-2 py-1 border rounded bg-white"><input type="checkbox" checked={!!form.required} onChange={e => setForm(prev => ({ ...prev, required: e.target.checked }))} /> 필수</label>
       <div className="flex gap-2">
         <button className="primary-btn" onClick={() => form.name.trim() && onSubmit({ ...form, name: form.name.trim(), notes: form.notes?.trim() || null })}>저장</button>

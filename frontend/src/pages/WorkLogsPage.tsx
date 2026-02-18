@@ -36,19 +36,22 @@ function DynamicList({
         </button>
       </div>
       {items.map((item, i) => (
-        <div key={i} className="mb-1 flex gap-1">
-          <input
-            value={item.content}
-            onChange={(event) => {
-              const next = [...items]
-              next[i] = { content: event.target.value }
-              onChange(next)
-            }}
-            className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-          />
-          <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500">
-            <X size={12} />
-          </button>
+        <div key={i} className="mb-1 flex-1">
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">{label} #{i + 1}</label>
+          <div className="flex gap-1">
+            <input
+              value={item.content}
+              onChange={(event) => {
+                const next = [...items]
+                next[i] = { content: event.target.value }
+                onChange(next)
+              }}
+              className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+            <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500">
+              <X size={12} />
+            </button>
+          </div>
         </div>
       ))}
     </div>
@@ -102,57 +105,78 @@ function WorkLogForm({
       <h3 className="text-base font-semibold text-gray-800">{formTitle}</h3>
 
       <div className="grid grid-cols-2 gap-2">
-        <input
-          type="date"
-          value={form.date}
-          onChange={set('date')}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <select
-          value={form.category}
-          onChange={set('category')}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">일자</label>
+          <input
+            type="date"
+            value={form.date}
+            onChange={set('date')}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+          <select
+            value={form.category}
+            onChange={set('category')}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <input
-        value={form.title}
-        onChange={set('title')}
-        placeholder="제목"
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">제목</label>
+        <input
+          value={form.title}
+          onChange={set('title')}
+          placeholder="예: IR 업데이트 회의"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
 
-      <textarea
-        value={form.content}
-        onChange={set('content')}
-        placeholder="내용 (선택)"
-        rows={2}
-        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">내용</label>
+        <textarea
+          value={form.content}
+          onChange={set('content')}
+          placeholder="선택 입력"
+          rows={2}
+          className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <input
-          value={form.estimated_time}
-          onChange={set('estimated_time')}
-          placeholder="예상"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <input
-          value={form.actual_time}
-          onChange={set('actual_time')}
-          placeholder="실제"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <input
-          value={form.time_diff}
-          onChange={set('time_diff')}
-          placeholder="차이"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label>
+          <input
+            value={form.estimated_time}
+            onChange={set('estimated_time')}
+            placeholder="예: 2h"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">실제 시간</label>
+          <input
+            value={form.actual_time}
+            onChange={set('actual_time')}
+            placeholder="예: 1.5h"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">차이 시간</label>
+          <input
+            value={form.time_diff}
+            onChange={set('time_diff')}
+            placeholder="예: -0.5h"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
       </div>
 
       <DynamicList label="세부 내용" items={details} onChange={setDetails} />

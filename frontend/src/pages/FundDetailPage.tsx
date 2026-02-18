@@ -164,41 +164,95 @@ function FundForm({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="px-3 py-2 text-sm border rounded-lg" />
-        <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg">
-          {FUND_TYPE_OPTIONS.map((type) => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-        <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg">
-          {FUND_STATUS_OPTIONS.map((status) => (
-            <option key={status.value} value={status.value}>{status.label}</option>
-          ))}
-        </select>
-        <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">조합명</label>
+          <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">조합 유형</label>
+          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
+            {FUND_TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+          <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
+            {FUND_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>{status.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">결성일</label>
+          <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
         {form.status !== 'forming' && (
-          <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">만기일</label>
+            <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
+          </div>
         )}
         {(form.status === 'dissolved' || form.status === 'liquidated') && (
-          <input type="date" value={form.dissolution_date || ''} onChange={e => setForm(prev => ({ ...prev, dissolution_date: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">해산일</label>
+            <input type="date" value={form.dissolution_date || ''} onChange={e => setForm(prev => ({ ...prev, dissolution_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
+          </div>
         )}
-        <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.fund_manager || ''} onChange={e => setForm(prev => ({ ...prev, fund_manager: e.target.value }))} placeholder="대표 펀드매니저" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="총 약정액" className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" value={form.gp_commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, gp_commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="GP 출자금" className="px-3 py-2 text-sm border rounded-lg" />
-        <select value={form.contribution_type || ''} onChange={e => setForm(prev => ({ ...prev, contribution_type: e.target.value || null }))} className="px-3 py-2 text-sm border rounded-lg">
-          <option value="">출자방식 선택</option>
-          <option value="일시">일시</option>
-          <option value="분할">분할</option>
-          <option value="수시">수시</option>
-        </select>
-        <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" step="0.01" value={form.performance_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, performance_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="성과보수율(%)" className="px-3 py-2 text-sm border rounded-lg" />
-        <input type="number" step="0.01" value={form.hurdle_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, hurdle_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="허들레이트(%)" className="px-3 py-2 text-sm border rounded-lg" />
-        <input value={form.account_number || ''} onChange={e => setForm(prev => ({ ...prev, account_number: e.target.value }))} placeholder="운용계좌번호" className="px-3 py-2 text-sm border rounded-lg" />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">GP</label>
+          <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">대표 펀드매니저</label>
+          <input value={form.fund_manager || ''} onChange={e => setForm(prev => ({ ...prev, fund_manager: e.target.value }))} placeholder="대표 펀드매니저" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Co-GP</label>
+          <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">신탁사</label>
+          <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label>
+          <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="총 약정액" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">GP 출자금</label>
+          <input type="number" value={form.gp_commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, gp_commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="GP 출자금" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">출자방식</label>
+          <select value={form.contribution_type || ''} onChange={e => setForm(prev => ({ ...prev, contribution_type: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg">
+            <option value="">출자방식 선택</option>
+            <option value="일시">일시</option>
+            <option value="분할">분할</option>
+            <option value="수시">수시</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">투자기간 종료일</label>
+          <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">관리보수율(%)</label>
+          <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">성과보수율(%)</label>
+          <input type="number" step="0.01" value={form.performance_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, performance_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="성과보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">허들레이트(%)</label>
+          <input type="number" step="0.01" value={form.hurdle_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, hurdle_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="허들레이트(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">운용계좌번호</label>
+          <input value={form.account_number || ''} onChange={e => setForm(prev => ({ ...prev, account_number: e.target.value }))} placeholder="운용계좌번호" className="w-full px-3 py-2 text-sm border rounded-lg" />
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -236,11 +290,11 @@ function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; lo
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-        <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="LP 유형" className="px-2 py-1 text-sm border rounded" />
-        <input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="약정액" className="px-2 py-1 text-sm border rounded" />
-        <input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입액" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="px-2 py-1 text-sm border rounded" />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 유형</label><input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="LP 유형" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">약정액</label><input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="약정액" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">납입액</label><input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입액" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="w-full px-2 py-1 text-sm border rounded" /></div>
       </div>
       <div className="flex gap-2">
         <button
@@ -490,19 +544,22 @@ function CapitalCallWizard({
                     <td className="px-3 py-2">{row.lp_name}</td>
                     <td className="px-3 py-2 text-right">{formatKRW(row.commitment)}</td>
                     <td className="px-3 py-2 text-right">
-                      <input
-                        type="number"
-                        value={row.amount}
-                        onChange={(e) => {
-                          const amount = Math.max(0, Number(e.target.value || 0))
-                          setLpAmounts((prev) => {
-                            const copy = [...prev]
-                            copy[idx] = { ...copy[idx], amount }
-                            return copy
-                          })
-                        }}
-                        className="w-36 rounded border px-2 py-1 text-right text-sm"
-                      />
+                      <div className="inline-block">
+                        <label className="mb-1 block text-[10px] font-medium text-gray-500">요청금액</label>
+                        <input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) => {
+                            const amount = Math.max(0, Number(e.target.value || 0))
+                            setLpAmounts((prev) => {
+                              const copy = [...prev]
+                              copy[idx] = { ...copy[idx], amount }
+                              return copy
+                            })
+                          }}
+                          className="w-36 rounded border px-2 py-1 text-right text-sm"
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -872,51 +929,66 @@ export default function FundDetailPage() {
 
                 {noticeDraft.map((row, idx) => (
                   <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-gray-200 rounded-lg p-2">
-                    <input
-                      value={row.notice_type}
-                      onChange={(e) => {
-                        const nextType = e.target.value
-                        const standard = NOTICE_TYPE_MAP.get(nextType)
-                        setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? {
-                          ...item,
-                          notice_type: nextType,
-                          label: item.label || standard?.label || '',
-                          business_days: Number.isFinite(item.business_days) ? item.business_days : (standard?.default_days ?? 0),
-                          day_basis: item.day_basis === 'calendar' ? 'calendar' : 'business',
-                        } : item))
-                      }}
-                      list="notice-type-options"
-                      placeholder="notice_type"
-                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
-                    />
-                    <input
-                      value={row.label}
-                      onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
-                      placeholder="표시명"
-                      className="md:col-span-4 px-2 py-1 text-sm border rounded"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.business_days}
-                      onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, business_days: Math.max(0, Number(e.target.value || 0)) } : item))}
-                      placeholder="통지일수"
-                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
-                    />
-                    <select
-                      value={row.day_basis === 'calendar' ? 'calendar' : 'business'}
-                      onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, day_basis: e.target.value as 'business' | 'calendar' } : item))}
-                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
-                    >
-                      <option value="business">영업일</option>
-                      <option value="calendar">일반일</option>
-                    </select>
-                    <input
-                      value={row.memo || ''}
-                      onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
-                      placeholder="메모 / 조항"
-                      className="md:col-span-3 px-2 py-1 text-sm border rounded"
-                    />
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지 유형</label>
+                      <input
+                        value={row.notice_type}
+                        onChange={(e) => {
+                          const nextType = e.target.value
+                          const standard = NOTICE_TYPE_MAP.get(nextType)
+                          setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? {
+                            ...item,
+                            notice_type: nextType,
+                            label: item.label || standard?.label || '',
+                            business_days: Number.isFinite(item.business_days) ? item.business_days : (standard?.default_days ?? 0),
+                            day_basis: item.day_basis === 'calendar' ? 'calendar' : 'business',
+                          } : item))
+                        }}
+                        list="notice-type-options"
+                        placeholder="notice_type"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">표시명</label>
+                      <input
+                        value={row.label}
+                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
+                        placeholder="표시명"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지일수</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.business_days}
+                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, business_days: Math.max(0, Number(e.target.value || 0)) } : item))}
+                        placeholder="통지일수"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">기준</label>
+                      <select
+                        value={row.day_basis === 'calendar' ? 'calendar' : 'business'}
+                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, day_basis: e.target.value as 'business' | 'calendar' } : item))}
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      >
+                        <option value="business">영업일</option>
+                        <option value="calendar">일반일</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">메모/조항</label>
+                      <input
+                        value={row.memo || ''}
+                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
+                        placeholder="메모 / 조항"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
                     <button
                       onClick={() => setNoticeDraft((prev) => prev.filter((_, itemIdx) => itemIdx !== idx))}
                       className="md:col-span-1 px-2 py-1 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100"
@@ -997,30 +1069,42 @@ export default function FundDetailPage() {
               <div className="space-y-2">
                 {keyTermDraft.map((row, idx) => (
                   <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-gray-200 rounded-lg p-2">
-                    <input
-                      value={row.category}
-                      onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, category: e.target.value } : item))}
-                      placeholder="카테고리"
-                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
-                    />
-                    <input
-                      value={row.label}
-                      onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
-                      placeholder="조항"
-                      className="md:col-span-3 px-2 py-1 text-sm border rounded"
-                    />
-                    <input
-                      value={row.value}
-                      onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, value: e.target.value } : item))}
-                      placeholder="내용"
-                      className="md:col-span-5 px-2 py-1 text-sm border rounded"
-                    />
-                    <input
-                      value={row.article_ref || ''}
-                      onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, article_ref: e.target.value } : item))}
-                      placeholder="조문"
-                      className="md:col-span-2 px-2 py-1 text-sm border rounded"
-                    />
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">카테고리</label>
+                      <input
+                        value={row.category}
+                        onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, category: e.target.value } : item))}
+                        placeholder="카테고리"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">조항</label>
+                      <input
+                        value={row.label}
+                        onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
+                        placeholder="조항"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">내용</label>
+                      <input
+                        value={row.value}
+                        onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, value: e.target.value } : item))}
+                        placeholder="내용"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">조문</label>
+                      <input
+                        value={row.article_ref || ''}
+                        onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, article_ref: e.target.value } : item))}
+                        placeholder="조문"
+                        className="w-full px-2 py-1 text-sm border rounded"
+                      />
+                    </div>
                     <div className="md:col-span-2 flex gap-1">
                       <button
                         onClick={() => {

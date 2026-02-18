@@ -298,7 +298,7 @@ function FundForm({
             {lps.map((lp, index) => (
               <div key={`lp-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1.2fr_1.6fr_1.6fr_1.4fr_1.6fr_auto]">
                 <div>
-                  <label htmlFor={`lp-name-${index}`} className="sr-only">LP명</label>
+                  <label htmlFor={`lp-name-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">LP명</label>
                   <input
                     id={`lp-name-${index}`}
                     value={lp.name}
@@ -308,7 +308,7 @@ function FundForm({
                   />
                 </div>
                 <div>
-                  <label htmlFor={`lp-type-${index}`} className="sr-only">LP 유형</label>
+                  <label htmlFor={`lp-type-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">LP 유형</label>
                   <select
                     id={`lp-type-${index}`}
                     value={lp.type}
@@ -321,7 +321,7 @@ function FundForm({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor={`lp-commitment-${index}`} className="sr-only">약정금액</label>
+                  <label htmlFor={`lp-commitment-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">약정금액</label>
                   <input
                     id={`lp-commitment-${index}`}
                     type="number"
@@ -332,7 +332,7 @@ function FundForm({
                   />
                 </div>
                 <div>
-                  <label htmlFor={`lp-paidin-${index}`} className="sr-only">최초 납입금액</label>
+                  <label htmlFor={`lp-paidin-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">최초 납입금액</label>
                   <input
                     id={`lp-paidin-${index}`}
                     type="number"
@@ -343,7 +343,7 @@ function FundForm({
                   />
                 </div>
                 <div>
-                  <label htmlFor={`lp-biz-${index}`} className="sr-only">사업자등록번호/생년월일</label>
+                  <label htmlFor={`lp-biz-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">사업자등록번호/생년월일</label>
                   <input
                     id={`lp-biz-${index}`}
                     value={lp.business_number ?? ''}
@@ -353,7 +353,7 @@ function FundForm({
                   />
                 </div>
                 <div>
-                  <label htmlFor={`lp-address-${index}`} className="sr-only">주소</label>
+                  <label htmlFor={`lp-address-${index}`} className="mb-1 block text-[10px] font-medium text-gray-500">주소</label>
                   <input
                     id={`lp-address-${index}`}
                     value={lp.address ?? ''}

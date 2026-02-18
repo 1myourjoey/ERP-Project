@@ -141,86 +141,15 @@ function TransactionForm({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <select
-          value={form.fund_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">조합</option>
-          {funds.map((fund) => (
-            <option key={fund.id} value={fund.id}>
-              {fund.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.company_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">투자사</option>
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.investment_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">투자건</option>
-          {filteredInvestments.map((investment) => (
-            <option key={investment.id} value={investment.id}>
-              #{investment.id}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={form.transaction_date}
-          onChange={(e) => setForm((prev) => ({ ...prev, transaction_date: e.target.value }))}
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <select
-          value={form.type}
-          onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          {TRANSACTION_TYPE_OPTIONS.map((type) => (
-            <option key={type} value={type}>
-              {labelTransactionType(type)}
-            </option>
-          ))}
-        </select>
-        <input
-          type="number"
-          value={form.amount}
-          onChange={(e) => setForm((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))}
-          placeholder="금액"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          value={form.shares_change ?? ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, shares_change: e.target.value ? Number(e.target.value) : null }))}
-          placeholder="주식수 변동"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          value={form.realized_gain ?? ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, realized_gain: e.target.value ? Number(e.target.value) : null }))}
-          placeholder="실현손익"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          value={form.memo || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))}
-          placeholder="비고"
-          className="rounded border px-2 py-1 text-sm md:col-span-4"
-        />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={form.fund_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">조합 선택</option>{funds.map((fund) => (<option key={fund.id} value={fund.id}>{fund.name}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자사</label><select value={form.company_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">투자사 선택</option>{companies.map((company) => (<option key={company.id} value={company.id}>{company.name}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자건</label><select value={form.investment_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">투자건 선택</option>{filteredInvestments.map((investment) => (<option key={investment.id} value={investment.id}>#{investment.id}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">거래일</label><input type="date" value={form.transaction_date} onChange={(e) => setForm((prev) => ({ ...prev, transaction_date: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">유형</label><select value={form.type} onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">{TRANSACTION_TYPE_OPTIONS.map((type) => (<option key={type} value={type}>{labelTransactionType(type)}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">금액</label><input type="number" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))} placeholder="숫자 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">주식수 변동</label><input type="number" value={form.shares_change ?? ''} onChange={(e) => setForm((prev) => ({ ...prev, shares_change: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">실현손익</label><input type="number" value={form.realized_gain ?? ''} onChange={(e) => setForm((prev) => ({ ...prev, realized_gain: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div className="md:col-span-4"><label className="mb-1 block text-xs font-medium text-gray-600">비고</label><input value={form.memo || ''} onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
       </div>
       <div className="mt-2 flex gap-2">
         <button
@@ -329,43 +258,55 @@ export default function TransactionsPage() {
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <select
-            value={filters.fund_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 조합</option>
-            {funds?.map((fund) => (
-              <option key={fund.id} value={fund.id}>
-                {fund.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.company_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 투자사</option>
-            {companies?.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            value={filters.investment_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
-            placeholder="투자건 ID"
-            className="rounded border px-2 py-1 text-sm"
-          />
-          <input
-            value={filters.type}
-            onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
-            placeholder="유형"
-            className="rounded border px-2 py-1 text-sm"
-          />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <select
+              value={filters.fund_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 조합</option>
+              {funds?.map((fund) => (
+                <option key={fund.id} value={fund.id}>
+                  {fund.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">투자사</label>
+            <select
+              value={filters.company_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 투자사</option>
+              {companies?.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">투자건 ID</label>
+            <input
+              type="number"
+              value={filters.investment_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
+              placeholder="선택 입력"
+              className="w-full rounded border px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">유형</label>
+            <input
+              value={filters.type}
+              onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
+              placeholder="예: buy/sell"
+              className="w-full rounded border px-2 py-1 text-sm"
+            />
+          </div>
         </div>
         <div className="mt-2">
           <button

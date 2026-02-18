@@ -106,18 +106,21 @@ export default function SearchModal({
         className="mx-auto max-w-2xl rounded-2xl shadow-sm border border-gray-100 bg-white"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-gray-200 px-3 py-2">
-          <Search size={16} className="text-gray-400" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={e => onQueryChange(e.target.value)}
-            placeholder="조합, 회사, 업무, 워크플로우, 보고서 검색"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-          <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={handleClose}>
-            <X size={16} />
-          </button>
+        <div className="border-b border-gray-200 px-3 py-2">
+          <label className="mb-1 block text-[10px] font-medium text-gray-500">통합 검색</label>
+          <div className="flex items-center gap-2">
+            <Search size={16} className="text-gray-400" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={e => onQueryChange(e.target.value)}
+              placeholder="조합, 회사, 업무, 워크플로우, 보고서 검색"
+              className="w-full bg-transparent text-sm outline-none"
+            />
+            <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={handleClose}>
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="max-h-[60vh] overflow-auto p-2">

@@ -120,106 +120,18 @@ function ValuationForm({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <select
-          value={form.fund_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">조합</option>
-          {funds.map((fund) => (
-            <option key={fund.id} value={fund.id}>
-              {fund.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.company_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">투자사</option>
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.investment_id || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          <option value="">투자건</option>
-          {filteredInvestments.map((investment) => (
-            <option key={investment.id} value={investment.id}>
-              #{investment.id}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={form.as_of_date}
-          onChange={(e) => setForm((prev) => ({ ...prev, as_of_date: e.target.value }))}
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          value={form.evaluator || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, evaluator: e.target.value }))}
-          placeholder="평가 주체"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <select
-          value={form.method || 'mark_to_market'}
-          onChange={(e) => setForm((prev) => ({ ...prev, method: e.target.value }))}
-          className="rounded border px-2 py-1 text-sm"
-        >
-          {METHOD_OPTIONS.map((method) => (
-            <option key={method} value={method}>
-              {labelMethod(method)}
-            </option>
-          ))}
-        </select>
-        <input
-          value={form.instrument || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, instrument: e.target.value }))}
-          placeholder="투자유형"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          value={form.value}
-          onChange={(e) => setForm((prev) => ({ ...prev, value: Number(e.target.value || 0) }))}
-          placeholder="평가금액"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          value={form.prev_value ?? ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))}
-          placeholder="전기 평가금액"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          value={form.change_amount ?? ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))}
-          placeholder="변동액"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          type="number"
-          step="0.01"
-          value={form.change_pct ?? ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))}
-          placeholder="변동률"
-          className="rounded border px-2 py-1 text-sm"
-        />
-        <input
-          value={form.basis || ''}
-          onChange={(e) => setForm((prev) => ({ ...prev, basis: e.target.value }))}
-          placeholder="산출 근거"
-          className="rounded border px-2 py-1 text-sm md:col-span-4"
-        />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={form.fund_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">조합 선택</option>{funds.map((fund) => (<option key={fund.id} value={fund.id}>{fund.name}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자사</label><select value={form.company_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">투자사 선택</option>{companies.map((company) => (<option key={company.id} value={company.id}>{company.name}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자건</label><select value={form.investment_id || ''} onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm"><option value="">투자건 선택</option>{filteredInvestments.map((investment) => (<option key={investment.id} value={investment.id}>#{investment.id}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">기준일</label><input type="date" value={form.as_of_date} onChange={(e) => setForm((prev) => ({ ...prev, as_of_date: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">평가 주체</label><input value={form.evaluator || ''} onChange={(e) => setForm((prev) => ({ ...prev, evaluator: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">평가 방법</label><select value={form.method || 'mark_to_market'} onChange={(e) => setForm((prev) => ({ ...prev, method: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">{METHOD_OPTIONS.map((method) => (<option key={method} value={method}>{labelMethod(method)}</option>))}</select></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자유형</label><input value={form.instrument || ''} onChange={(e) => setForm((prev) => ({ ...prev, instrument: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">평가금액</label><input type="number" value={form.value} onChange={(e) => setForm((prev) => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="숫자 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">전기 평가금액</label><input type="number" value={form.prev_value ?? ''} onChange={(e) => setForm((prev) => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">변동액</label><input type="number" value={form.change_amount ?? ''} onChange={(e) => setForm((prev) => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">변동률(%)</label><input type="number" step="0.01" value={form.change_pct ?? ''} onChange={(e) => setForm((prev) => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
+        <div className="md:col-span-4"><label className="mb-1 block text-xs font-medium text-gray-600">산출 근거</label><input value={form.basis || ''} onChange={(e) => setForm((prev) => ({ ...prev, basis: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1 text-sm" /></div>
       </div>
       <div className="mt-2 flex gap-2">
         <button
@@ -325,49 +237,61 @@ export default function ValuationsPage() {
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <select
-            value={filters.fund_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 조합</option>
-            {funds?.map((fund) => (
-              <option key={fund.id} value={fund.id}>
-                {fund.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.company_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 투자사</option>
-            {companies?.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            value={filters.investment_id || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
-            placeholder="투자건 ID"
-            className="rounded border px-2 py-1 text-sm"
-          />
-          <select
-            value={filters.method}
-            onChange={(e) => setFilters((prev) => ({ ...prev, method: e.target.value }))}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            <option value="">전체 방법</option>
-            {METHOD_OPTIONS.map((method) => (
-              <option key={method} value={method}>
-                {labelMethod(method)}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <select
+              value={filters.fund_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 조합</option>
+              {funds?.map((fund) => (
+                <option key={fund.id} value={fund.id}>
+                  {fund.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">투자사</label>
+            <select
+              value={filters.company_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 투자사</option>
+              {companies?.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">투자건 ID</label>
+            <input
+              type="number"
+              value={filters.investment_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
+              placeholder="선택 입력"
+              className="w-full rounded border px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">평가 방법</label>
+            <select
+              value={filters.method}
+              onChange={(e) => setFilters((prev) => ({ ...prev, method: e.target.value }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              <option value="">전체 방법</option>
+              {METHOD_OPTIONS.map((method) => (
+                <option key={method} value={method}>
+                  {labelMethod(method)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="mt-2">
           <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">

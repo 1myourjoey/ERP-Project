@@ -138,19 +138,22 @@ function EditableText({
 
   if (editing) {
     return (
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={() => setEditing(false)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            setEditing(false)
-          }
-        }}
-        autoFocus
-        className={`editable-area w-full rounded-sm border border-blue-400 bg-blue-50 px-1 py-0.5 text-sm outline-none ${className}`}
-      />
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-gray-500">{placeholder || '입력'}</label>
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={() => setEditing(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              setEditing(false)
+            }
+          }}
+          autoFocus
+          className={`editable-area w-full rounded-sm border border-blue-400 bg-blue-50 px-1 py-0.5 text-sm outline-none ${className}`}
+        />
+      </div>
     )
   }
 
@@ -187,14 +190,17 @@ function EditableTextarea({
 
   if (editing) {
     return (
-      <textarea
-        value={value}
-        rows={minRows}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={() => setEditing(false)}
-        autoFocus
-        className="editable-area w-full rounded-sm border border-blue-400 bg-blue-50 px-2 py-1 text-sm outline-none"
-      />
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-gray-500">{placeholder || '내용'}</label>
+        <textarea
+          value={value}
+          rows={minRows}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={() => setEditing(false)}
+          autoFocus
+          className="editable-area w-full rounded-sm border border-blue-400 bg-blue-50 px-2 py-1 text-sm outline-none"
+        />
+      </div>
     )
   }
 
@@ -257,7 +263,12 @@ function InlineAttachmentTable({
               <td style={{ textAlign: 'center' }}>{attachment.no}</td>
               <td><EditableText value={attachment.name} onChange={(next) => updateRow(index, { name: next })} placeholder="문서명" /></td>
               <td style={{ textAlign: 'center' }}><EditableText value={attachment.ref} onChange={(next) => updateRow(index, { ref: next })} placeholder="별첨" /></td>
-              <td style={{ textAlign: 'center' }}><input type="checkbox" checked={attachment.stamp_required} onChange={(event) => updateRow(index, { stamp_required: event.target.checked })} /></td>
+              <td style={{ textAlign: 'center' }}>
+                <label className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                  날인
+                  <input type="checkbox" checked={attachment.stamp_required} onChange={(event) => updateRow(index, { stamp_required: event.target.checked })} />
+                </label>
+              </td>
               <td style={{ textAlign: 'center' }}><button onClick={() => removeRow(index)} type="button" className="text-xs text-red-500 hover:text-red-700">×</button></td>
             </tr>
           ))}
@@ -665,16 +676,19 @@ export default function DocumentEditorModal({
                 배율 초기화
               </button>
 
-              <select
-                value={previewFundId}
-                onChange={(event) => onPreviewFundIdChange(event.target.value ? Number(event.target.value) : '')}
-                className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
-              >
-                <option value="">미리보기용 조합 선택</option>
-                {funds.map((fund) => (
-                  <option key={fund.id} value={fund.id}>{fund.name}</option>
-                ))}
-              </select>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">미리보기 조합</label>
+                <select
+                  value={previewFundId}
+                  onChange={(event) => onPreviewFundIdChange(event.target.value ? Number(event.target.value) : '')}
+                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                >
+                  <option value="">미리보기용 조합 선택</option>
+                  {funds.map((fund) => (
+                    <option key={fund.id} value={fund.id}>{fund.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <button onClick={onPreview} type="button" disabled={isPreviewing} className="secondary-btn inline-flex items-center gap-1">
                 <Eye size={14} /> 미리보기 (.docx)

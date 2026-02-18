@@ -211,8 +211,14 @@ function LPTransferModal({
             양도인: <span className="font-medium text-gray-800">{fromLp.name}</span>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <input type="number" value={transferAmount || ''} onChange={(e) => setTransferAmount(Number(e.target.value || 0))} placeholder="양도 금액" className="rounded border px-2 py-1.5 text-sm" />
-            <input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} className="rounded border px-2 py-1.5 text-sm" />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">양도 금액</label>
+              <input type="number" value={transferAmount || ''} onChange={(e) => setTransferAmount(Number(e.target.value || 0))} placeholder="숫자 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">양도일</label>
+              <input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm" />
+            </div>
           </div>
           <div className="rounded border border-gray-200 p-2">
             <div className="mb-2 flex items-center gap-3 text-xs">
@@ -226,23 +232,44 @@ function LPTransferModal({
               </label>
             </div>
             {useExistingLp ? (
-              <select value={toLpId} onChange={(e) => setToLpId(e.target.value ? Number(e.target.value) : '')} className="w-full rounded border px-2 py-1.5 text-sm">
-                <option value="">양수 LP 선택</option>
-                {lps.filter((lp) => lp.id !== fromLp.id).map((lp) => (
-                  <option key={lp.id} value={lp.id}>{lp.name}</option>
-                ))}
-              </select>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP</label>
+                <select value={toLpId} onChange={(e) => setToLpId(e.target.value ? Number(e.target.value) : '')} className="w-full rounded border px-2 py-1.5 text-sm">
+                  <option value="">양수 LP 선택</option>
+                  {lps.filter((lp) => lp.id !== fromLp.id).map((lp) => (
+                    <option key={lp.id} value={lp.id}>{lp.name}</option>
+                  ))}
+                </select>
+              </div>
             ) : (
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <input value={toLpName} onChange={(e) => setToLpName(e.target.value)} placeholder="양수 LP명" className="rounded border px-2 py-1.5 text-sm" />
-                <input value={toLpType} onChange={(e) => setToLpType(e.target.value)} placeholder="양수 LP 유형" className="rounded border px-2 py-1.5 text-sm" />
-                <input value={toLpBusinessNumber} onChange={(e) => setToLpBusinessNumber(e.target.value)} placeholder="사업자등록번호/생년월일" className="rounded border px-2 py-1.5 text-sm" />
-                <input value={toLpAddress} onChange={(e) => setToLpAddress(e.target.value)} placeholder="주소" className="rounded border px-2 py-1.5 text-sm" />
-                <input value={toLpContact} onChange={(e) => setToLpContact(e.target.value)} placeholder="연락처" className="rounded border px-2 py-1.5 text-sm md:col-span-2" />
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP명</label>
+                  <input value={toLpName} onChange={(e) => setToLpName(e.target.value)} placeholder="예: OO기관" className="w-full rounded border px-2 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP 유형</label>
+                  <input value={toLpType} onChange={(e) => setToLpType(e.target.value)} placeholder="예: 기관투자자" className="w-full rounded border px-2 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호/생년월일</label>
+                  <input value={toLpBusinessNumber} onChange={(e) => setToLpBusinessNumber(e.target.value)} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
+                  <input value={toLpAddress} onChange={(e) => setToLpAddress(e.target.value)} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
+                  <input value={toLpContact} onChange={(e) => setToLpContact(e.target.value)} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+                </div>
               </div>
             )}
           </div>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="비고" className="w-full rounded border px-2 py-1.5 text-sm" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+          </div>
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
@@ -300,6 +327,7 @@ export default function FundOperationsPage() {
 
   const [fundId, setFundId] = useState<number | null>(initialFundId)
   const [performanceDate, setPerformanceDate] = useState('')
+  const [lpCallTab, setLpCallTab] = useState<'lp' | 'calls'>('lp')
 
   const [callExpandedId, setCallExpandedId] = useState<number | null>(null)
   const [distExpandedId, setDistExpandedId] = useState<number | null>(null)
@@ -350,6 +378,20 @@ export default function FundOperationsPage() {
 
   const { data: calls } = useQuery<CapitalCall[]>({ queryKey: ['capitalCalls', selectedFundId], queryFn: () => fetchCapitalCalls({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
   const { data: callItems } = useQuery({ queryKey: ['capitalCallItems', callExpandedId], queryFn: () => fetchCapitalCallItems(callExpandedId as number), enabled: !!callExpandedId })
+  const callIdsKey = useMemo(() => (calls?.map((call) => call.id).join(',') ?? ''), [calls])
+  const { data: callItemsByCallId = {} } = useQuery<Record<number, CapitalCallItem[]>>({
+    queryKey: ['capitalCallItemsByCallId', selectedFundId, callIdsKey],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        (calls ?? []).map(async (call) => {
+          const items = await fetchCapitalCallItems(call.id)
+          return [call.id, items] as const
+        }),
+      )
+      return Object.fromEntries(entries)
+    },
+    enabled: !!selectedFundId && !!calls?.length,
+  })
   const { data: distributions } = useQuery<Distribution[]>({ queryKey: ['distributions', selectedFundId], queryFn: () => fetchDistributions({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
   const { data: distributionItems } = useQuery({ queryKey: ['distributionItems', distExpandedId], queryFn: () => fetchDistributionItems(distExpandedId as number), enabled: !!distExpandedId })
   const { data: assemblies } = useQuery<Assembly[]>({ queryKey: ['assemblies', selectedFundId], queryFn: () => fetchAssemblies({ fund_id: selectedFundId as number }), enabled: !!selectedFundId })
@@ -360,9 +402,26 @@ export default function FundOperationsPage() {
   })
 
   const lpCommitmentSum = useMemo(() => lps.reduce((sum, lp) => sum + Number(lp.commitment ?? 0), 0), [lps])
+  const lpPaidInSum = useMemo(() => lps.reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0), [lps])
   const commitmentTotal = Number(fundDetail?.commitment_total ?? 0)
   const commitmentDiff = commitmentTotal - lpCommitmentSum
   const isCommitmentMatched = Math.abs(commitmentDiff) < 1
+  const lpLastCallDateByLpId = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const call of calls ?? []) {
+      const items = callItemsByCallId[call.id] ?? []
+      for (const item of items) {
+        if (!item.lp_id) continue
+        const candidate = item.paid_date || call.call_date
+        if (!candidate) continue
+        const previous = map.get(item.lp_id)
+        if (!previous || candidate > previous) {
+          map.set(item.lp_id, candidate)
+        }
+      }
+    }
+    return map
+  }, [callItemsByCallId, calls])
 
   const createCallMut = useMutation({
     mutationFn: (data: CapitalCallInput) => createCapitalCall(data.fund_id, {
@@ -384,6 +443,7 @@ export default function FundOperationsPage() {
     mutationFn: ({ id, data }: { id: number; data: CapitalCallItemInput }) => createCapitalCallItem(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
@@ -394,6 +454,7 @@ export default function FundOperationsPage() {
     mutationFn: ({ callId, itemId }: { callId: number; itemId: number }) => deleteCapitalCallItem(callId, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
@@ -405,6 +466,7 @@ export default function FundOperationsPage() {
       updateCapitalCallItem(callId, itemId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
@@ -619,17 +681,84 @@ export default function FundOperationsPage() {
         </div>
       </div>
 
-      <Section title="LP 관리" right={<button onClick={startCreateLP} className="primary-btn">LP 추가</button>}>
+      <Section
+        title="LP 및 출자"
+        right={(
+          <div className="flex items-center gap-2">
+            <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
+              <button
+                onClick={() => setLpCallTab('lp')}
+                className={`rounded-md px-3 py-1 text-xs transition ${lpCallTab === 'lp' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500'}`}
+              >
+                LP 현황
+              </button>
+              <button
+                onClick={() => setLpCallTab('calls')}
+                className={`rounded-md px-3 py-1 text-xs transition ${lpCallTab === 'calls' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500'}`}
+              >
+                출자 회차
+              </button>
+            </div>
+            {lpCallTab === 'lp' && <button onClick={startCreateLP} className="primary-btn">LP 추가</button>}
+          </div>
+        )}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 text-xs">
+          <div>
+            <span className="text-gray-500">약정 총액</span>
+            <p className="font-semibold text-gray-800">{formatKRW(lpCommitmentSum)}</p>
+          </div>
+          <div>
+            <span className="text-gray-500">납입 총액</span>
+            <p className="font-semibold text-gray-800">{formatKRW(lpPaidInSum)}</p>
+          </div>
+          <div>
+            <span className="text-gray-500">납입률</span>
+            <p className="font-semibold text-blue-700">
+              {lpCommitmentSum ? `${((lpPaidInSum / lpCommitmentSum) * 100).toFixed(1)}%` : '-'}
+            </p>
+          </div>
+          <div>
+            <span className="text-gray-500">정합성</span>
+            <p className={`font-semibold ${isCommitmentMatched ? 'text-emerald-700' : 'text-amber-700'}`}>
+              {isCommitmentMatched ? '✅ 정합' : '⚠️ 차이 있음'}
+            </p>
+          </div>
+        </div>
+
+        {lpCallTab === 'lp' && (
+          <>
         {(showCreateLP || editingLPId !== null) && (
           <div className="mb-3 rounded border border-gray-200 bg-gray-50 p-3">
             <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-4">
-              <input value={lpForm.name || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="LP명" className="rounded border px-2 py-1.5 text-sm" />
-              <input value={lpForm.type || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, type: e.target.value }))} placeholder="유형" className="rounded border px-2 py-1.5 text-sm" />
-              <input type="number" value={lpForm.commitment ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="출자약정액" className="rounded border px-2 py-1.5 text-sm" />
-              <input type="number" value={lpForm.paid_in ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입출자금" className="rounded border px-2 py-1.5 text-sm" />
-              <input value={lpForm.business_number || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, business_number: e.target.value }))} placeholder="사업자등록번호/생년월일" className="rounded border px-2 py-1.5 text-sm" />
-              <input value={lpForm.address || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="주소" className="rounded border px-2 py-1.5 text-sm" />
-              <input value={lpForm.contact || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="rounded border px-2 py-1.5 text-sm md:col-span-2" />
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">LP명</label>
+                <input value={lpForm.name || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="예: OO기관" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">유형</label>
+                <input value={lpForm.type || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, type: e.target.value }))} placeholder="예: 기관투자자" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">출자약정액</label>
+                <input type="number" value={lpForm.commitment ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">납입출자금</label>
+                <input type="number" value={lpForm.paid_in ?? ''} onChange={(e) => setLpForm((prev) => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호/생년월일</label>
+                <input value={lpForm.business_number || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, business_number: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
+                <input value={lpForm.address || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
+                <input value={lpForm.contact || ''} onChange={(e) => setLpForm((prev) => ({ ...prev, contact: e.target.value }))} placeholder="선택 입력" className="w-full rounded border px-2 py-1.5 text-sm" />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -668,6 +797,9 @@ export default function FundOperationsPage() {
                 <th className="px-2 py-2 text-left">유형</th>
                 <th className="px-2 py-2 text-right">출자약정액</th>
                 <th className="px-2 py-2 text-right">납입출자금</th>
+                <th className="px-2 py-2 text-right">납입률</th>
+                <th className="px-2 py-2 text-right">잔여</th>
+                <th className="px-2 py-2 text-left">최근 출자일</th>
                 <th className="px-2 py-2 text-left">사업자등록번호</th>
                 <th className="px-2 py-2 text-left">주소</th>
                 <th className="px-2 py-2 text-left">연락처</th>
@@ -675,35 +807,42 @@ export default function FundOperationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {lps.map((lp) => (
-                <tr key={lp.id}>
-                  <td className="px-2 py-2">{lp.name}</td>
-                  <td className="px-2 py-2">{lp.type}</td>
-                  <td className="px-2 py-2 text-right">{formatKRW(lp.commitment ?? null)}</td>
-                  <td className="px-2 py-2 text-right">{formatKRW(lp.paid_in ?? null)}</td>
-                  <td className="px-2 py-2">{lp.business_number || '-'}</td>
-                  <td className="px-2 py-2">{lp.address || '-'}</td>
-                  <td className="px-2 py-2">{lp.contact || '-'}</td>
-                  <td className="px-2 py-2">
-                    <div className="flex flex-wrap gap-1">
-                      <button onClick={() => startEditLP(lp)} className="secondary-btn">수정</button>
-                      <button onClick={() => setTransferSourceLp(lp)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">양수양도</button>
-                      <button onClick={() => deleteLPMut.mutate(lp.id)} className="danger-btn">삭제</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {lps.map((lp) => {
+                const commitment = Number(lp.commitment ?? 0)
+                const paidIn = Number(lp.paid_in ?? 0)
+                const paidRate = commitment > 0 ? (paidIn / commitment) * 100 : null
+                const remaining = commitment - paidIn
+                const lastCallDate = lpLastCallDateByLpId.get(lp.id)
+
+                return (
+                  <tr key={lp.id}>
+                    <td className="px-2 py-2">{lp.name}</td>
+                    <td className="px-2 py-2">{lp.type}</td>
+                    <td className="px-2 py-2 text-right">{formatKRW(lp.commitment ?? null)}</td>
+                    <td className="px-2 py-2 text-right">{formatKRW(lp.paid_in ?? null)}</td>
+                    <td className="px-2 py-2 text-right">{paidRate == null ? '-' : `${paidRate.toFixed(1)}%`}</td>
+                    <td className="px-2 py-2 text-right">{formatKRW(remaining)}</td>
+                    <td className="px-2 py-2">{toDate(lastCallDate)}</td>
+                    <td className="px-2 py-2">{lp.business_number || '-'}</td>
+                    <td className="px-2 py-2">{lp.address || '-'}</td>
+                    <td className="px-2 py-2">{lp.contact || '-'}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        <button onClick={() => startEditLP(lp)} className="secondary-btn">수정</button>
+                        <button onClick={() => setTransferSourceLp(lp)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">양수양도</button>
+                        <button onClick={() => deleteLPMut.mutate(lp.id)} className="danger-btn">삭제</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {!lps.length && (
                 <tr>
-                  <td colSpan={8} className="px-2 py-4 text-center text-gray-400">등록된 LP가 없습니다.</td>
+                  <td colSpan={11} className="px-2 py-4 text-center text-gray-400">등록된 LP가 없습니다.</td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-
-        <div className="mt-2 text-xs text-gray-500">
-          LP 약정 합계: {formatKRW(lpCommitmentSum)} | 총 약정액: {formatKRW(fundDetail?.commitment_total ?? null)} | {isCommitmentMatched ? '✅ 정합' : '⚠️ 차이 있음'}
         </div>
 
         <div className="mt-3 rounded border border-gray-200 p-2">
@@ -749,40 +888,41 @@ export default function FundOperationsPage() {
             </div>
           )}
         </div>
-      </Section>
-
-      <Section title="성과지표" right={<input type="date" value={performanceDate} onChange={(e) => setPerformanceDate(e.target.value)} className="rounded border px-2 py-1 text-xs" />}>
-        {!performance ? <p className="text-sm text-gray-400">데이터가 없습니다.</p> : (
-          <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-            <div className="rounded bg-gray-50 p-2">납입 총액: {formatKRW(performance.paid_in_total)}</div>
-            <div className="rounded bg-gray-50 p-2">투자 총액: {formatKRW(performance.total_invested)}</div>
-            <div className="rounded bg-gray-50 p-2">배분 총액: {formatKRW(performance.total_distributed)}</div>
-            <div className="rounded bg-gray-50 p-2">잔여 가치: {formatKRW(performance.residual_value)}</div>
-            <div className="rounded bg-gray-50 p-2">TVPI: {performance.tvpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-gray-50 p-2">DPI: {performance.dpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-gray-50 p-2">RVPI: {performance.rvpi?.toFixed(4) || '-'}</div>
-            <div className="rounded bg-gray-50 p-2">IRR: {toRatio(performance.irr)}</div>
-          </div>
+          </>
         )}
-      </Section>
 
-      <Section title="출자">
+        {lpCallTab === 'calls' && (
+          <>
         <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-5">
-          <input type="date" value={newCall.call_date} onChange={(e) => setNewCall((p) => ({ ...p, call_date: e.target.value }))} className="rounded border px-2 py-1 text-sm" />
-          <select value={newCall.call_type} onChange={(e) => setNewCall((p) => ({ ...p, call_type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-            {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
-          </select>
-          <input type="number" value={newCall.total_amount || 0} onChange={(e) => setNewCall((p) => ({ ...p, total_amount: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" placeholder="출자 총액" />
-          <input
-            type="number"
-            min={0}
-            step="0.1"
-            value={newCall.request_percent ?? ''}
-            onChange={(e) => setNewCall((p) => ({ ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) }))}
-            className="rounded border px-2 py-1 text-sm"
-            placeholder="요청 비율(%)"
-          />
-          <button onClick={() => selectedFundId && createCallMut.mutate({ ...newCall, fund_id: selectedFundId, memo: newCall.memo?.trim() || null })} className="primary-btn">등록</button>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">출자일</label>
+            <input type="date" value={newCall.call_date} onChange={(e) => setNewCall((p) => ({ ...p, call_date: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">출자 유형</label>
+            <select value={newCall.call_type} onChange={(e) => setNewCall((p) => ({ ...p, call_type: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">출자 총액</label>
+            <input type="number" value={newCall.total_amount || 0} onChange={(e) => setNewCall((p) => ({ ...p, total_amount: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="숫자 입력" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">요청 비율(%)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={newCall.request_percent ?? ''}
+              onChange={(e) => setNewCall((p) => ({ ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+              placeholder="선택 입력"
+            />
+          </div>
+          <div className="flex items-end">
+            <button onClick={() => selectedFundId && createCallMut.mutate({ ...newCall, fund_id: selectedFundId, memo: newCall.memo?.trim() || null })} className="primary-btn">등록</button>
+          </div>
         </div>
         <div className="space-y-2">
           {calls?.map((row) => (
@@ -800,20 +940,32 @@ export default function FundOperationsPage() {
               </div>
               {editingCallId === row.id && editCall && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
-                  <input type="date" value={editCall.call_date} onChange={(e) => setEditCall((p) => (p ? { ...p, call_date: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
-                  <select value={editCall.call_type} onChange={(e) => setEditCall((p) => (p ? { ...p, call_type: e.target.value } : p))} className="rounded border px-2 py-1 text-sm">
-                    {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
-                  </select>
-                  <input type="number" value={editCall.total_amount} onChange={(e) => setEditCall((p) => (p ? { ...p, total_amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    value={editCall.request_percent ?? ''}
-                    onChange={(e) => setEditCall((p) => (p ? { ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) } : p))}
-                    className="rounded border px-2 py-1 text-sm"
-                    placeholder="요청 비율(%)"
-                  />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">출자일</label>
+                    <input type="date" value={editCall.call_date} onChange={(e) => setEditCall((p) => (p ? { ...p, call_date: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">출자 유형</label>
+                    <select value={editCall.call_type} onChange={(e) => setEditCall((p) => (p ? { ...p, call_type: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm">
+                      {CALL_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelCallType(type)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">출자 총액</label>
+                    <input type="number" value={editCall.total_amount} onChange={(e) => setEditCall((p) => (p ? { ...p, total_amount: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">요청 비율(%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      value={editCall.request_percent ?? ''}
+                      onChange={(e) => setEditCall((p) => (p ? { ...p, request_percent: e.target.value === '' ? null : Number(e.target.value) } : p))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                      placeholder="요청 비율(%)"
+                    />
+                  </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() =>
@@ -847,23 +999,46 @@ export default function FundOperationsPage() {
                     <p className="mb-1 text-xs font-semibold text-gray-500">LP 항목 관리</p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                    <select value={newCallItem.lp_id || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
-                      <option value="">LP</option>
-                      {lps.map((lp) => <option key={lp.id} value={lp.id}>{lp.name}</option>)}
-                    </select>
-                    <input type="number" value={newCallItem.amount || 0} onChange={(e) => setNewCallItem((p) => ({ ...p, amount: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-                    <select value={newCallItem.paid ? '1' : '0'} onChange={(e) => setNewCallItem((p) => ({ ...p, paid: e.target.value === '1' }))} className="rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
-                    <input type="date" value={newCallItem.paid_date || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, paid_date: e.target.value || null }))} className="rounded border px-2 py-1 text-sm" />
-                    <button onClick={() => newCallItem.lp_id && createCallItemMut.mutate({ id: row.id, data: newCallItem })} className="primary-btn">항목 추가</button>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">LP</label>
+                      <select value={newCallItem.lp_id || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm">
+                        <option value="">LP</option>
+                        {lps.map((lp) => <option key={lp.id} value={lp.id}>{lp.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">출자금액</label>
+                      <input type="number" value={newCallItem.amount || 0} onChange={(e) => setNewCallItem((p) => ({ ...p, amount: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">납입 상태</label>
+                      <select value={newCallItem.paid ? '1' : '0'} onChange={(e) => setNewCallItem((p) => ({ ...p, paid: e.target.value === '1' }))} className="w-full rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
+                      <input type="date" value={newCallItem.paid_date || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, paid_date: e.target.value || null }))} className="w-full rounded border px-2 py-1 text-sm" />
+                    </div>
+                    <div className="flex items-end">
+                      <button onClick={() => newCallItem.lp_id && createCallItemMut.mutate({ id: row.id, data: newCallItem })} className="primary-btn">항목 추가</button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     {callItems?.map((item) => (
                       <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
                         {editingCallItemId === item.id && editCallItem ? (
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-5">
-                            <input type="number" value={editCallItem.amount} onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
-                            <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
-                            <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="rounded border px-2 py-1 text-sm" />
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">출자금액</label>
+                              <input type="number" value={editCallItem.amount} onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">납입 상태</label>
+                              <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="w-full rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
+                              <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                            </div>
                             <button onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })} className="primary-btn">저장</button>
                             <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="secondary-btn">취소</button>
                           </div>
@@ -884,17 +1059,56 @@ export default function FundOperationsPage() {
             </div>
           ))}
         </div>
+          </>
+        )}
+      </Section>
+
+      <Section
+        title="성과지표"
+        right={(
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-500">기준일</label>
+            <input type="date" value={performanceDate} onChange={(e) => setPerformanceDate(e.target.value)} className="rounded border px-2 py-1 text-xs" />
+          </div>
+        )}
+      >
+        {!performance ? <p className="text-sm text-gray-400">데이터가 없습니다.</p> : (
+          <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+            <div className="rounded bg-gray-50 p-2">납입 총액: {formatKRW(performance.paid_in_total)}</div>
+            <div className="rounded bg-gray-50 p-2">투자 총액: {formatKRW(performance.total_invested)}</div>
+            <div className="rounded bg-gray-50 p-2">배분 총액: {formatKRW(performance.total_distributed)}</div>
+            <div className="rounded bg-gray-50 p-2">잔여 가치: {formatKRW(performance.residual_value)}</div>
+            <div className="rounded bg-gray-50 p-2">TVPI: {performance.tvpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">DPI: {performance.dpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">RVPI: {performance.rvpi?.toFixed(4) || '-'}</div>
+            <div className="rounded bg-gray-50 p-2">IRR: {toRatio(performance.irr)}</div>
+          </div>
+        )}
       </Section>
 
       <Section title="배분">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5 mb-2">
-          <input type="date" value={newDistribution.dist_date} onChange={(e) => setNewDistribution((p) => ({ ...p, dist_date: e.target.value }))} className="rounded border px-2 py-1 text-sm" />
-          <select value={newDistribution.dist_type} onChange={(e) => setNewDistribution((p) => ({ ...p, dist_type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-            {DIST_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelDistributionType(type)}</option>)}
-          </select>
-          <input type="number" value={newDistribution.principal_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, principal_total: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-          <input type="number" value={newDistribution.profit_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, profit_total: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-          <button onClick={() => selectedFundId && createDistMut.mutate({ ...newDistribution, fund_id: selectedFundId, memo: newDistribution.memo?.trim() || null })} className="primary-btn">등록</button>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+            <input type="date" value={newDistribution.dist_date} onChange={(e) => setNewDistribution((p) => ({ ...p, dist_date: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+            <select value={newDistribution.dist_type} onChange={(e) => setNewDistribution((p) => ({ ...p, dist_type: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              {DIST_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelDistributionType(type)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+            <input type="number" value={newDistribution.principal_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, principal_total: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+            <input type="number" value={newDistribution.profit_total || 0} onChange={(e) => setNewDistribution((p) => ({ ...p, profit_total: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+          </div>
+          <div className="flex items-end">
+            <button onClick={() => selectedFundId && createDistMut.mutate({ ...newDistribution, fund_id: selectedFundId, memo: newDistribution.memo?.trim() || null })} className="primary-btn">등록</button>
+          </div>
         </div>
         <div className="space-y-2">
           {distributions?.map((row) => (
@@ -909,12 +1123,24 @@ export default function FundOperationsPage() {
               </div>
               {editingDistId === row.id && editDistribution && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
-                  <input type="date" value={editDistribution.dist_date} onChange={(e) => setEditDistribution((p) => (p ? { ...p, dist_date: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
-                  <select value={editDistribution.dist_type} onChange={(e) => setEditDistribution((p) => (p ? { ...p, dist_type: e.target.value } : p))} className="rounded border px-2 py-1 text-sm">
-                    {DIST_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelDistributionType(type)}</option>)}
-                  </select>
-                  <input type="number" value={editDistribution.principal_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, principal_total: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
-                  <input type="number" value={editDistribution.profit_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, profit_total: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+                    <input type="date" value={editDistribution.dist_date} onChange={(e) => setEditDistribution((p) => (p ? { ...p, dist_date: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+                    <select value={editDistribution.dist_type} onChange={(e) => setEditDistribution((p) => (p ? { ...p, dist_type: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm">
+                      {DIST_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelDistributionType(type)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+                    <input type="number" value={editDistribution.principal_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, principal_total: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+                    <input type="number" value={editDistribution.profit_total} onChange={(e) => setEditDistribution((p) => (p ? { ...p, profit_total: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
                   <div className="flex gap-1">
                     <button onClick={() => updateDistMut.mutate({ id: row.id, data: { dist_date: editDistribution.dist_date, dist_type: editDistribution.dist_type, principal_total: editDistribution.principal_total, profit_total: editDistribution.profit_total, performance_fee: editDistribution.performance_fee, memo: editDistribution.memo.trim() || null } })} className="primary-btn">저장</button>
                     <button onClick={() => { setEditingDistId(null); setEditDistribution(null) }} className="secondary-btn">취소</button>
@@ -924,21 +1150,38 @@ export default function FundOperationsPage() {
               {distExpandedId === row.id && (
                 <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                    <select value={newDistributionItem.lp_id || ''} onChange={(e) => setNewDistributionItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="rounded border px-2 py-1 text-sm">
-                      <option value="">LP</option>
-                      {lps.map((lp) => <option key={lp.id} value={lp.id}>{lp.name}</option>)}
-                    </select>
-                    <input type="number" value={newDistributionItem.principal || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, principal: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-                    <input type="number" value={newDistributionItem.profit || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, profit: Number(e.target.value || 0) }))} className="rounded border px-2 py-1 text-sm" />
-                    <button onClick={() => newDistributionItem.lp_id && createDistItemMut.mutate({ id: row.id, data: newDistributionItem })} className="primary-btn">항목 추가</button>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">LP</label>
+                      <select value={newDistributionItem.lp_id || ''} onChange={(e) => setNewDistributionItem((p) => ({ ...p, lp_id: Number(e.target.value) || 0 }))} className="w-full rounded border px-2 py-1 text-sm">
+                        <option value="">LP</option>
+                        {lps.map((lp) => <option key={lp.id} value={lp.id}>{lp.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                      <input type="number" value={newDistributionItem.principal || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, principal: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                      <input type="number" value={newDistributionItem.profit || 0} onChange={(e) => setNewDistributionItem((p) => ({ ...p, profit: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+                    </div>
+                    <div className="flex items-end">
+                      <button onClick={() => newDistributionItem.lp_id && createDistItemMut.mutate({ id: row.id, data: newDistributionItem })} className="primary-btn">항목 추가</button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     {distributionItems?.map((item) => (
                       <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
                         {editingDistItemId === item.id && editDistributionItem ? (
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
-                            <input type="number" value={editDistributionItem.principal} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, principal: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
-                            <input type="number" value={editDistributionItem.profit} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, profit: Number(e.target.value || 0) } : p))} className="rounded border px-2 py-1 text-sm" />
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                              <input type="number" value={editDistributionItem.principal} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, principal: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                              <input type="number" value={editDistributionItem.profit} onChange={(e) => setEditDistributionItem((p) => (p ? { ...p, profit: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                            </div>
                             <button onClick={() => updateDistItemMut.mutate({ distributionId: row.id, itemId: item.id, data: { principal: editDistributionItem.principal, profit: editDistributionItem.profit } })} className="primary-btn">저장</button>
                             <button onClick={() => { setEditingDistItemId(null); setEditDistributionItem(null) }} className="secondary-btn">취소</button>
                           </div>
@@ -963,15 +1206,29 @@ export default function FundOperationsPage() {
 
       <Section title="총회">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5 mb-2">
-          <input type="date" value={newAssembly.date} onChange={(e) => setNewAssembly((p) => ({ ...p, date: e.target.value }))} className="rounded border px-2 py-1 text-sm" />
-          <select value={newAssembly.type} onChange={(e) => setNewAssembly((p) => ({ ...p, type: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-            {ASSEMBLY_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelAssemblyType(type)}</option>)}
-          </select>
-          <select value={newAssembly.status || ''} onChange={(e) => setNewAssembly((p) => ({ ...p, status: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-            {ASSEMBLY_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}
-          </select>
-          <input value={newAssembly.agenda || ''} onChange={(e) => setNewAssembly((p) => ({ ...p, agenda: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="안건" />
-          <button onClick={() => selectedFundId && createAssemblyMut.mutate({ ...newAssembly, fund_id: selectedFundId, agenda: newAssembly.agenda?.trim() || null })} className="primary-btn">등록</button>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+            <input type="date" value={newAssembly.date} onChange={(e) => setNewAssembly((p) => ({ ...p, date: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+            <select value={newAssembly.type} onChange={(e) => setNewAssembly((p) => ({ ...p, type: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              {ASSEMBLY_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelAssemblyType(type)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <select value={newAssembly.status || ''} onChange={(e) => setNewAssembly((p) => ({ ...p, status: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              {ASSEMBLY_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+            <input value={newAssembly.agenda || ''} onChange={(e) => setNewAssembly((p) => ({ ...p, agenda: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="선택 입력" />
+          </div>
+          <div className="flex items-end">
+            <button onClick={() => selectedFundId && createAssemblyMut.mutate({ ...newAssembly, fund_id: selectedFundId, agenda: newAssembly.agenda?.trim() || null })} className="primary-btn">등록</button>
+          </div>
         </div>
         <div className="space-y-1">
           {assemblies?.map((row) => (
@@ -985,14 +1242,26 @@ export default function FundOperationsPage() {
               </div>
               {editingAssemblyId === row.id && editAssembly && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
-                  <input type="date" value={editAssembly.date} onChange={(e) => setEditAssembly((p) => (p ? { ...p, date: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
-                  <select value={editAssembly.type} onChange={(e) => setEditAssembly((p) => (p ? { ...p, type: e.target.value } : p))} className="rounded border px-2 py-1 text-sm">
-                    {ASSEMBLY_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelAssemblyType(type)}</option>)}
-                  </select>
-                  <select value={editAssembly.status} onChange={(e) => setEditAssembly((p) => (p ? { ...p, status: e.target.value } : p))} className="rounded border px-2 py-1 text-sm">
-                    {ASSEMBLY_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}
-                  </select>
-                  <input value={editAssembly.agenda} onChange={(e) => setEditAssembly((p) => (p ? { ...p, agenda: e.target.value } : p))} className="rounded border px-2 py-1 text-sm" />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+                    <input type="date" value={editAssembly.date} onChange={(e) => setEditAssembly((p) => (p ? { ...p, date: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+                    <select value={editAssembly.type} onChange={(e) => setEditAssembly((p) => (p ? { ...p, type: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm">
+                      {ASSEMBLY_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{labelAssemblyType(type)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                    <select value={editAssembly.status} onChange={(e) => setEditAssembly((p) => (p ? { ...p, status: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm">
+                      {ASSEMBLY_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+                    <input value={editAssembly.agenda} onChange={(e) => setEditAssembly((p) => (p ? { ...p, agenda: e.target.value } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                  </div>
                   <div className="flex gap-1">
                     <button onClick={() => updateAssemblyMut.mutate({ id: row.id, data: { date: editAssembly.date, type: editAssembly.type, status: editAssembly.status, agenda: editAssembly.agenda.trim() || null, minutes_completed: editAssembly.minutes_completed, memo: editAssembly.memo.trim() || null } })} className="primary-btn">저장</button>
                     <button onClick={() => { setEditingAssemblyId(null); setEditAssembly(null) }} className="secondary-btn">취소</button>

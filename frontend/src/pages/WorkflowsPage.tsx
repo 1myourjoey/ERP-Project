@@ -292,20 +292,20 @@ function TemplateModal({
       </div>
       <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="템플릿 이름" className="px-3 py-2 text-sm border rounded-lg" />
-          <input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="카테고리" className="px-3 py-2 text-sm border rounded-lg" />
-          <input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="총 기간" className="px-3 py-2 text-sm border rounded-lg" />
-          <input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="트리거 설명" className="px-3 py-2 text-sm border rounded-lg" />
+          <div><label className="mb-1 block text-xs font-medium text-gray-600">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label><input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="선택 입력" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="mb-1 block text-xs font-medium text-gray-600">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="mb-1 block text-xs font-medium text-gray-600">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
         </div>
         <div className="space-y-2">
           {form.steps.map((step, idx) => (
             <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
-              <input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="단계 이름" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
-              <input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="시점" className="px-2 py-1 text-sm border rounded" />
-              <input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="오프셋" className="px-2 py-1 text-sm border rounded" />
-              <input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예상 시간" className="px-2 py-1 text-sm border rounded" />
-              <input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="사분면" className="px-2 py-1 text-sm border rounded" />
-              <input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="메모" className="md:col-span-2 px-2 py-1 text-sm border rounded" />
+              <div className="md:col-span-2"><label className="mb-1 block text-[10px] font-medium text-gray-500">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div className="md:col-span-2"><label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
               <div className="md:col-span-2 flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-gray-600">
                   <input
@@ -454,37 +454,52 @@ function WorkflowDetail({
         <button onClick={() => setShowRun(true)} className="primary-btn inline-flex items-center gap-2"><Play size={16} /> 실행</button>
       ) : (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <input value={instName} onChange={e => setInstName(e.target.value)} placeholder="인스턴스 이름" className="w-full px-3 py-2 text-sm border rounded-lg" />
-          <input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg" />
-          <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
-            <option value="">관련 조합 (선택)</option>
-            {(funds ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-          <select
-            value={instGpEntityId}
-            onChange={e => {
-              const next = e.target.value ? Number(e.target.value) : ''
-              setInstGpEntityId(next)
-              setInstFundId('')
-              if (instInvestmentId !== '') setInstInvestmentId('')
-            }}
-            className="w-full px-3 py-2 text-sm border rounded-lg bg-white"
-          >
-            <option value="">관련 고유계정 (선택)</option>
-            {(gpEntities ?? []).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}
-          </select>
-          <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
-            <option value="">관련 회사 (선택)</option>
-            {(companies ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select value={instInvestmentId} onChange={e => setInstInvestmentId(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
-            <option value="">관련 투자 (선택)</option>
-            {filteredInvestments.map((inv) => <option key={inv.id} value={inv.id}>#{inv.id} {inv.fund_name} - {inv.company_name}</option>)}
-          </select>
-          {instFundId !== '' && (
-            <select value={instNoticeType} onChange={e => setInstNoticeType(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
-              {options.map((opt) => <option key={opt.notice_type} value={opt.notice_type}>{opt.label}</option>)}
+          <div><label className="mb-1 block text-xs font-medium text-blue-700">인스턴스 이름</label><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="mb-1 block text-xs font-medium text-blue-700">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-blue-700">관련 조합</label>
+            <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+              <option value="">관련 조합 (선택)</option>
+              {(funds ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-blue-700">관련 고유계정</label>
+            <select
+              value={instGpEntityId}
+              onChange={e => {
+                const next = e.target.value ? Number(e.target.value) : ''
+                setInstGpEntityId(next)
+                setInstFundId('')
+                if (instInvestmentId !== '') setInstInvestmentId('')
+              }}
+              className="w-full px-3 py-2 text-sm border rounded-lg bg-white"
+            >
+              <option value="">관련 고유계정 (선택)</option>
+              {(gpEntities ?? []).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-blue-700">관련 회사</label>
+            <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+              <option value="">관련 회사 (선택)</option>
+              {(companies ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-blue-700">관련 투자</label>
+            <select value={instInvestmentId} onChange={e => setInstInvestmentId(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+              <option value="">관련 투자 (선택)</option>
+              {filteredInvestments.map((inv) => <option key={inv.id} value={inv.id}>#{inv.id} {inv.fund_name} - {inv.company_name}</option>)}
+            </select>
+          </div>
+          {instFundId !== '' && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-blue-700">통지유형</label>
+              <select value={instNoticeType} onChange={e => setInstNoticeType(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+                {options.map((opt) => <option key={opt.notice_type} value={opt.notice_type}>{opt.label}</option>)}
+              </select>
+            </div>
           )}
           {instFundId !== '' && instDate && deadline && (
             <div className="rounded border border-indigo-200 bg-indigo-50 p-2 text-xs text-indigo-900">
@@ -492,7 +507,10 @@ function WorkflowDetail({
               <p>기준일 {deadline.target_date} / 통지 기한 {deadline.deadline}</p>
             </div>
           )}
-          <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="메모 (선택)" rows={2} className="w-full px-3 py-2 text-sm border rounded-lg" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-blue-700">메모</label>
+            <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="선택 입력" rows={2} className="w-full px-3 py-2 text-sm border rounded-lg" />
+          </div>
           <div className="flex gap-2">
             <button onClick={() => instName && instDate && runMut.mutate()} disabled={!instName || !instDate} className="flex-1 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300">실행</button>
             <button onClick={() => setShowRun(false)} className="px-4 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100">취소</button>
@@ -676,25 +694,34 @@ function InstanceList({
             <div className="border-t border-gray-100 p-3 space-y-1.5">
               {status === 'active' && editingInstanceId === inst.id && editInstance && (
                 <div className="mb-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-                  <input
-                    value={editInstance.name}
-                    onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                    placeholder="인스턴스 이름"
-                    className="w-full rounded border px-2 py-1.5 text-sm"
-                  />
-                  <input
-                    type="date"
-                    value={editInstance.trigger_date}
-                    onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, trigger_date: event.target.value } : prev))}
-                    className="w-full rounded border px-2 py-1.5 text-sm"
-                  />
-                  <textarea
-                    value={editInstance.memo}
-                    onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, memo: event.target.value } : prev))}
-                    rows={2}
-                    placeholder="메모"
-                    className="w-full rounded border px-2 py-1.5 text-sm"
-                  />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">인스턴스 이름</label>
+                    <input
+                      value={editInstance.name}
+                      onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                      placeholder="예: 2026년 1차 출자요청"
+                      className="w-full rounded border px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">기준일</label>
+                    <input
+                      type="date"
+                      value={editInstance.trigger_date}
+                      onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, trigger_date: event.target.value } : prev))}
+                      className="w-full rounded border px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+                    <textarea
+                      value={editInstance.memo}
+                      onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, memo: event.target.value } : prev))}
+                      rows={2}
+                      placeholder="선택 입력"
+                      className="w-full rounded border px-2 py-1.5 text-sm"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {

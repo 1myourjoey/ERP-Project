@@ -124,18 +124,27 @@ export default function ReportsPage() {
 
       <div className="card-base">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
-            <option value="">전체 대상</option>
-            {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
-          </select>
-          <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
-            <option value="">전체 조합</option>
-            {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-          </select>
-          <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="rounded-xl border border-gray-200 px-2 py-1 text-sm">
-            <option value="">전체 상태</option>
-            {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label>
+            <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+              <option value="">전체 대상</option>
+              {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+              <option value="">전체 조합</option>
+              {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+              <option value="">전체 상태</option>
+              {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </div>
         </div>
         <div className="mt-2 flex gap-2">
           <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">필터 초기화</button>
@@ -147,20 +156,38 @@ export default function ReportsPage() {
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
           <h3 className="text-sm font-semibold text-gray-700">신규 보고 기록</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-            <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-              {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
-            </select>
-            <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="rounded border px-2 py-1 text-sm">
-              <option value="">조합 미지정</option>
-              {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-            </select>
-            <input value={newReport.period} onChange={(e) => setNewReport((prev) => ({ ...prev, period: e.target.value }))} className="rounded border px-2 py-1 text-sm" placeholder="기간 (예: 2026-Q1)" />
-            <input type="date" value={newReport.due_date || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, due_date: e.target.value || null }))} className="rounded border px-2 py-1 text-sm" />
-            <select value={newReport.status || '예정'} onChange={(e) => setNewReport((prev) => ({ ...prev, status: e.target.value }))} className="rounded border px-2 py-1 text-sm">
-              {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label>
+              <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+                {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+              <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="w-full rounded border px-2 py-1 text-sm">
+                <option value="">조합 미지정</option>
+                {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">기간</label>
+              <input value={newReport.period} onChange={(e) => setNewReport((prev) => ({ ...prev, period: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="예: 2026-Q1" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">마감일</label>
+              <input type="date" value={newReport.due_date || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, due_date: e.target.value || null }))} className="w-full rounded border px-2 py-1 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+              <select value={newReport.status || '예정'} onChange={(e) => setNewReport((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+                {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </div>
           </div>
-          <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="메모" />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+            <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="선택 입력" />
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -195,22 +222,15 @@ export default function ReportsPage() {
                 {isEditing && editForm ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                      <select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="rounded border px-2 py-1 text-sm">
-                        {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
-                      </select>
-                      <select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="rounded border px-2 py-1 text-sm">
-                        <option value="">조합 미지정</option>
-                        {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-                      </select>
-                      <input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="rounded border px-2 py-1 text-sm" />
-                      <input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="rounded border px-2 py-1 text-sm" />
-                      <select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="rounded border px-2 py-1 text-sm">
-                        {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-                      </select>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label><select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm">{REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="w-full rounded border px-2 py-1 text-sm"><option value="">조합 미지정</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">기간</label><input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">마감일</label><input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm">{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
                     </div>
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      <input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="rounded border px-2 py-1 text-sm" />
-                      <textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="rounded border px-2 py-1 text-sm" />
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">제출일</label><input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="w-full rounded border px-2 py-1 text-sm" /></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => updateMut.mutate({ id: row.id, data: { ...editForm, period: editForm.period.trim(), memo: editForm.memo?.trim() || null } })} className="primary-btn">저장</button>
@@ -227,7 +247,10 @@ export default function ReportsPage() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-500">조합: {row.fund_name || '미지정'} | 마감일: {formatDate(row.due_date)} | 제출일: {formatDate(row.submitted_date)}</p>
-                    <textarea value={row.memo || ''} readOnly rows={3} className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-sm text-gray-700" />
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+                      <textarea value={row.memo || ''} readOnly rows={3} className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-sm text-gray-700" />
+                    </div>
                     <div className="flex gap-1">
                       <button
                         onClick={() => {

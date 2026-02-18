@@ -187,11 +187,14 @@ export default function CalendarPage() {
 
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex items-center gap-2">
-          <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
-            <option value="">전체 상태</option>
-            <option value="pending">{labelStatus('pending')}</option>
-            <option value="completed">{labelStatus('completed')}</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-500">상태</label>
+            <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
+              <option value="">전체 상태</option>
+              <option value="pending">{labelStatus('pending')}</option>
+              <option value="completed">{labelStatus('completed')}</option>
+            </select>
+          </div>
           <button
             className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}
             onClick={() => setView('calendar')}
@@ -497,12 +500,12 @@ function EventForm({
   return (
     <div className={`${compact ? '' : 'mb-3'} bg-gray-50 border border-gray-200 rounded p-2`}>
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-        <input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="제목" className="px-2 py-1 text-sm border rounded" />
-        <input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
-        <input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="px-2 py-1 text-sm border rounded" />
-        <input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="소요시간(분)" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="상태" className="px-2 py-1 text-sm border rounded" />
-        <input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="설명" className="px-2 py-1 text-sm border rounded" />
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">제목</label><input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="예: LP 정기 미팅" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">날짜</label><input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">시간</label><input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">소요시간(분)</label><input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">설명</label><input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
       </div>
       <div className="flex gap-2 mt-2">
         <button
