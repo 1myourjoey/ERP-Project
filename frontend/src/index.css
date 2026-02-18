@@ -10,7 +10,7 @@
   --color-danger: #EF4444;
 
   --theme-bg: #fafafa;
-  --theme-card: #ffffff;
+  --theme-card: rgba(255, 255, 255, 0.85);
   --theme-text: #111827;
   --theme-text-secondary: #6b7280;
   --theme-border: #e5e7eb;
@@ -22,7 +22,7 @@
 
 [data-theme="cream"] {
   --theme-bg: #FAF8F5;
-  --theme-card: #FFFDF9;
+  --theme-card: rgba(255, 253, 247, 0.85);
   --theme-text: #3D3529;
   --theme-text-secondary: #8C7E6A;
   --theme-border: #E8E0D4;
@@ -34,7 +34,7 @@
 
 [data-theme="mint"] {
   --theme-bg: #F5FAF8;
-  --theme-card: #FBFEFD;
+  --theme-card: rgba(243, 253, 249, 0.85);
   --theme-text: #1A332B;
   --theme-text-secondary: #5F7A6E;
   --theme-border: #D4E8DF;
@@ -46,7 +46,7 @@
 
 [data-theme="lavender"] {
   --theme-bg: #F8F7FC;
-  --theme-card: #FDFCFF;
+  --theme-card: rgba(248, 245, 255, 0.85);
   --theme-text: #2D2640;
   --theme-text-secondary: #6E6885;
   --theme-border: #DDD8EC;
@@ -126,6 +126,8 @@ textarea:focus {
   @apply rounded-2xl p-5;
   background-color: var(--theme-card, white);
   border: 1px solid var(--theme-border, #e5e7eb);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 

@@ -967,6 +967,21 @@ export default function TaskBoardPage() {
     return deadline >= nowMs && deadline <= nowMs + 24 * 60 * 60 * 1000
   })
 
+  const handleUrgentConfirm = () => {
+    setStatusFilter('pending')
+    setFundFilter('')
+    setShowMiniCalendar(false)
+
+    const firstUrgentTask = urgentTasks[0]
+    if (!firstUrgentTask) return
+
+    setPendingScrollId(firstUrgentTask.id)
+    setBlinkingId(firstUrgentTask.id)
+    window.setTimeout(() => {
+      setBlinkingId((prev) => (prev === firstUrgentTask.id ? null : prev))
+    }, 3000)
+  }
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -1049,10 +1064,7 @@ export default function TaskBoardPage() {
           <p className="info-banner-text">기한 24시간 이내 업무가 {urgentTasks.length}건 있습니다.</p>
           <div className="info-banner-action">
             <button
-              onClick={() => {
-                setStatusFilter('pending')
-                setShowMiniCalendar(false)
-              }}
+              onClick={handleUrgentConfirm}
               className="secondary-btn text-xs"
             >
               업무 확인

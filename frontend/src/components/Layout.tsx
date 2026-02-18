@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -99,6 +99,8 @@ const MOBILE_GROUPS: Array<{ label: string; items: Array<{ to: string; label: st
   })),
 ]
 
+const ShaderBackground = lazy(() => import('./ShaderBackground'))
+
 function isPathActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`)
 }
@@ -167,8 +169,12 @@ export default function Layout() {
   }, [openDropdown])
 
   return (
-    <div className="flex h-screen flex-col bg-[#fafafa]">
-      <nav className="h-14 border-b border-gray-200 bg-white">
+    <div className="relative flex h-screen flex-col">
+      <Suspense fallback={null}>
+        <ShaderBackground />
+      </Suspense>
+
+      <nav className="relative z-20 h-14 border-b border-white/20 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex h-full w-full items-center justify-between px-4 sm:px-6" ref={navRef}>
           <div className="flex items-center gap-3">
             <button
@@ -211,7 +217,7 @@ export default function Layout() {
                   </button>
 
                   <div
-                    className={`absolute left-0 top-full z-40 mt-2 min-w-[200px] rounded-xl border border-gray-200 bg-white shadow-lg transition-all duration-150 ${
+                    className={`absolute left-0 top-full z-40 mt-2 min-w-[200px] rounded-xl border border-white/30 bg-white/85 shadow-lg backdrop-blur-xl transition-all duration-150 ${
                       isOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                     }`}
                   >
@@ -323,7 +329,7 @@ export default function Layout() {
         </div>
       )}
 
-      <main className="flex-1 overflow-auto">
+      <main className="relative z-10 flex-1 overflow-auto">
         <Outlet />
       </main>
 
