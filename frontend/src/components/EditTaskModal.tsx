@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
-import type { Fund, GPEntity, Task, TaskCreate } from '../lib/api'
+import {
+  fetchWorkflow,
+  fetchWorkflowInstance,
+  type Fund,
+  type GPEntity,
+  type Task,
+  type TaskCreate,
+} from '../lib/api'
 import { detectNoticeReport } from '../lib/taskFlags'
 import TimeSelect from './TimeSelect'
 import { HOUR_OPTIONS } from './timeOptions'
@@ -54,6 +62,23 @@ export default function EditTaskModal({
   const autoDetected = detectNoticeReport(task.title)
   const [isNotice, setIsNotice] = useState(task.is_notice ?? autoDetected.is_notice)
   const [isReport, setIsReport] = useState(task.is_report ?? autoDetected.is_report)
+  const { data: workflowInstance, isLoading: isWorkflowInstanceLoading } = useQuery({
+    queryKey: ['workflow-instance', task.workflow_instance_id],
+    queryFn: () => fetchWorkflowInstance(task.workflow_instance_id as number),
+    enabled: !!task.workflow_instance_id,
+  })
+  const { data: workflowTemplate, isLoading: isWorkflowTemplateLoading } = useQuery({
+    queryKey: ['workflow', workflowInstance?.workflow_id],
+    queryFn: () => fetchWorkflow(workflowInstance?.workflow_id as number),
+    enabled: !!workflowInstance?.workflow_id,
+  })
+  const stepDocuments = useMemo(() => {
+    if (!workflowInstance || !workflowTemplate) return []
+    const matchedStepInstance = workflowInstance.step_instances.find((step) => step.task_id === task.id)
+    if (!matchedStepInstance) return []
+    const matchedStep = workflowTemplate.steps.find((step) => step.id === matchedStepInstance.workflow_step_id)
+    return matchedStep?.step_documents ?? []
+  }, [workflowInstance, workflowTemplate, task.id])
 
   const submit = () => {
     if (!title.trim()) return
@@ -224,6 +249,26 @@ export default function EditTaskModal({
                 className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
+            {task.workflow_instance_id && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+                <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+                {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
+                  <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+                ) : stepDocuments.length > 0 ? (
+                  <ul className="mt-1 space-y-1">
+                    {stepDocuments.map((doc, idx) => (
+                      <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                        • {doc.name}
+                        {doc.document_template_id ? ' [템플릿]' : ''}
+                        {doc.required ? ' (필수)' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex justify-end gap-2">

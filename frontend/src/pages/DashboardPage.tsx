@@ -14,6 +14,7 @@ import {
   fetchDashboard,
   fetchGPEntities,
   fetchUpcomingNotices,
+  fetchWorkflow,
   fetchWorkflowInstance,
   generateMonthlyReminders,
   undoCompleteTask,
@@ -152,6 +153,26 @@ function TaskDetailModal({
   onGoTaskBoard: (task: Task) => void
   editable?: boolean
 }) {
+  const { data: workflowInstance, isLoading: isWorkflowInstanceLoading } = useQuery({
+    queryKey: ['workflow-instance', task.workflow_instance_id],
+    queryFn: () => fetchWorkflowInstance(task.workflow_instance_id as number),
+    enabled: !!task.workflow_instance_id,
+  })
+
+  const { data: workflowTemplate, isLoading: isWorkflowTemplateLoading } = useQuery({
+    queryKey: ['workflow', workflowInstance?.workflow_id],
+    queryFn: () => fetchWorkflow(workflowInstance?.workflow_id as number),
+    enabled: !!workflowInstance?.workflow_id,
+  })
+
+  const stepDocuments = useMemo(() => {
+    if (!workflowInstance || !workflowTemplate) return []
+    const matchedStepInstance = workflowInstance.step_instances.find((step) => step.task_id === task.id)
+    if (!matchedStepInstance) return []
+    const matchedStep = workflowTemplate.steps.find((step) => step.id === matchedStepInstance.workflow_step_id)
+    return matchedStep?.step_documents ?? []
+  }, [workflowInstance, workflowTemplate, task.id])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -163,11 +184,32 @@ function TaskDetailModal({
           {task.deadline && <div><span className="font-medium">마감:</span> {new Date(task.deadline).toLocaleString('ko-KR')}</div>}
           {task.estimated_time && <div><span className="font-medium">예상 시간:</span> {task.estimated_time}</div>}
           {task.fund_name && <div><span className="font-medium">조합:</span> {task.fund_name}</div>}
+          {task.gp_entity_name && <div><span className="font-medium">고유계정:</span> {task.gp_entity_name}</div>}
           {task.company_name && <div><span className="font-medium">피투자사:</span> {task.company_name}</div>}
           {task.category && <div><span className="font-medium">카테고리:</span> {task.category}</div>}
           <div><span className="font-medium">사분면:</span> {task.quadrant}</div>
           {task.memo && <div><span className="font-medium">메모:</span> {task.memo}</div>}
           {task.delegate_to && <div><span className="font-medium">담당자:</span> {task.delegate_to}</div>}
+          {task.workflow_instance_id && (
+            <div className="rounded border border-indigo-200 bg-indigo-50 px-3 py-2">
+              <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+              {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
+                <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+              ) : stepDocuments.length > 0 ? (
+                <ul className="mt-1 space-y-1">
+                  {stepDocuments.map((doc, idx) => (
+                    <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                      • {doc.name}
+                      {doc.document_template_id ? ' [템플릿]' : ''}
+                      {doc.required ? ' (필수)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+              )}
+            </div>
+          )}
         </div>
         {!editable && (
           <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">

@@ -15,6 +15,8 @@ import {
   deleteTask,
   fetchFunds,
   fetchGPEntities,
+  fetchWorkflow,
+  fetchWorkflowInstance,
   fetchTask,
   fetchTasks,
   fetchWorkflows,
@@ -466,6 +468,23 @@ function EditTaskModal({
   const [relatedTarget, setRelatedTarget] = useState(
     task.fund_id ? `fund:${task.fund_id}` : task.gp_entity_id ? `gp:${task.gp_entity_id}` : '',
   )
+  const { data: workflowInstance, isLoading: isWorkflowInstanceLoading } = useQuery({
+    queryKey: ['workflow-instance', task.workflow_instance_id],
+    queryFn: () => fetchWorkflowInstance(task.workflow_instance_id as number),
+    enabled: !!task.workflow_instance_id,
+  })
+  const { data: workflowTemplate, isLoading: isWorkflowTemplateLoading } = useQuery({
+    queryKey: ['workflow', workflowInstance?.workflow_id],
+    queryFn: () => fetchWorkflow(workflowInstance?.workflow_id as number),
+    enabled: !!workflowInstance?.workflow_id,
+  })
+  const stepDocuments = useMemo(() => {
+    if (!workflowInstance || !workflowTemplate) return []
+    const matchedStepInstance = workflowInstance.step_instances.find((step) => step.task_id === task.id)
+    if (!matchedStepInstance) return []
+    const matchedStep = workflowTemplate.steps.find((step) => step.id === matchedStepInstance.workflow_step_id)
+    return matchedStep?.step_documents ?? []
+  }, [workflowInstance, workflowTemplate, task.id])
 
   const submit = () => {
     if (!title.trim()) return
@@ -610,6 +629,27 @@ function EditTaskModal({
                 className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
+
+            {task.workflow_instance_id && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+                <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+                {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
+                  <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+                ) : stepDocuments.length > 0 ? (
+                  <ul className="mt-1 space-y-1">
+                    {stepDocuments.map((doc, idx) => (
+                      <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                        • {doc.name}
+                        {doc.document_template_id ? ' [템플릿]' : ''}
+                        {doc.required ? ' (필수)' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
@@ -633,6 +673,26 @@ function TaskDetailModal({
   onEdit: (task: Task) => void
   onComplete: (task: Task) => void
 }) {
+  const { data: workflowInstance, isLoading: isWorkflowInstanceLoading } = useQuery({
+    queryKey: ['workflow-instance', task.workflow_instance_id],
+    queryFn: () => fetchWorkflowInstance(task.workflow_instance_id as number),
+    enabled: !!task.workflow_instance_id,
+  })
+
+  const { data: workflowTemplate, isLoading: isWorkflowTemplateLoading } = useQuery({
+    queryKey: ['workflow', workflowInstance?.workflow_id],
+    queryFn: () => fetchWorkflow(workflowInstance?.workflow_id as number),
+    enabled: !!workflowInstance?.workflow_id,
+  })
+
+  const stepDocuments = useMemo(() => {
+    if (!workflowInstance || !workflowTemplate) return []
+    const matchedStepInstance = workflowInstance.step_instances.find((step) => step.task_id === task.id)
+    if (!matchedStepInstance) return []
+    const matchedStep = workflowTemplate.steps.find((step) => step.id === matchedStepInstance.workflow_step_id)
+    return matchedStep?.step_documents ?? []
+  }, [workflowInstance, workflowTemplate, task.id])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
@@ -669,6 +729,26 @@ function TaskDetailModal({
           )}
           {task.delegate_to && (
             <div><span className="font-medium">담당자:</span> {task.delegate_to}</div>
+          )}
+          {task.workflow_instance_id && (
+            <div className="rounded border border-indigo-200 bg-indigo-50 px-3 py-2">
+              <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+              {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
+                <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+              ) : stepDocuments.length > 0 ? (
+                <ul className="mt-1 space-y-1">
+                  {stepDocuments.map((doc, idx) => (
+                    <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                      • {doc.name}
+                      {doc.document_template_id ? ' [템플릿]' : ''}
+                      {doc.required ? ' (필수)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+              )}
+            </div>
           )}
         </div>
 
