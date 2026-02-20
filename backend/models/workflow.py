@@ -36,6 +36,38 @@ class WorkflowStep(Base):
     is_report = Column(Boolean, nullable=False, default=False)
 
     workflow = relationship("Workflow", back_populates="steps")
+    step_documents = relationship(
+        "WorkflowStepDocument",
+        back_populates="step",
+        cascade="all, delete-orphan",
+    )
+
+
+class WorkflowStepDocument(Base):
+    __tablename__ = "workflow_step_documents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workflow_step_id = Column(Integer, ForeignKey("workflow_steps.id"), nullable=False)
+    document_template_id = Column(Integer, ForeignKey("document_templates.id"), nullable=True)
+    name = Column(String, nullable=False)
+    required = Column(Boolean, default=True)
+    timing = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    step = relationship("WorkflowStep", back_populates="step_documents")
+    document_template = relationship("DocumentTemplate", lazy="joined")
+
+    @property
+    def template_name(self) -> str | None:
+        if not self.document_template:
+            return None
+        return self.document_template.name
+
+    @property
+    def template_category(self) -> str | None:
+        if not self.document_template:
+            return None
+        return self.document_template.category
 
 
 class WorkflowDocument(Base):

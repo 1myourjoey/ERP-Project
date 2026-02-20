@@ -5,11 +5,18 @@ from datetime import date, datetime, time
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.fund import Fund, LP
+from models.fund import Fund, LPTransfer
 from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
+from models.document_template import DocumentTemplate
 from models.phase3 import CapitalCall, CapitalCallItem
-from models.workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
+from models.workflow import (
+    Workflow,
+    WorkflowStep,
+    WorkflowStepDocument,
+    WorkflowDocument,
+    WorkflowWarning,
+)
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from models.task import Task
 from schemas.workflow import (
@@ -18,6 +25,8 @@ from schemas.workflow import (
     WorkflowCreateRequest,
     WorkflowDocumentInput,
     WorkflowDocumentResponse,
+    WorkflowStepDocumentInput,
+    WorkflowStepDocumentResponse,
     WorkflowUpdateRequest,
     WorkflowInstantiateRequest,
     WorkflowInstanceUpdateRequest,
@@ -31,28 +40,120 @@ from services.workflow_service import (
     reconcile_workflow_instance_state,
 )
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
+from services.fund_integrity import recalculate_fund_stats, validate_paid_in_deltas
 
 router = APIRouter(tags=["workflows"])
 
 
-CAPITAL_CALL_ID_PATTERN = re.compile(r"capital_call_id\s*[:=]\s*(\d+)")
+CAPITAL_CALL_ID_PATTERNS = [
+    re.compile(r"\[linked\s*capitalcall\s*:\s*#?(\d+)\]", re.IGNORECASE),
+    re.compile(r"\[capitalcall\s*:\s*#?(\d+)\]", re.IGNORECASE),
+    re.compile(r"capital_call_id\s*[:=]\s*(\d+)", re.IGNORECASE),
+]
 
 
 def _extract_capital_call_id(memo: str | None) -> int | None:
     if not memo:
         return None
-    match = CAPITAL_CALL_ID_PATTERN.search(memo)
-    if not match:
-        return None
-    try:
-        return int(match.group(1))
-    except (TypeError, ValueError):
-        return None
+    for pattern in CAPITAL_CALL_ID_PATTERNS:
+        match = pattern.search(memo)
+        if not match:
+            continue
+        try:
+            return int(match.group(1))
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def _is_capital_call_payment_step(step_name: str | None) -> bool:
-    normalized = "".join((step_name or "").split())
-    return "납입확인" in normalized
+    normalized = "".join((step_name or "").split()).lower()
+    return any(
+        token in normalized
+        for token in (
+            "납입확인",
+            "입금확인",
+            "납부확인",
+            "수납확인",
+            "paymentconfirmed",
+            "paymentconfirm",
+        )
+    )
+
+
+def _is_completed_status(status: str | None) -> bool:
+    return (status or "").strip().lower() == "completed"
+
+
+def _ordered_step_instances(instance: WorkflowInstance) -> list[WorkflowStepInstance]:
+    return sorted(
+        instance.step_instances,
+        key=lambda row: (
+            row.step.order if row.step and row.step.order is not None else 10**9,
+            row.id or 0,
+        ),
+    )
+
+
+def _sync_next_active_step(instance: WorkflowInstance, db: Session) -> None:
+    next_open_found = False
+    for step_instance in _ordered_step_instances(instance):
+        if step_instance.status in ("completed", "skipped"):
+            continue
+
+        if not next_open_found:
+            next_open_found = True
+            if step_instance.status != "in_progress":
+                step_instance.status = "in_progress"
+            if step_instance.task_id:
+                task = db.get(Task, step_instance.task_id)
+                if task and task.status == "pending":
+                    task.status = "in_progress"
+            continue
+
+        if step_instance.status != "pending":
+            step_instance.status = "pending"
+        if step_instance.task_id:
+            task = db.get(Task, step_instance.task_id)
+            if task and task.status == "in_progress":
+                task.status = "pending"
+
+
+def _resolve_step_document_payload(
+    db: Session,
+    data: WorkflowStepDocumentInput,
+) -> tuple[int | None, str]:
+    template_id = data.document_template_id
+    template = None
+    if template_id is not None:
+        template = db.get(DocumentTemplate, template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="문서 템플릿을 찾을 수 없습니다")
+
+    name = (data.name or "").strip()
+    if not name and template:
+        name = template.name
+    if not name:
+        raise HTTPException(status_code=400, detail="단계 서류명은 필수입니다")
+    return template_id, name
+
+
+def _append_step_documents(
+    db: Session,
+    step: WorkflowStep,
+    documents: list[WorkflowStepDocumentInput] | None,
+) -> None:
+    for doc in documents or []:
+        template_id, name = _resolve_step_document_payload(db, doc)
+        step.step_documents.append(
+            WorkflowStepDocument(
+                document_template_id=template_id,
+                name=name,
+                required=bool(doc.required),
+                timing=doc.timing,
+                notes=doc.notes,
+            )
+        )
 
 
 def _mark_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
@@ -69,13 +170,18 @@ def _mark_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
     )
     if not unpaid_items:
         return
+
+    lp_paid_deltas: dict[int, int] = {}
+    for item in unpaid_items:
+        lp_paid_deltas[item.lp_id] = int(lp_paid_deltas.get(item.lp_id, 0)) + int(item.amount or 0)
+    validate_paid_in_deltas(db, call.fund_id, lp_paid_deltas)
+
     paid_date = date.today()
     for item in unpaid_items:
-        lp = db.get(LP, item.lp_id)
         item.paid = 1
         item.paid_date = paid_date
-        if lp:
-            lp.paid_in = int((lp.paid_in or 0) + (item.amount or 0))
+    db.flush()
+    recalculate_fund_stats(db, call.fund_id)
 
 
 def _rollback_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
@@ -93,11 +199,10 @@ def _rollback_capital_call_items_paid(db: Session, capital_call_id: int) -> None
     if not paid_items:
         return
     for item in paid_items:
-        lp = db.get(LP, item.lp_id)
-        if lp:
-            lp.paid_in = max(0, int((lp.paid_in or 0) - (item.amount or 0)))
         item.paid = 0
         item.paid_date = None
+    db.flush()
+    recalculate_fund_stats(db, call.fund_id)
 
 
 # --- Templates ---
@@ -188,6 +293,65 @@ def delete_workflow_document(
     return {"ok": True}
 
 
+@router.get("/api/workflow-steps/{step_id}/documents", response_model=list[WorkflowStepDocumentResponse])
+def list_step_documents(step_id: int, db: Session = Depends(get_db)):
+    step = db.get(WorkflowStep, step_id)
+    if not step:
+        raise HTTPException(status_code=404, detail="워크플로 단계를 찾을 수 없습니다")
+    return (
+        db.query(WorkflowStepDocument)
+        .filter(WorkflowStepDocument.workflow_step_id == step_id)
+        .order_by(WorkflowStepDocument.id.asc())
+        .all()
+    )
+
+
+@router.post("/api/workflow-steps/{step_id}/documents", response_model=WorkflowStepDocumentResponse, status_code=201)
+def add_step_document(
+    step_id: int,
+    data: WorkflowStepDocumentInput,
+    db: Session = Depends(get_db),
+):
+    step = db.get(WorkflowStep, step_id)
+    if not step:
+        raise HTTPException(status_code=404, detail="워크플로 단계를 찾을 수 없습니다")
+
+    template_id, name = _resolve_step_document_payload(db, data)
+    document = WorkflowStepDocument(
+        workflow_step_id=step_id,
+        document_template_id=template_id,
+        name=name,
+        required=bool(data.required),
+        timing=data.timing,
+        notes=data.notes,
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+@router.delete("/api/workflow-steps/{step_id}/documents/{document_id}")
+def delete_step_document(
+    step_id: int,
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    document = (
+        db.query(WorkflowStepDocument)
+        .filter(
+            WorkflowStepDocument.id == document_id,
+            WorkflowStepDocument.workflow_step_id == step_id,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
+    db.delete(document)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/api/workflows", response_model=WorkflowResponse, status_code=201)
 def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
     wf = Workflow(
@@ -198,7 +362,7 @@ def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
     )
 
     for step in data.steps:
-        wf.steps.append(WorkflowStep(
+        wf_step = WorkflowStep(
             order=step.order,
             name=step.name,
             timing=step.timing,
@@ -208,7 +372,9 @@ def create_workflow(data: WorkflowCreateRequest, db: Session = Depends(get_db)):
             memo=step.memo,
             is_notice=step.is_notice,
             is_report=step.is_report,
-        ))
+        )
+        _append_step_documents(db, wf_step, step.step_documents)
+        wf.steps.append(wf_step)
 
     for doc in data.documents:
         wf.documents.append(WorkflowDocument(
@@ -245,7 +411,7 @@ def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session =
 
     wf.steps.clear()
     for step in data.steps:
-        wf.steps.append(WorkflowStep(
+        wf_step = WorkflowStep(
             order=step.order,
             name=step.name,
             timing=step.timing,
@@ -255,7 +421,9 @@ def update_workflow(workflow_id: int, data: WorkflowUpdateRequest, db: Session =
             memo=step.memo,
             is_notice=step.is_notice,
             is_report=step.is_report,
-        ))
+        )
+        _append_step_documents(db, wf_step, step.step_documents)
+        wf.steps.append(wf_step)
 
     wf.documents.clear()
     for doc in data.documents:
@@ -447,6 +615,22 @@ def complete_step(
     if not si or si.instance_id != instance_id:
         raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
 
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if instance.status != "active":
+        raise HTTPException(status_code=400, detail="진행 중 인스턴스만 단계 완료할 수 있습니다")
+
+    ordered_steps = _ordered_step_instances(instance)
+    target_index = next((idx for idx, row in enumerate(ordered_steps) if row.id == si.id), None)
+    if target_index is None:
+        raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
+    for prev in ordered_steps[:target_index]:
+        if prev.status not in ("completed", "skipped"):
+            raise HTTPException(status_code=400, detail="이전 단계를 먼저 완료해야 합니다")
+    if si.status in ("completed", "skipped"):
+        raise HTTPException(status_code=400, detail="이미 완료된 단계입니다")
+
     si.status = "completed"
     si.completed_at = datetime.now()
     si.actual_time = data.actual_time
@@ -465,28 +649,7 @@ def complete_step(
     # Session autoflush is disabled globally, so persist current-step completion
     # before querying for the next pending step.
     db.flush()
-
-    instance = db.get(WorkflowInstance, instance_id)
-    if not instance:
-        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
-
-    next_step = (
-        db.query(WorkflowStepInstance)
-        .join(WorkflowStep, WorkflowStep.id == WorkflowStepInstance.workflow_step_id)
-        .filter(
-            WorkflowStepInstance.instance_id == instance_id,
-            WorkflowStepInstance.status == "pending",
-            WorkflowStepInstance.id != step_instance_id,
-        )
-        .order_by(WorkflowStep.order.asc(), WorkflowStepInstance.id.asc())
-        .first()
-    )
-    if next_step:
-        next_step.status = "in_progress"
-        if next_step.task_id:
-            next_task = db.get(Task, next_step.task_id)
-            if next_task and next_task.status == "pending":
-                next_task.status = "in_progress"
+    _sync_next_active_step(instance, db)
 
     completed_wf_step = db.get(WorkflowStep, si.workflow_step_id)
     if completed_wf_step and _is_capital_call_payment_step(completed_wf_step.name):
@@ -562,9 +725,64 @@ def undo_step_completion(
         instance.status = "active"
         instance.completed_at = None
 
+    _sync_next_active_step(instance, db)
+
     db.commit()
     db.refresh(instance)
     return _build_instance_response(instance, db)
+
+
+@router.delete("/api/workflow-instances/{instance_id}", status_code=204)
+def delete_instance(instance_id: int, db: Session = Depends(get_db)):
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if (instance.status or "").strip().lower() != "active":
+        raise HTTPException(status_code=400, detail="진행 중 인스턴스만 삭제할 수 있습니다")
+
+    (
+        db.query(CapitalCall)
+        .filter(CapitalCall.linked_workflow_instance_id == instance_id)
+        .update({CapitalCall.linked_workflow_instance_id: None}, synchronize_session=False)
+    )
+    (
+        db.query(LPTransfer)
+        .filter(LPTransfer.workflow_instance_id == instance_id)
+        .update({LPTransfer.workflow_instance_id: None}, synchronize_session=False)
+    )
+
+    handled_task_ids: set[int] = set()
+    for step_instance in instance.step_instances:
+        if not step_instance.task_id:
+            continue
+        task = db.get(Task, step_instance.task_id)
+        step_instance.task_id = None
+        if not task:
+            continue
+        if _is_completed_status(task.status):
+            task.workflow_instance_id = None
+            task.workflow_step_order = None
+        else:
+            db.delete(task)
+        handled_task_ids.add(task.id)
+
+    linked_tasks = db.query(Task).filter(Task.workflow_instance_id == instance_id).all()
+    for task in linked_tasks:
+        if task.id in handled_task_ids:
+            continue
+        if _is_completed_status(task.status):
+            task.workflow_instance_id = None
+            task.workflow_step_order = None
+            continue
+        (
+            db.query(WorkflowStepInstance)
+            .filter(WorkflowStepInstance.task_id == task.id)
+            .update({WorkflowStepInstance.task_id: None}, synchronize_session=False)
+        )
+        db.delete(task)
+
+    db.delete(instance)
+    db.commit()
 
 
 @router.patch("/api/workflow-instances/{instance_id}/cancel")

@@ -35,6 +35,8 @@ from routers import (
     documents,
     lp_transfers,
     gp_entities,
+    lp_address_books,
+    admin,
 )
 
 def ensure_sqlite_compat_columns():
@@ -115,9 +117,19 @@ def ensure_sqlite_compat_columns():
             ("tasks", "investment_id", "INTEGER"),
             ("tasks", "gp_entity_id", "INTEGER"),
             ("capital_calls", "request_percent", "REAL"),
+            ("capital_calls", "linked_workflow_instance_id", "INTEGER"),
             ("capital_call_items", "memo", "TEXT"),
             ("lps", "business_number", "TEXT"),
             ("lps", "address", "TEXT"),
+            ("lps", "address_book_id", "INTEGER"),
+            ("lp_address_books", "business_number", "TEXT"),
+            ("lp_address_books", "contact", "TEXT"),
+            ("lp_address_books", "address", "TEXT"),
+            ("lp_address_books", "memo", "TEXT"),
+            ("lp_address_books", "gp_entity_id", "INTEGER"),
+            ("lp_address_books", "is_active", "INTEGER"),
+            ("lp_address_books", "created_at", "DATETIME"),
+            ("lp_address_books", "updated_at", "DATETIME"),
             ("fund_notice_periods", "day_basis", "TEXT DEFAULT 'business'"),
         ]:
             if has_table(table) and not has_column(table, column):
@@ -182,6 +194,8 @@ app.include_router(vote_records.router)
 app.include_router(documents.router)
 app.include_router(lp_transfers.router)
 app.include_router(gp_entities.router)
+app.include_router(lp_address_books.router)
+app.include_router(admin.router)
 
 
 @app.exception_handler(RequestValidationError)

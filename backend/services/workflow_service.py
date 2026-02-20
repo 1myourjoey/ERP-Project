@@ -148,6 +148,7 @@ def instantiate_workflow(
     fund_id: int | None = None,
     gp_entity_id: int | None = None,
     notice_overrides: dict[str, int] | None = None,
+    auto_commit: bool = True,
 ) -> WorkflowInstance:
     instance = WorkflowInstance(
         workflow_id=workflow.id,
@@ -243,8 +244,11 @@ def instantiate_workflow(
             if task:
                 task.status = "in_progress"
 
-    db.commit()
-    db.refresh(instance)
+    if auto_commit:
+        db.commit()
+        db.refresh(instance)
+    else:
+        db.flush()
     return instance
 
 

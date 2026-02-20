@@ -1,14 +1,14 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class CapitalCallCreate(BaseModel):
     fund_id: int
     call_date: date
     call_type: str
-    total_amount: float = 0
+    total_amount: float = Field(default=0, ge=0)
     request_percent: Optional[float] = None
     memo: Optional[str] = None
 
@@ -17,7 +17,7 @@ class CapitalCallUpdate(BaseModel):
     fund_id: Optional[int] = None
     call_date: Optional[date] = None
     call_type: Optional[str] = None
-    total_amount: Optional[float] = None
+    total_amount: Optional[float] = Field(default=None, ge=0)
     request_percent: Optional[float] = None
     memo: Optional[str] = None
 
@@ -25,6 +25,9 @@ class CapitalCallUpdate(BaseModel):
 class CapitalCallResponse(BaseModel):
     id: int
     fund_id: int
+    linked_workflow_instance_id: Optional[int] = None
+    linked_workflow_name: Optional[str] = None
+    linked_workflow_status: Optional[str] = None
     call_date: date
     call_type: str
     total_amount: float
@@ -41,7 +44,7 @@ class CapitalCallListItem(CapitalCallResponse):
 
 class CapitalCallItemCreate(BaseModel):
     lp_id: int
-    amount: int = 0
+    amount: int = Field(gt=0)
     paid: bool = False
     paid_date: Optional[date] = None
     memo: Optional[str] = None
@@ -51,18 +54,27 @@ class CapitalCallBatchCreate(BaseModel):
     fund_id: int
     call_date: date
     call_type: str
-    total_amount: float = 0
+    total_amount: float = Field(default=0, ge=0)
     request_percent: Optional[float] = None
     memo: Optional[str] = None
+    create_workflow: bool = True
     items: list[CapitalCallItemCreate]
+
+    @field_validator("items")
+    @classmethod
+    def validate_items_not_empty(cls, value: list[CapitalCallItemCreate]) -> list[CapitalCallItemCreate]:
+        if not value:
+            raise ValueError("items must not be empty")
+        return value
 
 
 class CapitalCallItemUpdate(BaseModel):
     lp_id: Optional[int] = None
-    amount: Optional[int] = None
+    amount: Optional[int] = Field(default=None, gt=0)
     paid: Optional[bool] = None
     paid_date: Optional[date] = None
     memo: Optional[str] = None
+    sync_workflow: Optional[bool] = False
 
 
 class CapitalCallItemResponse(BaseModel):

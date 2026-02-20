@@ -174,8 +174,11 @@ textarea:focus {
 }
 
 .card-base:active {
-  transform: scale(0.99);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-card:active {
+  transform: scale(0.99);
 }
 
 .info-banner,

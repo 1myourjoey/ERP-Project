@@ -8,6 +8,7 @@ import {
   deleteFund,
   deleteFundLP,
   fetchCapitalCalls,
+  fetchCapitalCallSummary,
   fetchDocumentStatus,
   fetchFund,
   fetchInvestments,
@@ -22,6 +23,7 @@ import {
   type FundKeyTermInput,
   type FundNoticePeriodInput,
   type CapitalCall,
+  type CapitalCallSummary,
   type LP,
   type LPAddressBook,
   type LPInput,
@@ -735,6 +737,11 @@ export default function FundDetailPage() {
     queryFn: () => fetchCapitalCalls({ fund_id: fundId }),
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
+  const { data: capitalCallSummary } = useQuery<CapitalCallSummary>({
+    queryKey: ['capitalCallSummary', fundId],
+    queryFn: () => fetchCapitalCallSummary(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
 
   const { data: lpAddressBooks = [] } = useQuery<LPAddressBook[]>({
     queryKey: ['lpAddressBooks', { is_active: 1 }],
@@ -761,17 +768,25 @@ export default function FundDetailPage() {
     [capitalCalls],
   )
 
-  const initialPaidIn = useMemo(
-    () => (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0),
-    [fundDetail?.lps],
+  const callPaidAmountById = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const row of capitalCallSummary?.calls ?? []) {
+      map.set(row.id, Number(row.paid_amount ?? 0))
+    }
+    return map
+  }, [capitalCallSummary?.calls])
+
+  const paidByCallsTotal = useMemo(
+    () => (capitalCallSummary?.calls ?? []).reduce((sum, row) => sum + Number(row.paid_amount ?? 0), 0),
+    [capitalCallSummary?.calls],
   )
 
-  const additionalPaidIn = useMemo(
-    () => sortedCapitalCalls.reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0),
-    [sortedCapitalCalls],
-  )
+  const totalPaidIn = useMemo(() => {
+    if (capitalCallSummary) return Number(capitalCallSummary.total_paid_in ?? 0)
+    return (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0)
+  }, [capitalCallSummary, fundDetail?.lps])
 
-  const totalPaidIn = initialPaidIn + additionalPaidIn
+  const initialPaidIn = Math.max(0, totalPaidIn - paidByCallsTotal)
 
   const keyTermsByCategory = useMemo(() => {
     const grouped = new Map<string, { label: string; value: string; article_ref: string | null }[]>()
@@ -969,9 +984,11 @@ export default function FundDetailPage() {
                     <tr key={call.id}>
                       <td className="px-3 py-2">{index + 1}차 캐피탈콜</td>
                       <td className="px-3 py-2">{call.call_date || '-'}</td>
-                      <td className="px-3 py-2 text-right">{formatKRW(call.total_amount || 0)}</td>
+                      <td className="px-3 py-2 text-right">{formatKRW(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0))}</td>
                       <td className="px-3 py-2 text-right">
-                        {fundDetail.commitment_total ? `${(((call.total_amount || 0) / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
+                        {fundDetail.commitment_total
+                          ? `${(((callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0)) / fundDetail.commitment_total) * 100).toFixed(1)}%`
+                          : '-'}
                       </td>
                       <td className="px-3 py-2 text-gray-500">
                         <div className="flex flex-wrap items-center gap-2">

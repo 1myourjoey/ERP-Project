@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+﻿import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -79,6 +79,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
   {
     label: '관리',
     items: [
+      { to: '/lp-management', label: 'LP 관리', icon: Building2 },
       { to: '/biz-reports', label: '영업보고', icon: FileText },
       { to: '/reports', label: '보고공시', icon: Send },
       { to: '/fund-operations', label: '조합 운영', icon: Landmark },

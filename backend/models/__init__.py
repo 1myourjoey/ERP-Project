@@ -1,10 +1,17 @@
 from .task import Task
 from .worklog import WorkLog, WorkLogDetail, WorkLogLesson, WorkLogFollowUp
-from .workflow import Workflow, WorkflowStep, WorkflowDocument, WorkflowWarning
+from .workflow import (
+    Workflow,
+    WorkflowStep,
+    WorkflowStepDocument,
+    WorkflowDocument,
+    WorkflowWarning,
+)
 from .workflow_instance import WorkflowInstance, WorkflowStepInstance
 from .document_template import DocumentTemplate
 from .fund import Fund, LP, LPTransfer, FundNoticePeriod, FundKeyTerm
 from .gp_entity import GPEntity
+from .lp_address_book import LPAddressBook
 from .investment import PortfolioCompany, Investment, InvestmentDocument
 from .transaction import Transaction
 from .valuation import Valuation
@@ -28,11 +35,12 @@ from .calendar_event import CalendarEvent
 __all__ = [
     "Task",
     "WorkLog", "WorkLogDetail", "WorkLogLesson", "WorkLogFollowUp",
-    "Workflow", "WorkflowStep", "WorkflowDocument", "WorkflowWarning",
+    "Workflow", "WorkflowStep", "WorkflowStepDocument", "WorkflowDocument", "WorkflowWarning",
     "WorkflowInstance", "WorkflowStepInstance",
     "DocumentTemplate",
     "Fund", "LP", "LPTransfer", "FundNoticePeriod", "FundKeyTerm",
     "GPEntity",
+    "LPAddressBook",
     "PortfolioCompany", "Investment", "InvestmentDocument",
     "Transaction",
     "Valuation",

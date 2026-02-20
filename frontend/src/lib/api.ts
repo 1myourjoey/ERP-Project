@@ -41,6 +41,16 @@ export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
 // -- Workflows --
 export const fetchWorkflows = (): Promise<WorkflowListItem[]> => api.get('/workflows').then(r => r.data)
 export const fetchWorkflow = (id: number): Promise<WorkflowTemplate> => api.get(`/workflows/${id}`).then(r => r.data)
+export const listStepDocuments = (stepId: number): Promise<WorkflowStepDocument[]> =>
+  api.get(`/workflow-steps/${stepId}/documents`).then(r => r.data)
+export const addStepDocument = (
+  stepId: number,
+  data: WorkflowStepDocumentInput,
+): Promise<WorkflowStepDocument> => api.post(`/workflow-steps/${stepId}/documents`, data).then(r => r.data)
+export const deleteStepDocument = (
+  stepId: number,
+  documentId: number,
+): Promise<{ ok: boolean }> => api.delete(`/workflow-steps/${stepId}/documents/${documentId}`).then(r => r.data)
 export const listWorkflowDocuments = (workflowId: number): Promise<WorkflowDocument[]> =>
   api.get(`/workflows/${workflowId}/documents`).then(r => r.data)
 export const addWorkflowDocument = (
@@ -70,6 +80,7 @@ export const fetchWorkflowInstances = (
 export const fetchWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.get(`/workflow-instances/${id}`).then(r => r.data)
 export const completeWorkflowStep = (instanceId: number, stepId: number, data: WorkflowStepCompleteInput): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/complete`, data).then(r => r.data)
 export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> => api.patch(`/workflow-instances/${id}/cancel`).then(r => r.data)
+export const deleteWorkflowInstance = (id: number): Promise<void> => api.delete(`/workflow-instances/${id}`).then(() => undefined)
 export const updateWorkflowInstance = (id: number, data: WorkflowInstanceUpdateInput): Promise<WorkflowInstance> => api.put(`/workflow-instances/${id}`, data).then(r => r.data)
 export const undoWorkflowStep = (instanceId: number, stepId: number): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/steps/${stepId}/undo`).then(r => r.data)
 
@@ -153,6 +164,23 @@ export const calculateDeadline = (
   api.get(`/funds/${fundId}/calculate-deadline`, {
     params: { target_date: targetDate, notice_type: noticeType },
   }).then(r => r.data)
+export const downloadFundMigrationTemplate = (): Promise<Blob> =>
+  api.get('/funds/migration-template', { responseType: 'blob' }).then(r => r.data)
+export const validateFundMigration = (file: File): Promise<FundMigrationValidateResponse> => {
+  return api.post('/funds/migration-validate', file, {
+    headers: { 'Content-Type': 'application/octet-stream' },
+  }).then(r => r.data)
+}
+export const importFundMigration = (
+  file: File,
+  mode: 'insert' | 'upsert',
+  syncAddressBook: boolean,
+): Promise<FundMigrationImportResponse> => {
+  return api.post('/funds/migration-import', file, {
+    headers: { 'Content-Type': 'application/octet-stream' },
+    params: { mode, sync_address_book: syncAddressBook },
+  }).then(r => r.data)
+}
 
 // -- GP Entities --
 export const fetchGPEntities = (): Promise<GPEntity[]> => api.get('/gp-entities').then(r => r.data)
@@ -160,6 +188,14 @@ export const fetchGPEntity = (id: number): Promise<GPEntity> => api.get(`/gp-ent
 export const createGPEntity = (data: GPEntityInput): Promise<GPEntity> => api.post('/gp-entities', data).then(r => r.data)
 export const updateGPEntity = (id: number, data: Partial<GPEntityInput>): Promise<GPEntity> => api.patch(`/gp-entities/${id}`, data).then(r => r.data)
 export const deleteGPEntity = (id: number) => api.delete(`/gp-entities/${id}`)
+export const fetchLPAddressBooks = (params?: { q?: string; is_active?: number }): Promise<LPAddressBook[]> =>
+  api.get('/lp-address-books', { params }).then(r => r.data)
+export const fetchLPAddressBook = (id: number): Promise<LPAddressBook> => api.get(`/lp-address-books/${id}`).then(r => r.data)
+export const createLPAddressBook = (data: LPAddressBookInput): Promise<LPAddressBook> =>
+  api.post('/lp-address-books', data).then(r => r.data)
+export const updateLPAddressBook = (id: number, data: Partial<LPAddressBookInput>): Promise<LPAddressBook> =>
+  api.patch(`/lp-address-books/${id}`, data).then(r => r.data)
+export const deactivateLPAddressBook = (id: number) => api.delete(`/lp-address-books/${id}`)
 
 // -- Investments --
 export const fetchCompanies = (): Promise<Company[]> => api.get('/companies').then(r => r.data)
@@ -464,6 +500,19 @@ export interface WorkflowStep {
   memo: string | null
   is_notice?: boolean
   is_report?: boolean
+  step_documents?: WorkflowStepDocument[]
+}
+
+export interface WorkflowStepDocument {
+  id: number
+  workflow_step_id: number
+  document_template_id: number | null
+  name: string
+  required: boolean
+  timing: string | null
+  notes: string | null
+  template_name?: string | null
+  template_category?: string | null
 }
 
 export interface WorkflowDocument {
@@ -576,6 +625,15 @@ export interface WorkflowStepInput {
   memo?: string | null
   is_notice?: boolean
   is_report?: boolean
+  step_documents?: WorkflowStepDocumentInput[]
+}
+
+export interface WorkflowStepDocumentInput {
+  name: string
+  required?: boolean
+  timing?: string | null
+  notes?: string | null
+  document_template_id?: number | null
 }
 
 export interface WorkflowDocumentInput {
@@ -656,6 +714,7 @@ export interface FundInput {
 }
 
 export interface LPInput {
+  address_book_id?: number | null
   name: string
   type: string
   commitment?: number | null
@@ -668,6 +727,7 @@ export interface LPInput {
 export interface LP {
   id: number
   fund_id: number
+  address_book_id: number | null
   name: string
   type: string
   commitment: number | null
@@ -675,6 +735,65 @@ export interface LP {
   contact: string | null
   business_number: string | null
   address: string | null
+}
+
+export interface MigrationErrorItem {
+  row: number
+  column: string
+  reason: string
+}
+
+export interface FundMigrationValidateResponse {
+  success: boolean
+  fund_rows: number
+  lp_rows: number
+  errors: MigrationErrorItem[]
+}
+
+export interface FundMigrationImportResponse {
+  success: boolean
+  mode: 'insert' | 'upsert'
+  fund_rows: number
+  lp_rows: number
+  created_funds: number
+  updated_funds: number
+  created_lps: number
+  updated_lps: number
+  synced_address_books: number
+  errors: MigrationErrorItem[]
+  validation: FundMigrationValidateResponse
+}
+
+export interface LPAddressBookInput {
+  name: string
+  type: string
+  business_number?: string | null
+  contact?: string | null
+  address?: string | null
+  memo?: string | null
+  gp_entity_id?: number | null
+  is_active?: number
+}
+
+export interface LPAddressBook {
+  id: number
+  name: string
+  type: string
+  business_number: string | null
+  contact: string | null
+  address: string | null
+  memo: string | null
+  gp_entity_id: number | null
+  is_active: number
+  created_at: string | null
+  updated_at: string | null
+  related_funds_count?: number
+  related_funds?: LPAddressBookRelatedFund[]
+}
+
+export interface LPAddressBookRelatedFund {
+  fund_id: number
+  fund_name: string
 }
 
 export interface LPTransferInput {
@@ -1124,6 +1243,9 @@ export interface CapitalCallInput {
 export interface CapitalCall {
   id: number
   fund_id: number
+  linked_workflow_instance_id?: number | null
+  linked_workflow_name?: string | null
+  linked_workflow_status?: string | null
   call_date: string
   call_type: string
   total_amount: number
@@ -1140,6 +1262,7 @@ export interface CapitalCallBatchInput {
   total_amount: number
   request_percent?: number | null
   memo?: string | null
+  create_workflow?: boolean
   items: CapitalCallItemInput[]
 }
 
@@ -1175,6 +1298,7 @@ export interface CapitalCallItemInput {
   paid?: boolean
   paid_date?: string | null
   memo?: string | null
+  sync_workflow?: boolean
 }
 
 export interface CapitalCallItem {

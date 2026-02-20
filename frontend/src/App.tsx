@@ -7,6 +7,7 @@ import WorkLogsPage from './pages/WorkLogsPage'
 import FundsPage from './pages/FundsPage'
 import FundOverviewPage from './pages/FundOverviewPage'
 import FundDetailPage from './pages/FundDetailPage'
+import LPManagementPage from './pages/LPManagementPage'
 import InvestmentsPage from './pages/InvestmentsPage'
 import InvestmentDetailPage from './pages/InvestmentDetailPage'
 import BizReportsPage from './pages/BizReportsPage'
@@ -30,6 +31,8 @@ export default function App() {
         <Route path="/workflows" element={<WorkflowsPage />} />
         <Route path="/worklogs" element={<WorkLogsPage />} />
         <Route path="/funds" element={<FundsPage />} />
+        <Route path="/lp-management" element={<LPManagementPage />} />
+        <Route path="/lp-address-book" element={<Navigate to="/lp-management" replace />} />
         <Route path="/fund-overview" element={<FundOverviewPage />} />
         <Route path="/funds/:id" element={<FundDetailPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />

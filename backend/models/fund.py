@@ -1,6 +1,6 @@
 from datetime import date as dt_date
 
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -52,9 +52,15 @@ class Fund(Base):
 
 class LP(Base):
     __tablename__ = "lps"
+    __table_args__ = (
+        UniqueConstraint("fund_id", "address_book_id", name="uq_lps_fund_address_book"),
+        UniqueConstraint("fund_id", "business_number", name="uq_lps_fund_business_number"),
+        UniqueConstraint("fund_id", "name", name="uq_lps_fund_name"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fund_id = Column(Integer, ForeignKey("funds.id"), nullable=False)
+    address_book_id = Column(Integer, ForeignKey("lp_address_books.id"), nullable=True)
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     commitment = Column(Integer, nullable=True)
@@ -64,6 +70,7 @@ class LP(Base):
     address = Column(String, nullable=True)
 
     fund = relationship("Fund", back_populates="lps")
+    address_book = relationship("LPAddressBook", back_populates="lps")
     transfers_from = relationship("LPTransfer", foreign_keys="LPTransfer.from_lp_id", back_populates="from_lp")
     transfers_to = relationship("LPTransfer", foreign_keys="LPTransfer.to_lp_id", back_populates="to_lp")
 

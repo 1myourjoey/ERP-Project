@@ -14,6 +14,7 @@ function formatDate(value: string | null | undefined): string {
 interface CapitalCallDetailProps {
   capitalCallId: number
   commitmentTotal: number
+  fundId?: number
   editable?: boolean
   onItemUpdated?: () => void
 }
@@ -21,6 +22,7 @@ interface CapitalCallDetailProps {
 export default function CapitalCallDetail({
   capitalCallId,
   commitmentTotal,
+  fundId,
   editable = false,
   onItemUpdated,
 }: CapitalCallDetailProps) {
@@ -34,6 +36,22 @@ export default function CapitalCallDetail({
     queryFn: () => fetchCapitalCallItems(capitalCallId),
   })
 
+  const invalidateLinkedQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallItems', capitalCallId] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
+    queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    queryClient.invalidateQueries({ queryKey: ['funds'] })
+    queryClient.invalidateQueries({ queryKey: ['fund'] })
+    if (fundId) {
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundDetails', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundLPs', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fundId] })
+    }
+  }
+
   const updateItemMut = useMutation({
     mutationFn: ({
       callId,
@@ -45,12 +63,7 @@ export default function CapitalCallDetail({
       data: Partial<CapitalCallItemInput>
     }) => updateCapitalCallItem(callId, itemId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', capitalCallId] })
-      queryClient.invalidateQueries({ queryKey: ['fund'] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+      invalidateLinkedQueries()
       addToast('success', '납입 상태가 업데이트되었습니다.')
       onItemUpdated?.()
     },
@@ -88,12 +101,7 @@ export default function CapitalCallDetail({
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', capitalCallId] })
-      queryClient.invalidateQueries({ queryKey: ['fund'] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+      invalidateLinkedQueries()
       setSelectedIds(new Set())
       addToast('success', '선택 항목의 납입이 확인되었습니다.')
       onItemUpdated?.()

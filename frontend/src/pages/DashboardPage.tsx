@@ -337,7 +337,7 @@ function TaskList({
   const groupedNoDeadlineTasks = useMemo(() => Array.from(groupByCategory(noDeadlineTasks).entries()), [noDeadlineTasks])
   const hasAnyTasks = tasks.length > 0 || noDeadlineTasks.length > 0
   return (
-    <div className="card-base">
+    <div className="card-base dashboard-card">
       <div className="mb-2 flex items-center justify-between">
         <button onClick={onHeaderClick} className={`text-sm font-semibold ${onHeaderClick ? 'text-gray-700 hover:text-blue-600' : 'text-gray-700'}`}>{title}</button>
         <div className="flex items-center gap-1">
@@ -756,7 +756,7 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
-          <div className="card-base">
+          <div className="card-base dashboard-card">
             <button onClick={() => setPopupSection('workflows')} className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"><GitBranch size={16} /> 🔄 진행 중인 워크플로 <span className="ml-auto text-xs text-gray-400">{active_workflows.length}건</span></button>
             {active_workflows.length > 0 ? (
               <>
@@ -867,7 +867,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <TaskList title={`📅 이번 주 ${thisWeekRangeLabel} (${thisWeekTasks.length}건)`} tasks={thisWeekTasks} onClickTask={(task) => openTaskDetail(task, true)} onQuickComplete={setCompletingTask} completingTaskId={completeTaskMut.variables?.id ?? null} onHeaderClick={() => setPopupSection('this_week')} />
 
-                  <div className="card-base">
+                  <div className="card-base dashboard-card">
                     <button onClick={() => setUpcomingCollapsed((prev) => !prev)} className="mb-2 flex w-full items-center justify-between"><h3 className="text-sm font-semibold text-gray-700">예정 업무</h3><div className="flex items-center gap-2"><span className="text-xs text-gray-400">{upcomingTasks.length}건</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${upcomingCollapsed ? '-rotate-90' : ''}`} /></div></button>
                     {!upcomingTasks.length ? (
                       <div className="rounded-lg border border-dashed border-gray-200">
@@ -908,7 +908,7 @@ export default function DashboardPage() {
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">{RIGHT_TABS.map((tab) => { const count = tabCount[tab.key]; return <button key={tab.key} onClick={() => setRightTab(tab.key)} className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs transition-colors ${rightTab === tab.key ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}><tab.icon size={13} />{tab.label}{count > 0 && <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 text-[10px] text-gray-600">{count}</span>}</button>})}</div>
 
           {rightTab === 'funds' && (
-            <div className="card-base">
+            <div className="card-base dashboard-card">
               {!fund_summary.length ? (
                 <EmptyState emoji="🏦" message="등록된 조합이 없어요" className="py-8" />
               ) : (
@@ -929,7 +929,7 @@ export default function DashboardPage() {
           )}
 
           {rightTab === 'notices' && (
-            <div className="card-base">
+            <div className="card-base dashboard-card">
               {!upcomingNotices.length ? (
                 <EmptyState emoji="🗓️" message="다가오는 통지 기한이 없어요" className="py-8" />
               ) : (
@@ -965,7 +965,7 @@ export default function DashboardPage() {
           )}
 
           {rightTab === 'reports' && (
-            <div className="card-base">
+            <div className="card-base dashboard-card">
               {!upcoming_reports.length ? (
                 <EmptyState emoji="📊" message="임박한 보고 마감이 없어요" className="py-8" />
               ) : (
@@ -998,7 +998,7 @@ export default function DashboardPage() {
           )}
 
           {rightTab === 'documents' && (
-            <div className="card-base">
+            <div className="card-base dashboard-card">
               {!missing_documents.length ? (
                 <EmptyState emoji="📄" message="미수집 서류가 없어요" className="py-8" />
               ) : (
@@ -1025,7 +1025,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="card-base">
+          <div className="card-base dashboard-card">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-emerald-700">완료 업무</h3>
               <div className="flex gap-1 rounded bg-gray-100 p-0.5 text-xs">
@@ -1320,6 +1320,7 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 
 

@@ -5,6 +5,14 @@ from typing import Literal, Optional
 
 # --- Template schemas ---
 
+class WorkflowStepDocumentInput(BaseModel):
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+    document_template_id: Optional[int] = None
+
+
 class WorkflowStepCreate(BaseModel):
     order: int
     name: str
@@ -15,6 +23,7 @@ class WorkflowStepCreate(BaseModel):
     memo: Optional[str] = None
     is_notice: bool = False
     is_report: bool = False
+    step_documents: list[WorkflowStepDocumentInput] = []
 
 
 class WorkflowDocumentCreate(BaseModel):
@@ -56,6 +65,19 @@ class WorkflowUpdateRequest(BaseModel):
     warnings: list[WorkflowWarningCreate] = []
 
 
+class WorkflowStepDocumentResponse(BaseModel):
+    id: int
+    workflow_step_id: int
+    document_template_id: Optional[int] = None
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+    template_name: Optional[str] = None
+    template_category: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
 class WorkflowStepResponse(BaseModel):
     id: int
     workflow_id: int
@@ -68,6 +90,7 @@ class WorkflowStepResponse(BaseModel):
     memo: Optional[str] = None
     is_notice: bool = False
     is_report: bool = False
+    step_documents: list[WorkflowStepDocumentResponse] = []
     model_config = {"from_attributes": True}
 
 

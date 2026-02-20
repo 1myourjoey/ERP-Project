@@ -6,6 +6,7 @@ import {
   cancelWorkflowInstance,
   completeWorkflowStep,
   createWorkflowTemplate,
+  deleteWorkflowInstance,
   deleteWorkflowTemplate,
   fetchCompanies,
   fetchDocumentTemplates,
@@ -500,7 +501,7 @@ function TemplateModal({
   }
 
   return (
-    <div className="card-base flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
+    <div className="card-base flex max-h-[calc(100vh-5.5rem)] min-h-0 flex-col">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-800">{title}</h3>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -963,18 +964,33 @@ function InstanceList({
     }
   }
 
+  const invalidateCapitalLinkedQueries = (fundId?: number | null) => {
+    queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+    queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
+    queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    queryClient.invalidateQueries({ queryKey: ['funds'] })
+    queryClient.invalidateQueries({ queryKey: ['fund'] })
+    if (fundId) {
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundDetails', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundLPs', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance', fundId] })
+    }
+  }
+
   const completeMut = useMutation({
     mutationFn: ({ instanceId, stepId, estimated }: { instanceId: number; stepId: number; estimated?: string | null }) => completeWorkflowStep(instanceId, stepId, { actual_time: estimated || undefined }),
     onSuccess: (instance) => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
-      queryClient.invalidateQueries({ queryKey: ['fund'] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      invalidateCapitalLinkedQueries(instance.fund_id)
       const isFormationWorkflow = instance.workflow_name.includes('결성')
       if (instance.status === 'completed' && isFormationWorkflow) {
         addToast('success', "워크플로우가 완료되어 조합 상태가 '운용 중'으로 변경되었습니다.")
@@ -986,16 +1002,8 @@ function InstanceList({
 
   const undoStepMut = useMutation({
     mutationFn: ({ instanceId, stepId }: { instanceId: number; stepId: number }) => undoWorkflowStep(instanceId, stepId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
-      queryClient.invalidateQueries({ queryKey: ['fund'] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    onSuccess: (instance) => {
+      invalidateCapitalLinkedQueries(instance.fund_id)
       addToast('success', '단계 완료가 취소되었습니다.')
     },
   })
@@ -1014,9 +1022,17 @@ function InstanceList({
 
   const cancelMut = useMutation({
     mutationFn: cancelWorkflowInstance,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+    onSuccess: (instance) => {
+      invalidateCapitalLinkedQueries(instance.fund_id)
       addToast('success', '인스턴스가 취소되었습니다.')
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: ({ instanceId }: { instanceId: number; fundId?: number | null }) => deleteWorkflowInstance(instanceId),
+    onSuccess: (_, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      addToast('success', '인스턴스를 삭제했습니다.')
     },
   })
 
@@ -1049,7 +1065,11 @@ function InstanceList({
 
   return (
     <div className="space-y-3">
-      {data.map((inst: WorkflowInstance) => (
+      {data.map((inst: WorkflowInstance) => {
+        const nextCompletableStep = inst.step_instances.find(
+          (step) => step.status !== 'completed' && step.status !== 'skipped',
+        )
+        return (
         <div key={inst.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="w-full cursor-pointer p-4 text-left hover:bg-gray-50 flex items-center justify-between">
             <div>
@@ -1144,55 +1164,94 @@ function InstanceList({
                 </div>
               )}
 
-              {inst.step_instances.map((step: WorkflowStepInstance) => (
-                <div key={step.id} className="flex items-center gap-2 rounded bg-gray-50 p-2 text-sm">
-                  {step.status === 'completed' ? (
-                    <div className="flex items-center gap-1">
-                      <Check size={14} className="text-emerald-600" />
-                      {status === 'active' && (
+              {inst.step_instances.map((step: WorkflowStepInstance) => {
+                const canComplete =
+                  status === 'active' &&
+                  nextCompletableStep?.id === step.id &&
+                  step.status !== 'completed' &&
+                  step.status !== 'skipped'
+                return (
+                  <div key={step.id} className="flex items-center gap-2 rounded bg-gray-50 p-2 text-sm">
+                    {step.status === 'completed' ? (
+                      <div className="flex items-center gap-1">
+                        <Check size={14} className="text-emerald-600" />
+                        {status === 'active' && (
+                          <button
+                            onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
+                            className="text-[10px] text-gray-400 hover:text-blue-600"
+                          >
+                            되돌리기
+                          </button>
+                        )}
+                      </div>
+                    ) : status === 'active' ? (
+                      canComplete ? (
                         <button
-                          onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
-                          className="text-[10px] text-gray-400 hover:text-blue-600"
+                          onClick={() => completeMut.mutate({ instanceId: inst.id, stepId: step.id, estimated: step.estimated_time })}
+                          className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-green-500"
+                          disabled={completeMut.isPending}
+                        />
+                      ) : (
+                        <span title="이전 단계를 먼저 완료하세요" className="h-4 w-4 rounded-full border-2 border-gray-200 bg-gray-100" />
+                      )
+                    ) : (
+                      <span className="w-4" />
+                    )}
+                    <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.step_name}</span>
+                    <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
+                    <span className="text-xs text-gray-500">{step.calculated_date}</span>
+                    {(() => {
+                      const matchingDocs = docTemplates.filter(
+                        (template) =>
+                          template.workflow_step_label &&
+                          step.step_name.includes(template.workflow_step_label),
+                      )
+                      if (matchingDocs.length === 0 || !inst.fund_id) return null
+                      return (
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleGenerateDocuments(matchingDocs, inst)
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
                         >
-                          되돌리기
+                          📄 문서 ({matchingDocs.length}종)
                         </button>
-                      )}
-                    </div>
-                  ) : status === 'active' ? (
-                    <button onClick={() => completeMut.mutate({ instanceId: inst.id, stepId: step.id, estimated: step.estimated_time })} className="w-4 h-4 rounded-full border-2 border-gray-300 hover:border-green-500" />
-                  ) : (
-                    <span className="w-4" />
-                  )}
-                  <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.step_name}</span>
-                  <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
-                  <span className="text-xs text-gray-500">{step.calculated_date}</span>
-                  {(() => {
-                    const matchingDocs = docTemplates.filter(
-                      (template) =>
-                        template.workflow_step_label &&
-                        step.step_name.includes(template.workflow_step_label),
-                    )
-                    if (matchingDocs.length === 0 || !inst.fund_id) return null
-                    return (
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleGenerateDocuments(matchingDocs, inst)
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
-                      >
-                        📄 문서 ({matchingDocs.length}종)
-                      </button>
-                    )
-                  })()}
-                  {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
+                      )
+                    })()}
+                    {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
+                  </div>
+                )
+              })}
+              {status === 'active' && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      if (confirm('이 인스턴스를 취소하시겠습니까?')) cancelMut.mutate(inst.id)
+                    }}
+                    className="text-xs text-red-600 hover:text-red-700"
+                    disabled={cancelMut.isPending}
+                  >
+                    인스턴스 취소
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('이 인스턴스를 삭제하시겠습니까?\n미완료 업무는 함께 삭제됩니다.')) {
+                        deleteMut.mutate({ instanceId: inst.id, fundId: inst.fund_id })
+                      }
+                    }}
+                    className="text-xs text-red-700 hover:text-red-800"
+                    disabled={deleteMut.isPending}
+                  >
+                    인스턴스 삭제
+                  </button>
                 </div>
-              ))}
-              {status === 'active' && <button onClick={() => { if (confirm('이 인스턴스를 취소하시겠습니까?')) cancelMut.mutate(inst.id) }} className="text-xs text-red-600 hover:text-red-700">인스턴스 취소</button>}
+              )}
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -1303,7 +1362,7 @@ export default function WorkflowsPage() {
       <h2 className="page-title">⚙️ 워크플로우</h2>
           <p className="page-subtitle">템플릿 및 인스턴스 관리</p>
         </div>
-        <button onClick={() => setMode('create')} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> + 새 템플릿</button>
+        <button onClick={() => setMode('create')} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 새 템플릿</button>
       </div>
 
       <div className="border-b border-gray-200">
@@ -1409,7 +1468,7 @@ export default function WorkflowsPage() {
       {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
 
       {mode === 'create' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
+        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-start justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
           <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
             <TemplateModal initial={EMPTY_TEMPLATE} title="템플릿 생성" submitLabel="생성" loading={createMut.isPending} onSubmit={(data) => createMut.mutate(data)} onClose={() => setMode(null)} />
           </div>
@@ -1417,7 +1476,7 @@ export default function WorkflowsPage() {
       )}
 
       {mode === 'edit' && selectedId && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
+        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-start justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
           <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
             <TemplateModal initial={normalizeTemplate(selected)} title="템플릿 수정" submitLabel="저장" loading={updateMut.isPending} onSubmit={(data) => updateMut.mutate({ id: selectedId, data })} onClose={() => setMode(null)} />
           </div>

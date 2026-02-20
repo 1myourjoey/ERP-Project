@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 
 class LPCreate(BaseModel):
+    address_book_id: Optional[int] = None
     name: str
     type: str
     commitment: Optional[float] = Field(default=None, ge=0)
@@ -20,8 +21,19 @@ class LPCreate(BaseModel):
             raise ValueError("type must not be empty")
         return value
 
+    @model_validator(mode="after")
+    def validate_lp_create_paid_in(self):
+        if (
+            self.commitment is not None
+            and self.paid_in is not None
+            and self.paid_in > self.commitment
+        ):
+            raise ValueError("paid_in must be less than or equal to commitment")
+        return self
+
 
 class LPUpdate(BaseModel):
+    address_book_id: Optional[int] = None
     name: Optional[str] = None
     type: Optional[str] = None
     commitment: Optional[float] = Field(default=None, ge=0)
@@ -40,10 +52,21 @@ class LPUpdate(BaseModel):
             raise ValueError("type must not be empty")
         return value
 
+    @model_validator(mode="after")
+    def validate_lp_update_paid_in(self):
+        if (
+            self.commitment is not None
+            and self.paid_in is not None
+            and self.paid_in > self.commitment
+        ):
+            raise ValueError("paid_in must be less than or equal to commitment")
+        return self
+
 
 class LPResponse(BaseModel):
     id: int
     fund_id: int
+    address_book_id: Optional[int] = None
     name: str
     type: str
     commitment: Optional[float] = Field(default=None, ge=0)
@@ -99,6 +122,33 @@ class FundKeyTermResponse(BaseModel):
     article_ref: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class FundMigrationErrorItem(BaseModel):
+    row: int
+    column: str
+    reason: str
+
+
+class FundMigrationValidateResponse(BaseModel):
+    success: bool
+    fund_rows: int
+    lp_rows: int
+    errors: list[FundMigrationErrorItem] = Field(default_factory=list)
+
+
+class FundMigrationImportResponse(BaseModel):
+    success: bool
+    mode: Literal["insert", "upsert"]
+    fund_rows: int
+    lp_rows: int
+    created_funds: int = 0
+    updated_funds: int = 0
+    created_lps: int = 0
+    updated_lps: int = 0
+    synced_address_books: int = 0
+    errors: list[FundMigrationErrorItem] = Field(default_factory=list)
+    validation: FundMigrationValidateResponse
 
 
 class FundCreate(BaseModel):
