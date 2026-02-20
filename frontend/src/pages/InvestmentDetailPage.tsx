@@ -34,6 +34,7 @@ import {
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import PageLoading from '../components/PageLoading'
+import DrawerOverlay from '../components/common/DrawerOverlay'
 
 interface InvestmentDocument {
   id: number
@@ -83,6 +84,8 @@ const EMPTY_VALUATION: ValuationInput = {
 const VOTE_TYPE_OPTIONS = ['주주총회', '이사회', '서면결의']
 const VOTE_DECISION_OPTIONS = ['찬성', '반대', '기권', '미행사']
 
+type DetailTab = 'overview' | 'post' | 'workflows' | 'documents' | 'exit'
+
 function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
   return {
     fund_id: detail.fund_id,
@@ -120,6 +123,7 @@ export default function InvestmentDetailPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<DetailTab>('overview')
   const [editingInvestment, setEditingInvestment] = useState(false)
   const [showDocForm, setShowDocForm] = useState(false)
   const [editingDocId, setEditingDocId] = useState<number | null>(null)
@@ -127,6 +131,8 @@ export default function InvestmentDetailPage() {
   const [editingValuationId, setEditingValuationId] = useState<number | null>(null)
   const [showVoteForm, setShowVoteForm] = useState(false)
   const [editingVoteId, setEditingVoteId] = useState<number | null>(null)
+  const [exitMultiple, setExitMultiple] = useState(2)
+  const [exitFeeRate, setExitFeeRate] = useState(20)
 
   const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
   const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
@@ -169,6 +175,15 @@ export default function InvestmentDetailPage() {
     () => companies?.find(c => c.id === selectedInvestment?.company_id)?.name || '-',
     [companies, selectedInvestment?.company_id],
   )
+  const exitSimulation = useMemo(() => {
+    const invested = Number(selectedInvestment?.amount || 0)
+    const gross = invested * Math.max(exitMultiple, 0)
+    const gain = gross - invested
+    const fee = gain > 0 ? gain * (Math.max(exitFeeRate, 0) / 100) : 0
+    const net = gross - fee
+    const moic = invested > 0 ? net / invested : null
+    return { invested, gross, gain, fee, net, moic }
+  }, [selectedInvestment?.amount, exitMultiple, exitFeeRate])
 
   const updateInvestmentMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<InvestmentInput> }) => updateInvestment(targetId, data),
@@ -283,7 +298,29 @@ export default function InvestmentDetailPage() {
       <div className="page-header">
         <div>
           <h2 className="page-title">{companyName === '-' ? `투자 #${investmentId}` : companyName}</h2>
-          <p className="page-subtitle">투자 상세 정보, 서류, 가치평가, 의결권 이력을 관리합니다.</p>
+          <p className="page-subtitle">투자 통제실에서 정보, 사후관리, 워크플로, 문서를 탭 단위로 관리합니다.</p>
+        </div>
+      </div>
+
+      <div className="border-b border-gray-200">
+        <div className="flex flex-wrap gap-4">
+          {[
+            { key: 'overview' as const, label: '① 투자 개요' },
+            { key: 'post' as const, label: '② 사후 관리' },
+            { key: 'workflows' as const, label: '③ 관련된 워크플로' },
+            { key: 'documents' as const, label: '④ 문서 및 계약서' },
+            { key: 'exit' as const, label: '⑤ 회수(Exit) 시뮬레이션' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`border-b-2 pb-2 text-sm ${activeTab === tab.key
+                ? 'border-blue-600 font-semibold text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -293,57 +330,51 @@ export default function InvestmentDetailPage() {
         <p className="text-sm text-gray-500">투자를 찾을 수 없습니다.</p>
       ) : (
         <>
-          <div className="card-base space-y-4">
+          {activeTab === 'overview' && (
+            <div className="card-base space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">투자 #{selectedInvestment.id}</h2>
               <div className="flex gap-2">
-                <button className="secondary-btn" onClick={() => setEditingInvestment(v => !v)}>{editingInvestment ? '취소' : '수정'}</button>
+                <button className="secondary-btn" onClick={() => setEditingInvestment(true)}>수정</button>
                 <button className="danger-btn" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(investmentId) }}>삭제</button>
               </div>
             </div>
 
-            {editingInvestment ? (
-              <InvestmentForm
-                funds={funds || []}
-                companies={companies || []}
-                initial={toInvestmentInput(selectedInvestment)}
-                onSubmit={d => updateInvestmentMut.mutate({ id: investmentId, data: d })}
-                onCancel={() => setEditingInvestment(false)}
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                <div className="p-2 bg-gray-50 rounded">
-                  조합:{' '}
-                  {selectedInvestment.fund_id ? (
-                    <button
-                      onClick={() => navigate(`/funds/${selectedInvestment.fund_id}`)}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      {fundName || `조합 #${selectedInvestment.fund_id}`} →
-                    </button>
-                  ) : (
-                    '-'
-                  )}
-                </div>
-                <div className="p-2 bg-gray-50 rounded">회사: {companyName}</div>
-                <div className="p-2 bg-gray-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
-                <div className="p-2 bg-gray-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">기존 지분율: {selectedInvestment.contribution_rate || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">투자 라운드: {selectedInvestment.round || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">프리머니 밸류: {selectedInvestment.valuation_pre?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">포스트머니 밸류: {selectedInvestment.valuation_post?.toLocaleString?.() ?? '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">지분율: {selectedInvestment.ownership_pct != null ? `${selectedInvestment.ownership_pct}%` : '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">이사회 참여: {selectedInvestment.board_seat || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+              <div className="p-2 bg-gray-50 rounded">
+                조합:{' '}
+                {selectedInvestment.fund_id ? (
+                  <button
+                    onClick={() => navigate(`/funds/${selectedInvestment.fund_id}`)}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    {fundName || `조합 #${selectedInvestment.fund_id}`} →
+                  </button>
+                ) : (
+                  '-'
+                )}
               </div>
-            )}
-          </div>
+              <div className="p-2 bg-gray-50 rounded">회사: {companyName}</div>
+              <div className="p-2 bg-gray-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
+              <div className="p-2 bg-gray-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">기존 지분율: {selectedInvestment.contribution_rate || '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">투자 라운드: {selectedInvestment.round || '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">프리머니 밸류: {selectedInvestment.valuation_pre?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">포스트머니 밸류: {selectedInvestment.valuation_post?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">지분율: {selectedInvestment.ownership_pct != null ? `${selectedInvestment.ownership_pct}%` : '-'}</div>
+              <div className="p-2 bg-gray-50 rounded">이사회 참여: {selectedInvestment.board_seat || '-'}</div>
+              <div className="p-2 bg-gray-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
+            </div>
+            </div>
+          )}
 
-          <div className="card-base">
+          {activeTab === 'workflows' && (
+            <>
+              <div className="card-base">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">연결된 워크플로우</h3>
             {!linkedWorkflows?.length ? (
               <p className="text-sm text-gray-400">연결된 워크플로우 인스턴스가 없습니다.</p>
@@ -364,9 +395,9 @@ export default function InvestmentDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+              </div>
 
-          <div className="card-base">
+              <div className="card-base">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">체크리스트</h3>
             {!linkedChecklists?.length ? (
               <p className="text-sm text-gray-400">연결된 체크리스트가 없습니다.</p>
@@ -394,9 +425,12 @@ export default function InvestmentDetailPage() {
                 })}
               </div>
             )}
-          </div>
+              </div>
+            </>
+          )}
 
-          <div className="card-base">
+          {activeTab === 'documents' && (
+            <div className="card-base">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-700">서류</h3>
               <button className="primary-btn" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
@@ -424,8 +458,11 @@ export default function InvestmentDetailPage() {
                 </div>
               )) : <p className="text-sm text-gray-400">서류가 없습니다.</p>}
             </div>
-          </div>
-          <div className="card-base">
+            </div>
+          )}
+          {activeTab === 'post' && (
+            <>
+              <div className="card-base">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-700">가치평가</h3>
               <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ 가치평가</button>
@@ -482,9 +519,9 @@ export default function InvestmentDetailPage() {
                 </div>
               )) : <p className="text-sm text-gray-400">등록된 가치평가가 없습니다.</p>}
             </div>
-          </div>
+              </div>
 
-          <div className="card-base">
+              <div className="card-base">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">의결권 행사 이력</h3>
               <button
@@ -582,8 +619,59 @@ export default function InvestmentDetailPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'exit' && (
+            <div className="card-base space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700">회수 시뮬레이션</h3>
+              <p className="text-xs text-gray-500">가정 배수와 성과보수율을 기준으로 순회수금과 MOIC를 계산합니다.</p>
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">기준 투자금</label>
+                  <input value={formatNumber(exitSimulation.invested)} disabled className="w-full rounded border bg-gray-100 px-2 py-1 text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">회수 배수(MOIC)</label>
+                  <input type="number" step="0.1" value={exitMultiple} onChange={(event) => setExitMultiple(Number(event.target.value || 0))} className="w-full rounded border px-2 py-1 text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">성과보수율(%)</label>
+                  <input type="number" step="0.1" value={exitFeeRate} onChange={(event) => setExitFeeRate(Number(event.target.value || 0))} className="w-full rounded border px-2 py-1 text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                <div className="rounded bg-gray-50 p-2">총 회수금(가정): {formatNumber(exitSimulation.gross)}</div>
+                <div className="rounded bg-gray-50 p-2">평가차익: {formatNumber(exitSimulation.gain)}</div>
+                <div className="rounded bg-gray-50 p-2">성과보수: {formatNumber(exitSimulation.fee)}</div>
+                <div className="rounded bg-blue-50 p-2 font-semibold text-blue-700">순회수금: {formatNumber(exitSimulation.net)}</div>
+                <div className="rounded bg-indigo-50 p-2 font-semibold text-indigo-700 md:col-span-2">
+                  순 MOIC: {exitSimulation.moic == null ? '-' : `${exitSimulation.moic.toFixed(2)}x`}
+                </div>
+              </div>
+            </div>
+          )}
         </>
+      )}
+
+      {selectedInvestment && (
+        <DrawerOverlay
+          open={editingInvestment}
+          onClose={() => setEditingInvestment(false)}
+          title="투자 정보 수정"
+          widthClassName="w-full max-w-5xl"
+        >
+          <InvestmentForm
+            funds={funds || []}
+            companies={companies || []}
+            initial={toInvestmentInput(selectedInvestment)}
+            onSubmit={d => updateInvestmentMut.mutate({ id: investmentId, data: d })}
+            onCancel={() => setEditingInvestment(false)}
+          />
+        </DrawerOverlay>
       )}
     </div>
   )

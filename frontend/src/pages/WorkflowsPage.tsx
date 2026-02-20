@@ -44,6 +44,7 @@ import { useToast } from '../contexts/ToastContext'
 import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import DrawerOverlay from '../components/common/DrawerOverlay'
 
 type WorkflowLocationState = {
   expandInstanceId?: number
@@ -1433,24 +1434,22 @@ function InstanceList({
         )
       })}
 
-      {swapTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => {
-            if (swapTemplateMut.isPending) return
-            setSwapTarget(null)
-          }}
-        >
-          <div
-            className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className="text-base font-semibold text-gray-900">템플릿 교체</h3>
-            <p className="mt-1 text-sm text-gray-600">
+      <DrawerOverlay
+        open={!!swapTarget}
+        onClose={() => {
+          if (swapTemplateMut.isPending) return
+          setSwapTarget(null)
+        }}
+        title="템플릿 교체"
+        widthClassName="w-full max-w-xl"
+      >
+        {swapTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
               [{swapTarget.name}] 워크플로를 다른 템플릿으로 교체합니다.
             </p>
 
-            <div className="mt-4 space-y-1">
+            <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-600">새 템플릿</label>
               <select
                 value={swapTemplateId}
@@ -1478,16 +1477,16 @@ function InstanceList({
             </div>
 
             {isFormationAssemblyWorkflow(swapTarget) && (
-              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                결성총회 관련 템플릿으로 교체할 때는 스텝명에
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                결성총회 관련 템플릿은 스텝명에
                 {' '}
                 <strong>출자금 납입 확인</strong>
                 {' '}
-                등 납입/출자 확인 키워드가 반드시 포함되어야 결성금액 동기화가 정상 작동합니다.
+                등 납입/출자 확인 키워드가 포함되어야 결성금액 동기화가 정상 작동합니다.
               </div>
             )}
 
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSwapTarget(null)}
@@ -1506,8 +1505,8 @@ function InstanceList({
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </DrawerOverlay>
     </div>
   )
 }
@@ -1518,7 +1517,7 @@ export default function WorkflowsPage() {
   const location = useLocation()
   const locationState = (location.state as WorkflowLocationState | null) ?? null
 
-  const [tab, setTab] = useState<'templates' | 'active' | 'completed'>('templates')
+  const [tab, setTab] = useState<'templates' | 'active' | 'completed'>('active')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -1616,17 +1615,20 @@ export default function WorkflowsPage() {
       <div className="page-header">
         <div>
       <h2 className="page-title">⚙️ 워크플로우</h2>
-          <p className="page-subtitle">템플릿 및 인스턴스 관리</p>
+          <p className="page-subtitle">실행 중/완료 워크플로 중심으로 진행 상황을 관리합니다.</p>
         </div>
-        <button onClick={() => setMode('create')} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 새 템플릿</button>
+        <div className="flex gap-2">
+          <button onClick={() => setTab('templates')} className="secondary-btn">템플릿 관리(관리자)</button>
+          <button onClick={() => { setTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 템플릿 생성</button>
+        </div>
       </div>
 
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
           {[
-            { key: 'templates' as const, label: '템플릿' },
             { key: 'active' as const, label: '진행 중' },
             { key: 'completed' as const, label: '완료' },
+            { key: 'templates' as const, label: '템플릿(관리자)' },
           ].map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} className={`border-b-2 pb-2 text-sm ${tab === t.key ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t.label}</button>
           ))}
@@ -1724,19 +1726,25 @@ export default function WorkflowsPage() {
       {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
 
       {mode === 'create' && (
-        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-start justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
-          <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
-            <TemplateModal initial={EMPTY_TEMPLATE} title="템플릿 생성" submitLabel="생성" loading={createMut.isPending} onSubmit={(data) => createMut.mutate(data)} onClose={() => setMode(null)} />
-          </div>
-        </div>
+        <DrawerOverlay
+          open={mode === 'create'}
+          onClose={() => setMode(null)}
+          title="템플릿 생성"
+          widthClassName="w-full max-w-6xl"
+        >
+          <TemplateModal initial={EMPTY_TEMPLATE} title="템플릿 생성" submitLabel="생성" loading={createMut.isPending} onSubmit={(data) => createMut.mutate(data)} onClose={() => setMode(null)} />
+        </DrawerOverlay>
       )}
 
       {mode === 'edit' && selectedId && selected && (
-        <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-start justify-center bg-black/40 p-3 sm:p-4" onClick={() => setMode(null)}>
-          <div className="max-h-full w-full max-w-5xl" onClick={e => e.stopPropagation()}>
-            <TemplateModal initial={normalizeTemplate(selected)} title="템플릿 수정" submitLabel="저장" loading={updateMut.isPending} onSubmit={(data) => updateMut.mutate({ id: selectedId, data })} onClose={() => setMode(null)} />
-          </div>
-        </div>
+        <DrawerOverlay
+          open={mode === 'edit' && !!selectedId}
+          onClose={() => setMode(null)}
+          title="템플릿 수정"
+          widthClassName="w-full max-w-6xl"
+        >
+          <TemplateModal initial={normalizeTemplate(selected)} title="템플릿 수정" submitLabel="저장" loading={updateMut.isPending} onSubmit={(data) => updateMut.mutate({ id: selectedId, data })} onClose={() => setMode(null)} />
+        </DrawerOverlay>
       )}
     </div>
   )
