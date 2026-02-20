@@ -746,7 +746,7 @@ function LPForm({
         >
           저장
         </button>
-        <button onClick={onCancel} className="px-3 py-1 text-xs bg-white border rounded hover:bg-gray-100">취소</button>
+        <button onClick={onCancel} className="secondary-btn btn-sm">취소</button>
       </div>
     </div>
   )
@@ -3068,3 +3068,4 @@ export default function FundDetailPage() {
     </div>
   )
 }
+

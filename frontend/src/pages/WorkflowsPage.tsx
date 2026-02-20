@@ -547,25 +547,25 @@ function TemplateModal({
   return (
     <div className="card-base flex max-h-[calc(100vh-5.5rem)] min-h-0 flex-col">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        <h3 className="text-base font-semibold text-gray-800">{title}</h3>
+        <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600"><X size={18} /></button>
       </div>
       <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <div><label className="mb-1 block text-xs font-medium text-gray-600">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label><input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="선택 입력" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-gray-600">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-gray-600">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="form-label">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
+          <div><label className="form-label">카테고리</label><input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+          <div><label className="form-label">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="form-input" /></div>
+          <div><label className="form-label">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
         </div>
         <div className="space-y-2">
           {form.steps.map((step, idx) => (
             <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
-              <div className="md:col-span-2"><label className="mb-1 block text-[10px] font-medium text-gray-500">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="w-full px-2 py-1 text-sm border rounded" /></div>
-              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="w-full px-2 py-1 text-sm border rounded" /></div>
-              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="w-full px-2 py-1 text-sm border rounded" /></div>
-              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="w-full px-2 py-1 text-sm border rounded" /></div>
-              <div><label className="mb-1 block text-[10px] font-medium text-gray-500">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="w-full px-2 py-1 text-sm border rounded" /></div>
-              <div className="md:col-span-2"><label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
+              <div className="md:col-span-2"><label className="form-label text-[10px]">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="form-input" /></div>
+              <div><label className="form-label text-[10px]">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="form-input" /></div>
+              <div><label className="form-label text-[10px]">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="form-input" /></div>
+              <div><label className="form-label text-[10px]">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="form-input" /></div>
+              <div><label className="form-label text-[10px]">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="form-input" /></div>
+              <div className="md:col-span-2"><label className="form-label text-[10px]">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="form-input" /></div>
               <div className="md:col-span-2 flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-gray-600">
                   <input
@@ -619,30 +619,30 @@ function TemplateModal({
                 )}
                 <div className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-2 md:grid-cols-6">
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">서류명</label>
+                    <label className="form-label text-[10px]">서류명</label>
                     <input
                       value={ensureStepDocDraft(idx).name}
                       onChange={e => setStepDocDraft(idx, { name: e.target.value })}
                       placeholder="예: 투심 보고서"
-                      className="w-full rounded border px-2 py-1 text-xs"
+                      className="form-input text-xs"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label>
+                    <label className="form-label text-[10px]">시점</label>
                     <input
                       value={ensureStepDocDraft(idx).timing}
                       onChange={e => setStepDocDraft(idx, { timing: e.target.value })}
                       placeholder="예: D-1"
-                      className="w-full rounded border px-2 py-1 text-xs"
+                      className="form-input text-xs"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label>
+                    <label className="form-label text-[10px]">메모</label>
                     <input
                       value={ensureStepDocDraft(idx).notes}
                       onChange={e => setStepDocDraft(idx, { notes: e.target.value })}
                       placeholder="선택 입력"
-                      className="w-full rounded border px-2 py-1 text-xs"
+                      className="form-input text-xs"
                     />
                   </div>
                   <div className="flex items-end justify-between gap-1">
@@ -660,7 +660,7 @@ function TemplateModal({
                 </div>
                 <div className="flex flex-col gap-2 md:flex-row md:items-end">
                   <div className="flex-1">
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">템플릿에서 선택</label>
+                    <label className="form-label text-[10px]">템플릿에서 선택</label>
                     <select
                       value={ensureStepDocDraft(idx).documentTemplateId}
                       onChange={e => {
@@ -671,7 +671,7 @@ function TemplateModal({
                           name: selectedTemplate ? selectedTemplate.name : ensureStepDocDraft(idx).name,
                         })
                       }}
-                      className="w-full rounded border px-2 py-1 text-xs"
+                      className="form-input text-xs"
                     >
                       <option value="">템플릿 선택...</option>
                       {docTemplates.map((template) => (
@@ -712,30 +712,30 @@ function TemplateModal({
           )}
           <div className="grid grid-cols-1 gap-2 rounded border border-dashed border-gray-300 p-2 md:grid-cols-6">
             <div className="md:col-span-2">
-              <label className="mb-1 block text-[10px] font-medium text-gray-500">서류명</label>
+              <label className="form-label text-[10px]">서류명</label>
               <input
                 value={documentDraft.name}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="예: 출자 요청 공문"
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500">시점</label>
+              <label className="form-label text-[10px]">시점</label>
               <input
                 value={documentDraft.timing}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, timing: e.target.value }))}
                 placeholder="예: D-day"
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-[10px] font-medium text-gray-500">메모</label>
+              <label className="form-label text-[10px]">메모</label>
               <input
                 value={documentDraft.notes}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="선택 입력"
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
               />
             </div>
             <div className="flex items-end justify-between gap-2">
@@ -857,7 +857,7 @@ function WorkflowDetail({
         <div className="flex gap-2">
           <button onClick={() => onPrint(wf)} className="secondary-btn inline-flex items-center gap-1"><Printer size={14} /> 인쇄</button>
           <button onClick={onEdit} className="secondary-btn">수정</button>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
       </div>
 
@@ -888,17 +888,17 @@ function WorkflowDetail({
         <button onClick={() => setShowRun(true)} className="primary-btn inline-flex items-center gap-2"><Play size={16} /> 실행</button>
       ) : (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <div><label className="mb-1 block text-xs font-medium text-blue-700">인스턴스 이름</label><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-blue-700">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg" /></div>
+          <div><label className="form-label text-blue-700">인스턴스 이름</label><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="form-input" /></div>
+          <div><label className="form-label text-blue-700">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="form-input" /></div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-blue-700">관련 조합</label>
-            <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+            <label className="form-label text-blue-700">관련 조합</label>
+            <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="form-input">
               <option value="">관련 조합 (선택)</option>
               {(funds ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-blue-700">관련 고유계정</label>
+            <label className="form-label text-blue-700">관련 고유계정</label>
             <select
               value={instGpEntityId}
               onChange={e => {
@@ -907,30 +907,30 @@ function WorkflowDetail({
                 setInstFundId('')
                 if (instInvestmentId !== '') setInstInvestmentId('')
               }}
-              className="w-full px-3 py-2 text-sm border rounded-lg bg-white"
+              className="form-input"
             >
               <option value="">관련 고유계정 (선택)</option>
               {(gpEntities ?? []).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-blue-700">관련 회사</label>
-            <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+            <label className="form-label text-blue-700">관련 회사</label>
+            <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="form-input">
               <option value="">관련 회사 (선택)</option>
               {(companies ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-blue-700">관련 투자</label>
-            <select value={instInvestmentId} onChange={e => setInstInvestmentId(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+            <label className="form-label text-blue-700">관련 투자</label>
+            <select value={instInvestmentId} onChange={e => setInstInvestmentId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">관련 투자 (선택)</option>
               {filteredInvestments.map((inv) => <option key={inv.id} value={inv.id}>#{inv.id} {inv.fund_name} - {inv.company_name}</option>)}
             </select>
           </div>
           {instFundId !== '' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-blue-700">통지유형</label>
-              <select value={instNoticeType} onChange={e => setInstNoticeType(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+              <label className="form-label text-blue-700">통지유형</label>
+              <select value={instNoticeType} onChange={e => setInstNoticeType(e.target.value)} className="form-input">
                 {options.map((opt) => <option key={opt.notice_type} value={opt.notice_type}>{opt.label}</option>)}
               </select>
             </div>
@@ -942,12 +942,12 @@ function WorkflowDetail({
             </div>
           )}
           <div>
-            <label className="mb-1 block text-xs font-medium text-blue-700">메모</label>
-            <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="선택 입력" rows={2} className="w-full px-3 py-2 text-sm border rounded-lg" />
+            <label className="form-label text-blue-700">메모</label>
+            <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="선택 입력" rows={2} className="form-input" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => instName && instDate && runMut.mutate()} disabled={!instName || !instDate} className="flex-1 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300">실행</button>
-            <button onClick={() => setShowRun(false)} className="px-4 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100">취소</button>
+            <button onClick={() => instName && instDate && runMut.mutate()} disabled={!instName || !instDate} className="primary-btn flex-1">실행</button>
+            <button onClick={() => setShowRun(false)} className="secondary-btn">취소</button>
           </div>
         </div>
       )}
@@ -1238,8 +1238,8 @@ function InstanceList({
           (step) => step.status !== 'completed' && step.status !== 'skipped',
         )
         return (
-        <div key={inst.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="w-full cursor-pointer p-4 text-left hover:bg-gray-50 flex items-center justify-between">
+        <div key={inst.id} className="card-base overflow-hidden p-0">
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between p-4 text-left hover:bg-gray-50">
             <div>
               <p className="text-sm font-medium text-gray-800">{inst.name}</p>
               <p className="text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
@@ -1287,31 +1287,31 @@ function InstanceList({
               {status === 'active' && editingInstanceId === inst.id && editInstance && (
                 <div className="mb-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">인스턴스 이름</label>
+                    <label className="form-label">인스턴스 이름</label>
                     <input
                       value={editInstance.name}
                       onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
                       placeholder="예: 2026년 1차 출자요청"
-                      className="w-full rounded border px-2 py-1.5 text-sm"
+                      className="form-input"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">기준일</label>
+                    <label className="form-label">기준일</label>
                     <input
                       type="date"
                       value={editInstance.trigger_date}
                       onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, trigger_date: event.target.value } : prev))}
-                      className="w-full rounded border px-2 py-1.5 text-sm"
+                      className="form-input"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+                    <label className="form-label">메모</label>
                     <textarea
                       value={editInstance.memo}
                       onChange={(event) => setEditInstance((prev) => (prev ? { ...prev, memo: event.target.value } : prev))}
                       rows={2}
                       placeholder="선택 입력"
-                      className="w-full rounded border px-2 py-1.5 text-sm"
+                      className="form-input"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -1450,14 +1450,14 @@ function InstanceList({
             </p>
 
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-600">새 템플릿</label>
+              <label className="form-label">새 템플릿</label>
               <select
                 value={swapTemplateId}
                 onChange={(event) => {
                   const next = event.target.value
                   setSwapTemplateId(next ? Number(next) : '')
                 }}
-                className="w-full rounded border px-3 py-2 text-sm"
+                className="form-input"
               >
                 <option value="">템플릿을 선택하세요</option>
                 {[...workflowTemplates]
@@ -1611,10 +1611,10 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-6">
       <div className="page-header">
         <div>
-      <h2 className="page-title">⚙️ 워크플로우</h2>
+          <h2 className="page-title">⚙️ 워크플로우</h2>
           <p className="page-subtitle">실행 중/완료 워크플로 중심으로 진행 상황을 관리합니다.</p>
         </div>
         <div className="flex gap-2">
@@ -1749,6 +1749,7 @@ export default function WorkflowsPage() {
     </div>
   )
 }
+
 
 
 

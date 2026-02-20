@@ -804,7 +804,7 @@ function VoteRecordForm({
         >
           저장
         </button>
-        <button className="rounded border bg-white px-3 py-1 text-xs" onClick={onCancel}>
+        <button className="secondary-btn btn-sm" onClick={onCancel}>
           취소
         </button>
       </div>
@@ -858,6 +858,7 @@ function ValuationForm({
     </div>
   )
 }
+
 
 
 

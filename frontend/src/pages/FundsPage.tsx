@@ -592,7 +592,7 @@ export default function FundsPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
+      <div className="page-header mb-4">
         <h2 className="page-title">🏦 조합 관리</h2>
         <button onClick={() => setShowCreateFund((v) => !v)} className="primary-btn inline-flex items-center gap-1">
           <Plus size={14} /> 조합 추가

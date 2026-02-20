@@ -128,7 +128,7 @@ function TaskItem({
         e.dataTransfer.setData('taskId', String(task.id))
         e.dataTransfer.setData('fromQuadrant', task.quadrant)
       }}
-      className={`group flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-sm ${
+      className={`group flex items-center gap-2 rounded-md border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-sm ${
         isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
       }`}
     >
@@ -155,19 +155,19 @@ function TaskItem({
       <div className="flex shrink-0 items-center gap-1">
         <button
           onClick={() => onComplete(task)}
-          className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+          className="btn-sm rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
         >
           완료
         </button>
         <button
           onClick={() => onEdit(task)}
-          className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+          className="btn-sm rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
         >
           수정
         </button>
         <button
           onClick={() => onDelete(task.id)}
-          className="text-gray-400 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
+          className="icon-btn text-gray-400 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
           title="삭제"
         >
           <Trash2 size={14} />
@@ -336,7 +336,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-1 rounded-md py-2 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+        className="secondary-btn btn-sm inline-flex w-full items-center justify-center gap-1 text-gray-600"
       >
         <Plus size={14} /> 추가
       </button>
@@ -344,34 +344,34 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-gray-200 bg-white p-2">
+    <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">작업 제목</label>
+        <label className="form-label">작업 제목</label>
         <input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="예: 투자자 업데이트 메일 발송"
-          className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="form-input-sm"
         />
       </div>
       <div className="grid grid-cols-3 gap-1">
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">마감일</label>
+          <label className="form-label text-[10px]">마감일</label>
           <input
             type="date"
             value={deadlineDate}
             onChange={(e) => setDeadlineDate(e.target.value)}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="form-input-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">시간</label>
+          <label className="form-label text-[10px]">시간</label>
           <select
             value={deadlineHour}
             onChange={(e) => setDeadlineHour(e.target.value)}
-            className="w-full rounded border border-gray-200 px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="form-input-sm"
           >
             <option value="">선택</option>
             {HOUR_OPTIONS.map((hour) => (
@@ -380,21 +380,21 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label>
+          <label className="form-label text-[10px]">예상 시간</label>
           <TimeSelect
             value={estimatedTime}
             onChange={setEstimatedTime}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="form-input-sm"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-1">
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">관련 대상</label>
+          <label className="form-label text-[10px]">관련 대상</label>
           <select
             value={relatedTarget}
             onChange={(e) => setRelatedTarget(e.target.value)}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="form-input-sm"
           >
             <option value="">관련 대상 선택</option>
             {gpEntities.length > 0 && (
@@ -412,11 +412,11 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">워크플로 템플릿</label>
+          <label className="form-label text-[10px]">워크플로 템플릿</label>
           <select
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value ? Number(e.target.value) : '')}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="form-input-sm"
           >
             <option value="">템플릿 선택</option>
             {templates.map((template) => (
@@ -434,11 +434,11 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
         <button
           onClick={submit}
           disabled={createTaskMut.isPending || instantiateMut.isPending}
-          className="primary-btn w-full disabled:opacity-60"
+          className="primary-btn btn-sm flex-1 disabled:opacity-60"
         >
           {createTaskMut.isPending || instantiateMut.isPending ? '처리중...' : '추가'}
         </button>
-        <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100">취소</button>
+        <button onClick={() => setOpen(false)} className="secondary-btn btn-sm flex-1">취소</button>
       </div>
     </div>
   )
@@ -511,7 +511,7 @@ function EditTaskModal({
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">작업 수정</h3>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">×</button>
+            <button onClick={onCancel} className="icon-btn text-gray-400 hover:text-gray-600">×</button>
           </div>
 
           <div className="space-y-3">
@@ -654,8 +654,8 @@ function EditTaskModal({
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
-            <button onClick={onCancel} className="secondary-btn">취소</button>
-            <button onClick={submit} className="primary-btn">저장</button>
+            <button onClick={onCancel} className="secondary-btn btn-sm">취소</button>
+            <button onClick={submit} className="primary-btn btn-sm">저장</button>
           </div>
         </div>
       </div>
@@ -702,7 +702,7 @@ function TaskDetailModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-900">{task.title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+          <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600">×</button>
         </div>
 
         <div className="space-y-2 text-sm text-gray-700">
@@ -758,13 +758,13 @@ function TaskDetailModal({
             <>
               <button
                 onClick={() => onComplete(task)}
-                className="rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+                className="btn-sm rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
               >
                 완료
               </button>
               <button
                 onClick={() => onEdit(task)}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                className="btn-sm rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
               >
                 수정
               </button>
@@ -772,7 +772,7 @@ function TaskDetailModal({
           )}
           <button
             onClick={onClose}
-            className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-300"
+            className="secondary-btn btn-sm"
           >
             닫기
           </button>
@@ -984,7 +984,7 @@ export default function TaskBoardPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
+      <div className="page-header mb-4 items-center">
         <h2 className="page-title">📌 업무 보드</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
@@ -1065,7 +1065,7 @@ export default function TaskBoardPage() {
           <div className="info-banner-action">
             <button
               onClick={handleUrgentConfirm}
-              className="secondary-btn text-xs"
+              className="secondary-btn btn-sm"
             >
               업무 확인
             </button>

@@ -213,7 +213,7 @@ function JournalForm({
           저장
         </button>
         {onCancel && (
-          <button onClick={onCancel} className="rounded border bg-white px-3 py-1 text-xs hover:bg-gray-100">
+          <button onClick={onCancel} className="secondary-btn btn-sm">
             취소
           </button>
         )}
@@ -654,6 +654,7 @@ export default function AccountingPage() {
     </div>
   )
 }
+
 
 
 

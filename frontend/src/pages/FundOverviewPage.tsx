@@ -48,6 +48,7 @@ export default function FundOverviewPage() {
 
   const funds = data?.funds ?? []
   const totals = data?.totals
+  const effectiveReferenceDate = data?.reference_date ?? referenceDate
 
   const downloadExcel = () => {
     const params = new URLSearchParams()
@@ -71,26 +72,23 @@ export default function FundOverviewPage() {
   )
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6 px-6 py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="page-container space-y-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">🏦 조합 개요</h1>
-          <p className="mt-1 text-sm text-gray-500">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
+          <h2 className="page-title">🏦 조합 개요</h2>
+          <p className="page-subtitle">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            기준일
+          <label className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-700">
+            <span className="whitespace-nowrap">기준일</span>
             <input
               type="date"
               value={referenceDate}
               onChange={(event) => setReferenceDate(event.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              className="form-input min-w-[170px]"
             />
           </label>
-          <button
-            onClick={downloadExcel}
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-          >
+          <button onClick={downloadExcel} className="primary-btn">
             엑셀 다운로드
           </button>
         </div>
@@ -103,17 +101,17 @@ export default function FundOverviewPage() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {summaryCards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-gray-200 bg-white p-3">
+          <div key={card.label} className="card-base p-4">
             <p className="text-xs text-gray-500">{card.label}</p>
             <p className="mt-1 text-lg font-semibold text-gray-900">{card.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white">
+      <div className="card-base overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <p className="text-sm font-medium text-gray-700">조합 비교표</p>
-          <p className="text-xs text-gray-500">기준일: {data?.reference_date ?? referenceDate} / 단위: 백만원</p>
+          <h3 className="text-sm font-semibold text-gray-800">조합 비교표</h3>
+          <p className="text-xs text-gray-500">기준일: {effectiveReferenceDate} / 단위: 백만원</p>
         </div>
 
         {isLoading ? (
@@ -123,26 +121,26 @@ export default function FundOverviewPage() {
         ) : (
           <div className="max-h-[calc(100vh-320px)] overflow-auto">
             <table className="min-w-[1800px] w-full text-sm">
-              <thead className="sticky top-0 z-20 border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-600">
+              <thead className="table-head-row sticky top-0 z-20 border-b border-gray-200">
                 <tr>
-                  <th className="sticky left-0 z-30 bg-gray-50 px-3 py-2">NO</th>
-                  <th className="px-3 py-2">조합명</th>
-                  <th className="px-3 py-2">조합 구분</th>
-                  <th className="px-3 py-2">대표 펀드매니저</th>
-                  <th className="px-3 py-2">등록(성립)일</th>
-                  <th className="px-3 py-2">투자기간 종료일</th>
-                  <th className="px-3 py-2">투자기간 경과율</th>
-                  <th className="px-3 py-2">청산시기(예정)</th>
-                  <th className="px-3 py-2 text-right">약정총액</th>
-                  <th className="px-3 py-2 text-right">납입총액</th>
-                  <th className="px-3 py-2 text-right">납입비율</th>
-                  <th className="px-3 py-2 text-right">GP출자금</th>
-                  <th className="px-3 py-2 text-right">투자총액</th>
-                  <th className="px-3 py-2 text-right">미투자액</th>
-                  <th className="px-3 py-2 text-right">투자자산</th>
-                  <th className="px-3 py-2 text-right">투자업체수</th>
-                  <th className="px-3 py-2 text-right">기준수익률(규약)</th>
-                  <th className="px-3 py-2">잔존기간</th>
+                  <th className="table-head-cell sticky left-0 z-30 bg-gray-50">NO</th>
+                  <th className="table-head-cell">조합명</th>
+                  <th className="table-head-cell">조합 구분</th>
+                  <th className="table-head-cell">대표 펀드매니저</th>
+                  <th className="table-head-cell">등록(성립)일</th>
+                  <th className="table-head-cell">투자기간 종료일</th>
+                  <th className="table-head-cell">투자기간 경과율</th>
+                  <th className="table-head-cell">청산시기(예정)</th>
+                  <th className="table-head-cell text-right">약정총액</th>
+                  <th className="table-head-cell text-right">납입총액</th>
+                  <th className="table-head-cell text-right">납입비율</th>
+                  <th className="table-head-cell text-right">GP출자금</th>
+                  <th className="table-head-cell text-right">투자총액</th>
+                  <th className="table-head-cell text-right">미투자액</th>
+                  <th className="table-head-cell text-right">투자자산</th>
+                  <th className="table-head-cell text-right">투자업체수</th>
+                  <th className="table-head-cell text-right">기준수익률(규약)</th>
+                  <th className="table-head-cell">잔존기간</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,44 +150,44 @@ export default function FundOverviewPage() {
                     onClick={() => navigate(`/funds/${fund.id}`)}
                     className="cursor-pointer border-t border-gray-100 hover:bg-gray-50"
                   >
-                    <td className="sticky left-0 z-10 bg-white px-3 py-2 font-medium">{fund.no}</td>
-                    <td className="px-3 py-2 font-medium text-gray-900">{fund.name}</td>
-                    <td className="px-3 py-2 text-gray-700">{fund.fund_type}</td>
-                    <td className="px-3 py-2 text-gray-700">{fund.fund_manager || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{fund.registration_date || fund.formation_date || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{fund.investment_period_end || '-'}</td>
-                    <td className={`px-3 py-2 font-medium ${getRatioClass(fund.investment_period_progress)}`}>
+                    <td className="table-body-cell sticky left-0 z-10 bg-white font-medium">{fund.no}</td>
+                    <td className="table-body-cell font-medium text-gray-900">{fund.name}</td>
+                    <td className="table-body-cell text-gray-700">{fund.fund_type}</td>
+                    <td className="table-body-cell text-gray-700">{fund.fund_manager || '-'}</td>
+                    <td className="table-body-cell text-gray-600">{fund.registration_date || fund.formation_date || '-'}</td>
+                    <td className="table-body-cell text-gray-600">{fund.investment_period_end || '-'}</td>
+                    <td className={`table-body-cell font-medium ${getRatioClass(fund.investment_period_progress)}`}>
                       {formatPercent(fund.investment_period_progress)}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{fund.maturity_date || '-'}</td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.commitment_total)}</td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.total_paid_in)}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
+                    <td className="table-body-cell text-gray-600">{fund.maturity_date || '-'}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.commitment_total)}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.total_paid_in)}</td>
+                    <td className={`table-body-cell text-right font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
                       {formatPercent(fund.paid_in_ratio)}
                     </td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.gp_commitment)}</td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.total_invested)}</td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.uninvested)}</td>
-                    <td className="px-3 py-2 text-right">{formatMillion(fund.investment_assets)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(fund.company_count)}</td>
-                    <td className="px-3 py-2 text-right">{formatPercent(fund.hurdle_rate)}</td>
-                    <td className="px-3 py-2 text-gray-700">{fund.remaining_period || '-'}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.gp_commitment)}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.total_invested)}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.uninvested)}</td>
+                    <td className="table-body-cell text-right">{formatMillion(fund.investment_assets)}</td>
+                    <td className="table-body-cell text-right">{formatNumber(fund.company_count)}</td>
+                    <td className="table-body-cell text-right">{formatPercent(fund.hurdle_rate)}</td>
+                    <td className="table-body-cell text-gray-700">{fund.remaining_period || '-'}</td>
                   </tr>
                 ))}
                 <tr className="sticky bottom-0 z-20 border-t-2 border-gray-900 bg-gray-100 font-semibold text-gray-900 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-                  <td className="sticky left-0 z-30 bg-gray-100 px-3 py-2" colSpan={8}>
+                  <td className="sticky left-0 z-30 bg-gray-100 px-3 py-3" colSpan={8}>
                     합계
                   </td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.commitment_total)}</td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.total_paid_in)}</td>
-                  <td className="px-3 py-2 text-right">-</td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.gp_commitment)}</td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.total_invested)}</td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.uninvested)}</td>
-                  <td className="px-3 py-2 text-right">{formatMillion(totals?.investment_assets)}</td>
-                  <td className="px-3 py-2 text-right">{formatNumber(totals?.company_count)}</td>
-                  <td className="px-3 py-2 text-right">-</td>
-                  <td className="px-3 py-2 text-right">-</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.commitment_total)}</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.total_paid_in)}</td>
+                  <td className="px-3 py-3 text-right">-</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.gp_commitment)}</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.total_invested)}</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.uninvested)}</td>
+                  <td className="px-3 py-3 text-right">{formatMillion(totals?.investment_assets)}</td>
+                  <td className="px-3 py-3 text-right">{formatNumber(totals?.company_count)}</td>
+                  <td className="px-3 py-3 text-right">-</td>
+                  <td className="px-3 py-3 text-right">-</td>
                 </tr>
               </tbody>
             </table>

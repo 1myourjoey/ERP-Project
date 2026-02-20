@@ -106,7 +106,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-          className="rounded bg-gray-100 p-1 text-gray-600 hover:bg-gray-200"
+          className="icon-btn text-gray-600 hover:bg-gray-200"
           aria-label="이전 달"
         >
           <ChevronLeft size={14} />
@@ -114,7 +114,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
         <p className="text-xs font-semibold text-gray-700">{monthLabel}</p>
         <button
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-          className="rounded bg-gray-100 p-1 text-gray-600 hover:bg-gray-200"
+          className="icon-btn text-gray-600 hover:bg-gray-200"
           aria-label="다음 달"
         >
           <ChevronRight size={14} />
@@ -160,7 +160,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
           <p className="text-xs font-medium text-gray-700">{parseDate(selectedDate).toLocaleDateString('ko-KR')}</p>
           <button
             onClick={() => setShowCreate((prev) => !prev)}
-            className="rounded bg-blue-600 px-2 py-1 text-[11px] text-white hover:bg-blue-700"
+            className="primary-btn btn-sm"
           >
             <Plus size={12} className="mr-1 inline" /> 일정 추가
           </button>
@@ -169,21 +169,21 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
         {showCreate && (
           <div className="mb-2 space-y-1 rounded border border-blue-200 bg-white p-2">
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500">일정 제목</label>
+              <label className="form-label text-[10px]">일정 제목</label>
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="일정 제목"
-                className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
+                className="form-input-sm"
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500">시간</label>
+              <label className="form-label text-[10px]">시간</label>
               <input
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                className="w-full rounded border border-gray-200 px-2 py-1 text-xs"
+                className="form-input-sm"
               />
             </div>
             <button
@@ -199,7 +199,7 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
                   task_id: null,
                 })
               }}
-              className="w-full rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+              className="primary-btn btn-sm w-full"
             >
               추가
             </button>
