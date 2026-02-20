@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -11,6 +11,7 @@ import {
   fetchDocumentStatus,
   fetchFund,
   fetchInvestments,
+  fetchLPAddressBooks,
   updateFund,
   updateFundKeyTerms,
   updateFundLP,
@@ -22,6 +23,7 @@ import {
   type FundNoticePeriodInput,
   type CapitalCall,
   type LP,
+  type LPAddressBook,
   type LPInput,
   type NoticeDeadlineResult,
 } from '../lib/api'
@@ -78,7 +80,10 @@ const FUND_STATUS_OPTIONS = [
   { value: 'liquidated', label: '청산 완료' },
 ]
 
+const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
+
 const EMPTY_LP: LPInput = {
+  address_book_id: null,
   name: '',
   type: '기관투자자',
   commitment: null,
@@ -141,6 +146,18 @@ function dueText(doc: DocumentStatusItem): string | null {
   if (doc.days_remaining == null) return null
   if (doc.days_remaining < 0) return `지연 ${Math.abs(doc.days_remaining)}일`
   return `D-${doc.days_remaining}`
+}
+
+const WORKFLOW_STATUS_LABEL: Record<string, string> = {
+  active: '진행 중',
+  completed: '완료',
+  cancelled: '취소',
+}
+
+function buildLinkedWorkflowLabel(call: CapitalCall, fallbackFundName: string): string {
+  const name = call.linked_workflow_name?.trim()
+  if (name) return name
+  return `[${fallbackFundName}] 출자요청 워크플로 진행건`
 }
 
 function FundForm({
@@ -284,21 +301,87 @@ function FundForm({
   )
 }
 
-function LPForm({ initial, loading, onSubmit, onCancel }: { initial: LPInput; loading: boolean; onSubmit: (data: LPInput) => void; onCancel: () => void }) {
+function LPForm({
+  initial,
+  addressBooks,
+  loading,
+  onSubmit,
+  onCancel,
+}: {
+  initial: LPInput
+  addressBooks: LPAddressBook[]
+  loading: boolean
+  onSubmit: (data: LPInput) => void
+  onCancel: () => void
+}) {
   const [form, setForm] = useState<LPInput>(initial)
+  const [selectedAddressBookId, setSelectedAddressBookId] = useState(
+    initial.address_book_id ? String(initial.address_book_id) : '',
+  )
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">주소록 매핑</label>
+          <select
+            value={selectedAddressBookId}
+            onChange={(e) => {
+              const nextId = e.target.value
+              setSelectedAddressBookId(nextId)
+              if (!nextId) {
+                setForm((prev) => ({ ...prev, address_book_id: null }))
+                return
+              }
+              const selected = addressBooks.find((row) => String(row.id) === nextId)
+              if (!selected) return
+              setForm((prev) => ({
+                ...prev,
+                address_book_id: selected.id,
+                name: selected.name,
+                type: selected.type,
+                contact: selected.contact || '',
+                business_number: selected.business_number || '',
+                address: selected.address || '',
+              }))
+            }}
+            className="w-full px-2 py-1 text-sm border rounded"
+          >
+            <option value="">주소록 선택</option>
+            {addressBooks.map((book) => (
+              <option key={book.id} value={book.id}>
+                {book.name}
+                {book.business_number ? ` (${book.business_number})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 유형</label><input value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} placeholder="LP 유형" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">LP 유형</label>
+          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded">
+            {LP_TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">약정액</label><input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="약정액" className="w-full px-2 py-1 text-sm border rounded" /></div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">납입액</label><input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입액" className="w-full px-2 py-1 text-sm border rounded" /></div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-gray-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="w-full px-2 py-1 text-sm border rounded" /></div>
       </div>
       <div className="flex gap-2">
         <button
-          onClick={() => onSubmit({ ...form, name: form.name.trim(), type: form.type.trim(), contact: form.contact?.trim() || null })}
+          onClick={() => onSubmit({
+            ...form,
+            address_book_id: selectedAddressBookId ? Number(selectedAddressBookId) : (form.address_book_id ?? null),
+            name: form.name.trim(),
+            type: form.type.trim(),
+            contact: form.contact?.trim() || null,
+            business_number: form.business_number?.trim() || null,
+            address: form.address?.trim() || null,
+          })}
           disabled={loading || !form.name.trim() || !form.type.trim()}
           className="primary-btn"
         >
@@ -338,6 +421,8 @@ interface LpAmountDraft {
   lp_id: number
   lp_name: string
   commitment: number
+  paid_in: number
+  remaining: number
   amount: number
 }
 
@@ -345,7 +430,6 @@ interface CapitalCallWizardProps {
   fund: Fund
   lps: LP[]
   noticePeriods: FundNoticePeriodInput[]
-  existingCalls: CapitalCall[]
   initialPaidIn: number
   onClose: () => void
 }
@@ -354,7 +438,6 @@ function CapitalCallWizard({
   fund,
   lps,
   noticePeriods,
-  existingCalls,
   initialPaidIn,
   onClose,
 }: CapitalCallWizardProps) {
@@ -367,10 +450,7 @@ function CapitalCallWizard({
   const [submitting, setSubmitting] = useState(false)
 
   const commitmentTotal = Number(fund.commitment_total ?? 0)
-  const existingPaidIn = useMemo(
-    () => initialPaidIn + existingCalls.reduce((sum, call) => sum + Number(call.total_amount ?? 0), 0),
-    [existingCalls, initialPaidIn],
-  )
+  const existingPaidIn = useMemo(() => initialPaidIn, [initialPaidIn])
   const remainingCommitment = Math.max(0, commitmentTotal - existingPaidIn)
   const remainingPercent = commitmentTotal ? Math.max(0, Math.round((remainingCommitment / commitmentTotal) * 100)) : 0
 
@@ -430,7 +510,12 @@ function CapitalCallWizard({
         lp_id: lp.id,
         lp_name: lp.name,
         commitment: Number(lp.commitment ?? 0),
-        amount: Math.round(Number(lp.commitment ?? 0) * (requestPercent / 100)),
+        paid_in: Number(lp.paid_in ?? 0),
+        remaining: Math.max(0, Number(lp.commitment ?? 0) - Number(lp.paid_in ?? 0)),
+        amount: Math.min(
+          Math.max(0, Number(lp.commitment ?? 0) - Number(lp.paid_in ?? 0)),
+          Math.round(Number(lp.commitment ?? 0) * (requestPercent / 100)),
+        ),
       })),
     )
   }, [lps, requestPercent])
@@ -439,11 +524,18 @@ function CapitalCallWizard({
     () => lpAmounts.reduce((sum, row) => sum + Number(row.amount || 0), 0),
     [lpAmounts],
   )
+  const isAnyLpOverLimit = useMemo(
+    () => lpAmounts.some((row) => row.amount > row.remaining),
+    [lpAmounts],
+  )
+  const isTotalOverLimit = totalAmount > remainingCommitment
 
   const canSubmit = requestPercent > 0
     && requestPercent <= remainingPercent
     && !!callDate
     && totalAmount > 0
+    && !isAnyLpOverLimit
+    && !isTotalOverLimit
     && !isBylawViolation
     && !submitting
 
@@ -451,6 +543,14 @@ function CapitalCallWizard({
     if (!canSubmit) return
     try {
       setSubmitting(true)
+      const payloadItems = lpAmounts
+        .filter((row) => Number(row.amount || 0) > 0)
+        .map((row) => ({
+          lp_id: row.lp_id,
+          amount: Math.max(0, Number(row.amount || 0)),
+          paid: false,
+          paid_date: null,
+        }))
       await createCapitalCallBatch({
         fund_id: fund.id,
         call_date: callDate,
@@ -458,17 +558,18 @@ function CapitalCallWizard({
         total_amount: totalAmount,
         request_percent: requestPercent,
         memo: `${requestPercent}% 출자 요청`,
-        items: lpAmounts.map((row) => ({
-          lp_id: row.lp_id,
-          amount: Math.max(0, Number(row.amount || 0)),
-          paid: false,
-          paid_date: null,
-        })),
+        create_workflow: true,
+        items: payloadItems,
       })
       queryClient.invalidateQueries({ queryKey: ['capitalCalls', { fund_id: fund.id }] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
       queryClient.invalidateQueries({ queryKey: ['fund', fund.id] })
+      queryClient.invalidateQueries({ queryKey: ['fundDetails', fund.id] })
+      queryClient.invalidateQueries({ queryKey: ['fundLPs', fund.id] })
       queryClient.invalidateQueries({ queryKey: ['funds'] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fund.id] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       addToast('success', '출자 요청을 등록했습니다.')
       onClose()
     } catch {
@@ -548,6 +649,8 @@ function CapitalCallWizard({
                         <label className="mb-1 block text-[10px] font-medium text-gray-500">요청금액</label>
                         <input
                           type="number"
+                          min={0}
+                          max={row.remaining}
                           value={row.amount}
                           onChange={(e) => {
                             const amount = Math.max(0, Number(e.target.value || 0))
@@ -557,8 +660,14 @@ function CapitalCallWizard({
                               return copy
                             })
                           }}
-                          className="w-36 rounded border px-2 py-1 text-right text-sm"
+                          className={`w-36 rounded border px-2 py-1 text-right text-sm ${
+                            row.amount > row.remaining ? 'border-red-500 bg-red-50' : ''
+                          }`}
                         />
+                        <p className="mt-1 text-[10px] text-gray-500">최대 {formatKRW(row.remaining)}</p>
+                        {row.amount > row.remaining && (
+                          <p className="mt-1 text-[10px] text-red-600">미납액을 초과한 금액입니다.</p>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -569,7 +678,11 @@ function CapitalCallWizard({
         </div>
 
         <div className="flex items-center justify-between border-t px-5 py-4">
-          <p className="text-sm text-gray-600">총 요청금액: <span className="font-semibold text-gray-900">{formatKRW(totalAmount)}</span></p>
+          <div>
+            <p className="text-sm text-gray-600">총 요청금액: <span className="font-semibold text-gray-900">{formatKRW(totalAmount)}</span></p>
+            {isTotalOverLimit ? <p className="text-xs text-red-600">총 요청금액이 잔여 약정을 초과했습니다.</p> : null}
+            {isAnyLpOverLimit ? <p className="text-xs text-red-600">LP별 미납액 한도를 초과한 입력이 있습니다.</p> : null}
+          </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="secondary-btn">취소</button>
             <button onClick={handleSubmit} disabled={!canSubmit} className="primary-btn disabled:cursor-not-allowed disabled:opacity-50">
@@ -621,6 +734,11 @@ export default function FundDetailPage() {
     queryKey: ['capitalCalls', { fund_id: fundId }],
     queryFn: () => fetchCapitalCalls({ fund_id: fundId }),
     enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: lpAddressBooks = [] } = useQuery<LPAddressBook[]>({
+    queryKey: ['lpAddressBooks', { is_active: 1 }],
+    queryFn: () => fetchLPAddressBooks({ is_active: 1 }),
   })
 
   useEffect(() => {
@@ -855,7 +973,23 @@ export default function FundDetailPage() {
                       <td className="px-3 py-2 text-right">
                         {fundDetail.commitment_total ? `${(((call.total_amount || 0) / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
                       </td>
-                      <td className="px-3 py-2 text-gray-500">{call.memo || call.call_type || '-'}</td>
+                      <td className="px-3 py-2 text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{call.memo || call.call_type || '-'}</span>
+                          {call.linked_workflow_instance_id ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate('/workflows', { state: { expandInstanceId: call.linked_workflow_instance_id } })}
+                              className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              {buildLinkedWorkflowLabel(call, fundDetail.name)}
+                              {call.linked_workflow_status
+                                ? ` · ${WORKFLOW_STATUS_LABEL[call.linked_workflow_status] || call.linked_workflow_status}`
+                                : ''}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   <tr className="bg-gray-50 font-semibold">
@@ -1170,13 +1304,29 @@ export default function FundDetailPage() {
               <button onClick={() => setShowCreateLP(v => !v)} className="primary-btn inline-flex items-center gap-1"><Plus size={12} /> LP 추가</button>
             </div>
 
-            {showCreateLP && <div className="mb-2"><LPForm initial={EMPTY_LP} loading={createLPMut.isPending} onSubmit={data => createLPMut.mutate({ data })} onCancel={() => setShowCreateLP(false)} /></div>}
+            {showCreateLP && (
+              <div className="mb-2">
+                <LPForm
+                  initial={EMPTY_LP}
+                  addressBooks={lpAddressBooks}
+                  loading={createLPMut.isPending}
+                  onSubmit={data => createLPMut.mutate({ data })}
+                  onCancel={() => setShowCreateLP(false)}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               {fundDetail.lps?.length ? fundDetail.lps.map((lp) => (
                 <div key={lp.id} className="border border-gray-200 rounded-lg p-3">
                   {editingLPId === lp.id ? (
-                    <LPForm initial={lp} loading={updateLPMut.isPending} onSubmit={data => updateLPMut.mutate({ lpId: lp.id, data })} onCancel={() => setEditingLPId(null)} />
+                    <LPForm
+                      initial={lp}
+                      addressBooks={lpAddressBooks}
+                      loading={updateLPMut.isPending}
+                      onSubmit={data => updateLPMut.mutate({ lpId: lp.id, data })}
+                      onCancel={() => setEditingLPId(null)}
+                    />
                   ) : (
                     <>
                       <div className="flex items-center justify-between">
@@ -1304,7 +1454,6 @@ export default function FundDetailPage() {
               fund={fundDetail}
               lps={fundDetail.lps ?? []}
               noticePeriods={fundDetail.notice_periods ?? []}
-              existingCalls={sortedCapitalCalls}
               initialPaidIn={initialPaidIn}
               onClose={() => setShowCapCallWizard(false)}
             />

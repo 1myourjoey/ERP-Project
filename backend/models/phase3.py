@@ -11,6 +11,11 @@ class CapitalCall(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fund_id = Column(Integer, ForeignKey("funds.id"), nullable=False)
+    linked_workflow_instance_id = Column(
+        Integer,
+        ForeignKey("workflow_instances.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     call_date = Column(Date, nullable=False)
     call_type = Column(String, nullable=False)
     total_amount = Column(Float, nullable=False, default=0)
@@ -19,6 +24,7 @@ class CapitalCall(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     items = relationship("CapitalCallItem", back_populates="capital_call", cascade="all, delete-orphan")
+    linked_workflow_instance = relationship("WorkflowInstance")
 
 
 class CapitalCallItem(Base):

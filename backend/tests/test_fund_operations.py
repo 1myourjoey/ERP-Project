@@ -154,6 +154,76 @@ class TestCapitalCalls:
         assert target["is_fully_paid"] is False
         assert isinstance(target["is_overdue_unpaid"], bool)
 
+    def test_capital_call_batch_creates_korean_linked_workflow_name(self, client, sample_fund_with_lps):
+        fund_id = sample_fund_with_lps["id"]
+        lps = client.get(f"/api/funds/{fund_id}/lps").json()
+        assert lps
+        target_lp_id = lps[0]["id"]
+
+        response = client.post(
+            "/api/capital-calls/batch",
+            json={
+                "fund_id": fund_id,
+                "call_date": "2026-04-01",
+                "call_type": "additional",
+                "total_amount": 100_000_000,
+                "request_percent": 1.0,
+                "memo": "자동 생성 이름 확인",
+                "items": [
+                    {
+                        "lp_id": target_lp_id,
+                        "amount": 100_000_000,
+                        "paid": False,
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 201
+        row = response.json()
+        assert row["linked_workflow_instance_id"] is not None
+        assert row["linked_workflow_name"] is not None
+        assert f"[{sample_fund_with_lps['name']}]" in row["linked_workflow_name"]
+        assert "출자요청(Capital Call) 결재" in row["linked_workflow_name"]
+        assert "Capital Call -" not in row["linked_workflow_name"]
+
+
+class TestLPTransfers:
+    def test_lp_transfer_creates_korean_workflow_name_and_numbered_steps(self, client, sample_fund_with_lps):
+        fund_id = sample_fund_with_lps["id"]
+        lps = client.get(f"/api/funds/{fund_id}/lps").json()
+        assert len(lps) >= 2
+        from_lp = lps[0]
+        to_lp = lps[1]
+        transfer_amount = min(
+            int(from_lp.get("commitment") or 0),
+            50_000_000,
+        )
+        assert transfer_amount > 0
+
+        response = client.post(
+            f"/api/funds/{fund_id}/lp-transfers",
+            json={
+                "from_lp_id": from_lp["id"],
+                "to_lp_id": to_lp["id"],
+                "transfer_amount": transfer_amount,
+                "transfer_date": "2026-04-15",
+                "notes": "자동 이름 테스트",
+            },
+        )
+        assert response.status_code == 201
+        transfer = response.json()
+        assert transfer["workflow_instance_id"] is not None
+
+        wf_response = client.get(f"/api/workflow-instances/{transfer['workflow_instance_id']}")
+        assert wf_response.status_code == 200
+        instance = wf_response.json()
+        assert f"[{sample_fund_with_lps['name']}]" in instance["name"]
+        assert "LP 양수양도" in instance["name"]
+        assert "승인 단계" in instance["name"]
+        assert "→" in instance["name"]
+        assert instance["step_instances"]
+        assert any(step["step_name"].startswith("1. ") for step in instance["step_instances"])
+
 
 class TestDistributions:
     def test_distribution_and_items_crud(self, client, sample_fund_with_lps):

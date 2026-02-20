@@ -37,6 +37,22 @@ LP_TRANSFER_STEPS = [
 ]
 
 
+def _format_numbered_step_name(order: int, step_name: str) -> str:
+    normalized = (step_name or "").strip()
+    if normalized.startswith(f"{order}."):
+        return normalized
+    return f"{order}. {normalized}"
+
+
+def _build_transfer_workflow_name(
+    *,
+    fund_name: str,
+    from_lp_name: str,
+    to_lp_name: str,
+) -> str:
+    return f"[{fund_name}] LP 양수양도 ({from_lp_name} → {to_lp_name}) 승인 단계"
+
+
 def _ensure_fund(db: Session, fund_id: int) -> Fund:
     fund = db.get(Fund, fund_id)
     if not fund:
@@ -77,6 +93,16 @@ def _ensure_lp_transfer_workflow_template(db: Session) -> Workflow:
         .first()
     )
     if existing:
+        changed = False
+        ordered_steps = sorted(existing.steps, key=lambda row: ((row.order or 10**9), (row.id or 0)))
+        for idx, step in enumerate(ordered_steps, start=1):
+            order = int(step.order or idx)
+            expected_name = _format_numbered_step_name(order, step.name or "")
+            if step.name != expected_name:
+                step.name = expected_name
+                changed = True
+        if changed:
+            db.flush()
         return existing
 
     workflow = Workflow(
@@ -89,7 +115,7 @@ def _ensure_lp_transfer_workflow_template(db: Session) -> Workflow:
         workflow.steps.append(
             WorkflowStep(
                 order=order,
-                name=name,
+                name=_format_numbered_step_name(order, name),
                 timing=f"D{offset_days:+d}" if offset_days != 0 else "D-day",
                 timing_offset_days=offset_days,
                 estimated_time="1h",
@@ -156,10 +182,17 @@ def create_lp_transfer(
 
     template = _ensure_lp_transfer_workflow_template(db)
     trigger_date = data.transfer_date or date.today()
+    to_lp_name = (
+        (to_lp.name if to_lp else data.to_lp_name) or "신규 LP"
+    ).strip()
     instance = instantiate_workflow(
         db=db,
         workflow=template,
-        name=f"{fund.name} LP 양수양도 - {from_lp.name}",
+        name=_build_transfer_workflow_name(
+            fund_name=fund.name,
+            from_lp_name=from_lp.name,
+            to_lp_name=to_lp_name,
+        ),
         trigger_date=trigger_date,
         memo=f"lp_transfer_id={transfer.id}",
         fund_id=fund_id,

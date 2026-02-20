@@ -1,4 +1,9 @@
-from datetime import date
+from datetime import date, datetime
+
+from models.task import Task
+from models.workflow import Workflow, WorkflowStep
+from models.workflow_instance import WorkflowInstance
+from services.workflow_service import instantiate_workflow
 
 
 class TestFundsCRUD:
@@ -127,6 +132,146 @@ class TestFundLPs:
             json={"name": "누락"},
         )
         assert response.status_code == 422
+
+
+class TestFundDeleteLifecycle:
+    def test_delete_fund_keeps_completed_history_and_removes_in_progress_data(
+        self,
+        client,
+        db_session,
+        sample_fund,
+    ):
+        fund_id = sample_fund["id"]
+
+        workflow = Workflow(
+            name="조합 삭제 라이프사이클 테스트",
+            category="테스트",
+            trigger_description="삭제 시나리오",
+            total_duration="2일",
+        )
+        workflow.steps = [
+            WorkflowStep(
+                order=1,
+                name="1. 검토",
+                timing="D-day",
+                timing_offset_days=0,
+                estimated_time="1h",
+                quadrant="Q1",
+            ),
+            WorkflowStep(
+                order=2,
+                name="2. 확인",
+                timing="D+1",
+                timing_offset_days=1,
+                estimated_time="1h",
+                quadrant="Q1",
+            ),
+        ]
+        db_session.add(workflow)
+        db_session.commit()
+        db_session.refresh(workflow)
+
+        active_instance = instantiate_workflow(
+            db_session,
+            workflow,
+            name="[테스트] 진행 워크플로",
+            trigger_date=date(2025, 10, 24),
+            fund_id=fund_id,
+            auto_commit=False,
+        )
+        completed_instance = instantiate_workflow(
+            db_session,
+            workflow,
+            name="[테스트] 완료 워크플로",
+            trigger_date=date(2025, 10, 24),
+            fund_id=fund_id,
+            auto_commit=False,
+        )
+        db_session.flush()
+
+        active_steps = sorted(
+            active_instance.step_instances,
+            key=lambda row: ((row.step.order if row.step else 10**9), (row.id or 0)),
+        )
+        assert len(active_steps) >= 2
+
+        active_first_step = active_steps[0]
+        active_second_step = active_steps[1]
+        active_first_task_id = active_first_step.task_id
+        active_second_task_id = active_second_step.task_id
+        assert active_first_task_id is not None
+        assert active_second_task_id is not None
+
+        active_first_task = db_session.get(Task, active_first_task_id)
+        active_second_task = db_session.get(Task, active_second_task_id)
+        assert active_first_task is not None
+        assert active_second_task is not None
+
+        active_first_step.status = "completed"
+        active_first_task.status = "completed"
+        active_first_task.completed_at = datetime.utcnow()
+        active_second_step.status = "in_progress"
+        active_second_task.status = "in_progress"
+
+        completed_workflow_task_id = None
+        for step in completed_instance.step_instances:
+            step.status = "completed"
+            if step.task_id is None:
+                continue
+            task = db_session.get(Task, step.task_id)
+            if task:
+                task.status = "completed"
+                task.completed_at = datetime.utcnow()
+                completed_workflow_task_id = completed_workflow_task_id or task.id
+        completed_instance.status = "completed"
+        completed_instance.completed_at = datetime.utcnow()
+        assert completed_workflow_task_id is not None
+
+        standalone_completed = Task(
+            title="완료 단독 업무",
+            quadrant="Q1",
+            status="completed",
+            fund_id=fund_id,
+        )
+        standalone_pending = Task(
+            title="미완료 단독 업무",
+            quadrant="Q1",
+            status="pending",
+            fund_id=fund_id,
+        )
+        db_session.add_all([standalone_completed, standalone_pending])
+        db_session.commit()
+
+        active_instance_id = active_instance.id
+        completed_instance_id = completed_instance.id
+        standalone_completed_id = standalone_completed.id
+        standalone_pending_id = standalone_pending.id
+
+        response = client.delete(f"/api/funds/{fund_id}")
+        assert response.status_code == 204
+
+        assert db_session.get(WorkflowInstance, active_instance_id) is None
+
+        kept_completed_instance = db_session.get(WorkflowInstance, completed_instance_id)
+        assert kept_completed_instance is not None
+        assert kept_completed_instance.fund_id is None
+
+        kept_active_completed_task = db_session.get(Task, active_first_task_id)
+        assert kept_active_completed_task is not None
+        assert kept_active_completed_task.fund_id is None
+        assert kept_active_completed_task.workflow_instance_id is None
+
+        assert db_session.get(Task, active_second_task_id) is None
+
+        kept_completed_workflow_task = db_session.get(Task, completed_workflow_task_id)
+        assert kept_completed_workflow_task is not None
+        assert kept_completed_workflow_task.fund_id is None
+        assert kept_completed_workflow_task.workflow_instance_id == completed_instance_id
+
+        kept_standalone_completed = db_session.get(Task, standalone_completed_id)
+        assert kept_standalone_completed is not None
+        assert kept_standalone_completed.fund_id is None
+        assert db_session.get(Task, standalone_pending_id) is None
 
 
 class TestFundNoticeAndTerms:

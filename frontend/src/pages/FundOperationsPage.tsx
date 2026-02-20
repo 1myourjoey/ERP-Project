@@ -111,6 +111,24 @@ const LP_TRANSFER_STATUS_LABEL: Record<string, string> = {
   cancelled: '취소',
 }
 
+const WORKFLOW_STATUS_LABEL: Record<string, string> = {
+  active: '진행 중',
+  completed: '완료',
+  cancelled: '취소',
+}
+
+function buildLinkedCapitalWorkflowLabel(call: CapitalCall, fundName: string): string {
+  const workflowName = call.linked_workflow_name?.trim()
+  if (workflowName) return workflowName
+  return `[${fundName}] 출자요청 워크플로 진행건`
+}
+
+function buildTransferWorkflowLabel(transfer: LPTransfer, fundName: string): string {
+  const fromName = transfer.from_lp_name || String(transfer.from_lp_id)
+  const toName = transfer.to_lp_name || (transfer.to_lp_id ? String(transfer.to_lp_id) : '신규 LP')
+  return `[${fundName}] LP 양수양도 (${fromName} → ${toName}) 승인 단계`
+}
+
 const EMPTY_LP_FORM: LPInput = {
   name: '',
   type: '기관투자자',
@@ -402,6 +420,27 @@ export default function FundOperationsPage() {
     enabled: !!selectedFundId,
   })
 
+  const invalidateFundCapitalQueries = (fundTargetId: number | null, callTargetId?: number | null) => {
+    queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+    queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
+    queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    queryClient.invalidateQueries({ queryKey: ['funds'] })
+    queryClient.invalidateQueries({ queryKey: ['fund'] })
+    if (fundTargetId) {
+      queryClient.invalidateQueries({ queryKey: ['capitalCalls', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['fundDetails', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['fundLPs', fundTargetId] })
+      queryClient.invalidateQueries({ queryKey: ['fundPerformance', fundTargetId] })
+    }
+    if (callTargetId) {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callTargetId] })
+    }
+  }
+
   const lpCommitmentSum = useMemo(() => lps.reduce((sum, lp) => sum + Number(lp.commitment ?? 0), 0), [lps])
   const lpPaidInSum = useMemo(() => lps.reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0), [lps])
   const commitmentTotal = Number(fundDetail?.commitment_total ?? 0)
@@ -424,6 +463,41 @@ export default function FundOperationsPage() {
     return map
   }, [callItemsByCallId, calls])
 
+  const paidInByLpFromCalls = useMemo(() => {
+    const map = new Map<number, number>()
+    Object.values(callItemsByCallId).forEach((items) => {
+      items.forEach((item) => {
+        if (!item.paid) return
+        const current = map.get(item.lp_id) ?? 0
+        map.set(item.lp_id, current + Number(item.amount || 0))
+      })
+    })
+    return map
+  }, [callItemsByCallId])
+
+  const remainingByLp = useMemo(() => {
+    const map = new Map<number, number>()
+    lps.forEach((lp) => {
+      const commitment = Number(lp.commitment ?? 0)
+      const paidFromCalls = paidInByLpFromCalls.get(lp.id)
+      const paidIn = paidFromCalls != null ? paidFromCalls : Number(lp.paid_in ?? 0)
+      map.set(lp.id, Math.max(0, commitment - paidIn))
+    })
+    return map
+  }, [lps, paidInByLpFromCalls])
+
+  const selectedNewCallLp = useMemo(
+    () => lps.find((lp) => lp.id === newCallItem.lp_id) ?? null,
+    [lps, newCallItem.lp_id],
+  )
+  const newCallItemRemaining = useMemo(() => {
+    if (!selectedNewCallLp) return 0
+    return Number(remainingByLp.get(selectedNewCallLp.id) ?? 0)
+  }, [selectedNewCallLp, remainingByLp])
+  const newCallItemAmount = Number(newCallItem.amount || 0)
+  const newCallItemOverLimit = !!selectedNewCallLp && newCallItemAmount > newCallItemRemaining
+  const canCreateCallItem = !!newCallItem.lp_id && newCallItemAmount > 0 && !newCallItemOverLimit
+
   const createCallMut = useMutation({
     mutationFn: (data: CapitalCallInput) => createCapitalCall(data.fund_id, {
       call_date: data.call_date,
@@ -433,44 +507,45 @@ export default function FundOperationsPage() {
       memo: data.memo,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+      invalidateFundCapitalQueries(selectedFundId)
       addToast('success', '출자 요청을 등록했습니다.')
     },
   })
-  const updateCallMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<CapitalCallInput> }) => updateCapitalCall(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); queryClient.invalidateQueries({ queryKey: ['fundPerformance'] }); setEditingCallId(null); setEditCall(null); addToast('success', '출자 요청을 수정했습니다.') } })
-  const deleteCallMut = useMutation({ mutationFn: (id: number) => deleteCapitalCall(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['capitalCalls', selectedFundId] }); addToast('success', '출자 요청을 삭제했습니다.') } })
+  const updateCallMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CapitalCallInput> }) => updateCapitalCall(id, data),
+    onSuccess: () => {
+      invalidateFundCapitalQueries(selectedFundId)
+      setEditingCallId(null)
+      setEditCall(null)
+      addToast('success', '출자 요청을 수정했습니다.')
+    },
+  })
+  const deleteCallMut = useMutation({
+    mutationFn: (id: number) => deleteCapitalCall(id),
+    onSuccess: () => {
+      invalidateFundCapitalQueries(selectedFundId)
+      addToast('success', '출자 요청을 삭제했습니다.')
+    },
+  })
   const createCallItemMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CapitalCallItemInput }) => createCapitalCallItem(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    onSuccess: (_data, variables) => {
+      invalidateFundCapitalQueries(selectedFundId, variables.id)
       addToast('success', 'LP 항목을 추가했습니다.')
     },
   })
   const deleteCallItemMut = useMutation({
     mutationFn: ({ callId, itemId }: { callId: number; itemId: number }) => deleteCapitalCallItem(callId, itemId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    onSuccess: (_data, variables) => {
+      invalidateFundCapitalQueries(selectedFundId, variables.callId)
       addToast('success', 'LP 항목을 삭제했습니다.')
     },
   })
   const updateCallItemMut = useMutation({
     mutationFn: ({ callId, itemId, data }: { callId: number; itemId: number; data: Partial<CapitalCallItemInput> }) =>
       updateCapitalCallItem(callId, itemId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems', callExpandedId] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', selectedFundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
+    onSuccess: (_data, variables) => {
+      invalidateFundCapitalQueries(selectedFundId, variables.callId)
       setEditingCallItemId(null)
       setEditCallItem(null)
       addToast('success', 'LP 항목을 수정했습니다.')
@@ -866,7 +941,11 @@ export default function FundOperationsPage() {
                 <div key={transfer.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2 text-xs">
                   <div className="min-w-0">
                     <p className="truncate text-gray-700">{transfer.from_lp_name || transfer.from_lp_id} → {transfer.to_lp_name || transfer.to_lp_id || '신규 LP'} | {formatKRW(transfer.transfer_amount)}</p>
-                    <p className="text-gray-500">{transfer.transfer_date || '-'} | {transfer.workflow_instance_id ? `WF #${transfer.workflow_instance_id}` : '워크플로 미연결'}</p>
+                    <p className="text-gray-500">
+                      {transfer.transfer_date || '-'} | {transfer.workflow_instance_id
+                        ? buildTransferWorkflowLabel(transfer, fundDetail?.name || '조합')
+                        : '워크플로 미연결'}
+                    </p>
                   </div>
                   <div className="ml-2 flex items-center gap-1">
                     <span className={`${
@@ -939,10 +1018,24 @@ export default function FundOperationsPage() {
           {calls?.map((row) => (
             <div key={row.id} className="rounded border border-gray-200 p-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-gray-800">
-                  {toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}
-                  {row.request_percent != null ? ` | ${row.request_percent}%` : ''}
-                </p>
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-800">
+                    {toDate(row.call_date)} | {labelCallType(row.call_type)} | {formatKRW(row.total_amount)}
+                    {row.request_percent != null ? ` | ${row.request_percent}%` : ''}
+                  </p>
+                  {row.linked_workflow_instance_id ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/workflows', { state: { expandInstanceId: row.linked_workflow_instance_id } })}
+                      className="mt-1 inline-flex max-w-full items-center truncate rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                      {buildLinkedCapitalWorkflowLabel(row, fundDetail?.name || '조합')}
+                      {row.linked_workflow_status
+                        ? ` · ${WORKFLOW_STATUS_LABEL[row.linked_workflow_status] || row.linked_workflow_status}`
+                        : ''}
+                    </button>
+                  ) : null}
+                </div>
                 <div className="flex gap-1">
                   <button onClick={() => setCallExpandedId(callExpandedId === row.id ? null : row.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 내역</button>
                   <button onClick={() => toggleCallEdit(row)} className="secondary-btn">수정</button>
@@ -1004,6 +1097,7 @@ export default function FundOperationsPage() {
                   <CapitalCallDetail
                     capitalCallId={row.id}
                     commitmentTotal={Number(fundDetail?.commitment_total ?? 0)}
+                    fundId={selectedFundId ?? undefined}
                     editable={true}
                   />
                   <div className="border-t border-gray-200 pt-2">
@@ -1019,7 +1113,16 @@ export default function FundOperationsPage() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">출자금액</label>
-                      <input type="number" value={newCallItem.amount || 0} onChange={(e) => setNewCallItem((p) => ({ ...p, amount: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" />
+                      <input
+                        type="number"
+                        min={0}
+                        max={newCallItemRemaining}
+                        value={newCallItem.amount || 0}
+                        onChange={(e) => setNewCallItem((p) => ({ ...p, amount: Number(e.target.value || 0) }))}
+                        className={`w-full rounded border px-2 py-1 text-sm ${newCallItemOverLimit ? 'border-red-500 bg-red-50' : ''}`}
+                      />
+                      <p className="mt-1 text-[10px] text-gray-500">최대 {formatKRW(newCallItemRemaining)}</p>
+                      {newCallItemOverLimit ? <p className="text-[10px] text-red-600">미납액을 초과한 금액입니다.</p> : null}
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">납입 상태</label>
@@ -1030,40 +1133,72 @@ export default function FundOperationsPage() {
                       <input type="date" value={newCallItem.paid_date || ''} onChange={(e) => setNewCallItem((p) => ({ ...p, paid_date: e.target.value || null }))} className="w-full rounded border px-2 py-1 text-sm" />
                     </div>
                     <div className="flex items-end">
-                      <button onClick={() => newCallItem.lp_id && createCallItemMut.mutate({ id: row.id, data: newCallItem })} className="primary-btn">항목 추가</button>
+                      <button
+                        onClick={() => canCreateCallItem && createCallItemMut.mutate({ id: row.id, data: newCallItem })}
+                        disabled={!canCreateCallItem}
+                        className="primary-btn disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        항목 추가
+                      </button>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    {callItems?.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
-                        {editingCallItemId === item.id && editCallItem ? (
-                          <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-5">
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">출자금액</label>
-                              <input type="number" value={editCallItem.amount} onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                    {callItems?.map((item) => {
+                      const editableMaxAmount = Number(remainingByLp.get(item.lp_id) ?? 0) + (item.paid ? Number(item.amount || 0) : 0)
+                      const isEditAmountOverLimit = editingCallItemId === item.id
+                        && !!editCallItem
+                        && Number(editCallItem.amount || 0) > editableMaxAmount
+                      const canSaveEdit = editingCallItemId === item.id
+                        && !!editCallItem
+                        && Number(editCallItem.amount || 0) > 0
+                        && !isEditAmountOverLimit
+
+                      return (
+                        <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
+                          {editingCallItemId === item.id && editCallItem ? (
+                            <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-5">
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-600">출자금액</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={editableMaxAmount}
+                                  value={editCallItem.amount}
+                                  onChange={(e) => setEditCallItem((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))}
+                                  className={`w-full rounded border px-2 py-1 text-sm ${isEditAmountOverLimit ? 'border-red-500 bg-red-50' : ''}`}
+                                />
+                                <p className="mt-1 text-[10px] text-gray-500">최대 {formatKRW(editableMaxAmount)}</p>
+                                {isEditAmountOverLimit ? <p className="text-[10px] text-red-600">미납액을 초과한 금액입니다.</p> : null}
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-600">납입 상태</label>
+                                <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="w-full rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
+                                <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="w-full rounded border px-2 py-1 text-sm" />
+                              </div>
+                              <button
+                                onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })}
+                                disabled={!canSaveEdit}
+                                className="primary-btn disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                저장
+                              </button>
+                              <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="secondary-btn">취소</button>
                             </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">납입 상태</label>
-                              <select value={editCallItem.paid ? '1' : '0'} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid: e.target.value === '1' } : p))} className="w-full rounded border px-2 py-1 text-sm"><option value="0">미납</option><option value="1">납입</option></select>
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
-                              <input type="date" value={editCallItem.paid_date || ''} onChange={(e) => setEditCallItem((p) => (p ? { ...p, paid_date: e.target.value || null } : p))} className="w-full rounded border px-2 py-1 text-sm" />
-                            </div>
-                            <button onClick={() => updateCallItemMut.mutate({ callId: row.id, itemId: item.id, data: { amount: editCallItem.amount, paid: editCallItem.paid, paid_date: editCallItem.paid_date } })} className="primary-btn">저장</button>
-                            <button onClick={() => { setEditingCallItemId(null); setEditCallItem(null) }} className="secondary-btn">취소</button>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | {formatKRW(item.amount)} | {item.paid ? '납입' : '미납'} | {toDate(item.paid_date)}</p>
-                            <div className="flex gap-1">
-                              <button onClick={() => toggleCallItemEdit(item)} className="secondary-btn">수정</button>
-                              <button onClick={() => deleteCallItemMut.mutate({ callId: row.id, itemId: item.id })} className="danger-btn">삭제</button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-600">LP {item.lp_name || item.lp_id} | {formatKRW(item.amount)} | {item.paid ? '납입' : '미납'} | {toDate(item.paid_date)}</p>
+                              <div className="flex gap-1">
+                                <button onClick={() => toggleCallItemEdit(item)} className="secondary-btn">수정</button>
+                                <button onClick={() => deleteCallItemMut.mutate({ callId: row.id, itemId: item.id })} className="danger-btn">삭제</button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
