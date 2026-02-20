@@ -114,6 +114,7 @@ function normalizeFundPayload(form: FundInput): FundInput {
     trustee: form.trustee?.trim() || null,
     commitment_total: form.commitment_total ?? null,
     gp_commitment: form.gp_commitment ?? null,
+    gp_commitment_amount: form.gp_commitment ?? null,
     contribution_type: form.contribution_type?.trim() || null,
     mgmt_fee_rate: form.mgmt_fee_rate ?? null,
     performance_fee_rate: form.performance_fee_rate ?? null,
@@ -503,7 +504,14 @@ export default function FundsPage() {
   const createFundMut = useMutation({
     mutationFn: async ({ fund, lps }: { fund: FundInput; lps: LPInput[] }) => {
       const created = await createFund(fund)
-      for (const lp of lps) {
+      const normalizedGpName = (fund.gp || '').trim()
+      const lpsToCreate = lps.filter((lp) => {
+        const lpName = (lp.name || '').trim()
+        const lpType = (lp.type || '').trim().toUpperCase()
+        if (!normalizedGpName) return true
+        return !(lpType === 'GP' && lpName === normalizedGpName)
+      })
+      for (const lp of lpsToCreate) {
         if (lp.name.trim()) {
           await createFundLP(created.id, lp)
         }

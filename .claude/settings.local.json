@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir /s /b /ad \"c:\\\\Users\\\\Trigger\\\\Desktop\\\\ERP Project\")"
+      "Bash(dir /s /b /ad \"c:\\\\Users\\\\Trigger\\\\Desktop\\\\ERP Project\")",
+      "WebFetch(domain:guide.vcworks.kr)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
     ]
   }
 }

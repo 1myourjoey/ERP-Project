@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { FundInput } from '../../lib/api'
 
 export const FUND_TYPE_OPTIONS = [
@@ -30,10 +31,20 @@ type FundCoreFieldsProps = {
   gpOptions?: GPOption[]
 }
 
+function parseNumericInput(value: string): number | null {
+  const normalized = value.replace(/,/g, '').trim()
+  if (!normalized) return null
+  const parsed = Number.parseFloat(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return parsed
+}
+
 export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundCoreFieldsProps) {
   const update = <K extends keyof FundInput>(key: K, value: FundInput[K]) => {
     onChange({ ...form, [key]: value })
   }
+  const lastAutoGpCommitmentRef = useRef<number | null>(form.gp_commitment ?? null)
+  const gpCommitmentOverriddenRef = useRef(false)
 
   const hasGpOptions = gpOptions.length > 0
 
@@ -181,7 +192,27 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <input
           type="number"
           value={form.commitment_total ?? ''}
-          onChange={(e) => update('commitment_total', e.target.value ? Number(e.target.value) : null)}
+          onChange={(e) => {
+            const nextCommitment = parseNumericInput(e.target.value)
+            const autoGpCommitment = nextCommitment == null ? null : Math.round(nextCommitment * 0.01)
+            const currentGpCommitment = form.gp_commitment ?? null
+            const lastAutoGpCommitment = lastAutoGpCommitmentRef.current
+            const shouldAutoSyncGp =
+              !gpCommitmentOverriddenRef.current ||
+              currentGpCommitment == null ||
+              (lastAutoGpCommitment != null && currentGpCommitment === lastAutoGpCommitment)
+
+            const nextForm: FundInput = {
+              ...form,
+              commitment_total: nextCommitment,
+            }
+            if (shouldAutoSyncGp) {
+              nextForm.gp_commitment = autoGpCommitment
+              gpCommitmentOverriddenRef.current = false
+            }
+            lastAutoGpCommitmentRef.current = autoGpCommitment
+            onChange(nextForm)
+          }}
           placeholder="숫자만 입력"
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
@@ -191,7 +222,15 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <input
           type="number"
           value={form.gp_commitment ?? ''}
-          onChange={(e) => update('gp_commitment', e.target.value ? Number(e.target.value) : null)}
+          onChange={(e) => {
+            const nextGpCommitment = parseNumericInput(e.target.value)
+            const autoGpCommitment = lastAutoGpCommitmentRef.current
+            gpCommitmentOverriddenRef.current =
+              autoGpCommitment == null
+                ? nextGpCommitment != null
+                : nextGpCommitment !== autoGpCommitment
+            update('gp_commitment', nextGpCommitment)
+          }}
           placeholder="숫자만 입력"
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
