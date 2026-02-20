@@ -14,6 +14,7 @@ import {
   fetchFund,
   fetchInvestments,
   fetchLPAddressBooks,
+  fetchWorkflows,
   fetchWorkflowInstances,
   updateFund,
   updateFundKeyTerms,
@@ -31,6 +32,7 @@ import {
   type LPInput,
   type NoticeDeadlineResult,
   type WorkflowInstance,
+  type WorkflowListItem,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -208,6 +210,13 @@ function isFormingStatus(value: string | null | undefined): boolean {
 
 function normalizeFormationWorkflowKey(value: string | null | undefined): string {
   return (value || '').replace(/\s+/g, '').toLowerCase()
+}
+
+function extractFormationSlotFromMemo(memo: string | null | undefined): string | null {
+  if (!memo) return null
+  const matched = memo.match(/formation_slot\s*=\s*([^\s]+)/i)
+  if (!matched) return null
+  return normalizeFormationWorkflowKey(matched[1])
 }
 
 function FundForm({
@@ -762,6 +771,8 @@ export default function FundDetailPage() {
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
   const [formationWorkflowTriggerDate, setFormationWorkflowTriggerDate] = useState('')
+  const [formationTemplateModal, setFormationTemplateModal] = useState<{ slotKey: string; slotLabel: string } | null>(null)
+  const [selectedFormationTemplateId, setSelectedFormationTemplateId] = useState<number | ''>('')
 
   const { data: fundDetail, isLoading } = useQuery<Fund>({
     queryKey: ['fund', fundId],
@@ -777,6 +788,12 @@ export default function FundDetailPage() {
     queryKey: ['workflowInstances', { status: 'all', fund_id: fundId }],
     queryFn: () => fetchWorkflowInstances({ status: 'all', fund_id: fundId }),
     enabled: Number.isFinite(fundId) && fundId > 0 && isFormingFund,
+  })
+
+  const { data: workflowTemplates = [] } = useQuery<WorkflowListItem[]>({
+    queryKey: ['workflows'],
+    queryFn: fetchWorkflows,
+    enabled: isFormingFund,
   })
 
   const { data: investments } = useQuery<FundInvestmentListItem[]>({
@@ -819,6 +836,8 @@ export default function FundDetailPage() {
 
   useEffect(() => {
     setFormationWorkflowTriggerDate('')
+    setFormationTemplateModal(null)
+    setSelectedFormationTemplateId('')
   }, [fundId])
 
   useEffect(() => {
@@ -914,7 +933,10 @@ export default function FundDetailPage() {
   }, [fundDetail?.key_terms])
 
   const formationWorkflowStateMap = useMemo(() => {
-    const targetMap = new Map(
+    const workflowNameMap = new Map(
+      FORMATION_WORKFLOW_BUTTONS.map((button) => [normalizeFormationWorkflowKey(button.key), button.key]),
+    )
+    const slotMap = new Map(
       FORMATION_WORKFLOW_BUTTONS.map((button) => [normalizeFormationWorkflowKey(button.key), button.key]),
     )
     const stateMap = new Map<string, WorkflowInstance>()
@@ -924,7 +946,10 @@ export default function FundDetailPage() {
       if (statusKey === 'cancelled') {
         continue
       }
-      const targetKey = targetMap.get(normalizeFormationWorkflowKey(instance.workflow_name))
+      const slotToken = extractFormationSlotFromMemo(instance.memo)
+      const targetKey =
+        (slotToken ? slotMap.get(slotToken) : undefined) ||
+        workflowNameMap.get(normalizeFormationWorkflowKey(instance.workflow_name))
       if (!targetKey || stateMap.has(targetKey)) {
         continue
       }
@@ -933,6 +958,17 @@ export default function FundDetailPage() {
 
     return stateMap
   }, [fundWorkflowInstances])
+
+  const workflowTemplateOptions = useMemo(
+    () =>
+      [...workflowTemplates].sort((a, b) => {
+        const categoryA = (a.category || '').trim()
+        const categoryB = (b.category || '').trim()
+        if (categoryA !== categoryB) return categoryA.localeCompare(categoryB, 'ko')
+        return a.name.localeCompare(b.name, 'ko')
+      }),
+    [workflowTemplates],
+  )
 
   const updateFundMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<FundInput> }) => updateFund(targetId, data),
@@ -1021,14 +1057,25 @@ export default function FundDetailPage() {
   })
 
   const addFormationWorkflowMut = useMutation({
-    mutationFn: ({ templateName, triggerDate }: { templateName: string; triggerDate: string }) =>
+    mutationFn: ({
+      templateName,
+      triggerDate,
+      templateId,
+    }: {
+      templateName: string
+      triggerDate: string
+      templateId: number
+    }) =>
       addFundFormationWorkflow(fundId, {
         template_category_or_name: templateName,
+        template_id: templateId,
         trigger_date: triggerDate,
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
       queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      setFormationTemplateModal(null)
+      setSelectedFormationTemplateId('')
       addToast('success', `${data.workflow_name} 워크플로를 추가했습니다.`)
     },
     onError: (error: unknown) => {
@@ -1045,15 +1092,36 @@ export default function FundDetailPage() {
     },
   })
 
-  const handleAddFormationWorkflow = (templateName: string) => {
+  const openFormationTemplateModal = (slotKey: string, slotLabel: string) => {
+    const recommended = workflowTemplateOptions.find(
+      (template) => normalizeFormationWorkflowKey(template.name) === normalizeFormationWorkflowKey(slotKey),
+    )
+    setSelectedFormationTemplateId(recommended?.id || '')
+    setFormationTemplateModal({ slotKey, slotLabel })
+  }
+
+  const handleAddFormationWorkflow = () => {
+    if (!formationTemplateModal) return
     if (!formationWorkflowTriggerDate) {
       addToast('error', '기준일을 먼저 입력해주세요.')
       return
     }
-    if (!confirm(`"${templateName}" 워크플로를 기준일(${formationWorkflowTriggerDate})로 생성하시겠습니까?`)) {
+    if (!selectedFormationTemplateId) {
+      addToast('error', '템플릿을 선택해주세요.')
       return
     }
-    addFormationWorkflowMut.mutate({ templateName, triggerDate: formationWorkflowTriggerDate })
+    if (
+      !confirm(
+        `"${formationTemplateModal.slotLabel}" 워크플로를 기준일(${formationWorkflowTriggerDate})로 생성하시겠습니까?`,
+      )
+    ) {
+      return
+    }
+    addFormationWorkflowMut.mutate({
+      templateName: formationTemplateModal.slotKey,
+      triggerDate: formationWorkflowTriggerDate,
+      templateId: Number(selectedFormationTemplateId),
+    })
   }
 
   if (!Number.isFinite(fundId) || fundId <= 0) {
@@ -1159,7 +1227,7 @@ export default function FundDetailPage() {
                       key={button.key}
                       type="button"
                       disabled={disabled}
-                      onClick={() => handleAddFormationWorkflow(button.key)}
+                      onClick={() => openFormationTemplateModal(button.key, button.label)}
                       title={
                         isAdded
                           ? '이미 추가된 워크플로입니다.'
@@ -1181,6 +1249,75 @@ export default function FundDetailPage() {
                     </button>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {formationTemplateModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={() => {
+                if (addFormationWorkflowMut.isPending) return
+                setFormationTemplateModal(null)
+              }}
+            >
+              <div
+                className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h3 className="text-base font-semibold text-gray-900">템플릿 선택</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  [{formationTemplateModal.slotLabel}]에 매핑할 템플릿을 선택하세요.
+                </p>
+
+                <div className="mt-4 space-y-1">
+                  <label className="block text-xs font-medium text-gray-600">워크플로 템플릿</label>
+                  <select
+                    value={selectedFormationTemplateId}
+                    onChange={(event) => {
+                      const next = event.target.value
+                      setSelectedFormationTemplateId(next ? Number(next) : '')
+                    }}
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  >
+                    <option value="">템플릿을 선택하세요</option>
+                    {workflowTemplateOptions.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                        {template.category ? ` (${template.category})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {formationTemplateModal.slotKey === '결성총회 개최' && (
+                  <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    결성총회 관련 템플릿은 내부 단계명에
+                    {' '}
+                    <strong>출자금 납입 확인</strong>
+                    {' '}
+                    등 납입/출자 확인 키워드가 있어야 결성금액 동기화가 정상 작동합니다.
+                  </div>
+                )}
+
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormationTemplateModal(null)}
+                    className="secondary-btn"
+                    disabled={addFormationWorkflowMut.isPending}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddFormationWorkflow}
+                    className="primary-btn"
+                    disabled={addFormationWorkflowMut.isPending || !selectedFormationTemplateId}
+                  >
+                    {addFormationWorkflowMut.isPending ? '추가 중...' : '추가하기'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

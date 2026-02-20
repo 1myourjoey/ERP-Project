@@ -83,6 +83,10 @@ export const cancelWorkflowInstance = (id: number): Promise<WorkflowInstance> =>
 export const deleteWorkflowInstance = (id: number): Promise<void> => api.delete(`/workflow-instances/${id}`).then(() => undefined)
 export const updateWorkflowInstance = (id: number, data: WorkflowInstanceUpdateInput): Promise<WorkflowInstance> => api.put(`/workflow-instances/${id}`, data).then(r => r.data)
 export const undoWorkflowStep = (instanceId: number, stepId: number): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/steps/${stepId}/undo`).then(r => r.data)
+export const swapWorkflowInstanceTemplate = (
+  instanceId: number,
+  data: WorkflowInstanceTemplateSwapInput,
+): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/swap-template`, data).then(r => r.data)
 
 // -- Document Templates --
 export const fetchDocumentTemplates = (category?: string): Promise<DocumentTemplate[]> =>
@@ -614,6 +618,10 @@ export interface WorkflowInstanceUpdateInput {
   memo?: string | null
 }
 
+export interface WorkflowInstanceTemplateSwapInput {
+  template_id: number
+}
+
 export interface WorkflowStepCompleteInput {
   actual_time?: string
   notes?: string
@@ -726,6 +734,7 @@ export interface FundInput {
 
 export interface FundFormationWorkflowAddInput {
   template_category_or_name: string
+  template_id?: number | null
   trigger_date?: string | null
 }
 
@@ -733,6 +742,7 @@ export interface FundFormationWorkflowAddResult {
   instance_id: number
   workflow_id: number
   workflow_name: string
+  formation_slot: string
   instance_name: string
   status: string
   trigger_date: string

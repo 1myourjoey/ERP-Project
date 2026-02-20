@@ -36,6 +36,7 @@ from schemas.workflow import (
     WorkflowInstanceResponse,
     WorkflowStepInstanceResponse,
     WorkflowStepCompleteRequest,
+    WorkflowInstanceSwapTemplateRequest,
     WorkflowStepLPPaidInInput,
 )
 from services.workflow_service import (
@@ -57,6 +58,8 @@ CAPITAL_CALL_ID_PATTERNS = [
     re.compile(r"\[capitalcall\s*:\s*#?(\d+)\]", re.IGNORECASE),
     re.compile(r"capital_call_id\s*[:=]\s*(\d+)", re.IGNORECASE),
 ]
+FORMATION_SLOT_MEMO_PATTERN = re.compile(r"formation_slot\s*=\s*([^\s]+)", re.IGNORECASE)
+TEMPLATE_ID_MEMO_PATTERN = re.compile(r"template_id\s*=\s*(\d+)", re.IGNORECASE)
 FORMATION_LP_PAID_IN_SNAPSHOT_PREFIX = "[system:formation_lp_paid_in_snapshot]"
 PAID_IN_EXCEEDS_COMMITMENT_DETAIL = "paid_in total cannot exceed commitment total"
 
@@ -123,6 +126,38 @@ def _is_formation_paid_in_confirmation_step(step_name: str | None) -> bool:
         for token in ("확인", "confirm", "check")
     )
     return has_paid_token and has_confirm_token
+
+def _extract_formation_slot_token(memo: str | None) -> str | None:
+    if not memo:
+        return None
+    matched = FORMATION_SLOT_MEMO_PATTERN.search(memo)
+    if not matched:
+        return None
+    token = _normalize_keyword(matched.group(1))
+    return token or None
+
+def _is_formation_general_assembly_instance(instance: WorkflowInstance) -> bool:
+    slot_token = _extract_formation_slot_token(instance.memo)
+    if slot_token == _normalize_keyword("결성총회 개최"):
+        return True
+    workflow_name = _normalize_keyword(instance.workflow.name if instance.workflow else None)
+    instance_name = _normalize_keyword(instance.name)
+    return "결성총회" in workflow_name or "결성총회" in instance_name
+
+def _template_supports_formation_paid_in_trigger(template: Workflow) -> bool:
+    for step in template.steps or []:
+        if _is_formation_paid_in_confirmation_step(step.name):
+            return True
+    return False
+
+def _upsert_template_id_in_memo(memo: str | None, template_id: int) -> str:
+    base = (memo or "").strip()
+    token = f"template_id={template_id}"
+    if not base:
+        return token
+    if TEMPLATE_ID_MEMO_PATTERN.search(base):
+        return TEMPLATE_ID_MEMO_PATTERN.sub(token, base, count=1)
+    return f"{base} {token}"
 
 def _snapshot_fund_lp_paid_in(db: Session, fund_id: int) -> dict[int, int]:
     rows = (
@@ -852,6 +887,114 @@ def update_instance(
                     task.title = f"[{data.name}] {task.title[len(old_prefix):]}"
                 if task.status != "completed":
                     task.deadline = datetime.combine(recalculated, time.min)
+
+    db.commit()
+    db.refresh(instance)
+    return _build_instance_response(instance, db)
+
+@router.put("/api/workflow-instances/{instance_id}/swap-template", response_model=WorkflowInstanceResponse)
+@router.put("/api/workflows/{instance_id}/swap-template", response_model=WorkflowInstanceResponse)
+def swap_instance_template(
+    instance_id: int,
+    data: WorkflowInstanceSwapTemplateRequest,
+    db: Session = Depends(get_db),
+):
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if instance.status != "active":
+        raise HTTPException(status_code=400, detail="진행 중 인스턴스만 템플릿을 교체할 수 있습니다")
+
+    template = db.get(Workflow, data.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+
+    ordered_template_steps = sorted(
+        template.steps,
+        key=lambda row: (
+            row.order if row.order is not None else 10**9,
+            row.id or 0,
+        ),
+    )
+    if not ordered_template_steps:
+        raise HTTPException(status_code=400, detail="단계가 없는 템플릿으로는 교체할 수 없습니다")
+
+    completed_count = sum(
+        1
+        for row in instance.step_instances
+        if row.status in ("completed", "skipped")
+    )
+    if completed_count > 0:
+        raise HTTPException(status_code=400, detail="이미 진행된 워크플로는 템플릿 교체를 할 수 없습니다")
+
+    if (
+        _is_formation_general_assembly_instance(instance)
+        and not _template_supports_formation_paid_in_trigger(template)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="결성총회 템플릿에는 '출자금 납입 확인' 등 납입/출자 확인 단계가 필요합니다",
+        )
+
+    handled_task_ids: set[int] = set()
+    for step_instance in list(instance.step_instances):
+        if step_instance.task_id:
+            task = db.get(Task, step_instance.task_id)
+            step_instance.task_id = None
+            if task:
+                if _is_completed_status(task.status):
+                    task.workflow_instance_id = None
+                    task.workflow_step_order = None
+                else:
+                    db.delete(task)
+                handled_task_ids.add(task.id)
+        db.delete(step_instance)
+
+    linked_tasks = db.query(Task).filter(Task.workflow_instance_id == instance_id).all()
+    for task in linked_tasks:
+        if task.id in handled_task_ids:
+            continue
+        if _is_completed_status(task.status):
+            task.workflow_instance_id = None
+            task.workflow_step_order = None
+            continue
+        db.delete(task)
+
+    instance.workflow_id = template.id
+    instance.status = "active"
+    instance.completed_at = None
+    instance.memo = _upsert_template_id_in_memo(instance.memo, template.id)
+
+    for idx, step in enumerate(ordered_template_steps):
+        calc_date = calculate_step_date(instance.trigger_date, step.timing_offset_days)
+        step_status = "in_progress" if idx == 0 else "pending"
+        task = Task(
+            title=f"[{instance.name}] {step.name}",
+            deadline=datetime.combine(calc_date, time.min),
+            estimated_time=step.estimated_time,
+            quadrant=step.quadrant or "Q1",
+            memo=step.memo,
+            status=step_status,
+            workflow_instance_id=instance.id,
+            workflow_step_order=step.order,
+            fund_id=instance.fund_id,
+            investment_id=instance.investment_id,
+            gp_entity_id=instance.gp_entity_id,
+            is_notice=step.is_notice,
+            is_report=step.is_report,
+        )
+        db.add(task)
+        db.flush()
+
+        db.add(
+            WorkflowStepInstance(
+                instance_id=instance.id,
+                workflow_step_id=step.id,
+                calculated_date=calc_date,
+                status=step_status,
+                task_id=task.id,
+            )
+        )
 
     db.commit()
     db.refresh(instance)

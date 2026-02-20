@@ -124,7 +124,7 @@ class TestWorkflowLifecycle:
         undone_step = next(
             row for row in undo_first.json()["step_instances"] if row["id"] == first_step_id
         )
-        assert undone_step["status"] == "pending"
+        assert undone_step["status"] == "in_progress"
         assert undo_first.json()["status"] == "active"
 
         latest_instance = client.get(f"/api/workflow-instances/{instance_id}").json()
@@ -179,3 +179,175 @@ class TestWorkflowLifecycle:
         cancel_response = client.patch(f"/api/workflow-instances/{instance_id}/cancel")
         assert cancel_response.status_code == 200
         assert cancel_response.json()["status"] == "cancelled"
+
+    def test_swap_template_for_zero_progress_instance(self, client):
+        source_template_response = client.post(
+            "/api/workflows",
+            json=_workflow_payload(name="원본 템플릿"),
+        )
+        assert source_template_response.status_code == 201
+        source_template_id = source_template_response.json()["id"]
+
+        target_template_payload = {
+            "name": "교체 템플릿",
+            "category": "조합결성",
+            "trigger_description": "교체 테스트",
+            "steps": [
+                {
+                    "order": 1,
+                    "name": "교체-1",
+                    "timing": "D-3",
+                    "timing_offset_days": -3,
+                    "estimated_time": "1h",
+                    "quadrant": "Q1",
+                },
+                {
+                    "order": 2,
+                    "name": "교체-2",
+                    "timing": "D-day",
+                    "timing_offset_days": 0,
+                    "estimated_time": "2h",
+                    "quadrant": "Q1",
+                },
+            ],
+            "documents": [],
+            "warnings": [],
+        }
+        target_template_response = client.post("/api/workflows", json=target_template_payload)
+        assert target_template_response.status_code == 201
+        target_template_id = target_template_response.json()["id"]
+
+        instantiate_response = client.post(
+            f"/api/workflows/{source_template_id}/instantiate",
+            json={
+                "name": "교체 대상 인스턴스",
+                "trigger_date": "2025-10-24",
+            },
+        )
+        assert instantiate_response.status_code == 200
+        instance_id = instantiate_response.json()["id"]
+
+        swap_response = client.put(
+            f"/api/workflow-instances/{instance_id}/swap-template",
+            json={"template_id": target_template_id},
+        )
+        assert swap_response.status_code == 200
+        swapped = swap_response.json()
+        assert swapped["workflow_id"] == target_template_id
+        assert swapped["workflow_name"] == "교체 템플릿"
+        assert len(swapped["step_instances"]) == 2
+        assert swapped["progress"] == "0/2"
+
+    def test_swap_template_rejects_started_instance(self, client):
+        source_template_response = client.post(
+            "/api/workflows",
+            json=_workflow_payload(name="진행 차단 템플릿"),
+        )
+        assert source_template_response.status_code == 201
+        source_template_id = source_template_response.json()["id"]
+
+        target_template_response = client.post(
+            "/api/workflows",
+            json=_workflow_payload(name="대체 템플릿"),
+        )
+        assert target_template_response.status_code == 201
+        target_template_id = target_template_response.json()["id"]
+
+        instantiate_response = client.post(
+            f"/api/workflows/{source_template_id}/instantiate",
+            json={
+                "name": "진행중 인스턴스",
+                "trigger_date": "2025-10-24",
+            },
+        )
+        assert instantiate_response.status_code == 200
+        instance = instantiate_response.json()
+        instance_id = instance["id"]
+
+        complete_response = client.patch(
+            f"/api/workflow-instances/{instance_id}/steps/{instance['step_instances'][0]['id']}/complete",
+            json={"actual_time": "1h"},
+        )
+        assert complete_response.status_code == 200
+
+        swap_response = client.put(
+            f"/api/workflow-instances/{instance_id}/swap-template",
+            json={"template_id": target_template_id},
+        )
+        assert swap_response.status_code == 400
+
+    def test_swap_template_rejects_formation_assembly_without_paid_step(self, client):
+        source_template_payload = {
+            "name": "결성총회 개최",
+            "category": "조합결성",
+            "trigger_description": "결성총회",
+            "steps": [
+                {
+                    "order": 1,
+                    "name": "출자금 납입 확인",
+                    "timing": "D-day",
+                    "timing_offset_days": 0,
+                    "estimated_time": "1h",
+                    "quadrant": "Q1",
+                },
+                {
+                    "order": 2,
+                    "name": "결성총회 개최",
+                    "timing": "D+1",
+                    "timing_offset_days": 1,
+                    "estimated_time": "1h",
+                    "quadrant": "Q1",
+                },
+            ],
+            "documents": [],
+            "warnings": [],
+        }
+        source_template_response = client.post("/api/workflows", json=source_template_payload)
+        assert source_template_response.status_code == 201
+        source_template_id = source_template_response.json()["id"]
+
+        invalid_target_payload = {
+            "name": "결성총회 커스텀(미흡)",
+            "category": "조합결성",
+            "trigger_description": "결성총회",
+            "steps": [
+                {
+                    "order": 1,
+                    "name": "총회 준비",
+                    "timing": "D-day",
+                    "timing_offset_days": 0,
+                    "estimated_time": "1h",
+                    "quadrant": "Q1",
+                },
+                {
+                    "order": 2,
+                    "name": "총회 의결",
+                    "timing": "D+1",
+                    "timing_offset_days": 1,
+                    "estimated_time": "1h",
+                    "quadrant": "Q1",
+                },
+            ],
+            "documents": [],
+            "warnings": [],
+        }
+        invalid_target_response = client.post("/api/workflows", json=invalid_target_payload)
+        assert invalid_target_response.status_code == 201
+        invalid_target_id = invalid_target_response.json()["id"]
+
+        instantiate_response = client.post(
+            f"/api/workflows/{source_template_id}/instantiate",
+            json={
+                "name": "결성총회 교체 대상",
+                "trigger_date": "2025-10-24",
+                "memo": "formation_slot=결성총회개최",
+            },
+        )
+        assert instantiate_response.status_code == 200
+        instance_id = instantiate_response.json()["id"]
+
+        swap_response = client.put(
+            f"/api/workflow-instances/{instance_id}/swap-template",
+            json={"template_id": invalid_target_id},
+        )
+        assert swap_response.status_code == 400

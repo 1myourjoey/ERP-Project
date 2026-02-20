@@ -114,6 +114,7 @@ FORMATION_WORKFLOW_NAME_MAP = {
     "조합등록": "벤처투자조합 등록",
     "조합 등록": "벤처투자조합 등록",
 }
+FORMATION_SLOT_MEMO_PREFIX = "formation_slot="
 
 
 def _to_str(value: object | None) -> str:
@@ -471,6 +472,16 @@ def _normalize_template_identifier(value: str | None) -> str:
     return "".join((value or "").split()).lower()
 
 
+def _template_has_formation_paid_in_step(template: Workflow) -> bool:
+    for step in template.steps or []:
+        normalized = _normalize_template_identifier(step.name)
+        has_paid_token = any(token in normalized for token in ("출자", "납입", "입금", "납부", "payment"))
+        has_confirm_token = any(token in normalized for token in ("확인", "confirm", "check"))
+        if has_paid_token and has_confirm_token:
+            return True
+    return False
+
+
 def _resolve_formation_template_name(template_category_or_name: str) -> str | None:
     if not template_category_or_name:
         return None
@@ -491,14 +502,53 @@ def _find_formation_template(
         return None
     return (
         db.query(Workflow)
+        .filter(Workflow.name == target_name)
+        .order_by(Workflow.id.asc())
+        .first()
+    )
+
+
+def _find_formation_template_by_id(db: Session, template_id: int | None) -> Workflow | None:
+    if template_id is None:
+        return None
+    return db.get(Workflow, template_id)
+
+
+def _find_existing_instance_by_formation_slot(
+    db: Session,
+    *,
+    fund_id: int,
+    formation_slot_name: str,
+) -> WorkflowInstance | None:
+    slot_token = _normalize_template_identifier(formation_slot_name)
+    if not slot_token:
+        return None
+
+    current = (
+        db.query(WorkflowInstance)
         .filter(
-            Workflow.name == target_name,
-            or_(
-                Workflow.category == "조합결성",
-                Workflow.category == "결성",
+            WorkflowInstance.fund_id == fund_id,
+            func.lower(func.coalesce(WorkflowInstance.status, "")) != "cancelled",
+            func.lower(func.coalesce(WorkflowInstance.memo, "")).like(
+                f"%{FORMATION_SLOT_MEMO_PREFIX}{slot_token}%"
             ),
         )
-        .order_by(Workflow.id.asc())
+        .order_by(WorkflowInstance.id.desc())
+        .first()
+    )
+    if current:
+        return current
+
+    # Backward compatibility for old instances created before slot tokens were stored in memo.
+    return (
+        db.query(WorkflowInstance)
+        .join(Workflow, Workflow.id == WorkflowInstance.workflow_id)
+        .filter(
+            WorkflowInstance.fund_id == fund_id,
+            func.lower(func.coalesce(WorkflowInstance.status, "")) != "cancelled",
+            Workflow.name == formation_slot_name,
+        )
+        .order_by(WorkflowInstance.id.desc())
         .first()
     )
 
@@ -1348,32 +1398,47 @@ def add_formation_workflow(
     if not _is_forming_status(fund.status):
         raise HTTPException(status_code=400, detail="결성예정 상태 조합에서만 생성할 수 있습니다")
 
-    template = _find_formation_template(db, data.template_category_or_name)
+    formation_slot_name = _resolve_formation_template_name(data.template_category_or_name)
+    if not formation_slot_name:
+        raise HTTPException(status_code=400, detail="지원하지 않는 결성 워크플로 슬롯입니다")
+
+    template = _find_formation_template_by_id(db, data.template_id)
+    if template is None:
+        template = _find_formation_template(db, formation_slot_name)
     if not template:
         raise HTTPException(status_code=404, detail="결성 워크플로 템플릿을 찾을 수 없습니다")
     if not template.steps:
         raise HTTPException(status_code=400, detail="단계가 없는 템플릿은 생성할 수 없습니다")
-
-    existing_instance = (
-        db.query(WorkflowInstance)
-        .filter(
-            WorkflowInstance.fund_id == fund_id,
-            WorkflowInstance.workflow_id == template.id,
-            func.lower(func.coalesce(WorkflowInstance.status, "")) != "cancelled",
+    if (
+        formation_slot_name == "결성총회 개최"
+        and not _template_has_formation_paid_in_step(template)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="결성총회 템플릿에는 '출자금 납입 확인' 등 납입/출자 확인 단계가 필요합니다",
         )
-        .order_by(WorkflowInstance.id.desc())
-        .first()
+
+    existing_instance = _find_existing_instance_by_formation_slot(
+        db,
+        fund_id=fund_id,
+        formation_slot_name=formation_slot_name,
     )
     if existing_instance:
         raise HTTPException(status_code=409, detail="이미 추가된 결성 워크플로입니다")
 
     trigger_date = data.trigger_date or fund.formation_date or date.today()
+    formation_slot_token = _normalize_template_identifier(formation_slot_name)
     instance = instantiate_workflow(
         db=db,
         workflow=template,
         name=f"[{fund.name}] {template.name}",
         trigger_date=trigger_date,
-        memo=f"manual_fund_formation_workflow fund_id={fund.id} template_id={template.id}",
+        memo=(
+            "manual_fund_formation_workflow "
+            f"fund_id={fund.id} "
+            f"template_id={template.id} "
+            f"{FORMATION_SLOT_MEMO_PREFIX}{formation_slot_token}"
+        ),
         fund_id=fund.id,
         auto_commit=False,
     )
@@ -1383,6 +1448,7 @@ def add_formation_workflow(
         instance_id=instance.id,
         workflow_id=template.id,
         workflow_name=template.name,
+        formation_slot=formation_slot_name,
         instance_name=instance.name,
         status=instance.status,
         trigger_date=instance.trigger_date,

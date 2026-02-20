@@ -20,6 +20,7 @@ import {
   fetchWorkflows,
   generateDocument,
   instantiateWorkflow,
+  swapWorkflowInstanceTemplate,
   undoWorkflowStep,
   updateWorkflowInstance,
   updateWorkflowTemplate,
@@ -40,7 +41,7 @@ import {
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
-import { Check, ChevronRight, Play, Plus, Printer, X } from 'lucide-react'
+import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 
@@ -90,6 +91,20 @@ function isFormationPaidInConfirmationStep(stepName: string): boolean {
     normalized.includes('check') ||
     normalized.includes('confirm')
   return hasPaidToken && hasConfirmToken
+}
+
+function canSwapWorkflowTemplate(instance: WorkflowInstance): boolean {
+  const completedCount = instance.step_instances.filter(
+    (step) => step.status === 'completed' || step.status === 'skipped',
+  ).length
+  return (instance.status || '').trim().toLowerCase() === 'active' && completedCount === 0
+}
+
+function isFormationAssemblyWorkflow(instance: WorkflowInstance): boolean {
+  const workflowName = normalizeKeyword(instance.workflow_name)
+  const instanceName = normalizeKeyword(instance.name)
+  const memo = normalizeKeyword(instance.memo || '')
+  return workflowName.includes('결성총회') || instanceName.includes('결성총회') || memo.includes('formation_slot=결성총회개최')
 }
 
 function escapeHtml(value: string): string {
@@ -953,8 +968,14 @@ function InstanceList({
   const [openId, setOpenId] = useState<number | null>(expandId ?? null)
   const [editingInstanceId, setEditingInstanceId] = useState<number | null>(null)
   const [editInstance, setEditInstance] = useState<{ name: string; trigger_date: string; memo: string } | null>(null)
+  const [swapTarget, setSwapTarget] = useState<WorkflowInstance | null>(null)
+  const [swapTemplateId, setSwapTemplateId] = useState<number | ''>('')
 
   const { data, isLoading } = useQuery({ queryKey: ['workflowInstances', { status }], queryFn: () => fetchWorkflowInstances({ status }) })
+  const { data: workflowTemplates = [] } = useQuery<WorkflowListItem[]>({
+    queryKey: ['workflows'],
+    queryFn: fetchWorkflows,
+  })
   const { data: docTemplates = [] } = useQuery<DocumentTemplate[]>({
     queryKey: ['documentTemplates'],
     queryFn: () => fetchDocumentTemplates(),
@@ -1144,6 +1165,24 @@ function InstanceList({
     },
   })
 
+  const swapTemplateMut = useMutation({
+    mutationFn: ({ instanceId, templateId }: { instanceId: number; templateId: number }) =>
+      swapWorkflowInstanceTemplate(instanceId, { template_id: templateId }),
+    onSuccess: (instance) => {
+      invalidateCapitalLinkedQueries(instance.fund_id)
+      setSwapTarget(null)
+      setSwapTemplateId('')
+      addToast('success', '워크플로 템플릿을 교체했습니다.')
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : '템플릿 교체에 실패했습니다.'
+      addToast('error', message)
+    },
+  })
+
   const toggleInstanceEdit = (inst: WorkflowInstance) => {
     if (editingInstanceId === inst.id) {
       setEditingInstanceId(null)
@@ -1165,6 +1204,26 @@ function InstanceList({
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    })
+  }
+
+  const openSwapTemplateModal = (instance: WorkflowInstance) => {
+    setSwapTemplateId(instance.workflow_id)
+    setSwapTarget(instance)
+  }
+
+  const handleSwapTemplate = () => {
+    if (!swapTarget) return
+    if (!swapTemplateId) {
+      addToast('error', '교체할 템플릿을 선택해주세요.')
+      return
+    }
+    if (!confirm('기존 단계와 미완료 업무를 초기화하고 새 템플릿으로 교체하시겠습니까?')) {
+      return
+    }
+    swapTemplateMut.mutate({
+      instanceId: swapTarget.id,
+      templateId: Number(swapTemplateId),
     })
   }
 
@@ -1203,6 +1262,19 @@ function InstanceList({
                   className="secondary-btn text-sm"
                 >
                   수정
+                </button>
+              )}
+              {status === 'active' && canSwapWorkflowTemplate(inst) && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openSwapTemplateModal(inst)
+                  }}
+                  className="secondary-btn inline-flex items-center gap-1 text-sm"
+                  title="진행 전(0%) 워크플로 템플릿 교체"
+                >
+                  <RefreshCcw size={13} />
+                  템플릿 교체
                 </button>
               )}
               <span className="tag tag-gray">{inst.progress}</span>
@@ -1360,6 +1432,82 @@ function InstanceList({
         </div>
         )
       })}
+
+      {swapTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => {
+            if (swapTemplateMut.isPending) return
+            setSwapTarget(null)
+          }}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900">템플릿 교체</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              [{swapTarget.name}] 워크플로를 다른 템플릿으로 교체합니다.
+            </p>
+
+            <div className="mt-4 space-y-1">
+              <label className="block text-xs font-medium text-gray-600">새 템플릿</label>
+              <select
+                value={swapTemplateId}
+                onChange={(event) => {
+                  const next = event.target.value
+                  setSwapTemplateId(next ? Number(next) : '')
+                }}
+                className="w-full rounded border px-3 py-2 text-sm"
+              >
+                <option value="">템플릿을 선택하세요</option>
+                {[...workflowTemplates]
+                  .sort((a, b) => {
+                    const categoryA = (a.category || '').trim()
+                    const categoryB = (b.category || '').trim()
+                    if (categoryA !== categoryB) return categoryA.localeCompare(categoryB, 'ko')
+                    return a.name.localeCompare(b.name, 'ko')
+                  })
+                  .map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                      {template.category ? ` (${template.category})` : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {isFormationAssemblyWorkflow(swapTarget) && (
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                결성총회 관련 템플릿으로 교체할 때는 스텝명에
+                {' '}
+                <strong>출자금 납입 확인</strong>
+                {' '}
+                등 납입/출자 확인 키워드가 반드시 포함되어야 결성금액 동기화가 정상 작동합니다.
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSwapTarget(null)}
+                className="secondary-btn"
+                disabled={swapTemplateMut.isPending}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSwapTemplate}
+                className="primary-btn"
+                disabled={swapTemplateMut.isPending || !swapTemplateId}
+              >
+                {swapTemplateMut.isPending ? '교체 중...' : '교체하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

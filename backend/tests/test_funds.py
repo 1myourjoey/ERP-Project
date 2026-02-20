@@ -23,7 +23,7 @@ def _formation_workflow_payload(name: str = "조합 결성 기본") -> dict:
             },
             {
                 "order": 2,
-                "name": "결성 완료",
+                "name": "출자금 납입 확인",
                 "timing": "D+1",
                 "timing_offset_days": 1,
                 "estimated_time": "1h",
@@ -166,6 +166,106 @@ class TestFundsCRUD:
         add_response = client.post(
             f"/api/funds/{fund_id}/add-formation-workflow",
             json={"template_category_or_name": "고유번호증 발급"},
+        )
+        assert add_response.status_code == 400
+
+    def test_add_formation_workflow_allows_custom_template_id_and_blocks_duplicate_slot(self, client):
+        default_response = client.post(
+            "/api/workflows",
+            json=_formation_workflow_payload(name="수탁계약 체결"),
+        )
+        assert default_response.status_code == 201
+        default_template_id = default_response.json()["id"]
+
+        custom_response = client.post(
+            "/api/workflows",
+            json=_formation_workflow_payload(name="2026 커스텀 수탁계약 템플릿"),
+        )
+        assert custom_response.status_code == 201
+        custom_template_id = custom_response.json()["id"]
+
+        fund_response = client.post(
+            "/api/funds",
+            json={
+                "name": "커스텀 매핑 조합",
+                "type": "벤처투자조합",
+                "status": "forming",
+            },
+        )
+        assert fund_response.status_code == 201
+        fund_id = fund_response.json()["id"]
+
+        add_custom_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={
+                "template_category_or_name": "수탁계약 체결",
+                "template_id": custom_template_id,
+            },
+        )
+        assert add_custom_response.status_code == 201
+        payload = add_custom_response.json()
+        assert payload["workflow_id"] == custom_template_id
+        assert payload["workflow_name"] == "2026 커스텀 수탁계약 템플릿"
+        assert payload["formation_slot"] == "수탁계약 체결"
+
+        duplicate_slot_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={
+                "template_category_or_name": "수탁계약 체결",
+                "template_id": default_template_id,
+            },
+        )
+        assert duplicate_slot_response.status_code == 409
+
+    def test_add_formation_workflow_rejects_formation_assembly_template_without_paid_step(self, client):
+        invalid_template_response = client.post(
+            "/api/workflows",
+            json={
+                "name": "결성총회 커스텀(미흡)",
+                "category": "조합결성",
+                "trigger_description": "테스트",
+                "steps": [
+                    {
+                        "order": 1,
+                        "name": "결성총회 준비",
+                        "timing": "D-day",
+                        "timing_offset_days": 0,
+                        "estimated_time": "1h",
+                        "quadrant": "Q1",
+                    },
+                    {
+                        "order": 2,
+                        "name": "총회 의결",
+                        "timing": "D+1",
+                        "timing_offset_days": 1,
+                        "estimated_time": "1h",
+                        "quadrant": "Q1",
+                    },
+                ],
+                "documents": [],
+                "warnings": [],
+            },
+        )
+        assert invalid_template_response.status_code == 201
+        invalid_template_id = invalid_template_response.json()["id"]
+
+        fund_response = client.post(
+            "/api/funds",
+            json={
+                "name": "결성총회 방어 조합",
+                "type": "벤처투자조합",
+                "status": "forming",
+            },
+        )
+        assert fund_response.status_code == 201
+        fund_id = fund_response.json()["id"]
+
+        add_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={
+                "template_category_or_name": "결성총회 개최",
+                "template_id": invalid_template_id,
+            },
         )
         assert add_response.status_code == 400
 

@@ -152,6 +152,10 @@ class WorkflowInstanceUpdateRequest(BaseModel):
     memo: Optional[str] = None
 
 
+class WorkflowInstanceSwapTemplateRequest(BaseModel):
+    template_id: int = Field(ge=1)
+
+
 class WorkflowStepInstanceResponse(BaseModel):
     id: int
     instance_id: int

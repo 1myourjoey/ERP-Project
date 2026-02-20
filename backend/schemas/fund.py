@@ -321,6 +321,7 @@ class FundResponse(BaseModel):
 
 class FundFormationWorkflowAddRequest(BaseModel):
     template_category_or_name: str
+    template_id: Optional[int] = Field(default=None, ge=1)
     trigger_date: Optional[date] = None
 
     @field_validator("template_category_or_name")
@@ -336,6 +337,7 @@ class FundFormationWorkflowAddResponse(BaseModel):
     instance_id: int
     workflow_id: int
     workflow_name: str
+    formation_slot: str
     instance_name: str
     status: str
     trigger_date: date
