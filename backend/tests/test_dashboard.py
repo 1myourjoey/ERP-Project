@@ -49,6 +49,31 @@ class TestDashboard:
         data = dashboard.json()
         assert data["completed_today_count"] >= 1
 
+    def test_split_dashboard_endpoints(self, client):
+        base = client.get("/api/dashboard/base")
+        assert base.status_code == 200
+        base_payload = base.json()
+        assert "date" in base_payload
+        assert "today" in base_payload
+        assert "no_deadline" in base_payload
+
+        workflows = client.get("/api/dashboard/workflows")
+        assert workflows.status_code == 200
+        assert "active_workflows" in workflows.json()
+
+        sidebar = client.get("/api/dashboard/sidebar")
+        assert sidebar.status_code == 200
+        sidebar_payload = sidebar.json()
+        assert "fund_summary" in sidebar_payload
+        assert "missing_documents" in sidebar_payload
+        assert "upcoming_reports" in sidebar_payload
+
+        completed = client.get("/api/dashboard/completed")
+        assert completed.status_code == 200
+        completed_payload = completed.json()
+        assert "completed_today" in completed_payload
+        assert "completed_today_count" in completed_payload
+
     def test_upcoming_notices(self, client, sample_fund):
         notice_response = client.put(
             f"/api/funds/{sample_fund['id']}/notice-periods",

@@ -35,6 +35,10 @@ export const generateMonthlyReminders = (yearMonth: string) =>
 
 // -- Dashboard --
 export const fetchDashboard = (): Promise<DashboardResponse> => api.get('/dashboard/today').then(r => r.data)
+export const fetchDashboardBase = (): Promise<DashboardBaseResponse> => api.get('/dashboard/base').then(r => r.data)
+export const fetchDashboardWorkflows = (): Promise<DashboardWorkflowsResponse> => api.get('/dashboard/workflows').then(r => r.data)
+export const fetchDashboardSidebar = (): Promise<DashboardSidebarResponse> => api.get('/dashboard/sidebar').then(r => r.data)
+export const fetchDashboardCompleted = (): Promise<DashboardCompletedResponse> => api.get('/dashboard/completed').then(r => r.data)
 export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
   api.get('/dashboard/upcoming-notices', { params: { days } }).then(r => r.data)
 
@@ -346,7 +350,7 @@ export const fetchWorkLogInsights = (period: 'week' | 'month' | 'quarter' = 'mon
   api.get('/worklogs/insights', { params: { period } }).then(r => r.data)
 
 // -- Types --
-export interface DashboardResponse {
+export interface DashboardBaseResponse {
   date: string
   day_of_week: string
   monthly_reminder: boolean
@@ -355,16 +359,28 @@ export interface DashboardResponse {
   this_week: Task[]
   upcoming: Task[]
   no_deadline: Task[]
+}
+
+export interface DashboardWorkflowsResponse {
   active_workflows: ActiveWorkflow[]
+}
+
+export interface DashboardSidebarResponse {
   fund_summary: FundSummary[]
   missing_documents: MissingDocument[]
   upcoming_reports: UpcomingReport[]
-  upcoming_notices?: UpcomingNotice[]
+}
+
+export interface DashboardCompletedResponse {
   completed_today: Task[]
   completed_this_week: Task[]
   completed_last_week: Task[]
   completed_today_count: number
   completed_this_week_count: number
+}
+
+export interface DashboardResponse extends DashboardBaseResponse, DashboardWorkflowsResponse, DashboardSidebarResponse, DashboardCompletedResponse {
+  upcoming_notices?: UpcomingNotice[]
 }
 
 export interface ActiveWorkflow {

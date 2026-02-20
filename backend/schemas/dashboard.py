@@ -56,6 +56,35 @@ class UpcomingReportItem(BaseModel):
     task_id: Optional[int] = None
 
 
+class DashboardBaseResponse(BaseModel):
+    date: str
+    day_of_week: str
+    monthly_reminder: bool
+    today: DashboardTaskBucket
+    tomorrow: DashboardTaskBucket
+    this_week: list[TaskResponse] = Field(default_factory=list)
+    upcoming: list[TaskResponse] = Field(default_factory=list)
+    no_deadline: list[TaskResponse] = Field(default_factory=list)
+
+
+class DashboardWorkflowsResponse(BaseModel):
+    active_workflows: list[ActiveWorkflowItem] = Field(default_factory=list)
+
+
+class DashboardSidebarResponse(BaseModel):
+    fund_summary: list[FundSummaryItem] = Field(default_factory=list)
+    missing_documents: list[MissingDocumentItem] = Field(default_factory=list)
+    upcoming_reports: list[UpcomingReportItem] = Field(default_factory=list)
+
+
+class DashboardCompletedResponse(BaseModel):
+    completed_today: list[TaskResponse] = Field(default_factory=list)
+    completed_this_week: list[TaskResponse] = Field(default_factory=list)
+    completed_last_week: list[TaskResponse] = Field(default_factory=list)
+    completed_today_count: int
+    completed_this_week_count: int
+
+
 class DashboardTodayResponse(BaseModel):
     date: str
     day_of_week: str

@@ -12,7 +12,14 @@ from models.investment import Investment, InvestmentDocument, PortfolioCompany
 from models.regular_report import RegularReport
 from models.task import Task
 from models.workflow_instance import WorkflowInstance
-from schemas.dashboard import DashboardTodayResponse, UpcomingNoticeItem
+from schemas.dashboard import (
+    DashboardBaseResponse,
+    DashboardCompletedResponse,
+    DashboardSidebarResponse,
+    DashboardTodayResponse,
+    DashboardWorkflowsResponse,
+    UpcomingNoticeItem,
+)
 from schemas.task import TaskResponse
 from services.workflow_service import reconcile_workflow_instance_state
 
@@ -20,8 +27,8 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 MONTHLY_REMINDER_TITLES = (
-    "농금원 월보고 ({year_month})",
-    "벤처협회 VICS 월보고 ({year_month})",
+    "?띻툑???붾낫怨?({year_month})",
+    "踰ㅼ쿂?묓쉶 VICS ?붾낫怨?({year_month})",
 )
 
 
@@ -53,7 +60,6 @@ def _match_notice_type(step_name: str, step_timing: str, notice_map: dict[str, F
 
 
 def _dashboard_week_bounds(target: date) -> tuple[date, date]:
-    # Dashboard week is Monday-Sunday.
     week_start = target - timedelta(days=target.weekday())
     week_end = week_start + timedelta(days=6)
     return week_start, week_end
@@ -115,28 +121,7 @@ def _task_response(db: Session, task: Task) -> TaskResponse:
     return TaskResponse(**payload)
 
 
-@router.get("/today", response_model=DashboardTodayResponse)
-def get_today_dashboard(db: Session = Depends(get_db)):
-    today = date.today()
-    tomorrow = today + timedelta(days=1)
-    current_year_month = today.strftime("%Y-%m")
-    monthly_titles = [title.format(year_month=current_year_month) for title in MONTHLY_REMINDER_TITLES]
-    monthly_task_count = db.query(Task).filter(Task.title.in_(monthly_titles)).count()
-    monthly_reminder = monthly_task_count < len(monthly_titles)
-
-    week_start, week_end = _dashboard_week_bounds(today)
-
-    if today.month == 12:
-        upcoming_end = date(today.year + 1, 2, 28)
-    else:
-        upcoming_month = today.month + 2
-        upcoming_year = today.year
-        if upcoming_month > 12:
-            upcoming_month -= 12
-            upcoming_year += 1
-        upcoming_end = date(upcoming_year, upcoming_month, 28)
-
-    # Heal legacy mismatches between task-completion and workflow status.
+def _sync_workflow_state(db: Session) -> None:
     sync_targets = (
         db.query(WorkflowInstance)
         .filter(WorkflowInstance.status.in_(["active", "completed"]))
@@ -148,6 +133,27 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             needs_commit = True
     if needs_commit:
         db.commit()
+
+
+def _dashboard_base_payload(db: Session, today: date) -> dict:
+    tomorrow = today + timedelta(days=1)
+    current_year_month = today.strftime("%Y-%m")
+    monthly_titles = [title.format(year_month=current_year_month) for title in MONTHLY_REMINDER_TITLES]
+    monthly_task_count = db.query(Task).filter(Task.title.in_(monthly_titles)).count()
+    monthly_reminder = monthly_task_count < len(monthly_titles)
+
+    week_start, week_end = _dashboard_week_bounds(today)
+    if today.month == 12:
+        upcoming_end = date(today.year + 1, 2, 28)
+    else:
+        upcoming_month = today.month + 2
+        upcoming_year = today.year
+        if upcoming_month > 12:
+            upcoming_month -= 12
+            upcoming_year += 1
+        upcoming_end = date(upcoming_year, upcoming_month, 28)
+
+    _sync_workflow_state(db)
 
     pending_tasks = (
         db.query(Task)
@@ -169,7 +175,6 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             no_deadline_tasks.append(task_resp)
             continue
 
-        # Overdue tasks stay visible in today's bucket so dashboard/task board counts align.
         if deadline <= today:
             today_tasks.append(task_resp)
         elif deadline == tomorrow:
@@ -177,7 +182,6 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         elif week_end < deadline <= upcoming_end:
             upcoming_tasks.append(task_resp)
 
-        # "이번 주" is calendar-week based (Mon-Sun), independent from today/tomorrow buckets.
         if week_start <= deadline <= week_end and task_resp not in week_tasks:
             week_tasks.append(task_resp)
 
@@ -188,9 +192,20 @@ def get_today_dashboard(db: Session = Depends(get_db)):
                     week_tasks.append(task_resp)
                     break
 
-    active_instances = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active").all()
+    return {
+        "monthly_reminder": monthly_reminder,
+        "today": {"tasks": today_tasks, "total_estimated_time": _sum_time(today_tasks)},
+        "tomorrow": {"tasks": tomorrow_tasks, "total_estimated_time": _sum_time(tomorrow_tasks)},
+        "this_week": week_tasks,
+        "upcoming": upcoming_tasks,
+        "no_deadline": no_deadline_tasks,
+    }
 
-    active_workflows = []
+
+def _dashboard_workflows_payload(db: Session) -> dict:
+    active_instances = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active").all()
+    active_workflows: list[dict] = []
+
     for instance in active_instances:
         ordered_steps = sorted(instance.step_instances, key=_step_instance_order_key)
         total = len(ordered_steps)
@@ -252,7 +267,11 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             }
         )
 
-    fund_summary = []
+    return {"active_workflows": active_workflows}
+
+
+def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
+    fund_summary: list[dict] = []
     funds = db.query(Fund).order_by(Fund.id.desc()).all()
     for fund in funds:
         investment_count = db.query(Investment).filter(Investment.fund_id == fund.id).count()
@@ -269,7 +288,7 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             }
         )
 
-    missing_documents = []
+    missing_documents: list[dict] = []
     docs = (
         db.query(InvestmentDocument)
         .filter(InvestmentDocument.status != "collected")
@@ -277,7 +296,6 @@ def get_today_dashboard(db: Session = Depends(get_db)):
         .limit(20)
         .all()
     )
-
     for doc in docs:
         investment = db.get(Investment, doc.investment_id)
         if not investment:
@@ -285,7 +303,6 @@ def get_today_dashboard(db: Session = Depends(get_db)):
 
         company = db.get(PortfolioCompany, investment.company_id)
         fund = db.get(Fund, investment.fund_id)
-
         missing_documents.append(
             {
                 "id": doc.id,
@@ -300,8 +317,8 @@ def get_today_dashboard(db: Session = Depends(get_db)):
             }
         )
 
-    submitted_statuses = ["제출완료", "전송완료"]
-    upcoming_reports = []
+    submitted_statuses = ["?쒖텧?꾨즺", "?꾩넚?꾨즺"]
+    upcoming_reports: list[dict] = []
     report_rows = (
         db.query(RegularReport)
         .filter(
@@ -352,15 +369,29 @@ def get_today_dashboard(db: Session = Depends(get_db)):
                 "report_target": task.title,
                 "fund_id": task_payload.fund_id,
                 "fund_name": task_payload.fund_name,
-                "period": "업무",
+                "period": "?낅Т",
                 "due_date": deadline_date.isoformat(),
                 "status": task.status,
                 "days_remaining": (deadline_date - today).days,
                 "task_id": task.id,
             }
         )
-    upcoming_reports.sort(key=lambda row: (row["days_remaining"] if row["days_remaining"] is not None else 999, row["due_date"] or "9999-12-31"))
-    upcoming_reports = upcoming_reports[:20]
+    upcoming_reports.sort(
+        key=lambda row: (
+            row["days_remaining"] if row["days_remaining"] is not None else 999,
+            row["due_date"] or "9999-12-31",
+        )
+    )
+
+    return {
+        "fund_summary": fund_summary,
+        "missing_documents": missing_documents,
+        "upcoming_reports": upcoming_reports[:20],
+    }
+
+
+def _dashboard_completed_payload(db: Session, today: date) -> dict:
+    week_start, week_end = _dashboard_week_bounds(today)
 
     completed_today = (
         db.query(Task)
@@ -397,23 +428,51 @@ def get_today_dashboard(db: Session = Depends(get_db)):
     )
 
     return {
-        "date": today.isoformat(),
-        "day_of_week": WEEKDAYS[today.weekday()],
-        "monthly_reminder": monthly_reminder,
-        "today": {"tasks": today_tasks, "total_estimated_time": _sum_time(today_tasks)},
-        "tomorrow": {"tasks": tomorrow_tasks, "total_estimated_time": _sum_time(tomorrow_tasks)},
-        "this_week": week_tasks,
-        "upcoming": upcoming_tasks,
-        "no_deadline": no_deadline_tasks,
-        "active_workflows": active_workflows,
-        "fund_summary": fund_summary,
-        "missing_documents": missing_documents,
-        "upcoming_reports": upcoming_reports,
         "completed_today": [_task_response(db, task) for task in completed_today],
         "completed_this_week": [_task_response(db, task) for task in completed_this_week],
         "completed_last_week": [_task_response(db, task) for task in completed_last_week],
         "completed_today_count": len(completed_today),
         "completed_this_week_count": len(completed_this_week),
+    }
+
+
+@router.get("/base", response_model=DashboardBaseResponse)
+def get_dashboard_base(db: Session = Depends(get_db)):
+    today = date.today()
+    return {
+        "date": today.isoformat(),
+        "day_of_week": WEEKDAYS[today.weekday()],
+        **_dashboard_base_payload(db, today),
+    }
+
+
+@router.get("/workflows", response_model=DashboardWorkflowsResponse)
+def get_dashboard_workflows(db: Session = Depends(get_db)):
+    return _dashboard_workflows_payload(db)
+
+
+@router.get("/sidebar", response_model=DashboardSidebarResponse)
+def get_dashboard_sidebar(db: Session = Depends(get_db)):
+    today = date.today()
+    return _dashboard_sidebar_payload(db, today)
+
+
+@router.get("/completed", response_model=DashboardCompletedResponse)
+def get_dashboard_completed(db: Session = Depends(get_db)):
+    today = date.today()
+    return _dashboard_completed_payload(db, today)
+
+
+@router.get("/today", response_model=DashboardTodayResponse)
+def get_today_dashboard(db: Session = Depends(get_db)):
+    today = date.today()
+    return {
+        "date": today.isoformat(),
+        "day_of_week": WEEKDAYS[today.weekday()],
+        **_dashboard_base_payload(db, today),
+        **_dashboard_workflows_payload(db),
+        **_dashboard_sidebar_payload(db, today),
+        **_dashboard_completed_payload(db, today),
     }
 
 
@@ -447,7 +506,7 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
 
         if fund_id not in fund_name_cache:
             fund = db.get(Fund, fund_id)
-            fund_name_cache[fund_id] = fund.name if fund else f"조합 #{fund_id}"
+            fund_name_cache[fund_id] = fund.name if fund else f"議고빀 #{fund_id}"
         fund_name = fund_name_cache[fund_id]
 
         for step_instance in instance.step_instances:
@@ -498,11 +557,11 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
         task_payload = _task_response(db, task)
         results.append(
             {
-                "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "업무",
+                "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "?낅Т",
                 "notice_label": task.title,
                 "deadline": deadline.isoformat(),
                 "days_remaining": (deadline - today).days,
-                "workflow_instance_name": "업무",
+                "workflow_instance_name": "?낅Т",
                 "workflow_instance_id": task.workflow_instance_id,
                 "task_id": task.id,
             }
