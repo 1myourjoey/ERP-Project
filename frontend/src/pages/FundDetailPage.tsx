@@ -89,6 +89,16 @@ const FUND_STATUS_OPTIONS = [
 
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
+const FUND_DETAIL_TABS = [
+  { id: 'overview', label: '대시보드' },
+  { id: 'info', label: '기본정보' },
+  { id: 'capital', label: '자본 및 LP 현황' },
+  { id: 'portfolio', label: '투자 포트폴리오' },
+  { id: 'terms', label: '규약 및 컴플라이언스' },
+] as const
+
+type FundDetailTab = typeof FUND_DETAIL_TABS[number]['id']
+
 const FORMATION_WORKFLOW_BUTTONS = [
   { key: '고유번호증 발급', label: '고유번호증 발급' },
   { key: '수탁계약 체결', label: '수탁계약 체결' },
@@ -767,6 +777,7 @@ export default function FundDetailPage() {
   const [editingNotices, setEditingNotices] = useState(false)
   const [editingKeyTerms, setEditingKeyTerms] = useState(false)
   const [showCapCallWizard, setShowCapCallWizard] = useState(false)
+  const [activeTab, setActiveTab] = useState<FundDetailTab>('overview')
   const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
@@ -838,6 +849,7 @@ export default function FundDetailPage() {
     setFormationWorkflowTriggerDate('')
     setFormationTemplateModal(null)
     setSelectedFormationTemplateId('')
+    setActiveTab('overview')
   }, [fundId])
 
   useEffect(() => {
@@ -868,6 +880,36 @@ export default function FundDetailPage() {
   const lpPaidInTotal = useMemo(
     () => (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0),
     [fundDetail?.lps],
+  )
+  const lpCommitmentTotal = useMemo(
+    () => (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.commitment ?? 0), 0),
+    [fundDetail?.lps],
+  )
+  const capitalCommitmentBase = useMemo(() => {
+    const declaredCommitment = Number(fundDetail?.commitment_total ?? 0)
+    return declaredCommitment > 0 ? declaredCommitment : lpCommitmentTotal
+  }, [fundDetail?.commitment_total, lpCommitmentTotal])
+  const capitalGridRows = useMemo(
+    () =>
+      (fundDetail?.lps ?? []).map((lp) => {
+        const commitment = Number(lp.commitment ?? 0)
+        const paidIn = Number(lp.paid_in ?? 0)
+        const shareRatio = capitalCommitmentBase > 0 ? (commitment / capitalCommitmentBase) * 100 : 0
+        const note =
+          lp.type === 'GP' || lp.type === '공동업무집행'
+            ? 'GP'
+            : lp.type === '기관투자자' || lp.type === '개인투자자'
+              ? 'LP'
+              : lp.type || '-'
+        return {
+          ...lp,
+          commitment,
+          paidIn,
+          shareRatio,
+          note,
+        }
+      }),
+    [capitalCommitmentBase, fundDetail?.lps],
   )
 
   const splitCapitalCalls = useMemo(() => {
@@ -1153,8 +1195,22 @@ export default function FundDetailPage() {
             <SummaryCard label="투자 건수" value={`${investments?.length ?? 0}건`} />
             <SummaryCard label="투자 금액 합계" value={formatKRW(totalInvestmentAmount)} />
           </div>
+          <div className="sticky top-0 z-10 mt-3 rounded-xl border border-gray-100 bg-white/95 p-2 backdrop-blur">
+            <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1">
+              {FUND_DETAIL_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          {editingFund ? (
+          {activeTab === 'info' && (editingFund ? (
             <FundForm
               initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }}
               loading={updateFundMut.isPending}
@@ -1191,9 +1247,9 @@ export default function FundDetailPage() {
                 <div className="p-2 bg-gray-50 rounded md:col-span-3">운용계좌번호: {fundDetail.account_number || '-'}</div>
               </div>
             </div>
-          )}
+          ))}
 
-          {isFormingFund && (
+          {activeTab === 'overview' && isFormingFund && (
             <div className="card-base space-y-3">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -1250,6 +1306,30 @@ export default function FundDetailPage() {
                   )
                 })}
               </div>
+            </div>
+          )}
+          {activeTab === 'overview' && (
+            <div className="card-base">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">미수 서류</h3>
+              {!missingDocs?.length ? (
+                <p className="text-sm text-gray-400">미수 서류가 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {missingDocs.map((doc) => (
+                    <div key={doc.id} className="border border-gray-100 rounded p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
+                        {dueText(doc) && (
+                          <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
+                            {dueText(doc)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1322,75 +1402,136 @@ export default function FundDetailPage() {
             </div>
           )}
 
-          <div className="card-base">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-700">출자 이력</h3>
-              <button onClick={() => setShowCapCallWizard(true)} className="primary-btn">출자요청 위저드</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
-                  <tr>
-                    <th className="px-3 py-2 text-left">차수</th>
-                    <th className="px-3 py-2 text-left">납입일</th>
-                    <th className="px-3 py-2 text-right">납입금액</th>
-                    <th className="px-3 py-2 text-right">납입비율</th>
-                    <th className="px-3 py-2 text-left">비고</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  <tr>
-                    <td className="px-3 py-2">최초 결성</td>
-                    <td className="px-3 py-2">{fundDetail.formation_date || '-'}</td>
-                    <td className="px-3 py-2 text-right">{formatKRW(initialPaidIn)}</td>
-                    <td className="px-3 py-2 text-right">
-                      {fundDetail.commitment_total ? `${((initialPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-gray-500">최초 납입</td>
-                  </tr>
-                  {splitCapitalCalls.nonInitial.map((call, index) => (
-                    <tr key={call.id}>
-                      <td className="px-3 py-2">{index + 1}차 캐피탈콜</td>
-                      <td className="px-3 py-2">{call.call_date || '-'}</td>
-                      <td className="px-3 py-2 text-right">{formatKRW(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0))}</td>
-                      <td className="px-3 py-2 text-right">
-                        {fundDetail.commitment_total
-                          ? `${(((callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0)) / fundDetail.commitment_total) * 100).toFixed(1)}%`
-                          : '-'}
-                      </td>
-                      <td className="px-3 py-2 text-gray-500">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>{call.memo || call.call_type || '-'}</span>
-                          {call.linked_workflow_instance_id ? (
-                            <button
-                              type="button"
-                              onClick={() => navigate('/workflows', { state: { expandInstanceId: call.linked_workflow_instance_id } })}
-                              className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-                            >
-                              {buildLinkedWorkflowLabel(call, fundDetail.name)}
-                              {call.linked_workflow_status
-                                ? ` · ${WORKFLOW_STATUS_LABEL[call.linked_workflow_status] || call.linked_workflow_status}`
-                                : ''}
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-50 font-semibold">
-                    <td className="px-3 py-2" colSpan={2}>합계</td>
-                    <td className="px-3 py-2 text-right">{formatKRW(historyTotalPaidIn)}</td>
-                    <td className="px-3 py-2 text-right">
-                      {fundDetail.commitment_total ? `${((historyTotalPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
-                    </td>
-                    <td className="px-3 py-2" />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {activeTab === 'capital' && (
+            <div className="card-base space-y-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">자본 및 LP 현황</h3>
+                  <p className="text-xs text-gray-500">LP별 약정/납입 현황을 한 화면에서 관리합니다.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowCapCallWizard(true)} className="secondary-btn">+ 출자요청 위저드</button>
+                  <button onClick={() => setShowCreateLP(v => !v)} className="primary-btn inline-flex items-center gap-1"><Plus size={12} /> + LP 추가</button>
+                </div>
+              </div>
 
-          <div className="card-base space-y-3">
+              {showCreateLP && (
+                <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+                  <LPForm
+                    initial={EMPTY_LP}
+                    addressBooks={lpAddressBooks}
+                    loading={createLPMut.isPending}
+                    onSubmit={data => createLPMut.mutate({ data })}
+                    onCancel={() => setShowCreateLP(false)}
+                  />
+                </div>
+              )}
+
+              <div className="overflow-auto rounded-lg border border-gray-200">
+                <table className="min-w-[980px] w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left">조합원(LP) 명</th>
+                      <th className="px-3 py-2 text-left">성격(구분)</th>
+                      <th className="px-3 py-2 text-right">총 약정액</th>
+                      <th className="px-3 py-2 text-right">누적 납입액</th>
+                      <th className="px-3 py-2 text-right">지분율(%)</th>
+                      <th className="px-3 py-2 text-left">비고</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {capitalGridRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">등록된 LP가 없습니다.</td>
+                      </tr>
+                    ) : (
+                      capitalGridRows.flatMap((lp) => {
+                        const rows = [
+                          <tr key={`row-${lp.id}`}>
+                            <td className="sticky left-0 z-[1] bg-white px-3 py-2 font-medium text-gray-800">{lp.name}</td>
+                            <td className="px-3 py-2 text-gray-700">{lp.type || '-'}</td>
+                            <td className="px-3 py-2 text-right">{formatKRW(lp.commitment)}</td>
+                            <td className="px-3 py-2 text-right">{formatKRW(lp.paidIn)}</td>
+                            <td className="px-3 py-2 text-right">{lp.shareRatio.toFixed(2)}%</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-gray-500">{lp.note}</span>
+                                <div className="flex gap-1">
+                                  <button onClick={() => setEditingLPId(lp.id)} className="secondary-btn">수정</button>
+                                  <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate(lp.id) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>,
+                        ]
+                        if (editingLPId === lp.id) {
+                          rows.push(
+                            <tr key={`edit-${lp.id}`} className="bg-gray-50">
+                              <td colSpan={6} className="px-2 py-2">
+                                <LPForm
+                                  initial={lp}
+                                  addressBooks={lpAddressBooks}
+                                  loading={updateLPMut.isPending}
+                                  onSubmit={data => updateLPMut.mutate({ lpId: lp.id, data })}
+                                  onCancel={() => setEditingLPId(null)}
+                                />
+                              </td>
+                            </tr>,
+                          )
+                        }
+                        return rows
+                      })
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50 font-semibold text-gray-800">
+                      <td className="sticky left-0 z-10 bg-gray-50 px-3 py-2">합계(Total)</td>
+                      <td className="px-3 py-2" />
+                      <td className="px-3 py-2 text-right">{formatKRW(capitalCommitmentBase)}</td>
+                      <td className="px-3 py-2 text-right">{formatKRW(lpPaidInTotal)}</td>
+                      <td className="px-3 py-2 text-right">{capitalCommitmentBase > 0 ? '100.00%' : '0.00%'}</td>
+                      <td className="px-3 py-2 text-xs text-gray-500">{capitalGridRows.length}명</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-xs text-gray-600 md:grid-cols-3">
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">최초 결성 납입액: <strong>{formatKRW(initialPaidIn)}</strong></div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">후속 캐피탈콜 납입액: <strong>{formatKRW(nonInitialCallsPaidTotal)}</strong></div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">총 누적 납입액: <strong>{formatKRW(historyTotalPaidIn)}</strong></div>
+              </div>
+
+              {splitCapitalCalls.nonInitial.length > 0 && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+                  <h4 className="text-xs font-semibold text-gray-600">최근 캐피탈콜 연계</h4>
+                  <div className="mt-2 space-y-1">
+                    {splitCapitalCalls.nonInitial.slice(-5).reverse().map((call) => (
+                      <div key={call.id} className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                        <span>{call.call_date || '-'} / {formatKRW(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0))}</span>
+                        {call.linked_workflow_instance_id ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/workflows', { state: { expandInstanceId: call.linked_workflow_instance_id } })}
+                            className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                          >
+                            {buildLinkedWorkflowLabel(call, fundDetail.name)}
+                            {call.linked_workflow_status
+                              ? ` · ${WORKFLOW_STATUS_LABEL[call.linked_workflow_status] || call.linked_workflow_status}`
+                              : ''}
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'terms' && (
+            <>
+              <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">통지기간</h3>
               {!editingNotices ? (
@@ -1532,9 +1673,9 @@ export default function FundDetailPage() {
                 </button>
               </div>
             )}
-          </div>
+              </div>
 
-          <div className="card-base space-y-3">
+              <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">주요 계약 조항</h3>
               {!editingKeyTerms ? (
@@ -1681,58 +1822,11 @@ export default function FundDetailPage() {
                 </button>
               </div>
             )}
-          </div>
-
-          <div className="card-base">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">LP 목록</h3>
-              <button onClick={() => setShowCreateLP(v => !v)} className="primary-btn inline-flex items-center gap-1"><Plus size={12} /> LP 추가</button>
-            </div>
-
-            {showCreateLP && (
-              <div className="mb-2">
-                <LPForm
-                  initial={EMPTY_LP}
-                  addressBooks={lpAddressBooks}
-                  loading={createLPMut.isPending}
-                  onSubmit={data => createLPMut.mutate({ data })}
-                  onCancel={() => setShowCreateLP(false)}
-                />
               </div>
-            )}
+            </>
+          )}
 
-            <div className="space-y-2">
-              {fundDetail.lps?.length ? fundDetail.lps.map((lp) => (
-                <div key={lp.id} className="border border-gray-200 rounded-lg p-3">
-                  {editingLPId === lp.id ? (
-                    <LPForm
-                      initial={lp}
-                      addressBooks={lpAddressBooks}
-                      loading={updateLPMut.isPending}
-                      onSubmit={data => updateLPMut.mutate({ lpId: lp.id, data })}
-                      onCancel={() => setEditingLPId(null)}
-                    />
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{lp.name}</p>
-                          <p className="text-xs text-gray-500">{lp.type} | 연락처: {lp.contact || '-'}</p>
-                        </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => setEditingLPId(lp.id)} className="secondary-btn">수정</button>
-                          <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate(lp.id) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1">약정액: {formatKRW(lp.commitment ?? null)} | 납입액: {formatKRW(lp.paid_in ?? null)}</p>
-                    </>
-                  )}
-                </div>
-              )) : <p className="text-sm text-gray-400">등록된 LP가 없습니다.</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {activeTab === 'portfolio' && (
             <div className="card-base">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">투자 내역</h3>
@@ -1809,30 +1903,7 @@ export default function FundDetailPage() {
                 </div>
               )}
             </div>
-
-            <div className="card-base">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">미수 서류</h3>
-              {!missingDocs?.length ? (
-                <p className="text-sm text-gray-400">미수 서류가 없습니다.</p>
-              ) : (
-                <div className="space-y-2">
-                  {missingDocs.map((doc) => (
-                    <div key={doc.id} className="border border-gray-100 rounded p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
-                        {dueText(doc) && (
-                          <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
-                            {dueText(doc)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          )}
 
           {showCapCallWizard && (
             <CapitalCallWizard
