@@ -4,22 +4,44 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   addFundFormationWorkflow,
   calculateDeadline,
+  completeLPTransfer,
+  createAssembly,
   createCapitalCallBatch,
+  createDistribution,
+  createDistributionItem,
   createFundLP,
+  createLPTransfer,
+  deleteAssembly,
+  deleteDistribution,
+  deleteDistributionItem,
   deleteFund,
   deleteFundLP,
+  fetchAssemblies,
   fetchCapitalCalls,
   fetchCapitalCallSummary,
+  fetchDistributionItems,
+  fetchDistributions,
   fetchDocumentStatus,
   fetchFund,
   fetchInvestments,
+  fetchLPTransfers,
   fetchLPAddressBooks,
   fetchWorkflows,
   fetchWorkflowInstances,
+  updateAssembly,
+  updateDistribution,
+  updateDistributionItem,
   updateFund,
   updateFundKeyTerms,
   updateFundLP,
   updateFundNoticePeriods,
+  updateLPTransfer,
+  type Assembly,
+  type AssemblyInput,
+  type Distribution,
+  type DistributionInput,
+  type DistributionItem,
+  type DistributionItemInput,
   type DocumentStatusItem,
   type Fund,
   type FundInput,
@@ -30,6 +52,8 @@ import {
   type LP,
   type LPAddressBook,
   type LPInput,
+  type LPTransfer,
+  type LPTransferInput,
   type NoticeDeadlineResult,
   type WorkflowInstance,
   type WorkflowListItem,
@@ -56,6 +80,29 @@ interface EditableNoticePeriod extends FundNoticePeriodInput {
 
 interface EditableKeyTerm extends FundKeyTermInput {
   _row_id: string
+}
+
+interface DistributionEditState {
+  dist_date: string
+  dist_type: string
+  principal_total: number
+  profit_total: number
+  performance_fee: number
+  memo: string
+}
+
+interface DistributionItemEditState {
+  principal: number
+  profit: number
+}
+
+interface AssemblyEditState {
+  date: string
+  type: string
+  status: string
+  agenda: string
+  minutes_completed: boolean
+  memo: string
 }
 
 const STANDARD_NOTICE_TYPES = [
@@ -192,10 +239,66 @@ const WORKFLOW_STATUS_LABEL: Record<string, string> = {
   cancelled: '취소',
 }
 
+const DIST_TYPE_LABEL: Record<string, string> = {
+  principal: '원금배분',
+  profit: '수익배분',
+  in_kind: '잔여자산배분',
+  cash: '현금배분',
+  원금배분: '원금배분',
+  수익배분: '수익배분',
+  잔여자산배분: '잔여자산배분',
+  현금배분: '현금배분',
+}
+
+const ASSEMBLY_TYPE_LABEL: Record<string, string> = {
+  founding: '결성총회',
+  regular: '정기총회',
+  special: '임시총회',
+  결성총회: '결성총회',
+  정기총회: '정기총회',
+  임시총회: '임시총회',
+}
+
+const LP_TRANSFER_STATUS_LABEL: Record<string, string> = {
+  pending: '대기',
+  in_progress: '진행 중',
+  completed: '완료',
+  cancelled: '취소',
+}
+
+const DIST_TYPE_OPTIONS = ['cash', 'principal', 'profit', 'in_kind']
+const ASSEMBLY_TYPE_OPTIONS = ['founding', 'regular', 'special']
+const ASSEMBLY_STATUS_OPTIONS = ['planned', 'scheduled', 'deliberating', 'approved', 'rejected', 'completed']
+
 function buildLinkedWorkflowLabel(call: CapitalCall, fallbackFundName: string): string {
   const name = call.linked_workflow_name?.trim()
   if (name) return name
   return `[${fallbackFundName}] 출자요청 워크플로 진행건`
+}
+
+function buildTransferWorkflowLabel(transfer: LPTransfer, fundName: string): string {
+  const fromName = transfer.from_lp_name || String(transfer.from_lp_id)
+  const toName = transfer.to_lp_name || (transfer.to_lp_id ? String(transfer.to_lp_id) : '신규 LP')
+  return `[${fundName}] LP 양수양도 (${fromName} → ${toName}) 승인 단계`
+}
+
+function labelDistributionType(value: string | null | undefined): string {
+  if (!value) return '-'
+  return DIST_TYPE_LABEL[value] ?? value
+}
+
+function labelAssemblyType(value: string | null | undefined): string {
+  if (!value) return '-'
+  return ASSEMBLY_TYPE_LABEL[value] ?? value
+}
+
+function toDate(value: string | null | undefined): string {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('ko-KR')
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 function normalizeCallType(value: string | null | undefined): string {
@@ -227,6 +330,193 @@ function extractFormationSlotFromMemo(memo: string | null | undefined): string |
   const matched = memo.match(/formation_slot\s*=\s*([^\s]+)/i)
   if (!matched) return null
   return normalizeFormationWorkflowKey(matched[1])
+}
+
+function LPTransferModal({
+  fromLp,
+  lps,
+  loading,
+  onSubmit,
+  onCancel,
+}: {
+  fromLp: LP
+  lps: LP[]
+  loading: boolean
+  onSubmit: (data: LPTransferInput) => void
+  onCancel: () => void
+}) {
+  const [useExistingLp, setUseExistingLp] = useState(true)
+  const [toLpId, setToLpId] = useState<number | ''>('')
+  const [toLpName, setToLpName] = useState('')
+  const [toLpType, setToLpType] = useState('기관투자자')
+  const [toLpBusinessNumber, setToLpBusinessNumber] = useState('')
+  const [toLpAddress, setToLpAddress] = useState('')
+  const [toLpContact, setToLpContact] = useState('')
+  const [transferAmount, setTransferAmount] = useState<number>(0)
+  const [transferDate, setTransferDate] = useState(todayIso())
+  const [notes, setNotes] = useState('')
+
+  const submit = () => {
+    if (transferAmount <= 0) return
+    if (useExistingLp) {
+      if (!toLpId || toLpId === fromLp.id) return
+      onSubmit({
+        from_lp_id: fromLp.id,
+        to_lp_id: toLpId,
+        transfer_amount: transferAmount,
+        transfer_date: transferDate || null,
+        notes: notes.trim() || null,
+      })
+      return
+    }
+
+    if (!toLpName.trim() || !toLpType.trim()) return
+    onSubmit({
+      from_lp_id: fromLp.id,
+      to_lp_name: toLpName.trim(),
+      to_lp_type: toLpType.trim(),
+      to_lp_business_number: toLpBusinessNumber.trim() || null,
+      to_lp_address: toLpAddress.trim() || null,
+      to_lp_contact: toLpContact.trim() || null,
+      transfer_amount: transferAmount,
+      transfer_date: transferDate || null,
+      notes: notes.trim() || null,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900">LP 양수양도</h3>
+          <button onClick={onCancel} className="secondary-btn">닫기</button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded border border-gray-200 bg-gray-50 p-2 text-sm">
+            양도인: <span className="font-medium text-gray-800">{fromLp.name}</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">양도 금액</label>
+              <input
+                type="number"
+                value={transferAmount || ''}
+                onChange={(event) => setTransferAmount(Number(event.target.value || 0))}
+                placeholder="숫자 입력"
+                className="w-full rounded border px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">양도일</label>
+              <input
+                type="date"
+                value={transferDate}
+                onChange={(event) => setTransferDate(event.target.value)}
+                className="w-full rounded border px-2 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="rounded border border-gray-200 p-2">
+            <div className="mb-2 flex items-center gap-3 text-xs">
+              <label className="inline-flex items-center gap-1">
+                <input type="radio" checked={useExistingLp} onChange={() => setUseExistingLp(true)} />
+                기존 LP
+              </label>
+              <label className="inline-flex items-center gap-1">
+                <input type="radio" checked={!useExistingLp} onChange={() => setUseExistingLp(false)} />
+                신규 LP
+              </label>
+            </div>
+
+            {useExistingLp ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP</label>
+                <select
+                  value={toLpId}
+                  onChange={(event) => setToLpId(event.target.value ? Number(event.target.value) : '')}
+                  className="w-full rounded border px-2 py-1.5 text-sm"
+                >
+                  <option value="">양수 LP 선택</option>
+                  {lps.filter((lp) => lp.id !== fromLp.id).map((lp) => (
+                    <option key={lp.id} value={lp.id}>{lp.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP명</label>
+                  <input
+                    value={toLpName}
+                    onChange={(event) => setToLpName(event.target.value)}
+                    placeholder="예: OO기관"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP 유형</label>
+                  <input
+                    value={toLpType}
+                    onChange={(event) => setToLpType(event.target.value)}
+                    placeholder="예: 기관투자자"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호/생년월일</label>
+                  <input
+                    value={toLpBusinessNumber}
+                    onChange={(event) => setToLpBusinessNumber(event.target.value)}
+                    placeholder="선택 입력"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
+                  <input
+                    value={toLpAddress}
+                    onChange={(event) => setToLpAddress(event.target.value)}
+                    placeholder="선택 입력"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
+                  <input
+                    value={toLpContact}
+                    onChange={(event) => setToLpContact(event.target.value)}
+                    placeholder="선택 입력"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+              placeholder="선택 입력"
+              className="w-full rounded border px-2 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onCancel} className="secondary-btn">취소</button>
+          <button onClick={submit} disabled={loading} className="primary-btn">
+            {loading ? '처리 중...' : '양수양도 시작'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function FundForm({
@@ -779,11 +1069,42 @@ export default function FundDetailPage() {
   const [showCapCallWizard, setShowCapCallWizard] = useState(false)
   const [activeTab, setActiveTab] = useState<FundDetailTab>('overview')
   const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
+  const [distExpandedId, setDistExpandedId] = useState<number | null>(null)
+  const [editingDistId, setEditingDistId] = useState<number | null>(null)
+  const [editingDistItemId, setEditingDistItemId] = useState<number | null>(null)
+  const [editingAssemblyId, setEditingAssemblyId] = useState<number | null>(null)
+  const [transferSourceLp, setTransferSourceLp] = useState<LP | null>(null)
+  const [editDistribution, setEditDistribution] = useState<DistributionEditState | null>(null)
+  const [editDistributionItem, setEditDistributionItem] = useState<DistributionItemEditState | null>(null)
+  const [editAssembly, setEditAssembly] = useState<AssemblyEditState | null>(null)
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
   const [formationWorkflowTriggerDate, setFormationWorkflowTriggerDate] = useState('')
   const [formationTemplateModal, setFormationTemplateModal] = useState<{ slotKey: string; slotLabel: string } | null>(null)
   const [selectedFormationTemplateId, setSelectedFormationTemplateId] = useState<number | ''>('')
+  const [newDistribution, setNewDistribution] = useState<DistributionInput>({
+    fund_id: 0,
+    dist_date: todayIso(),
+    dist_type: 'cash',
+    principal_total: 0,
+    profit_total: 0,
+    performance_fee: 0,
+    memo: '',
+  })
+  const [newDistributionItem, setNewDistributionItem] = useState<DistributionItemInput>({
+    lp_id: 0,
+    principal: 0,
+    profit: 0,
+  })
+  const [newAssembly, setNewAssembly] = useState<AssemblyInput>({
+    fund_id: 0,
+    type: 'regular',
+    date: todayIso(),
+    agenda: '',
+    status: 'planned',
+    minutes_completed: false,
+    memo: '',
+  })
 
   const { data: fundDetail, isLoading } = useQuery<Fund>({
     queryKey: ['fund', fundId],
@@ -835,6 +1156,30 @@ export default function FundDetailPage() {
     queryFn: () => fetchLPAddressBooks({ is_active: 1 }),
   })
 
+  const { data: lpTransfers = [] } = useQuery<LPTransfer[]>({
+    queryKey: ['lpTransfers', fundId],
+    queryFn: () => fetchLPTransfers(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: distributions = [] } = useQuery<Distribution[]>({
+    queryKey: ['distributions', fundId],
+    queryFn: () => fetchDistributions({ fund_id: fundId }),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: distributionItems = [] } = useQuery<DistributionItem[]>({
+    queryKey: ['distributionItems', distExpandedId],
+    queryFn: () => fetchDistributionItems(distExpandedId as number),
+    enabled: !!distExpandedId,
+  })
+
+  const { data: assemblies = [] } = useQuery<Assembly[]>({
+    queryKey: ['assemblies', fundId],
+    queryFn: () => fetchAssemblies({ fund_id: fundId }),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
   useEffect(() => {
     if (!fundDetail) return
     if (!editingNotices) {
@@ -850,6 +1195,33 @@ export default function FundDetailPage() {
     setFormationTemplateModal(null)
     setSelectedFormationTemplateId('')
     setActiveTab('overview')
+    setDistExpandedId(null)
+    setEditingDistId(null)
+    setEditingDistItemId(null)
+    setEditingAssemblyId(null)
+    setEditDistribution(null)
+    setEditDistributionItem(null)
+    setEditAssembly(null)
+    setTransferSourceLp(null)
+    setNewDistribution({
+      fund_id: 0,
+      dist_date: todayIso(),
+      dist_type: 'cash',
+      principal_total: 0,
+      profit_total: 0,
+      performance_fee: 0,
+      memo: '',
+    })
+    setNewDistributionItem({ lp_id: 0, principal: 0, profit: 0 })
+    setNewAssembly({
+      fund_id: 0,
+      type: 'regular',
+      date: todayIso(),
+      agenda: '',
+      status: 'planned',
+      minutes_completed: false,
+      memo: '',
+    })
   }, [fundId])
 
   useEffect(() => {
@@ -1098,6 +1470,141 @@ export default function FundDetailPage() {
     },
   })
 
+  const createLPTransferMut = useMutation({
+    mutationFn: (data: LPTransferInput) => createLPTransfer(fundId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setTransferSourceLp(null)
+      addToast('success', 'LP 양수양도 워크플로우를 시작했습니다.')
+    },
+  })
+
+  const completeLPTransferMut = useMutation({
+    mutationFn: (transferId: number) => completeLPTransfer(fundId, transferId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      addToast('success', 'LP 양수양도를 완료 처리했습니다.')
+    },
+  })
+
+  const cancelLPTransferMut = useMutation({
+    mutationFn: (transferId: number) => updateLPTransfer(fundId, transferId, { status: 'cancelled' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
+      addToast('success', 'LP 양수양도를 취소 처리했습니다.')
+    },
+  })
+
+  const createDistMut = useMutation({
+    mutationFn: (data: DistributionInput) => createDistribution(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      addToast('success', '배분을 등록했습니다.')
+    },
+  })
+
+  const updateDistMut = useMutation({
+    mutationFn: ({ distId, data }: { distId: number; data: Partial<DistributionInput> }) =>
+      updateDistribution(distId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      setEditingDistId(null)
+      setEditDistribution(null)
+      addToast('success', '배분을 수정했습니다.')
+    },
+  })
+
+  const deleteDistMut = useMutation({
+    mutationFn: (distId: number) => deleteDistribution(distId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', '배분을 삭제했습니다.')
+    },
+  })
+
+  const createDistItemMut = useMutation({
+    mutationFn: ({ distributionId, data }: { distributionId: number; data: DistributionItemInput }) =>
+      createDistributionItem(distributionId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', 'LP 배분 항목을 추가했습니다.')
+    },
+  })
+
+  const updateDistItemMut = useMutation({
+    mutationFn: ({
+      distributionId,
+      itemId,
+      data,
+    }: {
+      distributionId: number
+      itemId: number
+      data: Partial<DistributionItemInput>
+    }) => updateDistributionItem(distributionId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      setEditingDistItemId(null)
+      setEditDistributionItem(null)
+      addToast('success', 'LP 배분 항목을 수정했습니다.')
+    },
+  })
+
+  const deleteDistItemMut = useMutation({
+    mutationFn: ({ distributionId, itemId }: { distributionId: number; itemId: number }) =>
+      deleteDistributionItem(distributionId, itemId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
+      queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', 'LP 배분 항목을 삭제했습니다.')
+    },
+  })
+
+  const createAssemblyMut = useMutation({
+    mutationFn: (data: AssemblyInput) => createAssembly(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', '총회를 등록했습니다.')
+    },
+  })
+
+  const updateAssemblyMut = useMutation({
+    mutationFn: ({ assemblyId, data }: { assemblyId: number; data: Partial<AssemblyInput> }) =>
+      updateAssembly(assemblyId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      setEditingAssemblyId(null)
+      setEditAssembly(null)
+      addToast('success', '총회를 수정했습니다.')
+    },
+  })
+
+  const deleteAssemblyMut = useMutation({
+    mutationFn: (assemblyId: number) => deleteAssembly(assemblyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', '총회를 삭제했습니다.')
+    },
+  })
+
   const addFormationWorkflowMut = useMutation({
     mutationFn: ({
       templateName,
@@ -1163,6 +1670,53 @@ export default function FundDetailPage() {
       templateName: formationTemplateModal.slotKey,
       triggerDate: formationWorkflowTriggerDate,
       templateId: Number(selectedFormationTemplateId),
+    })
+  }
+
+  const toggleDistributionEdit = (row: Distribution) => {
+    if (editingDistId === row.id) {
+      setEditingDistId(null)
+      setEditDistribution(null)
+      return
+    }
+    setEditingDistId(row.id)
+    setEditDistribution({
+      dist_date: row.dist_date,
+      dist_type: row.dist_type,
+      principal_total: row.principal_total,
+      profit_total: row.profit_total,
+      performance_fee: row.performance_fee,
+      memo: row.memo || '',
+    })
+  }
+
+  const toggleDistributionItemEdit = (item: DistributionItem) => {
+    if (editingDistItemId === item.id) {
+      setEditingDistItemId(null)
+      setEditDistributionItem(null)
+      return
+    }
+    setEditingDistItemId(item.id)
+    setEditDistributionItem({
+      principal: item.principal,
+      profit: item.profit,
+    })
+  }
+
+  const toggleAssemblyEdit = (row: Assembly) => {
+    if (editingAssemblyId === row.id) {
+      setEditingAssemblyId(null)
+      setEditAssembly(null)
+      return
+    }
+    setEditingAssemblyId(row.id)
+    setEditAssembly({
+      date: row.date,
+      type: row.type,
+      status: row.status,
+      agenda: row.agenda || '',
+      minutes_completed: row.minutes_completed,
+      memo: row.memo || '',
     })
   }
 
@@ -1458,6 +2012,7 @@ export default function FundDetailPage() {
                                 <span className="text-xs text-gray-500">{lp.note}</span>
                                 <div className="flex gap-1">
                                   <button onClick={() => setEditingLPId(lp.id)} className="secondary-btn">수정</button>
+                                  <button onClick={() => setTransferSourceLp(lp)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">양수양도</button>
                                   <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate(lp.id) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
                                 </div>
                               </div>
@@ -1526,6 +2081,413 @@ export default function FundDetailPage() {
                   </div>
                 </div>
               )}
+
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <h4 className="text-xs font-semibold text-gray-600">LP 양수양도 이력</h4>
+                {!lpTransfers.length ? (
+                  <p className="mt-2 text-sm text-gray-400">등록된 양수양도 이력이 없습니다.</p>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    {lpTransfers.map((transfer) => (
+                      <div key={transfer.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 p-2 text-xs">
+                        <div className="min-w-0">
+                          <p className="truncate text-gray-700">
+                            {transfer.from_lp_name || transfer.from_lp_id}
+                            {' '}
+                            →
+                            {' '}
+                            {transfer.to_lp_name || transfer.to_lp_id || '신규 LP'}
+                            {' '}
+                            |
+                            {' '}
+                            {formatKRW(transfer.transfer_amount)}
+                          </p>
+                          <p className="mt-0.5 text-gray-500">
+                            {transfer.transfer_date || '-'}
+                            {' '}
+                            |
+                            {' '}
+                            {transfer.workflow_instance_id
+                              ? buildTransferWorkflowLabel(transfer, fundDetail.name || '조합')
+                              : '수동 진행'}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              transfer.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : transfer.status === 'cancelled'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {LP_TRANSFER_STATUS_LABEL[transfer.status] || transfer.status}
+                          </span>
+                          {transfer.status !== 'completed' && (
+                            <button
+                              onClick={() => completeLPTransferMut.mutate(transfer.id)}
+                              className="tag tag-emerald hover:opacity-90"
+                            >
+                              완료
+                            </button>
+                          )}
+                          {transfer.status !== 'cancelled' && transfer.status !== 'completed' && (
+                            <button
+                              onClick={() => cancelLPTransferMut.mutate(transfer.id)}
+                              className="tag tag-red hover:opacity-90"
+                            >
+                              취소
+                            </button>
+                          )}
+                          {transfer.workflow_instance_id && (
+                            <button
+                              onClick={() => navigate('/workflows', { state: { expandInstanceId: transfer.workflow_instance_id } })}
+                              className="tag tag-blue hover:opacity-90"
+                            >
+                              워크플로
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+                <h4 className="text-xs font-semibold text-gray-600">배분</h4>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+                    <input
+                      type="date"
+                      value={newDistribution.dist_date}
+                      onChange={(event) => setNewDistribution((prev) => ({ ...prev, dist_date: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+                    <select
+                      value={newDistribution.dist_type}
+                      onChange={(event) => setNewDistribution((prev) => ({ ...prev, dist_type: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    >
+                      {DIST_TYPE_OPTIONS.map((type) => (
+                        <option key={type} value={type}>{labelDistributionType(type)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+                    <input
+                      type="number"
+                      value={newDistribution.principal_total || 0}
+                      onChange={(event) =>
+                        setNewDistribution((prev) => ({ ...prev, principal_total: Number(event.target.value || 0) }))
+                      }
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+                    <input
+                      type="number"
+                      value={newDistribution.profit_total || 0}
+                      onChange={(event) =>
+                        setNewDistribution((prev) => ({ ...prev, profit_total: Number(event.target.value || 0) }))
+                      }
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={() =>
+                        createDistMut.mutate({
+                          ...newDistribution,
+                          fund_id: fundId,
+                          memo: newDistribution.memo?.trim() || null,
+                        })
+                      }
+                      className="primary-btn"
+                    >
+                      등록
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {distributions.map((row) => (
+                    <div key={row.id} className="rounded border border-gray-200 p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm text-gray-800">
+                          {toDate(row.dist_date)}
+                          {' '}
+                          |
+                          {' '}
+                          {labelDistributionType(row.dist_type)}
+                          {' '}
+                          |
+                          {' '}
+                          원금 총액
+                          {' '}
+                          {formatKRW(row.principal_total)}
+                          {' '}
+                          |
+                          {' '}
+                          수익 총액
+                          {' '}
+                          {formatKRW(row.profit_total)}
+                        </p>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setDistExpandedId(distExpandedId === row.id ? null : row.id)}
+                            className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100"
+                          >
+                            LP 내역
+                          </button>
+                          <button onClick={() => toggleDistributionEdit(row)} className="secondary-btn">수정</button>
+                          <button onClick={() => deleteDistMut.mutate(row.id)} className="danger-btn">삭제</button>
+                        </div>
+                      </div>
+
+                      {editingDistId === row.id && editDistribution && (
+                        <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+                            <input
+                              type="date"
+                              value={editDistribution.dist_date}
+                              onChange={(event) =>
+                                setEditDistribution((prev) => (prev ? { ...prev, dist_date: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+                            <select
+                              value={editDistribution.dist_type}
+                              onChange={(event) =>
+                                setEditDistribution((prev) => (prev ? { ...prev, dist_type: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            >
+                              {DIST_TYPE_OPTIONS.map((type) => (
+                                <option key={type} value={type}>{labelDistributionType(type)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+                            <input
+                              type="number"
+                              value={editDistribution.principal_total}
+                              onChange={(event) =>
+                                setEditDistribution((prev) =>
+                                  prev ? { ...prev, principal_total: Number(event.target.value || 0) } : prev
+                                )
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+                            <input
+                              type="number"
+                              value={editDistribution.profit_total}
+                              onChange={(event) =>
+                                setEditDistribution((prev) =>
+                                  prev ? { ...prev, profit_total: Number(event.target.value || 0) } : prev
+                                )
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() =>
+                                updateDistMut.mutate({
+                                  distId: row.id,
+                                  data: {
+                                    dist_date: editDistribution.dist_date,
+                                    dist_type: editDistribution.dist_type,
+                                    principal_total: editDistribution.principal_total,
+                                    profit_total: editDistribution.profit_total,
+                                    performance_fee: editDistribution.performance_fee,
+                                    memo: editDistribution.memo.trim() || null,
+                                  },
+                                })
+                              }
+                              className="primary-btn"
+                            >
+                              저장
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingDistId(null)
+                                setEditDistribution(null)
+                              }}
+                              className="secondary-btn"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {distExpandedId === row.id && (
+                        <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">LP</label>
+                              <select
+                                value={newDistributionItem.lp_id || ''}
+                                onChange={(event) =>
+                                  setNewDistributionItem((prev) => ({ ...prev, lp_id: Number(event.target.value) || 0 }))
+                                }
+                                className="w-full rounded border px-2 py-1 text-sm"
+                              >
+                                <option value="">LP</option>
+                                {(fundDetail.lps ?? []).map((lp) => (
+                                  <option key={lp.id} value={lp.id}>{lp.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                              <input
+                                type="number"
+                                value={newDistributionItem.principal || 0}
+                                onChange={(event) =>
+                                  setNewDistributionItem((prev) => ({ ...prev, principal: Number(event.target.value || 0) }))
+                                }
+                                className="w-full rounded border px-2 py-1 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                              <input
+                                type="number"
+                                value={newDistributionItem.profit || 0}
+                                onChange={(event) =>
+                                  setNewDistributionItem((prev) => ({ ...prev, profit: Number(event.target.value || 0) }))
+                                }
+                                className="w-full rounded border px-2 py-1 text-sm"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <button
+                                onClick={() => {
+                                  if (!newDistributionItem.lp_id) return
+                                  createDistItemMut.mutate({ distributionId: row.id, data: newDistributionItem })
+                                }}
+                                className="primary-btn"
+                              >
+                                항목 추가
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            {distributionItems.map((item) => (
+                              <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
+                                {editingDistItemId === item.id && editDistributionItem ? (
+                                  <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
+                                    <div>
+                                      <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                                      <input
+                                        type="number"
+                                        value={editDistributionItem.principal}
+                                        onChange={(event) =>
+                                          setEditDistributionItem((prev) =>
+                                            prev ? { ...prev, principal: Number(event.target.value || 0) } : prev
+                                          )
+                                        }
+                                        className="w-full rounded border px-2 py-1 text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                                      <input
+                                        type="number"
+                                        value={editDistributionItem.profit}
+                                        onChange={(event) =>
+                                          setEditDistributionItem((prev) =>
+                                            prev ? { ...prev, profit: Number(event.target.value || 0) } : prev
+                                          )
+                                        }
+                                        className="w-full rounded border px-2 py-1 text-sm"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() =>
+                                        updateDistItemMut.mutate({
+                                          distributionId: row.id,
+                                          itemId: item.id,
+                                          data: {
+                                            principal: editDistributionItem.principal,
+                                            profit: editDistributionItem.profit,
+                                          },
+                                        })
+                                      }
+                                      className="primary-btn"
+                                    >
+                                      저장
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingDistItemId(null)
+                                        setEditDistributionItem(null)
+                                      }}
+                                      className="secondary-btn"
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="text-xs text-gray-600">
+                                      LP
+                                      {' '}
+                                      {item.lp_name || item.lp_id}
+                                      {' '}
+                                      |
+                                      {' '}
+                                      원금
+                                      {' '}
+                                      {formatKRW(item.principal)}
+                                      {' '}
+                                      |
+                                      {' '}
+                                      수익
+                                      {' '}
+                                      {formatKRW(item.profit)}
+                                    </p>
+                                    <div className="flex gap-1">
+                                      <button onClick={() => toggleDistributionItemEdit(item)} className="secondary-btn">수정</button>
+                                      <button
+                                        onClick={() => deleteDistItemMut.mutate({ distributionId: row.id, itemId: item.id })}
+                                        className="danger-btn"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {distributions.length === 0 && (
+                    <p className="text-sm text-gray-400">등록된 배분 내역이 없습니다.</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1823,6 +2785,183 @@ export default function FundDetailPage() {
               </div>
             )}
               </div>
+              <div className="card-base space-y-2">
+                <h3 className="text-sm font-semibold text-gray-700">총회</h3>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+                    <input
+                      type="date"
+                      value={newAssembly.date}
+                      onChange={(event) => setNewAssembly((prev) => ({ ...prev, date: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+                    <select
+                      value={newAssembly.type}
+                      onChange={(event) => setNewAssembly((prev) => ({ ...prev, type: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    >
+                      {ASSEMBLY_TYPE_OPTIONS.map((type) => (
+                        <option key={type} value={type}>{labelAssemblyType(type)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                    <select
+                      value={newAssembly.status || ''}
+                      onChange={(event) => setNewAssembly((prev) => ({ ...prev, status: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    >
+                      {ASSEMBLY_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{labelStatus(status)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+                    <input
+                      value={newAssembly.agenda || ''}
+                      onChange={(event) => setNewAssembly((prev) => ({ ...prev, agenda: event.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                      placeholder="선택 입력"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={() =>
+                        createAssemblyMut.mutate({
+                          ...newAssembly,
+                          fund_id: fundId,
+                          agenda: newAssembly.agenda?.trim() || null,
+                        })
+                      }
+                      className="primary-btn"
+                    >
+                      등록
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {assemblies.map((row) => (
+                    <div key={row.id} className="rounded border border-gray-200 p-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-700">
+                          {toDate(row.date)}
+                          {' '}
+                          |
+                          {' '}
+                          {labelAssemblyType(row.type)}
+                          {' '}
+                          |
+                          {' '}
+                          {labelStatus(row.status)}
+                          {' '}
+                          |
+                          {' '}
+                          의사록
+                          {' '}
+                          {row.minutes_completed ? '작성 완료' : '미작성'}
+                        </p>
+                        <div className="flex gap-1">
+                          <button onClick={() => toggleAssemblyEdit(row)} className="secondary-btn">수정</button>
+                          <button onClick={() => deleteAssemblyMut.mutate(row.id)} className="danger-btn">삭제</button>
+                        </div>
+                      </div>
+
+                      {editingAssemblyId === row.id && editAssembly && (
+                        <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+                            <input
+                              type="date"
+                              value={editAssembly.date}
+                              onChange={(event) =>
+                                setEditAssembly((prev) => (prev ? { ...prev, date: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+                            <select
+                              value={editAssembly.type}
+                              onChange={(event) =>
+                                setEditAssembly((prev) => (prev ? { ...prev, type: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            >
+                              {ASSEMBLY_TYPE_OPTIONS.map((type) => (
+                                <option key={type} value={type}>{labelAssemblyType(type)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                            <select
+                              value={editAssembly.status}
+                              onChange={(event) =>
+                                setEditAssembly((prev) => (prev ? { ...prev, status: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            >
+                              {ASSEMBLY_STATUS_OPTIONS.map((status) => (
+                                <option key={status} value={status}>{labelStatus(status)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+                            <input
+                              value={editAssembly.agenda}
+                              onChange={(event) =>
+                                setEditAssembly((prev) => (prev ? { ...prev, agenda: event.target.value } : prev))
+                              }
+                              className="w-full rounded border px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() =>
+                                updateAssemblyMut.mutate({
+                                  assemblyId: row.id,
+                                  data: {
+                                    date: editAssembly.date,
+                                    type: editAssembly.type,
+                                    status: editAssembly.status,
+                                    agenda: editAssembly.agenda.trim() || null,
+                                    minutes_completed: editAssembly.minutes_completed,
+                                    memo: editAssembly.memo.trim() || null,
+                                  },
+                                })
+                              }
+                              className="primary-btn"
+                            >
+                              저장
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingAssemblyId(null)
+                                setEditAssembly(null)
+                              }}
+                              className="secondary-btn"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {assemblies.length === 0 && (
+                    <p className="text-sm text-gray-400">등록된 총회가 없습니다.</p>
+                  )}
+                </div>
+              </div>
             </>
           )}
 
@@ -1903,6 +3042,16 @@ export default function FundDetailPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {transferSourceLp && (
+            <LPTransferModal
+              fromLp={transferSourceLp}
+              lps={fundDetail.lps ?? []}
+              loading={createLPTransferMut.isPending}
+              onSubmit={(data) => createLPTransferMut.mutate(data)}
+              onCancel={() => setTransferSourceLp(null)}
+            />
           )}
 
           {showCapCallWizard && (
