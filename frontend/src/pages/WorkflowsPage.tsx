@@ -11,6 +11,7 @@ import {
   fetchCompanies,
   fetchDocumentTemplates,
   fetchFund,
+  fetchFundLPs,
   fetchFunds,
   fetchGPEntities,
   fetchInvestments,
@@ -27,10 +28,12 @@ import {
   type Fund,
   type GPEntity,
   type NoticeDeadlineResult,
+  type LP,
   type WorkflowInstance,
   type WorkflowListItem,
   type WorkflowStep,
   type WorkflowStepDocumentInput,
+  type WorkflowStepLPPaidInInput,
   type WorkflowStepInstance,
   type WorkflowTemplate,
   type WorkflowTemplateInput,
@@ -63,6 +66,31 @@ const DEFAULT_NOTICE_TYPES = [
   { notice_type: 'lp_report', label: '조합원 보고' },
   { notice_type: 'amendment', label: '규약 변경 통지' },
 ]
+
+function normalizeKeyword(value: string | null | undefined): string {
+  return (value || '').replace(/\s+/g, '').toLowerCase()
+}
+
+function isFormationWorkflowInstance(instance: WorkflowInstance): boolean {
+  const workflowName = normalizeKeyword(instance.workflow_name)
+  const instanceName = normalizeKeyword(instance.name)
+  return workflowName.includes('결성') || instanceName.includes('결성') || workflowName.includes('formation')
+}
+
+function isFormationPaidInConfirmationStep(stepName: string): boolean {
+  const normalized = normalizeKeyword(stepName)
+  const hasPaidToken =
+    normalized.includes('출자') ||
+    normalized.includes('납입') ||
+    normalized.includes('입금') ||
+    normalized.includes('납부') ||
+    normalized.includes('payment')
+  const hasConfirmToken =
+    normalized.includes('확인') ||
+    normalized.includes('check') ||
+    normalized.includes('confirm')
+  return hasPaidToken && hasConfirmToken
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -987,8 +1015,88 @@ function InstanceList({
     }
   }
 
+  const collectFormationLPPaidInUpdates = async (fundId: number): Promise<WorkflowStepLPPaidInInput[] | null> => {
+    let lps: LP[] = []
+    try {
+      lps = await queryClient.fetchQuery({
+        queryKey: ['fundLPs', fundId],
+        queryFn: () => fetchFundLPs(fundId),
+      })
+    } catch {
+      addToast('error', 'LP 목록을 불러오지 못했습니다.')
+      return null
+    }
+
+    if (lps.length === 0) {
+      addToast('error', '납입 금액을 입력할 LP가 없습니다.')
+      return null
+    }
+
+    const updates: WorkflowStepLPPaidInInput[] = []
+    for (const lp of lps) {
+      const currentValue = Math.max(0, Number(lp.paid_in ?? 0))
+      const inputValue = window.prompt(
+        `[${lp.name}] 누적 납입액(원)을 입력하세요.`,
+        String(currentValue),
+      )
+      if (inputValue === null) {
+        return null
+      }
+
+      const normalized = inputValue.replace(/,/g, '').trim()
+      const parsed = normalized === '' ? 0 : Number(normalized)
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        addToast('error', `${lp.name} 납입액은 0 이상의 숫자로 입력해야 합니다.`)
+        return null
+      }
+      updates.push({
+        lp_id: lp.id,
+        paid_in: Math.round(parsed),
+      })
+    }
+
+    return updates
+  }
+
+  const handleCompleteStep = async (instance: WorkflowInstance, step: WorkflowStepInstance) => {
+    const isFormationPaidInStep =
+      !!instance.fund_id &&
+      isFormationWorkflowInstance(instance) &&
+      isFormationPaidInConfirmationStep(step.step_name)
+
+    let lpPaidInUpdates: WorkflowStepLPPaidInInput[] | undefined
+    if (isFormationPaidInStep) {
+      const updates = await collectFormationLPPaidInUpdates(instance.fund_id as number)
+      if (!updates) {
+        return
+      }
+      lpPaidInUpdates = updates
+    }
+
+    completeMut.mutate({
+      instanceId: instance.id,
+      stepId: step.id,
+      estimated: step.estimated_time,
+      lpPaidInUpdates,
+    })
+  }
+
   const completeMut = useMutation({
-    mutationFn: ({ instanceId, stepId, estimated }: { instanceId: number; stepId: number; estimated?: string | null }) => completeWorkflowStep(instanceId, stepId, { actual_time: estimated || undefined }),
+    mutationFn: ({
+      instanceId,
+      stepId,
+      estimated,
+      lpPaidInUpdates,
+    }: {
+      instanceId: number
+      stepId: number
+      estimated?: string | null
+      lpPaidInUpdates?: WorkflowStepLPPaidInInput[]
+    }) =>
+      completeWorkflowStep(instanceId, stepId, {
+        actual_time: estimated || undefined,
+        lp_paid_in_updates: lpPaidInUpdates,
+      }),
     onSuccess: (instance) => {
       invalidateCapitalLinkedQueries(instance.fund_id)
       const isFormationWorkflow = instance.workflow_name.includes('결성')
@@ -1187,12 +1295,12 @@ function InstanceList({
                     ) : status === 'active' ? (
                       canComplete ? (
                         <button
-                          onClick={() => completeMut.mutate({ instanceId: inst.id, stepId: step.id, estimated: step.estimated_time })}
+                          onClick={() => handleCompleteStep(inst, step)}
                           className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-green-500"
                           disabled={completeMut.isPending}
                         />
                       ) : (
-                        <span title="이전 단계를 먼저 완료하세요" className="h-4 w-4 rounded-full border-2 border-gray-200 bg-gray-100" />
+                        <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-gray-200 bg-gray-100" />
                       )
                     ) : (
                       <span className="w-4" />

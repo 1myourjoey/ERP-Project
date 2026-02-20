@@ -1,9 +1,38 @@
 from datetime import date, datetime
 
+from models.phase3 import CapitalCall, CapitalCallItem
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance
 from services.workflow_service import instantiate_workflow
+
+
+def _formation_workflow_payload(name: str = "조합 결성 기본") -> dict:
+    return {
+        "name": name,
+        "category": "조합결성",
+        "trigger_description": "조합 결성 절차",
+        "steps": [
+            {
+                "order": 1,
+                "name": "결성 준비",
+                "timing": "D-day",
+                "timing_offset_days": 0,
+                "estimated_time": "1h",
+                "quadrant": "Q1",
+            },
+            {
+                "order": 2,
+                "name": "결성 완료",
+                "timing": "D+1",
+                "timing_offset_days": 1,
+                "estimated_time": "1h",
+                "quadrant": "Q1",
+            },
+        ],
+        "documents": [],
+        "warnings": [],
+    }
 
 
 class TestFundsCRUD:
@@ -24,6 +53,144 @@ class TestFundsCRUD:
         assert data["status"] == "forming"
         assert data["commitment_total"] == 5_000_000_000
         assert "id" in data
+
+    def test_create_fund_does_not_auto_create_formation_workflow_and_creates_gp_lp(self, client):
+        workflow_response = client.post("/api/workflows", json=_formation_workflow_payload())
+        assert workflow_response.status_code == 201
+
+        gp_name = "자동생성 GP"
+        gp_commitment = 1_000_000
+        create_response = client.post(
+            "/api/funds",
+            json={
+                "name": "자동생성 1호 조합",
+                "type": "벤처투자조합",
+                "status": "forming",
+                "formation_date": "2025-10-24",
+                "gp": gp_name,
+                "gp_commitment": gp_commitment,
+                "commitment_total": 100_000_000,
+            },
+        )
+        assert create_response.status_code == 201
+        fund = create_response.json()
+
+        instances_response = client.get(
+            "/api/workflow-instances",
+            params={"status": "all", "fund_id": fund["id"]},
+        )
+        assert instances_response.status_code == 200
+        instances = instances_response.json()
+        assert instances == []
+
+        lp_response = client.get(f"/api/funds/{fund['id']}/lps")
+        assert lp_response.status_code == 200
+        lps = lp_response.json()
+        gp_lp = next((row for row in lps if row["type"] == "GP"), None)
+        assert gp_lp is not None
+        assert gp_lp["name"] == gp_name
+        assert gp_lp["commitment"] == gp_commitment
+
+    def test_add_formation_workflow_creates_single_instance_per_template(self, client):
+        for workflow_name in (
+            "고유번호증 발급",
+            "수탁계약 체결",
+            "결성총회 개최",
+            "벤처투자조합 등록",
+        ):
+            workflow_response = client.post(
+                "/api/workflows",
+                json=_formation_workflow_payload(name=workflow_name),
+            )
+            assert workflow_response.status_code == 201
+
+        create_response = client.post(
+            "/api/funds",
+            json={
+                "name": "개별 생성 테스트 조합",
+                "type": "벤처투자조합",
+                "status": "forming",
+                "formation_date": "2025-10-24",
+            },
+        )
+        assert create_response.status_code == 201
+        fund_id = create_response.json()["id"]
+
+        add_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={
+                "template_category_or_name": "결성총회 개최",
+                "trigger_date": "2025-11-15",
+            },
+        )
+        assert add_response.status_code == 201
+        add_payload = add_response.json()
+        assert add_payload["workflow_name"] == "결성총회 개최"
+        assert add_payload["fund_id"] == fund_id
+        assert add_payload["trigger_date"] == "2025-11-15"
+
+        instances_response = client.get(
+            "/api/workflow-instances",
+            params={"status": "all", "fund_id": fund_id},
+        )
+        assert instances_response.status_code == 200
+        instances = instances_response.json()
+        matched = [row for row in instances if row["workflow_name"] == "결성총회 개최"]
+        assert len(matched) == 1
+        assert matched[0]["id"] == add_payload["instance_id"]
+
+        duplicate_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={"template_category_or_name": "결성총회 개최"},
+        )
+        assert duplicate_response.status_code == 409
+
+    def test_add_formation_workflow_requires_forming_status(self, client):
+        workflow_response = client.post(
+            "/api/workflows",
+            json=_formation_workflow_payload(name="고유번호증 발급"),
+        )
+        assert workflow_response.status_code == 201
+
+        create_response = client.post(
+            "/api/funds",
+            json={
+                "name": "운용중 조합",
+                "type": "벤처투자조합",
+                "status": "active",
+            },
+        )
+        assert create_response.status_code == 201
+        fund_id = create_response.json()["id"]
+
+        add_response = client.post(
+            f"/api/funds/{fund_id}/add-formation-workflow",
+            json={"template_category_or_name": "고유번호증 발급"},
+        )
+        assert add_response.status_code == 400
+
+    def test_create_fund_accepts_gp_commitment_amount_alias(self, client):
+        response = client.post(
+            "/api/funds",
+            json={
+                "name": "별칭 1호 조합",
+                "type": "벤처투자조합",
+                "status": "active",
+                "gp": "별칭 GP",
+                "gp_commitment_amount": 2_000_000,
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["gp_commitment"] == 2_000_000
+
+        lp_response = client.get(f"/api/funds/{data['id']}/lps")
+        assert lp_response.status_code == 200
+        lps = lp_response.json()
+        gp_lp = next((row for row in lps if row["type"] == "GP"), None)
+        assert gp_lp is not None
+        assert gp_lp["name"] == "별칭 GP"
+        assert gp_lp["commitment"] == 2_000_000
 
     def test_list_funds(self, client, sample_fund):
         response = client.get("/api/funds")
@@ -86,7 +253,10 @@ class TestFundLPs:
     def test_list_lps(self, client, sample_fund_with_lps):
         response = client.get(f"/api/funds/{sample_fund_with_lps['id']}/lps")
         assert response.status_code == 200
-        assert len(response.json()) == 3
+        lp_names = {row["name"] for row in response.json()}
+        assert "(주)한국투자" in lp_names
+        assert "김철수" in lp_names
+        assert "(주)미래에셋" in lp_names
 
     def test_update_lp(self, client, sample_fund):
         create_response = client.post(
@@ -272,6 +442,54 @@ class TestFundDeleteLifecycle:
         assert kept_standalone_completed is not None
         assert kept_standalone_completed.fund_id is None
         assert db_session.get(Task, standalone_pending_id) is None
+
+    def test_delete_fund_removes_capital_calls_and_items(
+        self,
+        client,
+        db_session,
+        sample_fund,
+    ):
+        fund_id = sample_fund["id"]
+
+        lp_response = client.post(
+            f"/api/funds/{fund_id}/lps",
+            json={
+                "name": "삭제검증 LP",
+                "type": "기관투자자",
+                "commitment": 100_000_000,
+            },
+        )
+        assert lp_response.status_code == 201
+        lp_id = lp_response.json()["id"]
+
+        capital_call = CapitalCall(
+            fund_id=fund_id,
+            call_date=date(2025, 10, 24),
+            call_type="additional",
+            total_amount=10_000_000,
+            memo="delete_fund_cleanup_test",
+        )
+        db_session.add(capital_call)
+        db_session.flush()
+
+        item = CapitalCallItem(
+            capital_call_id=capital_call.id,
+            lp_id=lp_id,
+            amount=10_000_000,
+            paid=1,
+            paid_date=date(2025, 10, 24),
+            memo="cleanup",
+        )
+        db_session.add(item)
+        db_session.commit()
+
+        call_id = capital_call.id
+        item_id = item.id
+
+        delete_response = client.delete(f"/api/funds/{fund_id}")
+        assert delete_response.status_code == 204
+        assert db_session.get(CapitalCall, call_id) is None
+        assert db_session.get(CapitalCallItem, item_id) is None
 
 
 class TestFundNoticeAndTerms:

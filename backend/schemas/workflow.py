@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from typing import Literal, Optional
 
@@ -192,6 +192,12 @@ class WorkflowInstanceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WorkflowStepLPPaidInInput(BaseModel):
+    lp_id: int
+    paid_in: float = Field(ge=0)
+
+
 class WorkflowStepCompleteRequest(BaseModel):
     actual_time: Optional[str] = None
     notes: Optional[str] = None
+    lp_paid_in_updates: list[WorkflowStepLPPaidInInput] = []

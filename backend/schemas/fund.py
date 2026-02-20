@@ -164,6 +164,7 @@ class FundCreate(BaseModel):
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
+    gp_commitment_amount: Optional[float] = Field(default=None, ge=0)
     contribution_type: Optional[str] = None
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
@@ -182,6 +183,12 @@ class FundCreate(BaseModel):
             raise ValueError("type must not be empty")
         return value
 
+    @model_validator(mode="after")
+    def normalize_gp_commitment_alias(self):
+        if self.gp_commitment is None and self.gp_commitment_amount is not None:
+            self.gp_commitment = self.gp_commitment_amount
+        return self
+
 
 class FundUpdate(BaseModel):
     name: Optional[str] = None
@@ -196,6 +203,7 @@ class FundUpdate(BaseModel):
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
+    gp_commitment_amount: Optional[float] = Field(default=None, ge=0)
     contribution_type: Optional[str] = None
     aum: Optional[float] = Field(default=None, ge=0)
     investment_period_end: Optional[date] = None
@@ -215,6 +223,12 @@ class FundUpdate(BaseModel):
         if not value:
             raise ValueError("type must not be empty")
         return value
+
+    @model_validator(mode="after")
+    def normalize_gp_commitment_alias(self):
+        if self.gp_commitment is None and self.gp_commitment_amount is not None:
+            self.gp_commitment = self.gp_commitment_amount
+        return self
 
 
 class FundListItem(BaseModel):
@@ -303,3 +317,26 @@ class FundResponse(BaseModel):
     key_terms: list[FundKeyTermResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class FundFormationWorkflowAddRequest(BaseModel):
+    template_category_or_name: str
+    trigger_date: Optional[date] = None
+
+    @field_validator("template_category_or_name")
+    @classmethod
+    def validate_template_category_or_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("template_category_or_name must not be empty")
+        return normalized
+
+
+class FundFormationWorkflowAddResponse(BaseModel):
+    instance_id: int
+    workflow_id: int
+    workflow_name: str
+    instance_name: str
+    status: str
+    trigger_date: date
+    fund_id: int

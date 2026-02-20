@@ -133,6 +133,10 @@ export const fetchFund = (id: number): Promise<Fund> => api.get(`/funds/${id}`).
 export const createFund = (data: FundInput) => api.post('/funds', data).then(r => r.data)
 export const updateFund = (id: number, data: Partial<FundInput>) => api.put(`/funds/${id}`, data).then(r => r.data)
 export const deleteFund = (id: number) => api.delete(`/funds/${id}`)
+export const addFundFormationWorkflow = (
+  fundId: number,
+  data: FundFormationWorkflowAddInput,
+): Promise<FundFormationWorkflowAddResult> => api.post(`/funds/${fundId}/add-formation-workflow`, data).then(r => r.data)
 export const fetchFundLPs = (fundId: number): Promise<LP[]> => api.get(`/funds/${fundId}/lps`).then(r => r.data)
 export const createFundLP = (fundId: number, data: LPInput) => api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
 export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) => api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
@@ -613,6 +617,12 @@ export interface WorkflowInstanceUpdateInput {
 export interface WorkflowStepCompleteInput {
   actual_time?: string
   notes?: string
+  lp_paid_in_updates?: WorkflowStepLPPaidInInput[]
+}
+
+export interface WorkflowStepLPPaidInInput {
+  lp_id: number
+  paid_in: number
 }
 
 export interface WorkflowStepInput {
@@ -702,6 +712,7 @@ export interface FundInput {
   trustee?: string | null
   commitment_total?: number | null
   gp_commitment?: number | null
+  gp_commitment_amount?: number | null
   contribution_type?: string | null
   aum?: number | null
   investment_period_end?: string | null
@@ -711,6 +722,21 @@ export interface FundInput {
   performance_fee_rate?: number | null
   hurdle_rate?: number | null
   account_number?: string | null
+}
+
+export interface FundFormationWorkflowAddInput {
+  template_category_or_name: string
+  trigger_date?: string | null
+}
+
+export interface FundFormationWorkflowAddResult {
+  instance_id: number
+  workflow_id: number
+  workflow_name: string
+  instance_name: string
+  status: string
+  trigger_date: string
+  fund_id: number
 }
 
 export interface LPInput {

@@ -10,12 +10,16 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.fund import Fund, LP, FundNoticePeriod, FundKeyTerm
+from models.gp_entity import GPEntity
 from models.lp_address_book import LPAddressBook
 from models.investment import Investment
 from models.phase3 import CapitalCall, CapitalCallItem
 from models.task import Task
+from models.workflow import Workflow
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from schemas.fund import (
+    FundFormationWorkflowAddRequest,
+    FundFormationWorkflowAddResponse,
     FundMigrationImportResponse,
     FundMigrationValidateResponse,
     FundCreate,
@@ -35,6 +39,7 @@ from schemas.fund import (
     LPUpdate,
 )
 from services.workflow_service import calculate_business_days_before
+from services.workflow_service import instantiate_workflow
 from services.fund_integrity import validate_lp_paid_in_pair
 
 router = APIRouter(tags=["funds"])
@@ -87,6 +92,28 @@ MIGRATION_FUND_TYPES = {
 
 MIGRATION_FUND_STATUS = {"forming", "active", "dissolved", "liquidated"}
 MIGRATION_LP_TYPES = {"기관투자자", "개인투자자", "GP"}
+
+FORMING_STATUS_KEYS = {
+    "forming",
+    "planned",
+    "결성예정",
+    "결성예정(planned)",
+}
+
+FORMATION_WORKFLOW_NAME_MAP = {
+    "고유번호증발급": "고유번호증 발급",
+    "고유번호증 발급": "고유번호증 발급",
+    "수탁계약체결": "수탁계약 체결",
+    "수탁계약 체결": "수탁계약 체결",
+    "결성총회개최": "결성총회 개최",
+    "결성총회 개최": "결성총회 개최",
+    "벤처투자조합등록": "벤처투자조합 등록",
+    "벤처투자조합 등록": "벤처투자조합 등록",
+    "투자조합등록": "벤처투자조합 등록",
+    "투자조합 등록": "벤처투자조합 등록",
+    "조합등록": "벤처투자조합 등록",
+    "조합 등록": "벤처투자조합 등록",
+}
 
 
 def _to_str(value: object | None) -> str:
@@ -428,6 +455,119 @@ def calculate_lp_paid_in_from_calls(db: Session, fund_id: int, lp_id: int) -> tu
         .scalar()
     )
     return True, int(paid_in_total or 0)
+
+
+def _normalize_status_key(status: str | None) -> str:
+    if not status:
+        return ""
+    return "".join(status.split()).lower()
+
+
+def _is_forming_status(status: str | None) -> bool:
+    return _normalize_status_key(status) in FORMING_STATUS_KEYS
+
+
+def _normalize_template_identifier(value: str | None) -> str:
+    return "".join((value or "").split()).lower()
+
+
+def _resolve_formation_template_name(template_category_or_name: str) -> str | None:
+    if not template_category_or_name:
+        return None
+    normalized = _normalize_template_identifier(template_category_or_name)
+    if not normalized:
+        return None
+    return FORMATION_WORKFLOW_NAME_MAP.get(normalized) or FORMATION_WORKFLOW_NAME_MAP.get(
+        template_category_or_name
+    )
+
+
+def _find_formation_template(
+    db: Session,
+    template_category_or_name: str,
+) -> Workflow | None:
+    target_name = _resolve_formation_template_name(template_category_or_name)
+    if not target_name:
+        return None
+    return (
+        db.query(Workflow)
+        .filter(
+            Workflow.name == target_name,
+            or_(
+                Workflow.category == "조합결성",
+                Workflow.category == "결성",
+            ),
+        )
+        .order_by(Workflow.id.asc())
+        .first()
+    )
+
+
+def _to_lp_commitment_amount(value: float | None) -> int | None:
+    if value is None:
+        return None
+    parsed = float(value)
+    if parsed < 0:
+        return 0
+    return int(round(parsed))
+
+
+def _ensure_gp_lp_record(
+    db: Session,
+    *,
+    fund: Fund,
+    gp_name: str | None,
+    gp_commitment: float | None,
+) -> None:
+    normalized_name = (gp_name or "").strip()
+    if not normalized_name:
+        return
+
+    existing_lp = (
+        db.query(LP)
+        .filter(
+            LP.fund_id == fund.id,
+            or_(
+                LP.name == normalized_name,
+                func.lower(func.coalesce(LP.type, "")) == "gp",
+            ),
+        )
+        .order_by(LP.id.asc())
+        .first()
+    )
+    matched_gp_entity = (
+        db.query(GPEntity)
+        .filter(GPEntity.name == normalized_name)
+        .order_by(GPEntity.is_primary.desc(), GPEntity.id.asc())
+        .first()
+    )
+
+    commitment_amount = _to_lp_commitment_amount(gp_commitment)
+    if existing_lp:
+        existing_lp.type = "GP"
+        if commitment_amount is not None:
+            existing_lp.commitment = commitment_amount
+        if matched_gp_entity:
+            if not existing_lp.business_number and matched_gp_entity.business_number:
+                existing_lp.business_number = matched_gp_entity.business_number
+            if not existing_lp.contact and matched_gp_entity.representative:
+                existing_lp.contact = matched_gp_entity.representative
+            if not existing_lp.address and matched_gp_entity.address:
+                existing_lp.address = matched_gp_entity.address
+        return
+
+    db.add(
+        LP(
+            fund_id=fund.id,
+            name=normalized_name,
+            type="GP",
+            commitment=commitment_amount,
+            paid_in=0,
+            contact=(matched_gp_entity.representative if matched_gp_entity else None),
+            business_number=(matched_gp_entity.business_number if matched_gp_entity else None),
+            address=(matched_gp_entity.address if matched_gp_entity else None),
+        )
+    )
 
 
 def to_overview_unit(value: float | None) -> float | None:
@@ -1192,11 +1332,95 @@ def get_fund(fund_id: int, db: Session = Depends(get_db)):
     return fund
 
 
+@router.post(
+    "/api/funds/{fund_id}/add-formation-workflow",
+    response_model=FundFormationWorkflowAddResponse,
+    status_code=201,
+)
+def add_formation_workflow(
+    fund_id: int,
+    data: FundFormationWorkflowAddRequest,
+    db: Session = Depends(get_db),
+):
+    fund = db.get(Fund, fund_id)
+    if not fund:
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+    if not _is_forming_status(fund.status):
+        raise HTTPException(status_code=400, detail="결성예정 상태 조합에서만 생성할 수 있습니다")
+
+    template = _find_formation_template(db, data.template_category_or_name)
+    if not template:
+        raise HTTPException(status_code=404, detail="결성 워크플로 템플릿을 찾을 수 없습니다")
+    if not template.steps:
+        raise HTTPException(status_code=400, detail="단계가 없는 템플릿은 생성할 수 없습니다")
+
+    existing_instance = (
+        db.query(WorkflowInstance)
+        .filter(
+            WorkflowInstance.fund_id == fund_id,
+            WorkflowInstance.workflow_id == template.id,
+            func.lower(func.coalesce(WorkflowInstance.status, "")) != "cancelled",
+        )
+        .order_by(WorkflowInstance.id.desc())
+        .first()
+    )
+    if existing_instance:
+        raise HTTPException(status_code=409, detail="이미 추가된 결성 워크플로입니다")
+
+    trigger_date = data.trigger_date or fund.formation_date or date.today()
+    instance = instantiate_workflow(
+        db=db,
+        workflow=template,
+        name=f"[{fund.name}] {template.name}",
+        trigger_date=trigger_date,
+        memo=f"manual_fund_formation_workflow fund_id={fund.id} template_id={template.id}",
+        fund_id=fund.id,
+        auto_commit=False,
+    )
+    db.commit()
+
+    return FundFormationWorkflowAddResponse(
+        instance_id=instance.id,
+        workflow_id=template.id,
+        workflow_name=template.name,
+        instance_name=instance.name,
+        status=instance.status,
+        trigger_date=instance.trigger_date,
+        fund_id=fund.id,
+    )
+
+
 @router.post("/api/funds", response_model=FundResponse, status_code=201)
 def create_fund(data: FundCreate, db: Session = Depends(get_db)):
-    fund = Fund(**data.model_dump())
-    db.add(fund)
-    db.commit()
+    payload = data.model_dump()
+    if payload.get("gp_commitment") is None and payload.get("gp_commitment_amount") is not None:
+        payload["gp_commitment"] = payload.get("gp_commitment_amount")
+    payload.pop("gp_commitment_amount", None)
+    fund = Fund(**payload)
+
+    try:
+        db.add(fund)
+        db.flush()
+        _cleanup_fund_capital_calls(db, fund.id)
+
+        _ensure_gp_lp_record(
+            db,
+            fund=fund,
+            gp_name=fund.gp,
+            gp_commitment=fund.gp_commitment,
+        )
+
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="조합 생성 중 중복 제약조건 오류가 발생했습니다") from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"조합 생성 중 오류가 발생했습니다: {exc}") from exc
+
     db.refresh(fund)
     return fund
 
@@ -1207,7 +1431,12 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     if not fund:
         raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
 
-    for key, val in data.model_dump(exclude_unset=True).items():
+    update_payload = data.model_dump(exclude_unset=True)
+    if update_payload.get("gp_commitment") is None and update_payload.get("gp_commitment_amount") is not None:
+        update_payload["gp_commitment"] = update_payload.get("gp_commitment_amount")
+    update_payload.pop("gp_commitment_amount", None)
+
+    for key, val in update_payload.items():
         setattr(fund, key, val)
 
     db.commit()
@@ -1217,6 +1446,30 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
 
 def _is_completed_status(status: str | None) -> bool:
     return (status or "").strip().lower() == "completed"
+
+
+def _cleanup_fund_capital_calls(db: Session, fund_id: int) -> None:
+    call_ids = [
+        int(row[0])
+        for row in (
+            db.query(CapitalCall.id)
+            .filter(CapitalCall.fund_id == fund_id)
+            .all()
+        )
+    ]
+    if not call_ids:
+        return
+
+    (
+        db.query(CapitalCallItem)
+        .filter(CapitalCallItem.capital_call_id.in_(call_ids))
+        .delete(synchronize_session=False)
+    )
+    (
+        db.query(CapitalCall)
+        .filter(CapitalCall.id.in_(call_ids))
+        .delete(synchronize_session=False)
+    )
 
 
 def _cleanup_fund_tasks_and_workflows(db: Session, fund_id: int) -> None:
@@ -1288,6 +1541,7 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     if not fund:
         raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
     try:
+        _cleanup_fund_capital_calls(db, fund_id)
         _cleanup_fund_tasks_and_workflows(db, fund_id)
         db.flush()
         db.delete(fund)

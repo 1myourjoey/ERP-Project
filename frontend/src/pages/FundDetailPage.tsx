@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
+  addFundFormationWorkflow,
   calculateDeadline,
   createCapitalCallBatch,
   createFundLP,
@@ -13,6 +14,7 @@ import {
   fetchFund,
   fetchInvestments,
   fetchLPAddressBooks,
+  fetchWorkflowInstances,
   updateFund,
   updateFundKeyTerms,
   updateFundLP,
@@ -28,6 +30,7 @@ import {
   type LPAddressBook,
   type LPInput,
   type NoticeDeadlineResult,
+  type WorkflowInstance,
 } from '../lib/api'
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -83,6 +86,27 @@ const FUND_STATUS_OPTIONS = [
 ]
 
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
+
+const FORMATION_WORKFLOW_BUTTONS = [
+  { key: '고유번호증 발급', label: '고유번호증 발급' },
+  { key: '수탁계약 체결', label: '수탁계약 체결' },
+  { key: '결성총회 개최', label: '결성총회 개최' },
+  { key: '벤처투자조합 등록', label: '투자조합 등록' },
+]
+
+const FORMING_STATUS_KEYS = new Set([
+  'forming',
+  'planned',
+  '결성예정',
+  '결성예정(planned)',
+])
+
+const FORMATION_WORKFLOW_STATUS_LABEL: Record<string, string> = {
+  active: '추가됨',
+  completed: '완료됨',
+  pending: '대기',
+  in_progress: '진행중',
+}
 
 const EMPTY_LP: LPInput = {
   address_book_id: null,
@@ -160,6 +184,30 @@ function buildLinkedWorkflowLabel(call: CapitalCall, fallbackFundName: string): 
   const name = call.linked_workflow_name?.trim()
   if (name) return name
   return `[${fallbackFundName}] 출자요청 워크플로 진행건`
+}
+
+function normalizeCallType(value: string | null | undefined): string {
+  return (value || '').toLowerCase().replace(/\s+/g, '')
+}
+
+function isInitialCapitalCall(call: CapitalCall, formationDate: string | null | undefined): boolean {
+  const callType = normalizeCallType(call.call_type)
+  if (callType.includes('initial') || callType.includes('최초') || callType.includes('초기')) {
+    return true
+  }
+  return !!(formationDate && call.call_date && call.call_date === formationDate)
+}
+
+function normalizeStatusKey(value: string | null | undefined): string {
+  return (value || '').replace(/\s+/g, '').toLowerCase()
+}
+
+function isFormingStatus(value: string | null | undefined): boolean {
+  return FORMING_STATUS_KEYS.has(normalizeStatusKey(value))
+}
+
+function normalizeFormationWorkflowKey(value: string | null | undefined): string {
+  return (value || '').replace(/\s+/g, '').toLowerCase()
 }
 
 function FundForm({
@@ -713,11 +761,22 @@ export default function FundDetailPage() {
   const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
   const [noticeDraft, setNoticeDraft] = useState<EditableNoticePeriod[]>([])
   const [keyTermDraft, setKeyTermDraft] = useState<EditableKeyTerm[]>([])
+  const [formationWorkflowTriggerDate, setFormationWorkflowTriggerDate] = useState('')
 
   const { data: fundDetail, isLoading } = useQuery<Fund>({
     queryKey: ['fund', fundId],
     queryFn: () => fetchFund(fundId),
     enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+  const isFormingFund = useMemo(
+    () => isFormingStatus(fundDetail?.status),
+    [fundDetail?.status],
+  )
+
+  const { data: fundWorkflowInstances = [] } = useQuery<WorkflowInstance[]>({
+    queryKey: ['workflowInstances', { status: 'all', fund_id: fundId }],
+    queryFn: () => fetchWorkflowInstances({ status: 'all', fund_id: fundId }),
+    enabled: Number.isFinite(fundId) && fundId > 0 && isFormingFund,
   })
 
   const { data: investments } = useQuery<FundInvestmentListItem[]>({
@@ -758,6 +817,17 @@ export default function FundDetailPage() {
     }
   }, [fundDetail, editingNotices, editingKeyTerms])
 
+  useEffect(() => {
+    setFormationWorkflowTriggerDate('')
+  }, [fundId])
+
+  useEffect(() => {
+    if (!isFormingFund || formationWorkflowTriggerDate) return
+    setFormationWorkflowTriggerDate(
+      fundDetail?.formation_date || new Date().toISOString().slice(0, 10),
+    )
+  }, [fundDetail?.formation_date, formationWorkflowTriggerDate, isFormingFund])
+
   const totalInvestmentAmount = useMemo(
     () => (investments ?? []).reduce((sum, inv) => sum + (inv.amount ?? 0), 0),
     [investments],
@@ -776,17 +846,61 @@ export default function FundDetailPage() {
     return map
   }, [capitalCallSummary?.calls])
 
-  const paidByCallsTotal = useMemo(
-    () => (capitalCallSummary?.calls ?? []).reduce((sum, row) => sum + Number(row.paid_amount ?? 0), 0),
-    [capitalCallSummary?.calls],
+  const lpPaidInTotal = useMemo(
+    () => (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0),
+    [fundDetail?.lps],
   )
 
-  const totalPaidIn = useMemo(() => {
-    if (capitalCallSummary) return Number(capitalCallSummary.total_paid_in ?? 0)
-    return (fundDetail?.lps ?? []).reduce((sum, lp) => sum + Number(lp.paid_in ?? 0), 0)
-  }, [capitalCallSummary, fundDetail?.lps])
+  const splitCapitalCalls = useMemo(() => {
+    const initial: CapitalCall[] = []
+    const nonInitial: CapitalCall[] = []
+    for (const call of sortedCapitalCalls) {
+      if (isInitialCapitalCall(call, fundDetail?.formation_date)) {
+        initial.push(call)
+      } else {
+        nonInitial.push(call)
+      }
+    }
+    return { initial, nonInitial }
+  }, [fundDetail?.formation_date, sortedCapitalCalls])
 
-  const initialPaidIn = Math.max(0, totalPaidIn - paidByCallsTotal)
+  const initialCallsPaidTotal = useMemo(
+    () =>
+      splitCapitalCalls.initial.reduce(
+        (sum, call) => sum + Number(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0)),
+        0,
+      ),
+    [callPaidAmountById, splitCapitalCalls.initial],
+  )
+
+  const nonInitialCallsPaidTotal = useMemo(
+    () =>
+      splitCapitalCalls.nonInitial.reduce(
+        (sum, call) => sum + Number(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0)),
+        0,
+      ),
+    [callPaidAmountById, splitCapitalCalls.nonInitial],
+  )
+
+  const paidByCallsTotal = useMemo(
+    () => initialCallsPaidTotal + nonInitialCallsPaidTotal,
+    [initialCallsPaidTotal, nonInitialCallsPaidTotal],
+  )
+
+  const initialPaidIn = useMemo(
+    () => Math.max(Math.max(0, lpPaidInTotal - nonInitialCallsPaidTotal), initialCallsPaidTotal),
+    [initialCallsPaidTotal, lpPaidInTotal, nonInitialCallsPaidTotal],
+  )
+
+  const initialPaidInForWizard = useMemo(
+    () => Math.max(lpPaidInTotal, paidByCallsTotal),
+    [lpPaidInTotal, paidByCallsTotal],
+  )
+
+  const historyTotalPaidIn = useMemo(
+    () => initialPaidIn + nonInitialCallsPaidTotal,
+    [initialPaidIn, nonInitialCallsPaidTotal],
+  )
 
   const keyTermsByCategory = useMemo(() => {
     const grouped = new Map<string, { label: string; value: string; article_ref: string | null }[]>()
@@ -798,6 +912,27 @@ export default function FundDetailPage() {
     }
     return Array.from(grouped.entries())
   }, [fundDetail?.key_terms])
+
+  const formationWorkflowStateMap = useMemo(() => {
+    const targetMap = new Map(
+      FORMATION_WORKFLOW_BUTTONS.map((button) => [normalizeFormationWorkflowKey(button.key), button.key]),
+    )
+    const stateMap = new Map<string, WorkflowInstance>()
+
+    for (const instance of fundWorkflowInstances) {
+      const statusKey = (instance.status || '').trim().toLowerCase()
+      if (statusKey === 'cancelled') {
+        continue
+      }
+      const targetKey = targetMap.get(normalizeFormationWorkflowKey(instance.workflow_name))
+      if (!targetKey || stateMap.has(targetKey)) {
+        continue
+      }
+      stateMap.set(targetKey, instance)
+    }
+
+    return stateMap
+  }, [fundWorkflowInstances])
 
   const updateFundMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<FundInput> }) => updateFund(targetId, data),
@@ -885,6 +1020,42 @@ export default function FundDetailPage() {
     },
   })
 
+  const addFormationWorkflowMut = useMutation({
+    mutationFn: ({ templateName, triggerDate }: { templateName: string; triggerDate: string }) =>
+      addFundFormationWorkflow(fundId, {
+        template_category_or_name: templateName,
+        trigger_date: triggerDate,
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      addToast('success', `${data.workflow_name} 워크플로를 추가했습니다.`)
+    },
+    onError: (error: unknown) => {
+      const detail =
+        typeof error === 'object' && error && 'response' in error
+          ? (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail
+          : undefined
+      addToast(
+        'error',
+        typeof detail === 'string' && detail.trim()
+          ? detail
+          : '결성 워크플로 추가에 실패했습니다.',
+      )
+    },
+  })
+
+  const handleAddFormationWorkflow = (templateName: string) => {
+    if (!formationWorkflowTriggerDate) {
+      addToast('error', '기준일을 먼저 입력해주세요.')
+      return
+    }
+    if (!confirm(`"${templateName}" 워크플로를 기준일(${formationWorkflowTriggerDate})로 생성하시겠습니까?`)) {
+      return
+    }
+    addFormationWorkflowMut.mutate({ templateName, triggerDate: formationWorkflowTriggerDate })
+  }
+
   if (!Number.isFinite(fundId) || fundId <= 0) {
     return <div className="page-container text-sm text-red-600">유효하지 않은 조합 ID입니다.</div>
   }
@@ -954,6 +1125,66 @@ export default function FundDetailPage() {
             </div>
           )}
 
+          {isFormingFund && (
+            <div className="card-base space-y-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">결성 진행 컨트롤 패널</h3>
+                  <p className="text-xs text-gray-500">필요한 결성 워크플로를 개별로 추가하세요.</p>
+                </div>
+                <div className="w-full md:w-56">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">기준일</label>
+                  <input
+                    type="date"
+                    value={formationWorkflowTriggerDate}
+                    onChange={(event) => setFormationWorkflowTriggerDate(event.target.value)}
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {FORMATION_WORKFLOW_BUTTONS.map((button) => {
+                  const instance = formationWorkflowStateMap.get(button.key)
+                  const isAdded = Boolean(instance)
+                  const isPendingThisButton =
+                    addFormationWorkflowMut.isPending &&
+                    addFormationWorkflowMut.variables?.templateName === button.key
+                  const disabled = isAdded || addFormationWorkflowMut.isPending || !formationWorkflowTriggerDate
+                  const statusLabel = instance
+                    ? FORMATION_WORKFLOW_STATUS_LABEL[(instance.status || '').trim().toLowerCase()] || '추가됨'
+                    : null
+
+                  return (
+                    <button
+                      key={button.key}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => handleAddFormationWorkflow(button.key)}
+                      title={
+                        isAdded
+                          ? '이미 추가된 워크플로입니다.'
+                          : !formationWorkflowTriggerDate
+                            ? '기준일을 먼저 입력해주세요.'
+                            : undefined
+                      }
+                      className={`rounded-lg border px-3 py-2 text-sm text-left transition ${
+                        isAdded
+                          ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                          : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                      } ${addFormationWorkflowMut.isPending && !isPendingThisButton ? 'opacity-70' : ''}`}
+                    >
+                      {isPendingThisButton
+                        ? `${button.label} 생성 중...`
+                        : isAdded
+                          ? `${button.label} ${statusLabel} ✅`
+                          : `+ ${button.label} 워크플로 추가`}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="card-base">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-gray-700">출자 이력</h3>
@@ -980,7 +1211,7 @@ export default function FundDetailPage() {
                     </td>
                     <td className="px-3 py-2 text-gray-500">최초 납입</td>
                   </tr>
-                  {sortedCapitalCalls.map((call, index) => (
+                  {splitCapitalCalls.nonInitial.map((call, index) => (
                     <tr key={call.id}>
                       <td className="px-3 py-2">{index + 1}차 캐피탈콜</td>
                       <td className="px-3 py-2">{call.call_date || '-'}</td>
@@ -1011,9 +1242,9 @@ export default function FundDetailPage() {
                   ))}
                   <tr className="bg-gray-50 font-semibold">
                     <td className="px-3 py-2" colSpan={2}>합계</td>
-                    <td className="px-3 py-2 text-right">{formatKRW(totalPaidIn)}</td>
+                    <td className="px-3 py-2 text-right">{formatKRW(historyTotalPaidIn)}</td>
                     <td className="px-3 py-2 text-right">
-                      {fundDetail.commitment_total ? `${((totalPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
+                      {fundDetail.commitment_total ? `${((historyTotalPaidIn / fundDetail.commitment_total) * 100).toFixed(1)}%` : '-'}
                     </td>
                     <td className="px-3 py-2" />
                   </tr>
@@ -1471,7 +1702,7 @@ export default function FundDetailPage() {
               fund={fundDetail}
               lps={fundDetail.lps ?? []}
               noticePeriods={fundDetail.notice_periods ?? []}
-              initialPaidIn={initialPaidIn}
+              initialPaidIn={initialPaidInForWizard}
               onClose={() => setShowCapCallWizard(false)}
             />
           )}
