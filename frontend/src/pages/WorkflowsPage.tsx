@@ -1636,68 +1636,70 @@ export default function WorkflowsPage() {
       </div>
 
       {tab === 'templates' && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="card-base space-y-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start">
+          <div className="card-base space-y-2 xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100vh-8rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden">
             {isLoading ? (
               <PageLoading />
             ) : !(templates?.length) ? (
               <EmptyState emoji="⚙️" message="등록된 템플릿이 없어요" className="py-10" />
             ) : (
-              Array.from(groupedTemplates.entries()).map(([category, items]) => (
-                <div key={category} className="space-y-1">
-                  <button
-                    onClick={() => toggleCategory(category)}
-                    className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-2 py-1 text-left hover:bg-gray-100"
-                  >
-                    <div className="flex items-center gap-1">
-                      <ChevronRight
-                        size={12}
-                        className={`text-gray-400 transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
-                      />
-                      <span className="text-xs font-semibold text-gray-600">{category}</span>
-                    </div>
-                    <span className="text-[10px] text-gray-400">{items.length}개</span>
-                  </button>
-                  {!collapsedCategories.has(category) && (
-                    <div className="space-y-2">
-                      {items.map((row: WorkflowListItem) => (
-                        <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
-                              <p className="text-sm font-medium text-gray-800">{row.name}</p>
-                              <p className="text-xs text-gray-500">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
-                            </button>
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setSelectedId(selectedId === row.id ? null : row.id)
-                              }}
-                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selectedId === row.id
-                                  ? 'border-emerald-500 bg-emerald-500 text-white'
-                                  : 'border-gray-300 bg-white hover:border-gray-400'
-                                }`}
-                              aria-label="템플릿 체크"
-                              title={selectedId === row.id ? '체크 해제' : '체크'}
-                            >
-                              {selectedId === row.id && <Check size={12} />}
-                            </button>
+              <div className="space-y-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+                {Array.from(groupedTemplates.entries()).map(([category, items]) => (
+                  <div key={category} className="space-y-1">
+                    <button
+                      onClick={() => toggleCategory(category)}
+                      className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-2 py-1 text-left hover:bg-gray-100"
+                    >
+                      <div className="flex items-center gap-1">
+                        <ChevronRight
+                          size={12}
+                          className={`text-gray-400 transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
+                        />
+                        <span className="text-xs font-semibold text-gray-600">{category}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">{items.length}개</span>
+                    </button>
+                    {!collapsedCategories.has(category) && (
+                      <div className="space-y-2">
+                        {items.map((row: WorkflowListItem) => (
+                          <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
+                                <p className="text-sm font-medium text-gray-800">{row.name}</p>
+                                <p className="text-xs text-gray-500">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
+                              </button>
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setSelectedId(selectedId === row.id ? null : row.id)
+                                }}
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selectedId === row.id
+                                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                  }`}
+                                aria-label="템플릿 체크"
+                                title={selectedId === row.id ? '체크 해제' : '체크'}
+                              >
+                                {selectedId === row.id && <Check size={12} />}
+                              </button>
+                            </div>
+                            <div className="mt-2 flex gap-1">
+                              <button
+                                onClick={() => handlePrintTemplateById(row.id)}
+                                className="secondary-btn inline-flex items-center gap-1"
+                              >
+                                <Printer size={14} /> 인쇄
+                              </button>
+                              <button onClick={() => { setSelectedId(row.id); setMode('edit') }} className="secondary-btn">수정</button>
+                              <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
+                            </div>
                           </div>
-                          <div className="mt-2 flex gap-1">
-                            <button
-                              onClick={() => handlePrintTemplateById(row.id)}
-                              className="secondary-btn inline-flex items-center gap-1"
-                            >
-                              <Printer size={14} /> 인쇄
-                            </button>
-                            <button onClick={() => { setSelectedId(row.id); setMode('edit') }} className="secondary-btn">수정</button>
-                            <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
