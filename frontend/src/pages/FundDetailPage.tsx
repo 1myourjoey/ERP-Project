@@ -62,6 +62,7 @@ import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageLoading from '../components/PageLoading'
+import KrwAmountInput from '../components/common/KrwAmountInput'
 
 interface FundInvestmentListItem {
   id: number
@@ -400,12 +401,12 @@ function LPTransferModal({
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">양도 금액</label>
-              <input
-                type="number"
-                value={transferAmount || ''}
-                onChange={(event) => setTransferAmount(Number(event.target.value || 0))}
+              <KrwAmountInput
+                value={transferAmount}
+                onChange={(next) => setTransferAmount(next ?? 0)}
                 placeholder="숫자 입력"
                 className="w-full rounded border px-2 py-1.5 text-sm"
+                helperClassName="mt-1 text-[10px] text-gray-500"
               />
             </div>
             <div>
@@ -594,11 +595,21 @@ function FundForm({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label>
-          <input type="number" value={form.commitment_total ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment_total: e.target.value ? Number(e.target.value) : null }))} placeholder="총 약정액" className="w-full px-3 py-2 text-sm border rounded-lg" />
+          <KrwAmountInput
+            value={form.commitment_total ?? null}
+            onChange={(next) => setForm((prev) => ({ ...prev, commitment_total: next }))}
+            placeholder="총 약정액"
+            className="w-full px-3 py-2 text-sm border rounded-lg"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">GP 출자금</label>
-          <input type="number" value={form.gp_commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, gp_commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="GP 출자금" className="w-full px-3 py-2 text-sm border rounded-lg" />
+          <KrwAmountInput
+            value={form.gp_commitment ?? null}
+            onChange={(next) => setForm((prev) => ({ ...prev, gp_commitment: next }))}
+            placeholder="GP 출자금"
+            className="w-full px-3 py-2 text-sm border rounded-lg"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">출자방식</label>
@@ -724,8 +735,24 @@ function LPForm({
             ))}
           </select>
         </div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">약정액</label><input type="number" value={form.commitment ?? ''} onChange={e => setForm(prev => ({ ...prev, commitment: e.target.value ? Number(e.target.value) : null }))} placeholder="약정액" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">납입액</label><input type="number" value={form.paid_in ?? ''} onChange={e => setForm(prev => ({ ...prev, paid_in: e.target.value ? Number(e.target.value) : null }))} placeholder="납입액" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">약정액</label>
+          <KrwAmountInput
+            value={form.commitment ?? null}
+            onChange={(next) => setForm((prev) => ({ ...prev, commitment: next }))}
+            placeholder="약정액"
+            className="w-full px-2 py-1 text-sm border rounded"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">납입액</label>
+          <KrwAmountInput
+            value={form.paid_in ?? null}
+            onChange={(next) => setForm((prev) => ({ ...prev, paid_in: next }))}
+            placeholder="납입액"
+            className="w-full px-2 py-1 text-sm border rounded"
+          />
+        </div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="w-full px-2 py-1 text-sm border rounded" /></div>
         <div><label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="w-full px-2 py-1 text-sm border rounded" /></div>
         <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-gray-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="w-full px-2 py-1 text-sm border rounded" /></div>
@@ -1006,13 +1033,10 @@ function CapitalCallWizard({
                     <td className="px-3 py-2 text-right">
                       <div className="inline-block">
                         <label className="mb-1 block text-[10px] font-medium text-gray-500">요청금액</label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={row.remaining}
+                        <KrwAmountInput
                           value={row.amount}
-                          onChange={(e) => {
-                            const amount = Math.max(0, Number(e.target.value || 0))
+                          onChange={(next) => {
+                            const amount = Math.max(0, next ?? 0)
                             setLpAmounts((prev) => {
                               const copy = [...prev]
                               copy[idx] = { ...copy[idx], amount }
@@ -1022,6 +1046,7 @@ function CapitalCallWizard({
                           className={`w-36 rounded border px-2 py-1 text-right text-sm ${
                             row.amount > row.remaining ? 'border-red-500 bg-red-50' : ''
                           }`}
+                          helperClassName="mt-1 text-[10px] text-right text-gray-500"
                         />
                         <p className="mt-1 text-[10px] text-gray-500">최대 {formatKRW(row.remaining)}</p>
                         {row.amount > row.remaining && (
@@ -2181,24 +2206,24 @@ export default function FundDetailPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
-                    <input
-                      type="number"
+                    <KrwAmountInput
                       value={newDistribution.principal_total || 0}
-                      onChange={(event) =>
-                        setNewDistribution((prev) => ({ ...prev, principal_total: Number(event.target.value || 0) }))
+                      onChange={(next) =>
+                        setNewDistribution((prev) => ({ ...prev, principal_total: next ?? 0 }))
                       }
                       className="w-full rounded border px-2 py-1 text-sm"
+                      helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
-                    <input
-                      type="number"
+                    <KrwAmountInput
                       value={newDistribution.profit_total || 0}
-                      onChange={(event) =>
-                        setNewDistribution((prev) => ({ ...prev, profit_total: Number(event.target.value || 0) }))
+                      onChange={(next) =>
+                        setNewDistribution((prev) => ({ ...prev, profit_total: next ?? 0 }))
                       }
                       className="w-full rounded border px-2 py-1 text-sm"
+                      helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -2281,28 +2306,28 @@ export default function FundDetailPage() {
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
-                            <input
-                              type="number"
+                            <KrwAmountInput
                               value={editDistribution.principal_total}
-                              onChange={(event) =>
+                              onChange={(next) =>
                                 setEditDistribution((prev) =>
-                                  prev ? { ...prev, principal_total: Number(event.target.value || 0) } : prev
+                                  prev ? { ...prev, principal_total: next ?? 0 } : prev
                                 )
                               }
                               className="w-full rounded border px-2 py-1 text-sm"
+                              helperClassName="mt-1 text-[10px] text-gray-500"
                             />
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
-                            <input
-                              type="number"
+                            <KrwAmountInput
                               value={editDistribution.profit_total}
-                              onChange={(event) =>
+                              onChange={(next) =>
                                 setEditDistribution((prev) =>
-                                  prev ? { ...prev, profit_total: Number(event.target.value || 0) } : prev
+                                  prev ? { ...prev, profit_total: next ?? 0 } : prev
                                 )
                               }
                               className="w-full rounded border px-2 py-1 text-sm"
+                              helperClassName="mt-1 text-[10px] text-gray-500"
                             />
                           </div>
                           <div className="flex gap-1">
@@ -2357,24 +2382,24 @@ export default function FundDetailPage() {
                             </div>
                             <div>
                               <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
-                              <input
-                                type="number"
+                              <KrwAmountInput
                                 value={newDistributionItem.principal || 0}
-                                onChange={(event) =>
-                                  setNewDistributionItem((prev) => ({ ...prev, principal: Number(event.target.value || 0) }))
+                                onChange={(next) =>
+                                  setNewDistributionItem((prev) => ({ ...prev, principal: next ?? 0 }))
                                 }
                                 className="w-full rounded border px-2 py-1 text-sm"
+                                helperClassName="mt-1 text-[10px] text-gray-500"
                               />
                             </div>
                             <div>
                               <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
-                              <input
-                                type="number"
+                              <KrwAmountInput
                                 value={newDistributionItem.profit || 0}
-                                onChange={(event) =>
-                                  setNewDistributionItem((prev) => ({ ...prev, profit: Number(event.target.value || 0) }))
+                                onChange={(next) =>
+                                  setNewDistributionItem((prev) => ({ ...prev, profit: next ?? 0 }))
                                 }
                                 className="w-full rounded border px-2 py-1 text-sm"
+                                helperClassName="mt-1 text-[10px] text-gray-500"
                               />
                             </div>
                             <div className="flex items-end">
@@ -2397,28 +2422,28 @@ export default function FundDetailPage() {
                                   <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                                     <div>
                                       <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
-                                      <input
-                                        type="number"
+                                      <KrwAmountInput
                                         value={editDistributionItem.principal}
-                                        onChange={(event) =>
+                                        onChange={(next) =>
                                           setEditDistributionItem((prev) =>
-                                            prev ? { ...prev, principal: Number(event.target.value || 0) } : prev
+                                            prev ? { ...prev, principal: next ?? 0 } : prev
                                           )
                                         }
                                         className="w-full rounded border px-2 py-1 text-sm"
+                                        helperClassName="mt-1 text-[10px] text-gray-500"
                                       />
                                     </div>
                                     <div>
                                       <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
-                                      <input
-                                        type="number"
+                                      <KrwAmountInput
                                         value={editDistributionItem.profit}
-                                        onChange={(event) =>
+                                        onChange={(next) =>
                                           setEditDistributionItem((prev) =>
-                                            prev ? { ...prev, profit: Number(event.target.value || 0) } : prev
+                                            prev ? { ...prev, profit: next ?? 0 } : prev
                                           )
                                         }
                                         className="w-full rounded border px-2 py-1 text-sm"
+                                        helperClassName="mt-1 text-[10px] text-gray-500"
                                       />
                                     </div>
                                     <button

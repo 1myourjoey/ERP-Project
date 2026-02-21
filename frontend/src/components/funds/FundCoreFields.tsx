@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { FundInput } from '../../lib/api'
+import KrwAmountInput from '../common/KrwAmountInput'
 
 export const FUND_TYPE_OPTIONS = [
   '투자조합',
@@ -29,14 +30,6 @@ type FundCoreFieldsProps = {
   form: FundInput
   onChange: (next: FundInput) => void
   gpOptions?: GPOption[]
-}
-
-function parseNumericInput(value: string): number | null {
-  const normalized = value.replace(/,/g, '').trim()
-  if (!normalized) return null
-  const parsed = Number.parseFloat(normalized)
-  if (!Number.isFinite(parsed)) return null
-  return parsed
 }
 
 export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundCoreFieldsProps) {
@@ -189,11 +182,9 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label>
-        <input
-          type="number"
-          value={form.commitment_total ?? ''}
-          onChange={(e) => {
-            const nextCommitment = parseNumericInput(e.target.value)
+        <KrwAmountInput
+          value={form.commitment_total ?? null}
+          onChange={(nextCommitment) => {
             const autoGpCommitment = nextCommitment == null ? null : Math.round(nextCommitment * 0.01)
             const currentGpCommitment = form.gp_commitment ?? null
             const lastAutoGpCommitment = lastAutoGpCommitmentRef.current
@@ -213,17 +204,16 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
             lastAutoGpCommitmentRef.current = autoGpCommitment
             onChange(nextForm)
           }}
-          placeholder="숫자만 입력"
           className="w-full rounded-lg border px-3 py-2 text-sm"
+          placeholder="숫자만 입력"
+          helperClassName="mt-1 text-[11px] text-gray-500"
         />
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-600">GP 출자금</label>
-        <input
-          type="number"
-          value={form.gp_commitment ?? ''}
-          onChange={(e) => {
-            const nextGpCommitment = parseNumericInput(e.target.value)
+        <KrwAmountInput
+          value={form.gp_commitment ?? null}
+          onChange={(nextGpCommitment) => {
             const autoGpCommitment = lastAutoGpCommitmentRef.current
             gpCommitmentOverriddenRef.current =
               autoGpCommitment == null
@@ -231,8 +221,9 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
                 : nextGpCommitment !== autoGpCommitment
             update('gp_commitment', nextGpCommitment)
           }}
-          placeholder="숫자만 입력"
           className="w-full rounded-lg border px-3 py-2 text-sm"
+          placeholder="숫자만 입력"
+          helperClassName="mt-1 text-[11px] text-gray-500"
         />
       </div>
       <div>

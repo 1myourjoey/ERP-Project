@@ -26,6 +26,7 @@ import { useToast } from '../contexts/ToastContext'
 import { Plus, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import FundCoreFields, { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
+import KrwAmountInput from '../components/common/KrwAmountInput'
 
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
@@ -393,22 +394,22 @@ function FundForm({
                   </div>
                   <div>
                     <label className="mb-1 block text-[10px] font-medium text-gray-500">약정금액</label>
-                    <input
-                      type="number"
-                      value={lp.commitment ?? ''}
-                      onChange={(e) => updateLp(lp._id, 'commitment', e.target.value ? Number(e.target.value) : null)}
+                    <KrwAmountInput
+                      value={lp.commitment ?? null}
+                      onChange={(next) => updateLp(lp._id, 'commitment', next)}
                       placeholder="약정금액"
                       className="w-full rounded border px-2 py-1.5 text-sm"
+                      helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-[10px] font-medium text-gray-500">최초 납입금액</label>
-                    <input
-                      type="number"
-                      value={lp.paid_in ?? ''}
-                      onChange={(e) => updateLp(lp._id, 'paid_in', e.target.value ? Number(e.target.value) : null)}
+                    <KrwAmountInput
+                      value={lp.paid_in ?? null}
+                      onChange={(next) => updateLp(lp._id, 'paid_in', next)}
                       placeholder="최초 납입금액"
                       className="w-full rounded border px-2 py-1.5 text-sm"
+                      helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
                   <div>
