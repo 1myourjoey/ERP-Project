@@ -9,7 +9,7 @@
 
 ## Page 01 · `/dashboard` — 게이트웨이 대시보드
 
-> **역할:** 1~2인 VC 관리팀을 위한 경량 'Hub'. KPI 위젯, 긴급 업무, 자본 알림만 표시하고 실무는 하위 페이지로 라우팅합니다.
+> **역할:** 1~2인 VC 관리팀을 위한 경량 'Hub'. KPI 위젯, 긴급 업무, 자본 알림만 표시하고 실무는 하위 페이지로 라우팅합니다. (파이프라인은 대시보드 탭에서 제거)
 
 ```mermaid
 flowchart LR
@@ -23,9 +23,10 @@ flowchart LR
         S([로그인]):::startEnd --> D1[대시보드 진입]:::proc
         D1 --> D2{위젯 확인}:::dec
         D2 -- "긴급 Task 클릭" --> D3[업무보드 이동]:::proc
+        D2 -- "파이프라인 보기" --> D3B[업무보드(파이프라인 탭) 이동]:::proc
         D2 -- "펀드 요약 클릭" --> D4[펀드 상세 이동]:::proc
         D2 -- "캐피탈콜 알림" --> D5[자금 운용 이동]:::proc
-        D3 & D4 & D5 --> E([완료]):::startEnd
+        D3 & D3B & D4 & D5 --> E([완료]):::startEnd
     end
 
     subgraph Sys ["⚙️ 시스템 처리"]
@@ -54,8 +55,15 @@ flowchart LR
 
     subgraph User ["👤 사용자 액션"]
         direction LR
-        S([진입]):::startEnd --> T1[Q1~Q4 칸반 보드 조회]:::proc
-        T1 --> T2{액션 선택}:::dec
+        S([진입]):::startEnd --> T0[보드/캘린더/파이프라인 탭 선택]:::proc
+        T0 --> T1{현재 뷰}:::dec
+        T1 -- "보드" --> T2{액션 선택}:::dec
+        T1 -- "캘린더" --> T14[날짜 셀 D-Day 색상 및 이벤트 확인]:::proc
+        T14 --> T15{Task 빠른 완료}:::dec
+        T15 -- "예" --> T7
+        T15 -- "아니오" --> E
+        T1 -- "파이프라인" --> T16[오버듀/오늘/이번주/예정/대기 흐름 확인]:::proc
+        T16 --> E
         T2 -- "Task 생성" --> T3[폼 작성\n(제목/마감/우선순위/연결펀드)]:::proc
         T2 -- "Task 클릭" --> T4[상세 모달 열기]:::proc
         T2 -- "워크플로 연동" --> T5[워크플로 선택 후 생성]:::proc
@@ -75,6 +83,8 @@ flowchart LR
     subgraph Sys ["⚙️ 시스템 처리"]
         direction LR
         SY1[TaskBoard API 호출\n(Q1~Q4 분류)]:::sys
+        SY1A[MiniCalendar D-Day 분류\n(overdue 상단 고정/Quick Complete)]:::sys
+        SY1B[TaskPipeline Stage 분류 +\n관계선 렌더링]:::sys
         SY2[Task 생성 DB 저장]:::sys
         SY2A[Task completion-check API\n(필수서류/캐피탈콜 경고)]:::sys
         SY3[Task 상태 완료 처리]:::sys
@@ -84,7 +94,9 @@ flowchart LR
         SY7[Bulk Complete / Bulk Delete API]:::sys
     end
 
-    T1 -.-> SY1
+    T0 -.-> SY1
+    T14 -.-> SY1A
+    T16 -.-> SY1B
     T3 -.-> SY2
     T7 -.-> SY2A
     T8 -.-> SY3 --> SY4

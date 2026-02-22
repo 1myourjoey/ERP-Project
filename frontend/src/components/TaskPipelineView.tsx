@@ -1,5 +1,5 @@
 ﻿import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarDays, Clock3, Inbox } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, Clock3, Inbox } from 'lucide-react'
 
 import type { ActiveWorkflow, Task } from '../lib/api'
 
@@ -35,7 +35,7 @@ const DEFAULT_ACCENT: Accent = {
   text: 'text-gray-600',
 }
 
-type StageKey = 'waiting' | 'today' | 'thisWeek' | 'upcoming'
+type StageKey = 'overdue' | 'today' | 'thisWeek' | 'upcoming' | 'waiting'
 type ItemType = 'task' | 'workflow'
 type RelationType = 'workflow' | 'investment' | 'fund' | 'gp' | 'company' | 'noticeReport'
 
@@ -175,6 +175,15 @@ function sundayIso(baseIso: string): string {
   return sunday.toISOString().slice(0, 10)
 }
 
+function taskDeadlineBorderClass(task: Task, todayIso: string, weekEndIso: string): string {
+  const deadlineIso = toDateOnly(task.deadline)
+  if (!deadlineIso) return 'border-l-gray-300'
+  if (deadlineIso < todayIso) return 'border-l-red-500'
+  if (deadlineIso === todayIso) return 'border-l-orange-500'
+  if (deadlineIso <= weekEndIso) return 'border-l-amber-400'
+  return 'border-l-blue-400'
+}
+
 function workflowSortKey(workflow: ActiveWorkflow): string {
   const dateKey = toDateOnly(workflow.next_step_date) || '9999-12-31'
   return `${dateKey}-${String(workflow.id).padStart(10, '0')}`
@@ -269,23 +278,47 @@ export default function TaskPipelineView({
   const filterWorkflowTasks = (tasks: Task[]) =>
     tasks.filter((task) => !(task.workflow_instance_id && activeWorkflowIds.has(task.workflow_instance_id)))
 
-  const waitingTasks = filterWorkflowTasks(noDeadlineTasks)
-  const todayStageTasks = filterWorkflowTasks(todayTasks)
-  const todayTaskIds = new Set(todayStageTasks.map((task) => task.id))
-  const thisWeekStageTasks = filterWorkflowTasks(thisWeekTasks).filter((task) => !todayTaskIds.has(task.id))
-  const upcomingStageTasks = filterWorkflowTasks(upcomingTasks)
+  const mergedTaskMap = new Map<number, Task>()
+  for (const sourceTasks of [todayTasks, tomorrowTasks, thisWeekTasks, upcomingTasks, noDeadlineTasks]) {
+    for (const task of sourceTasks) {
+      if (task.status === 'completed') continue
+      mergedTaskMap.set(task.id, task)
+    }
+  }
+  const mergedTasks = [...mergedTaskMap.values()]
+  const stageTargetTasks = filterWorkflowTasks(mergedTasks)
+
+  const overdueStageTasks = stageTargetTasks.filter((task) => {
+    const deadlineIso = toDateOnly(task.deadline)
+    return !!deadlineIso && deadlineIso < todayIso
+  })
+  const todayStageTasks = stageTargetTasks.filter((task) => {
+    const deadlineIso = toDateOnly(task.deadline)
+    return deadlineIso === todayIso
+  })
+  const thisWeekStageTasks = stageTargetTasks.filter((task) => {
+    const deadlineIso = toDateOnly(task.deadline)
+    return !!deadlineIso && deadlineIso > todayIso && deadlineIso <= weekEndIso
+  })
+  const upcomingStageTasks = stageTargetTasks.filter((task) => {
+    const deadlineIso = toDateOnly(task.deadline)
+    return !!deadlineIso && deadlineIso > weekEndIso
+  })
+  const waitingTasks = stageTargetTasks.filter((task) => !toDateOnly(task.deadline))
 
   const workflowByStage = new Map<StageKey, ActiveWorkflow[]>([
-    ['waiting', []],
+    ['overdue', []],
     ['today', []],
     ['thisWeek', []],
     ['upcoming', []],
+    ['waiting', []],
   ])
 
   const resolveWorkflowStage = (workflow: ActiveWorkflow): StageKey => {
     const nextDate = toDateOnly(workflow.next_step_date)
     if (!nextDate) return 'waiting'
-    if (nextDate <= todayIso) return 'today'
+    if (nextDate < todayIso) return 'overdue'
+    if (nextDate === todayIso) return 'today'
     if (nextDate <= weekEndIso) return 'thisWeek'
     return 'upcoming'
   }
@@ -303,16 +336,16 @@ export default function TaskPipelineView({
 
   const stageColumns = useMemo(() => [
     {
-      key: 'waiting' as const,
-      label: '대기',
-      icon: Inbox,
-      colorClass: 'text-slate-700',
-      borderClass: 'border-slate-200',
-      bgClass: 'bg-slate-50',
-      tasks: waitingTasks,
-      workflows: workflowByStage.get('waiting') ?? [],
+      key: 'overdue' as const,
+      label: '지연',
+      icon: AlertTriangle,
+      colorClass: 'text-red-700',
+      borderClass: 'border-red-200',
+      bgClass: 'bg-red-50',
+      tasks: overdueStageTasks,
+      workflows: workflowByStage.get('overdue') ?? [],
       compactThreshold: 5,
-      editable: true,
+      editable: false,
     },
     {
       key: 'today' as const,
@@ -351,7 +384,20 @@ export default function TaskPipelineView({
       compactThreshold: 5,
       editable: false,
     },
+    {
+      key: 'waiting' as const,
+      label: '대기',
+      icon: Inbox,
+      colorClass: 'text-slate-700',
+      borderClass: 'border-slate-200',
+      bgClass: 'bg-slate-50',
+      tasks: waitingTasks,
+      workflows: workflowByStage.get('waiting') ?? [],
+      compactThreshold: 5,
+      editable: true,
+    },
   ], [
+    overdueStageTasks,
     thisWeekStageTasks,
     todayStageTasks,
     tomorrowTasks.length,
@@ -624,13 +670,14 @@ export default function TaskPipelineView({
                     {flatTasks.map((task) => {
                       const accent = getAccent(task.fund_name || task.gp_entity_name || task.title)
                       const cardKey = `task-${task.id}`
+                      const deadlineBorder = taskDeadlineBorderClass(task, todayIso, weekEndIso)
 
                       return (
                         <button
                           key={cardKey}
                           {...cardInteraction(cardKey)}
                           onClick={() => onClickTask(task, { editable: column.editable })}
-                          className={`group relative w-full rounded border border-gray-200 border-l-4 px-2 py-1.5 text-left transition-colors hover:bg-white ${accent.border} ${accent.tint}`}
+                          className={`group relative w-full rounded border border-gray-200 border-l-4 px-2 py-1.5 text-left transition-colors hover:bg-white ${deadlineBorder} ${accent.tint}`}
                         >
                           <p className="truncate text-xs text-gray-800">{task.title}</p>
                           <div className="pointer-events-none invisible absolute left-full top-0 z-20 ml-2 w-52 rounded border border-gray-200 bg-white p-2 text-[11px] text-gray-600 shadow-lg group-hover:visible">
@@ -654,13 +701,14 @@ export default function TaskPipelineView({
                         {tasks.map((task) => {
                           const accent = getAccent(task.fund_name || task.gp_entity_name || task.title)
                           const cardKey = `task-${task.id}`
+                          const deadlineBorder = taskDeadlineBorderClass(task, todayIso, weekEndIso)
 
                           return (
                             <button
                               key={cardKey}
                               {...cardInteraction(cardKey)}
                               onClick={() => onClickTask(task, { editable: column.editable })}
-                              className={`w-full rounded border border-gray-200 border-l-4 px-2 py-2 text-left transition-colors hover:bg-white ${accent.border} ${accent.tint}`}
+                              className={`w-full rounded border border-gray-200 border-l-4 px-2 py-2 text-left transition-colors hover:bg-white ${deadlineBorder} ${accent.tint}`}
                             >
                               <p className="truncate text-xs font-medium text-gray-800">{task.title}</p>
                               <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
@@ -678,6 +726,28 @@ export default function TaskPipelineView({
             </div>
           )
         })}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3 px-2 text-[11px] text-gray-600">
+        <span className="inline-flex items-center gap-1">
+          <i className="h-[2px] w-5 bg-blue-600" />
+          워크플로
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <i className="h-[2px] w-5 bg-indigo-600" />
+          투자
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <i className="h-[2px] w-5 bg-sky-600" />
+          조합
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <i className="h-[2px] w-5 bg-amber-600" />
+          고유계정
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <i className="h-[2px] w-5 border-t-2 border-dashed border-pink-600" />
+          통지/보고
+        </span>
       </div>
     </div>
   )

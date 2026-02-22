@@ -1,11 +1,10 @@
 ﻿import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import EditTaskModal from '../components/EditTaskModal'
 import PageLoading from '../components/PageLoading'
-import TaskPipelineView from '../components/TaskPipelineView'
 import DashboardDefaultView from '../components/dashboard/DashboardDefaultView'
 import DashboardOverlayLayer from '../components/dashboard/DashboardOverlayLayer'
 import { addDays, type PopupSection, weekRangeLabelMondayToSunday } from '../components/dashboard/dashboardUtils'
@@ -44,7 +43,6 @@ const DAY_LABEL = {
 } as const
 
 export default function DashboardPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -59,22 +57,13 @@ export default function DashboardPage() {
   const [popupSection, setPopupSection] = useState<PopupSection | null>(null)
   const [selectedWorkflow, setSelectedWorkflow] = useState<ActiveWorkflow | null>(null)
 
-  const dashboardView = searchParams.get('view') === 'pipeline' ? 'pipeline' : 'default'
-  const shouldLoadSidebar = dashboardView === 'default' || editingTask !== null || showQuickAddModal
-  const shouldLoadCompleted = dashboardView === 'default'
-
-  const setDashboardView = useCallback((view: 'default' | 'pipeline') => {
-    setSearchParams(view === 'pipeline' ? { view: 'pipeline' } : {}, { replace: false })
-  }, [setSearchParams])
+  const shouldLoadSidebar = true
+  const shouldLoadCompleted = true
 
   const openTaskDetail = useCallback((task: Task, editable = true) => {
-    if (dashboardView === 'pipeline' && editable) {
-      setEditingTask(task)
-      return
-    }
     setSelectedTask(task)
     setSelectedTaskEditable(editable)
-  }, [dashboardView])
+  }, [])
 
   const { data: baseData, isLoading: baseLoading, error: baseError } = useQuery<DashboardBaseResponse>({
     queryKey: ['dashboard-base'],
@@ -199,85 +188,54 @@ export default function DashboardPage() {
   const completedThisWeekCount = completedData?.completed_this_week_count ?? 0
 
   return (
-    <div className={dashboardView === 'pipeline' ? 'mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6' : 'page-container space-y-6'}>
+    <div className="page-container space-y-6">
       <div className="page-header mb-0">
         <div>
           <h2 className="page-title">
-            {dashboardView === 'pipeline'
-              ? '업무 파이프라인'
-              : `${new Date(baseData.date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} (${DAY_LABEL[baseData.day_of_week as keyof typeof DAY_LABEL] || baseData.day_of_week})`}
+            {`${new Date(baseData.date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} (${DAY_LABEL[baseData.day_of_week as keyof typeof DAY_LABEL] || baseData.day_of_week})`}
           </h2>
           <p className="page-subtitle">
-            {dashboardView === 'pipeline' ? '업무 단계를 한 화면에서 확인하세요.' : '오늘의 업무와 마감 일정을 확인하세요.'}
+            오늘의 업무와 마감 일정을 확인하세요.
           </p>
-        </div>
-        <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
-          <button
-            onClick={() => setDashboardView('default')}
-            className={`rounded-md px-3 py-1.5 text-xs transition ${dashboardView === 'default' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            대시보드
-          </button>
-          <button
-            onClick={() => setDashboardView('pipeline')}
-            className={`rounded-md px-3 py-1.5 text-xs transition ${dashboardView === 'pipeline' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            파이프라인
-          </button>
         </div>
       </div>
 
-      {dashboardView === 'default' ? (
-        <DashboardDefaultView
-          baseDate={baseData.date}
-          thisWeekRangeLabel={thisWeekRangeLabel}
-          monthlyReminder={baseData.monthly_reminder}
-          monthlyReminderPending={monthlyReminderMut.isPending}
-          todayTasks={todayTasks}
-          tomorrowTasks={tomorrowTasks}
-          thisWeekTasks={thisWeekTasks}
-          upcomingTasks={upcomingTasks}
-          noDeadlineTasks={noDeadlineTasks}
-          completedForTaskPanel={completedTodayTasks}
-          todayTotalEstimatedTime={baseData.today.total_estimated_time || '0m'}
-          tomorrowTotalEstimatedTime={baseData.tomorrow.total_estimated_time || '0m'}
-          activeWorkflows={activeWorkflows}
-          workflowsLoading={workflowsLoading}
-          fundSummary={fundSummary}
-          missingDocuments={missingDocuments}
-          upcomingReports={upcomingReports}
-          completedTodayTasks={completedTodayTasks}
-          completedThisWeekTasks={completedThisWeekTasks}
-          completedLastWeekTasks={completedLastWeekTasks}
-          completedTodayCount={completedTodayCount}
-          completedThisWeekCount={completedThisWeekCount}
-          sidebarLoading={sidebarLoading}
-          completedLoading={completedLoading}
-          completingTaskId={completeTaskMut.variables?.id ?? null}
-          onOpenPopup={setPopupSection}
-          onGenerateMonthlyReminder={(yearMonth) => monthlyReminderMut.mutate(yearMonth)}
-          onOpenTask={openTaskDetail}
-          onQuickComplete={setCompletingTask}
-          onOpenQuickAdd={openQuickAdd}
-          onOpenWorkflow={setSelectedWorkflow}
-          onOpenTaskBoard={() => navigate('/tasks')}
-          onUndoComplete={(taskId) => undoCompleteMut.mutate(taskId)}
-        />
-      ) : (
-        <div className="mx-auto w-full max-w-[1400px] px-4">
-          <TaskPipelineView
-            todayTasks={todayTasks}
-            tomorrowTasks={tomorrowTasks}
-            thisWeekTasks={thisWeekTasks}
-            upcomingTasks={upcomingTasks}
-            noDeadlineTasks={noDeadlineTasks}
-            activeWorkflows={activeWorkflows}
-            onClickTask={(task, options) => openTaskDetail(task, options?.editable ?? true)}
-            onClickWorkflow={setSelectedWorkflow}
-            fullScreen
-          />
-        </div>
-      )}
+      <DashboardDefaultView
+        baseDate={baseData.date}
+        thisWeekRangeLabel={thisWeekRangeLabel}
+        monthlyReminder={baseData.monthly_reminder}
+        monthlyReminderPending={monthlyReminderMut.isPending}
+        todayTasks={todayTasks}
+        tomorrowTasks={tomorrowTasks}
+        thisWeekTasks={thisWeekTasks}
+        upcomingTasks={upcomingTasks}
+        noDeadlineTasks={noDeadlineTasks}
+        completedForTaskPanel={completedTodayTasks}
+        todayTotalEstimatedTime={baseData.today.total_estimated_time || '0m'}
+        tomorrowTotalEstimatedTime={baseData.tomorrow.total_estimated_time || '0m'}
+        activeWorkflows={activeWorkflows}
+        workflowsLoading={workflowsLoading}
+        fundSummary={fundSummary}
+        missingDocuments={missingDocuments}
+        upcomingReports={upcomingReports}
+        completedTodayTasks={completedTodayTasks}
+        completedThisWeekTasks={completedThisWeekTasks}
+        completedLastWeekTasks={completedLastWeekTasks}
+        completedTodayCount={completedTodayCount}
+        completedThisWeekCount={completedThisWeekCount}
+        sidebarLoading={sidebarLoading}
+        completedLoading={completedLoading}
+        completingTaskId={completeTaskMut.variables?.id ?? null}
+        onOpenPopup={setPopupSection}
+        onGenerateMonthlyReminder={(yearMonth) => monthlyReminderMut.mutate(yearMonth)}
+        onOpenTask={openTaskDetail}
+        onQuickComplete={setCompletingTask}
+        onOpenQuickAdd={openQuickAdd}
+        onOpenWorkflow={setSelectedWorkflow}
+        onOpenTaskBoard={() => navigate('/tasks')}
+        onOpenPipeline={() => navigate('/tasks?view=pipeline')}
+        onUndoComplete={(taskId) => undoCompleteMut.mutate(taskId)}
+      />
 
       <DashboardOverlayLayer
         showQuickAddModal={showQuickAddModal}

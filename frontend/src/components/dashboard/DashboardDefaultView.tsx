@@ -47,6 +47,7 @@ interface DashboardDefaultViewProps {
   onOpenQuickAdd: (target: 'today' | 'tomorrow', fundId?: number | null) => void
   onOpenWorkflow: (workflow: ActiveWorkflow) => void
   onOpenTaskBoard: () => void
+  onOpenPipeline: () => void
   onUndoComplete: (taskId: number) => void
 }
 
@@ -83,6 +84,7 @@ function DashboardDefaultView({
   onOpenQuickAdd,
   onOpenWorkflow,
   onOpenTaskBoard,
+  onOpenPipeline,
   onUndoComplete,
 }: DashboardDefaultViewProps) {
   const navigate = useNavigate()
@@ -130,6 +132,7 @@ function DashboardDefaultView({
             onOpenPopup={() => onOpenPopup('workflows')}
             onOpenWorkflow={onOpenWorkflow}
             onOpenTaskBoard={onOpenTaskBoard}
+            onOpenPipeline={onOpenPipeline}
             onOpenWorkflowPage={() => navigate('/workflows')}
           />
           <DashboardTaskPanels

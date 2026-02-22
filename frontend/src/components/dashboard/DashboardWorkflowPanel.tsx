@@ -12,6 +12,7 @@ interface DashboardWorkflowPanelProps {
   onOpenWorkflow: (workflow: ActiveWorkflow) => void
   onOpenWorkflowPage: () => void
   onOpenTaskBoard: () => void
+  onOpenPipeline: () => void
 }
 
 function DashboardWorkflowPanel({
@@ -21,6 +22,7 @@ function DashboardWorkflowPanel({
   onOpenWorkflow,
   onOpenWorkflowPage,
   onOpenTaskBoard,
+  onOpenPipeline,
 }: DashboardWorkflowPanelProps) {
   return (
     <div className="card-base dashboard-card">
@@ -38,6 +40,12 @@ function DashboardWorkflowPanel({
           className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
         >
           업무보드
+        </button>
+        <button
+          onClick={onOpenPipeline}
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+        >
+          파이프라인 보기
         </button>
       </div>
 

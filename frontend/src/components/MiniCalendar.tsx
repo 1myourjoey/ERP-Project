@@ -1,6 +1,7 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+
 import {
   createCalendarEvent,
   deleteCalendarEvent,
@@ -11,6 +12,13 @@ import {
 import { labelStatus } from '../lib/labels'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
+
+type EventTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
+
+interface MiniCalendarProps {
+  onTaskClick?: (taskId: number) => void
+  onTaskComplete?: (taskId: number) => void
+}
 
 function formatDate(date: Date) {
   const y = date.getFullYear()
@@ -24,6 +32,10 @@ function parseDate(date: string) {
   return new Date(y, m - 1, d)
 }
 
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
 function getCalendarCells(year: number, month: number) {
   const firstDay = new Date(year, month, 1)
   const startOffset = (firstDay.getDay() + 6) % 7
@@ -35,10 +47,32 @@ function getCalendarCells(year: number, month: number) {
   })
 }
 
-function dotClass(event: CalendarEvent) {
+function taskDateTone(dateText: string, today: Date): EventTone {
+  const date = parseDate(dateText)
+  const todayStart = startOfDay(today).getTime()
+  const dateStart = startOfDay(date).getTime()
+  const diffDays = Math.floor((dateStart - todayStart) / (24 * 60 * 60 * 1000))
+
+  if (diffDays < 0) return 'overdue'
+  if (diffDays === 0) return 'today'
+  if (diffDays <= 7) return 'this_week'
+  return 'later'
+}
+
+function getEventTone(event: CalendarEvent, today: Date): EventTone {
+  if (event.event_type !== 'task' || event.status === 'completed') return 'none'
+  return taskDateTone(event.date, today)
+}
+
+function dotClass(event: CalendarEvent, today: Date) {
   if (event.event_type === 'workflow') return 'bg-violet-500'
-  if (event.event_type === 'task') return 'bg-blue-500'
-  return 'bg-emerald-500'
+  if (event.event_type !== 'task') return 'bg-emerald-500'
+
+  const tone = getEventTone(event, today)
+  if (tone === 'overdue') return 'bg-red-500'
+  if (tone === 'today') return 'bg-orange-500'
+  if (tone === 'this_week') return 'bg-amber-400'
+  return 'bg-blue-500'
 }
 
 function typeLabel(event: CalendarEvent) {
@@ -47,7 +81,21 @@ function typeLabel(event: CalendarEvent) {
   return '일반 일정'
 }
 
-export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: number) => void }) {
+function statusBadge(event: CalendarEvent, today: Date): { text: string; className: string } {
+  const tone = getEventTone(event, today)
+  if (tone === 'overdue') {
+    return { text: '지연', className: 'rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700' }
+  }
+  if (event.status === 'completed') {
+    return { text: '완료', className: 'rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700' }
+  }
+  if (event.status === 'pending') {
+    return { text: '진행중', className: 'rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700' }
+  }
+  return { text: labelStatus(event.status), className: 'rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600' }
+}
+
+export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalendarProps) {
   const queryClient = useQueryClient()
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -82,6 +130,19 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
     return map
   }, [events])
 
+  const selectedEvents = useMemo(() => {
+    const list = [...(eventsByDate.get(selectedDate) || [])]
+    return list.sort((a, b) => {
+      const aTone = getEventTone(a, today)
+      const bTone = getEventTone(b, today)
+      const aPriority = aTone === 'overdue' ? 0 : a.status === 'pending' ? 1 : 2
+      const bPriority = bTone === 'overdue' ? 0 : b.status === 'pending' ? 1 : 2
+      if (aPriority !== bPriority) return aPriority - bPriority
+      if ((a.time || '') !== (b.time || '')) return (a.time || '').localeCompare(b.time || '')
+      return a.title.localeCompare(b.title)
+    })
+  }, [eventsByDate, selectedDate, today])
+
   const createMut = useMutation({
     mutationFn: (data: CalendarEventInput) => createCalendarEvent(data),
     onSuccess: () => {
@@ -98,8 +159,6 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] })
     },
   })
-
-  const selectedEvents = eventsByDate.get(selectedDate) || []
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
@@ -121,10 +180,14 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
         </button>
       </div>
 
-      <div className="mb-2 flex items-center gap-2 text-[10px] text-gray-500">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
         <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-blue-500" />업무</span>
         <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-violet-500" />워크플로우</span>
         <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-emerald-500" />일정</span>
+        <span className="text-gray-300">|</span>
+        <span className="inline-flex items-center gap-1 text-red-600">🔴 지연</span>
+        <span className="inline-flex items-center gap-1 text-orange-600">🟠 오늘</span>
+        <span className="inline-flex items-center gap-1 text-amber-600">🟡 이번주</span>
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-500">
@@ -136,18 +199,27 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
           const key = formatDate(date)
           const dateEvents = eventsByDate.get(key) || []
           const dotEvents = dateEvents.filter((event) => event.status !== 'completed')
+          const hasOverdueTask = dateEvents.some((event) => getEventTone(event, today) === 'overdue')
+          const hasTodayTask = !hasOverdueTask && dateEvents.some((event) => getEventTone(event, today) === 'today')
+
           return (
             <button
               key={key}
               onClick={() => setSelectedDate(key)}
               className={`min-h-10 rounded border px-1 py-1 text-left ${
-                selectedDate === key ? 'border-blue-300 bg-blue-50' : 'border-gray-100 bg-white hover:bg-gray-50'
+                selectedDate === key
+                  ? 'border-blue-300 bg-blue-50'
+                  : hasOverdueTask
+                    ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                    : hasTodayTask
+                      ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
+                      : 'border-gray-100 bg-white hover:bg-gray-50'
               } ${inCurrentMonth ? '' : 'text-gray-300'}`}
             >
               <p className="text-[10px]">{date.getDate()}</p>
               <div className="mt-0.5 flex flex-wrap gap-[2px]">
                 {dotEvents.slice(0, 3).map((event) => (
-                  <span key={`${event.id}-${event.title}`} className={`h-1.5 w-1.5 rounded-full ${dotClass(event)}`} />
+                  <span key={`${event.id}-${event.title}`} className={`h-1.5 w-1.5 rounded-full ${dotClass(event, today)}`} />
                 ))}
               </div>
             </button>
@@ -210,44 +282,70 @@ export default function MiniCalendar({ onTaskClick }: { onTaskClick?: (taskId: n
           <p className="text-xs text-gray-400">선택한 날짜에 일정이 없습니다.</p>
         ) : (
           <div className="max-h-44 space-y-1 overflow-auto">
-            {selectedEvents.map((event) => (
-              <div
-                key={`${event.id}-${event.title}`}
-                onClick={() => {
-                  if (event.task_id && onTaskClick) {
-                    const taskId = Math.abs(Number(event.task_id))
-                    if (Number.isFinite(taskId) && taskId > 0) {
+            {selectedEvents.map((event) => {
+              const tone = getEventTone(event, today)
+              const badge = statusBadge(event, today)
+              const taskId = event.task_id ? Math.abs(Number(event.task_id)) : null
+
+              return (
+                <div
+                  key={`${event.id}-${event.title}`}
+                  onClick={() => {
+                    if (taskId && onTaskClick) {
                       onTaskClick(taskId)
                     }
-                  }
-                }}
-                className={`rounded border border-gray-200 bg-white p-1.5 ${
-                  event.task_id && onTaskClick ? 'cursor-pointer hover:bg-blue-50' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <p className={`truncate text-xs text-gray-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
-                  {event.id > 0 ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteMut.mutate(event.id)
-                      }}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  ) : null}
+                  }}
+                  className={`rounded border bg-white p-1.5 ${
+                    tone === 'overdue' ? 'border-red-300 border-l-4 bg-red-50/60' : 'border-gray-200'
+                  } ${
+                    taskId && onTaskClick ? 'cursor-pointer hover:bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="min-w-0">
+                      <p className={`truncate text-xs text-gray-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>
+                        {event.title}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className={badge.className}>{badge.text}</span>
+                      {taskId && onTaskComplete && event.status !== 'completed' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onTaskComplete(taskId)
+                          }}
+                          className="rounded p-1 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700"
+                          title="빠른 완료"
+                          aria-label="빠른 완료"
+                        >
+                          <CheckCircle2 size={12} />
+                        </button>
+                      )}
+                      {event.id > 0 ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteMut.mutate(event.id)
+                          }}
+                          className="rounded p-1 text-red-500 hover:bg-red-100 hover:text-red-700"
+                          title="삭제"
+                          aria-label="삭제"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    {event.time || '-'} | {typeLabel(event)} | {tone === 'overdue' ? '기한 초과' : labelStatus(event.status)}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-500">
-                  {event.time || '-'} | {typeLabel(event)} | {labelStatus(event.status)}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
     </div>
   )
 }
-

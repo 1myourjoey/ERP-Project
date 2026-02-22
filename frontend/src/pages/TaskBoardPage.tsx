@@ -1,11 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Clock, GitBranch, Plus, Trash2 } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { ChevronDown, Clock, GitBranch, HelpCircle, Plus, Trash2 } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import EmptyState from '../components/EmptyState'
 import MiniCalendar from '../components/MiniCalendar'
+import TaskPipelineView from '../components/TaskPipelineView'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
 import PageLoading from '../components/PageLoading'
@@ -16,6 +17,8 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  fetchDashboardBase,
+  fetchDashboardWorkflows,
   fetchFunds,
   fetchGPEntities,
   fetchWorkflow,
@@ -28,7 +31,17 @@ import {
   moveTask,
   updateTask,
 } from '../lib/api'
-import type { Fund, GPEntity, Task, TaskBoard, TaskCreate, WorkflowListItem } from '../lib/api'
+import type {
+  ActiveWorkflow,
+  DashboardBaseResponse,
+  DashboardWorkflowsResponse,
+  Fund,
+  GPEntity,
+  Task,
+  TaskBoard,
+  TaskCreate,
+  WorkflowListItem,
+} from '../lib/api'
 
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -36,6 +49,20 @@ const QUADRANTS = [
   { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-amber-400', bg: 'bg-amber-50', badge: 'bg-amber-500' },
   { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-gray-300', bg: 'bg-gray-50', badge: 'bg-gray-400' },
 ] as const
+
+const STATUS_FILTER_META = {
+  pending: '현재 미완료된 업무만 표시합니다.',
+  all: '미완료 + 완료된 업무를 모두 표시합니다.',
+  completed: '완료 처리된 업무만 표시합니다. 연도/월 필터를 사용할 수 있습니다.',
+} as const
+
+const VIEW_TABS = [
+  { key: 'board', label: '보드' },
+  { key: 'calendar', label: '캘린더' },
+  { key: 'pipeline', label: '파이프라인' },
+] as const
+
+type BoardView = (typeof VIEW_TABS)[number]['key']
 
 interface WorkflowGroup {
   workflowInstanceId: number
@@ -951,10 +978,18 @@ function BulkCompleteModal({
 }
 
 export default function TaskBoardPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const location = useLocation()
   const highlightTaskId = (location.state as { highlightTaskId?: number } | null)?.highlightTaskId
+  const requestedView = searchParams.get('view')
+  const boardView: BoardView = requestedView === 'calendar' || requestedView === 'pipeline' ? requestedView : 'board'
+
+  const setBoardView = (nextView: BoardView) => {
+    setSearchParams(nextView === 'board' ? {} : { view: nextView }, { replace: false })
+  }
 
   const now = new Date()
   const currentYear = now.getFullYear()
@@ -966,7 +1001,7 @@ export default function TaskBoardPage() {
   const [fundFilter, setFundFilter] = useState('')
   const [completedYear, setCompletedYear] = useState(currentYear)
   const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
-  const [showMiniCalendar, setShowMiniCalendar] = useState(false)
+  const [mobileFilterHintStatus, setMobileFilterHintStatus] = useState<'pending' | 'all' | 'completed'>('pending')
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
   const [blinkingId, setBlinkingId] = useState<number | null>(null)
@@ -998,7 +1033,21 @@ export default function TaskBoardPage() {
   const { data: calendarTasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks', { status: 'all' }],
     queryFn: () => fetchTasks({ status: 'all' }),
-    enabled: showMiniCalendar,
+    enabled: boardView === 'calendar',
+  })
+
+  const { data: pipelineBaseData, isLoading: pipelineBaseLoading } = useQuery<DashboardBaseResponse>({
+    queryKey: ['dashboard-base'],
+    queryFn: fetchDashboardBase,
+    enabled: boardView === 'pipeline',
+    staleTime: 30_000,
+  })
+
+  const { data: pipelineWorkflowsData, isLoading: pipelineWorkflowsLoading } = useQuery<DashboardWorkflowsResponse>({
+    queryKey: ['dashboard-workflows'],
+    queryFn: fetchDashboardWorkflows,
+    enabled: boardView === 'pipeline',
+    staleTime: 30_000,
   })
 
   const calendarTaskMap = useMemo(
@@ -1011,7 +1060,9 @@ export default function TaskBoardPage() {
 
     setStatusFilter('all')
     setFundFilter('')
-    setShowMiniCalendar(false)
+    if (boardView !== 'board') {
+      setBoardView('board')
+    }
     setBlinkingId(highlightTaskId)
     setPendingScrollId(highlightTaskId)
 
@@ -1022,15 +1073,19 @@ export default function TaskBoardPage() {
     window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
 
     return () => window.clearTimeout(timer)
-  }, [highlightTaskId])
+  }, [boardView, highlightTaskId])
 
   useEffect(() => {
-    if (!pendingScrollId || showMiniCalendar) return
+    if (!pendingScrollId || boardView !== 'board') return
     const el = document.getElementById(`task-${pendingScrollId}`)
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setPendingScrollId(null)
-  }, [pendingScrollId, showMiniCalendar, board])
+  }, [board, boardView, pendingScrollId])
+
+  useEffect(() => {
+    setMobileFilterHintStatus(statusFilter)
+  }, [statusFilter])
 
   const filterByFund = (tasks: Task[]) => {
     if (fundFilter === '') return tasks
@@ -1044,6 +1099,26 @@ export default function TaskBoardPage() {
     }
     const numeric = Number(fundFilter)
     return Number.isFinite(numeric) ? tasks.filter((task) => task.fund_id === numeric) : tasks
+  }
+
+  const matchesWorkflowByTarget = (workflow: ActiveWorkflow): boolean => {
+    if (fundFilter === '') return true
+
+    if (fundFilter.startsWith('gp:')) {
+      const gpEntityId = Number(fundFilter.slice(3))
+      const gpName = gpEntities.find((entity) => entity.id === gpEntityId)?.name
+      if (!gpName) return false
+      return (workflow.gp_entity_name || '').trim() === gpName.trim()
+    }
+
+    if (fundFilter.startsWith('fund:')) {
+      const fundId = Number(fundFilter.slice(5))
+      const fundName = fundsForFilter.find((fund) => fund.id === fundId)?.name
+      if (!fundName) return false
+      return (workflow.fund_name || '').trim() === fundName.trim()
+    }
+
+    return true
   }
 
   const updateMutation = useMutation({
@@ -1127,32 +1202,50 @@ export default function TaskBoardPage() {
     }
   }
 
-  const handleMiniCalendarTaskClick = async (taskId: number) => {
+  const findTaskById = async (taskId: number): Promise<Task | null> => {
     const normalizedTaskId = Math.abs(Number(taskId))
-    if (!Number.isFinite(normalizedTaskId) || normalizedTaskId <= 0) return
+    if (!Number.isFinite(normalizedTaskId) || normalizedTaskId <= 0) return null
 
     const target = calendarTaskMap.get(normalizedTaskId)
     if (target) {
-      setDetailTask(target)
-      return
+      return target
     }
 
     try {
       const fetched = await fetchTask(normalizedTaskId)
-      setDetailTask(fetched)
+      return fetched
     } catch {
       try {
         const allTasks = await fetchTasks()
         const fallback = allTasks.find((task: Task) => task.id === normalizedTaskId)
-        if (fallback) {
-          setDetailTask(fallback)
-          return
-        }
+        if (fallback) return fallback
       } catch {
         // fallback query failed, show default toast below
       }
-      addToast('error', '업무 상세 정보를 찾지 못했습니다.')
+      return null
     }
+  }
+
+  const handleMiniCalendarTaskClick = async (taskId: number) => {
+    const target = await findTaskById(taskId)
+    if (!target) {
+      addToast('error', '업무 상세 정보를 찾지 못했습니다.')
+      return
+    }
+    setDetailTask(target)
+  }
+
+  const handleMiniCalendarTaskComplete = async (taskId: number) => {
+    const target = await findTaskById(taskId)
+    if (!target) {
+      addToast('error', '완료할 업무 정보를 찾지 못했습니다.')
+      return
+    }
+    if (target.status === 'completed') {
+      addToast('info', '이미 완료된 업무입니다.')
+      return
+    }
+    setCompletingTask(target)
   }
 
   const allVisibleTasks = useMemo(
@@ -1178,6 +1271,31 @@ export default function TaskBoardPage() {
       }),
     [allVisibleTasks],
   )
+  const pipelineTodayTasks = useMemo(
+    () => filterByFund(pipelineBaseData?.today?.tasks ?? []),
+    [fundFilter, pipelineBaseData],
+  )
+  const pipelineTomorrowTasks = useMemo(
+    () => filterByFund(pipelineBaseData?.tomorrow?.tasks ?? []),
+    [fundFilter, pipelineBaseData],
+  )
+  const pipelineThisWeekTasks = useMemo(
+    () => filterByFund(pipelineBaseData?.this_week ?? []),
+    [fundFilter, pipelineBaseData],
+  )
+  const pipelineUpcomingTasks = useMemo(
+    () => filterByFund(pipelineBaseData?.upcoming ?? []),
+    [fundFilter, pipelineBaseData],
+  )
+  const pipelineNoDeadlineTasks = useMemo(
+    () => filterByFund(pipelineBaseData?.no_deadline ?? []),
+    [fundFilter, pipelineBaseData],
+  )
+  const pipelineActiveWorkflows = useMemo(
+    () => (pipelineWorkflowsData?.active_workflows ?? []).filter(matchesWorkflowByTarget),
+    [fundFilter, fundsForFilter, gpEntities, pipelineWorkflowsData],
+  )
+  const isPipelineLoading = boardView === 'pipeline' && (pipelineBaseLoading || pipelineWorkflowsLoading)
 
   useEffect(() => {
     const visibleTaskIdSet = new Set(allVisibleTasks.map((task) => task.id))
@@ -1242,7 +1360,7 @@ export default function TaskBoardPage() {
   const handleUrgentConfirm = () => {
     setStatusFilter('pending')
     setFundFilter('')
-    setShowMiniCalendar(false)
+    setBoardView('board')
 
     const firstUrgentTask = urgentTasks[0]
     if (!firstUrgentTask) return
@@ -1273,19 +1391,48 @@ export default function TaskBoardPage() {
             오늘의 현황
           </Link>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
-            {['pending', 'all', 'completed'].map((status) => (
+            {VIEW_TABS.map((tab) => (
               <button
-                key={status}
-                onClick={() => setStatusFilter(status as 'pending' | 'all' | 'completed')}
+                key={tab.key}
+                onClick={() => setBoardView(tab.key)}
                 className={`rounded-md px-3 py-1 text-xs transition-colors ${
-                  statusFilter === status ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'
+                  boardView === tab.key ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {status === 'pending' ? '진행 중' : status === 'all' ? '전체' : '완료'}
+                {tab.label}
               </button>
             ))}
+          </div>
+
+          <div>
+            <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+              {(['pending', 'all', 'completed'] as const).map((status) => (
+                <div key={status} className="group relative flex items-center gap-0.5 rounded-md px-1">
+                  <button
+                    onClick={() => {
+                      setStatusFilter(status)
+                      setMobileFilterHintStatus(status)
+                    }}
+                    className={`rounded-md px-2 py-1 text-xs transition-colors ${
+                      statusFilter === status ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {status === 'pending' ? '진행 중' : status === 'all' ? '전체' : '완료'}
+                  </button>
+                  <span className="relative flex h-5 w-5 items-center justify-center text-gray-400">
+                    <HelpCircle size={13} />
+                    <span className="pointer-events-none absolute left-1/2 top-full z-20 hidden w-56 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 shadow-md group-hover:block group-focus-within:block">
+                      {STATUS_FILTER_META[status]}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 px-1 text-[11px] text-gray-500 md:hidden">
+              {STATUS_FILTER_META[mobileFilterHintStatus]}
+            </p>
           </div>
 
           {statusFilter === 'completed' && (
@@ -1334,19 +1481,10 @@ export default function TaskBoardPage() {
               ))}
             </optgroup>
           </select>
-
-          <button
-            onClick={() => setShowMiniCalendar((prev) => !prev)}
-            className={`rounded-lg px-3 py-1 text-xs ${
-              showMiniCalendar ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {showMiniCalendar ? '업무 보드' : '캘린더'}
-          </button>
         </div>
       </div>
 
-      {selectedVisibleTasks.length > 0 && (
+      {boardView === 'board' && selectedVisibleTasks.length > 0 && (
         <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
           <span className="text-sm font-medium text-blue-800">✅ {selectedVisibleTasks.length}개 선택됨</span>
           <button
@@ -1387,13 +1525,37 @@ export default function TaskBoardPage() {
         </div>
       )}
 
-      {showMiniCalendar ? (
+      {boardView === 'calendar' ? (
         <div className="w-full">
           <MiniCalendar
             onTaskClick={(taskId) => {
               void handleMiniCalendarTaskClick(taskId)
             }}
+            onTaskComplete={(taskId) => {
+              void handleMiniCalendarTaskComplete(taskId)
+            }}
           />
+        </div>
+      ) : boardView === 'pipeline' ? (
+        <div className="w-full">
+          {isPipelineLoading ? (
+            <div className="rounded-xl border border-gray-200 bg-white py-12 text-center text-sm text-gray-500">
+              파이프라인 데이터를 불러오는 중입니다...
+            </div>
+          ) : (
+            <TaskPipelineView
+              todayTasks={pipelineTodayTasks}
+              tomorrowTasks={pipelineTomorrowTasks}
+              thisWeekTasks={pipelineThisWeekTasks}
+              upcomingTasks={pipelineUpcomingTasks}
+              noDeadlineTasks={pipelineNoDeadlineTasks}
+              activeWorkflows={pipelineActiveWorkflows}
+              onClickTask={(task) => setDetailTask(task)}
+              onClickWorkflow={(workflow) => {
+                navigate('/workflows', { state: { highlightWorkflowId: workflow.id } })
+              }}
+            />
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
