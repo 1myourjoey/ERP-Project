@@ -116,6 +116,111 @@ class TestTaskCompletion:
         )
         assert response.status_code == 404
 
+    def test_completion_check_blocks_required_workflow_document(self, client):
+        template_response = client.post(
+            "/api/workflows",
+            json={
+                "name": "필수서류 검증 템플릿",
+                "category": "조합결성",
+                "trigger_description": "검증",
+                "steps": [
+                    {
+                        "order": 1,
+                        "name": "필수서류 단계",
+                        "timing": "D-day",
+                        "timing_offset_days": 0,
+                        "estimated_time": "30m",
+                        "quadrant": "Q1",
+                        "step_documents": [
+                            {
+                                "name": "조합원 명부 (PDF)",
+                                "required": True,
+                            },
+                        ],
+                    },
+                ],
+                "documents": [],
+                "warnings": [],
+            },
+        )
+        assert template_response.status_code == 201
+        template_id = template_response.json()["id"]
+
+        instance_response = client.post(
+            f"/api/workflows/{template_id}/instantiate",
+            json={
+                "name": "필수서류 검증 인스턴스",
+                "trigger_date": "2025-10-24",
+            },
+        )
+        assert instance_response.status_code == 200
+        step_task_id = instance_response.json()["step_instances"][0]["task_id"]
+        assert step_task_id is not None
+
+        check_response = client.get(f"/api/tasks/{step_task_id}/completion-check")
+        assert check_response.status_code == 200
+        payload = check_response.json()
+        assert payload["can_complete"] is False
+        assert "조합원 명부 (PDF)" in payload["missing_documents"]
+
+    def test_completion_check_returns_capital_call_warning(self, client):
+        task = _create_task(client, "캐피탈콜 납입 확인")
+        update_response = client.put(
+            f"/api/tasks/{task['id']}",
+            json={
+                "title": "캐피탈콜 납입 확인",
+                "quadrant": "Q1",
+                "category": "투자실행",
+            },
+        )
+        assert update_response.status_code == 200
+
+        check_response = client.get(f"/api/tasks/{task['id']}/completion-check")
+        assert check_response.status_code == 200
+        payload = check_response.json()
+        assert payload["can_complete"] is True
+        assert len(payload["warnings"]) >= 1
+
+    def test_bulk_complete_tasks(self, client):
+        first = _create_task(client, "일괄 완료 1")
+        second = _create_task(client, "일괄 완료 2")
+
+        response = client.post(
+            "/api/tasks/bulk-complete",
+            json={
+                "task_ids": [first["id"], second["id"]],
+                "actual_time": "30m",
+                "auto_worklog": True,
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["completed_count"] == 2
+        assert payload["skipped_count"] == 0
+
+        first_detail = client.get(f"/api/tasks/{first['id']}")
+        second_detail = client.get(f"/api/tasks/{second['id']}")
+        assert first_detail.status_code == 200
+        assert second_detail.status_code == 200
+        assert first_detail.json()["status"] == "completed"
+        assert second_detail.json()["status"] == "completed"
+
+    def test_bulk_delete_tasks(self, client):
+        first = _create_task(client, "일괄 삭제 1")
+        second = _create_task(client, "일괄 삭제 2")
+
+        response = client.post(
+            "/api/tasks/bulk-delete",
+            json={"task_ids": [first["id"], second["id"]]},
+        )
+        assert response.status_code == 200
+        assert response.json()["deleted_count"] == 2
+
+        first_detail = client.get(f"/api/tasks/{first['id']}")
+        second_detail = client.get(f"/api/tasks/{second['id']}")
+        assert first_detail.status_code == 404
+        assert second_detail.status_code == 404
+
 
 class TestTaskBoardAndReminders:
     def test_task_board(self, client):

@@ -1,10 +1,13 @@
 ﻿import { useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Check, X } from 'lucide-react'
 
+import { fetchTaskCompletionCheck } from '../lib/api'
 import LottieAnimation from './LottieAnimation'
 import TimeSelect from './TimeSelect'
 
 interface CompleteTaskLike {
+  id: number
   title: string
   estimated_time: string | null
   fund_name?: string | null
@@ -30,6 +33,19 @@ export default function CompleteModal({
     return saved == null ? true : saved === 'true'
   })
 
+  const completionCheck = useQuery({
+    queryKey: ['task-completion-check', task.id],
+    queryFn: () => fetchTaskCompletionCheck(task.id),
+    enabled: Number.isFinite(task.id) && task.id > 0,
+    staleTime: 0,
+  })
+
+  const missingDocuments = completionCheck.data?.missing_documents ?? []
+  const warnings = completionCheck.data?.warnings ?? []
+  const canComplete = completionCheck.data?.can_complete ?? true
+  const isChecking = completionCheck.isLoading || completionCheck.isFetching
+  const confirmDisabled = !actualTime || isChecking || !canComplete
+
   return (
     <>
       <div className="modal-overlay fixed inset-0 z-50 bg-black/40" onClick={onCancel} />
@@ -49,6 +65,46 @@ export default function CompleteModal({
 
           <p className="mb-1 text-sm text-gray-700">{task.title}</p>
           {task.fund_name && <p className="mb-3 text-xs text-blue-600">{task.fund_name}</p>}
+
+          {isChecking && (
+            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              완료 전 필수 조건을 확인하는 중입니다...
+            </div>
+          )}
+
+          {completionCheck.isError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              완료 조건 검증에 실패했습니다. 잠시 후 다시 시도해주세요.
+            </div>
+          )}
+
+          {missingDocuments.length > 0 && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              <div className="mb-1 flex items-center gap-1 font-semibold">
+                <AlertTriangle size={14} />
+                필수 서류 미첨부
+              </div>
+              <ul className="space-y-0.5">
+                {missingDocuments.map((documentName) => (
+                  <li key={documentName}>• {documentName}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <div className="mb-1 flex items-center gap-1 font-semibold">
+                <AlertTriangle size={14} />
+                확인 필요
+              </div>
+              <ul className="space-y-0.5">
+                {warnings.map((warning) => (
+                  <li key={warning}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <label className="mb-1 block text-xs text-gray-500">실제 소요 시간</label>
           <TimeSelect value={actualTime} onChange={setActualTime} />
@@ -80,7 +136,7 @@ export default function CompleteModal({
             <button
               onClick={() => actualTime && onConfirm(actualTime, autoWorklog, memo)}
               className="primary-btn inline-flex items-center gap-1"
-              disabled={!actualTime}
+              disabled={confirmDisabled}
             >
               <Check size={16} /> 완료
             </button>

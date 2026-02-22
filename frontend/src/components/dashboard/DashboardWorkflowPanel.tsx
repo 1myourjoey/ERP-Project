@@ -11,6 +11,7 @@ interface DashboardWorkflowPanelProps {
   onOpenPopup: () => void
   onOpenWorkflow: (workflow: ActiveWorkflow) => void
   onOpenWorkflowPage: () => void
+  onOpenTaskBoard: () => void
 }
 
 function DashboardWorkflowPanel({
@@ -19,17 +20,26 @@ function DashboardWorkflowPanel({
   onOpenPopup,
   onOpenWorkflow,
   onOpenWorkflowPage,
+  onOpenTaskBoard,
 }: DashboardWorkflowPanelProps) {
   return (
     <div className="card-base dashboard-card">
-      <button
-        onClick={onOpenPopup}
-        className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"
-      >
-        <GitBranch size={16} />
-        🔄 진행 중인 워크플로
-        <span className="ml-auto text-xs text-gray-400">{activeWorkflows.length}건</span>
-      </button>
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          onClick={onOpenPopup}
+          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600"
+        >
+          <GitBranch size={16} />
+          🔄 진행 중인 워크플로
+          <span className="ml-auto text-xs text-gray-400">{activeWorkflows.length}건</span>
+        </button>
+        <button
+          onClick={onOpenTaskBoard}
+          className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+        >
+          업무보드
+        </button>
+      </div>
 
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">워크플로를 불러오는 중입니다...</p>

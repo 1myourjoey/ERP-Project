@@ -19,6 +19,8 @@ export const fetchTasks = (
   params?: { quadrant?: string; status?: string; fund_id?: number; gp_entity_id?: number; category?: string },
 ) => api.get('/tasks', { params }).then(r => r.data)
 export const fetchTask = (id: number): Promise<Task> => api.get(`/tasks/${id}`).then(r => r.data)
+export const fetchTaskCompletionCheck = (id: number): Promise<TaskCompletionCheckResult> =>
+  api.get(`/tasks/${id}/completion-check`).then(r => r.data)
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
@@ -30,6 +32,14 @@ export const completeTask = (
 ) => api.patch(`/tasks/${id}/complete`, { actual_time, auto_worklog, memo: memo || null }).then(r => r.data)
 export const undoCompleteTask = (id: number) => api.patch(`/tasks/${id}/undo-complete`).then(r => r.data)
 export const deleteTask = (id: number) => api.delete(`/tasks/${id}`)
+export const bulkCompleteTasks = (data: {
+  task_ids: number[]
+  actual_time: string
+  auto_worklog: boolean
+}): Promise<{ completed_count: number; skipped_count: number }> =>
+  api.post('/tasks/bulk-complete', data).then(r => r.data)
+export const bulkDeleteTasks = (data: { task_ids: number[] }): Promise<{ deleted_count: number }> =>
+  api.post('/tasks/bulk-delete', data).then(r => r.data)
 export const generateMonthlyReminders = (yearMonth: string) =>
   api.post('/tasks/generate-monthly-reminders', null, { params: { year_month: yearMonth } }).then(r => r.data)
 
@@ -494,6 +504,12 @@ export interface Task {
   fund_name: string | null
   gp_entity_name: string | null
   company_name: string | null
+}
+
+export interface TaskCompletionCheckResult {
+  can_complete: boolean
+  missing_documents: string[]
+  warnings: string[]
 }
 
 export interface TaskBoard {

@@ -21,6 +21,7 @@ interface DashboardTaskPanelsProps {
   onQuickComplete: (task: Task) => void
   onOpenPopup: (section: 'today' | 'tomorrow' | 'this_week') => void
   onOpenQuickAdd: (target: 'today' | 'tomorrow') => void
+  onOpenTaskBoard: () => void
 }
 
 function DashboardTaskPanels({
@@ -38,6 +39,7 @@ function DashboardTaskPanels({
   onQuickComplete,
   onOpenPopup,
   onOpenQuickAdd,
+  onOpenTaskBoard,
 }: DashboardTaskPanelsProps) {
   const [taskPanel, setTaskPanel] = useState<'daily' | 'weekly'>('daily')
   const [upcomingCollapsed, setUpcomingCollapsed] = useState(false)
@@ -47,6 +49,12 @@ function DashboardTaskPanels({
     <div className="space-y-3">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">업무 현황</h3>
+        <button
+          onClick={onOpenTaskBoard}
+          className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+        >
+          업무보드
+        </button>
       </div>
 
       <div className="space-y-3 md:hidden">

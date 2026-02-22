@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, Plus, Trash2 } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import EmptyState from '../components/EmptyState'
@@ -11,6 +11,8 @@ import { HOUR_OPTIONS } from '../components/timeOptions'
 import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import {
+  bulkCompleteTasks,
+  bulkDeleteTasks,
   completeTask,
   createTask,
   deleteTask,
@@ -71,6 +73,86 @@ function combineDeadline(date: string, hour: string): string | null {
   return hour ? `${date}T${hour}` : date
 }
 
+function parseTaskDeadline(deadline: string | null): Date | null {
+  if (!deadline) return null
+  const parsed = new Date(deadline)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+  )
+}
+
+function isOverdueTask(task: Task, now = new Date()): boolean {
+  if (task.status === 'completed') return false
+  const deadline = parseTaskDeadline(task.deadline)
+  if (!deadline) return false
+  return deadline.getTime() < now.getTime()
+}
+
+type TaskDeadlineTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
+
+function taskDeadlineTone(task: Task, now = new Date()): TaskDeadlineTone {
+  const deadline = parseTaskDeadline(task.deadline)
+  if (!deadline) return 'none'
+  if (task.status === 'completed') return 'later'
+
+  if (deadline.getTime() < now.getTime()) return 'overdue'
+  if (isSameLocalDay(deadline, now)) return 'today'
+
+  const dayStart = startOfDay(now).getTime()
+  const deadlineStart = startOfDay(deadline).getTime()
+  const diffDays = Math.floor((deadlineStart - dayStart) / (24 * 60 * 60 * 1000))
+  if (diffDays >= 1 && diffDays <= 7) return 'this_week'
+
+  return 'later'
+}
+
+function taskUrgencyMeta(task: Task): { cardClass: string; badgeClass: string; label: string | null } {
+  switch (taskDeadlineTone(task)) {
+    case 'overdue':
+      return {
+        cardClass: 'border-2 border-red-600 bg-red-200',
+        badgeClass: 'rounded-full border border-red-700 bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white',
+        label: '지연',
+      }
+    case 'today':
+      return {
+        cardClass: 'border-2 border-orange-600 bg-orange-200',
+        badgeClass: 'rounded-full border border-orange-700 bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white',
+        label: '오늘마감',
+      }
+    case 'this_week':
+      return {
+        cardClass: 'border-2 border-amber-500 bg-amber-200',
+        badgeClass: 'rounded-full border border-amber-600 bg-amber-400 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-950',
+        label: '이번주',
+      }
+    case 'none':
+      return {
+        cardClass: 'border-2 border-gray-400 bg-gray-200',
+        badgeClass: 'rounded-full border border-gray-500 bg-gray-300 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-gray-800',
+        label: '기한없음',
+      }
+    case 'later':
+    default:
+      return {
+        cardClass: '',
+        badgeClass: '',
+        label: null,
+      }
+  }
+}
+
 function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: WorkflowGroup[] } {
   const standalone: Task[] = []
   const wfMap = new Map<number, Task[]>()
@@ -108,17 +190,22 @@ function TaskItem({
   onComplete,
   onDelete,
   onEdit,
+  selected,
+  onToggleSelect,
   isBlinking = false,
 }: {
   task: Task
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  selected: boolean
+  onToggleSelect: (taskId: number, selected: boolean) => void
   isBlinking?: boolean
 }) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : null
+  const urgencyMeta = taskUrgencyMeta(task)
 
   return (
     <div
@@ -129,12 +216,28 @@ function TaskItem({
         e.dataTransfer.setData('fromQuadrant', task.quadrant)
       }}
       className={`group flex items-center gap-2 rounded-md border border-gray-200 bg-white p-2.5 transition-shadow hover:shadow-sm ${
+        urgencyMeta.cardClass
+      } ${
         isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
       }`}
     >
+      <div className="flex h-full items-start pt-0.5" onClick={(event) => event.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(event) => onToggleSelect(task.id, event.target.checked)}
+          className={`h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${
+            selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          aria-label={`업무 선택: ${task.title}`}
+        />
+      </div>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onEdit(task)}>
         <p className="text-sm leading-snug text-gray-800">{task.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+          {urgencyMeta.label && (
+            <span className={urgencyMeta.badgeClass}>{urgencyMeta.label}</span>
+          )}
           {deadlineStr && <span>{deadlineStr}</span>}
           {task.estimated_time && (
             <span className="flex items-center gap-0.5">
@@ -182,12 +285,16 @@ function WorkflowGroupCard({
   onComplete,
   onDelete,
   onEdit,
+  selectedTaskIds,
+  onToggleSelect,
   blinkingId,
 }: {
   group: WorkflowGroup
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  selectedTaskIds: Set<number>
+  onToggleSelect: (taskId: number, selected: boolean) => void
   blinkingId: number | null
 }) {
   const hasBlinkingTask = blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
@@ -224,6 +331,8 @@ function WorkflowGroupCard({
               onComplete={onComplete}
               onDelete={onDelete}
               onEdit={onEdit}
+              selected={selectedTaskIds.has(task.id)}
+              onToggleSelect={onToggleSelect}
               isBlinking={blinkingId === task.id}
             />
           ))}
@@ -782,6 +891,65 @@ function TaskDetailModal({
   )
 }
 
+function BulkCompleteModal({
+  count,
+  onConfirm,
+  onCancel,
+}: {
+  count: number
+  onConfirm: (actualTime: string, autoWorklog: boolean) => void
+  onCancel: () => void
+}) {
+  const [actualTime, setActualTime] = useState('')
+  const [autoWorklog, setAutoWorklog] = useState(() => {
+    const saved = window.localStorage.getItem('autoWorklog')
+    return saved == null ? true : saved === 'true'
+  })
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onCancel} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-emerald-700">일괄 완료</h3>
+            <button onClick={onCancel} className="icon-btn text-gray-400 hover:text-gray-600" aria-label="닫기">×</button>
+          </div>
+
+          <p className="mb-2 text-sm text-gray-700">{count}개 업무를 한 번에 완료합니다.</p>
+
+          <label className="mb-1 block text-xs text-gray-500">실제 소요 시간</label>
+          <TimeSelect value={actualTime} onChange={setActualTime} />
+
+          <label className="mb-4 mt-3 flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={autoWorklog}
+              onChange={(event) => {
+                const nextValue = event.target.checked
+                setAutoWorklog(nextValue)
+                window.localStorage.setItem('autoWorklog', String(nextValue))
+              }}
+            />
+            업무 기록 자동 생성
+          </label>
+
+          <div className="flex justify-end gap-2">
+            <button onClick={onCancel} className="secondary-btn">취소</button>
+            <button
+              onClick={() => actualTime && onConfirm(actualTime, autoWorklog)}
+              className="primary-btn"
+              disabled={!actualTime}
+            >
+              일괄 완료
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function TaskBoardPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -803,6 +971,9 @@ export default function TaskBoardPage() {
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
   const [blinkingId, setBlinkingId] = useState<number | null>(null)
   const [pendingScrollId, setPendingScrollId] = useState<number | null>(null)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
+  const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false)
+  const [bulkCompleteQueue, setBulkCompleteQueue] = useState<Task[]>([])
 
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
@@ -900,8 +1071,25 @@ export default function TaskBoardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      setCompletingTask(null)
-      addToast('success', '작업이 완료 처리되었습니다.')
+    },
+  })
+
+  const bulkCompleteMutation = useMutation({
+    mutationFn: ({
+      taskIds,
+      actualTime,
+      autoWorklog,
+    }: {
+      taskIds: number[]
+      actualTime: string
+      autoWorklog: boolean
+    }) => bulkCompleteTasks({ task_ids: taskIds, actual_time: actualTime, auto_worklog: autoWorklog }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setShowBulkCompleteModal(false)
+      setSelectedTaskIds(new Set())
+      addToast('success', `일괄 완료 처리: ${result.completed_count}건`)
     },
   })
 
@@ -911,6 +1099,16 @@ export default function TaskBoardPage() {
       queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       addToast('success', '작업이 삭제되었습니다.')
+    },
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: ({ taskIds }: { taskIds: number[] }) => bulkDeleteTasks({ task_ids: taskIds }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setSelectedTaskIds(new Set())
+      addToast('success', `일괄 삭제 완료: ${result.deleted_count}건`)
     },
   })
 
@@ -957,15 +1155,89 @@ export default function TaskBoardPage() {
     }
   }
 
-  if (isLoading) return <PageLoading />
-  const allVisibleTasks = QUADRANTS.flatMap((quadrant) => filterByFund(board?.[quadrant.key] || []))
-  const urgentTasks = allVisibleTasks.filter((task) => {
-    if (task.status === 'completed' || !task.deadline) return false
-    const deadline = new Date(task.deadline).getTime()
-    if (Number.isNaN(deadline)) return false
-    const nowMs = Date.now()
-    return deadline >= nowMs && deadline <= nowMs + 24 * 60 * 60 * 1000
-  })
+  const allVisibleTasks = useMemo(
+    () => QUADRANTS.flatMap((quadrant) => filterByFund(board?.[quadrant.key] || [])),
+    [board, fundFilter],
+  )
+  const selectedVisibleTasks = useMemo(
+    () => allVisibleTasks.filter((task) => selectedTaskIds.has(task.id)),
+    [allVisibleTasks, selectedTaskIds],
+  )
+  const overdueCount = useMemo(
+    () => allVisibleTasks.filter((task) => isOverdueTask(task)).length,
+    [allVisibleTasks],
+  )
+  const urgentTasks = useMemo(
+    () =>
+      allVisibleTasks.filter((task) => {
+        if (task.status === 'completed' || !task.deadline) return false
+        const deadline = new Date(task.deadline).getTime()
+        if (Number.isNaN(deadline)) return false
+        const nowMs = Date.now()
+        return deadline >= nowMs && deadline <= nowMs + 24 * 60 * 60 * 1000
+      }),
+    [allVisibleTasks],
+  )
+
+  useEffect(() => {
+    const visibleTaskIdSet = new Set(allVisibleTasks.map((task) => task.id))
+    setSelectedTaskIds((prev) => {
+      if (prev.size === 0) return prev
+      const next = new Set<number>()
+      prev.forEach((taskId) => {
+        if (visibleTaskIdSet.has(taskId)) {
+          next.add(taskId)
+        }
+      })
+      return next.size === prev.size ? prev : next
+    })
+  }, [allVisibleTasks])
+
+  const toggleTaskSelection = (taskId: number, selected: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (selected) {
+        next.add(taskId)
+      } else {
+        next.delete(taskId)
+      }
+      return next
+    })
+  }
+
+  const clearSelectedTasks = () => {
+    setSelectedTaskIds(new Set())
+  }
+
+  const handleBulkComplete = () => {
+    const pendingTasks = selectedVisibleTasks.filter((task) => task.status !== 'completed')
+    if (pendingTasks.length === 0) {
+      addToast('error', '완료 가능한 업무가 선택되지 않았습니다.')
+      return
+    }
+
+    const hasWorkflowTasks = pendingTasks.some((task) => task.workflow_instance_id != null)
+    if (hasWorkflowTasks) {
+      setBulkCompleteQueue(pendingTasks)
+      setCompletingTask(pendingTasks[0])
+      setShowBulkCompleteModal(false)
+      return
+    }
+
+    setBulkCompleteQueue([])
+    setShowBulkCompleteModal(true)
+  }
+
+  const handleBulkDelete = () => {
+    if (selectedVisibleTasks.length === 0) {
+      addToast('error', '선택된 업무가 없습니다.')
+      return
+    }
+    if (!window.confirm(`선택한 ${selectedVisibleTasks.length}개 업무를 삭제하시겠습니까?`)) {
+      return
+    }
+    bulkDeleteMutation.mutate({ taskIds: selectedVisibleTasks.map((task) => task.id) })
+  }
 
   const handleUrgentConfirm = () => {
     setStatusFilter('pending')
@@ -982,10 +1254,25 @@ export default function TaskBoardPage() {
     }, 3000)
   }
 
+  if (isLoading) return <PageLoading />
+
   return (
     <div className="page-container">
       <div className="page-header mb-4 items-center">
-        <h2 className="page-title">📌 업무 보드</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="page-title">📌 업무 보드</h2>
+          {overdueCount > 0 && (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+              🔴 지연 {overdueCount}건
+            </span>
+          )}
+          <Link
+            to="/dashboard"
+            className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+          >
+            오늘의 현황
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
             {['pending', 'all', 'completed'].map((status) => (
@@ -1058,6 +1345,33 @@ export default function TaskBoardPage() {
           </button>
         </div>
       </div>
+
+      {selectedVisibleTasks.length > 0 && (
+        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <span className="text-sm font-medium text-blue-800">✅ {selectedVisibleTasks.length}개 선택됨</span>
+          <button
+            onClick={handleBulkComplete}
+            disabled={bulkCompleteMutation.isPending || completeMutation.isPending}
+            className="btn-sm rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            일괄 완료
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleteMutation.isPending}
+            className="btn-sm rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+          >
+            일괄 삭제
+          </button>
+          <button
+            onClick={clearSelectedTasks}
+            className="btn-sm rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {urgentTasks.length > 0 && (
         <div className="info-banner mb-4">
           <div className="info-banner-icon" aria-hidden="true">⏰</div>
@@ -1121,6 +1435,8 @@ export default function TaskBoardPage() {
                       onComplete={setCompletingTask}
                       onEdit={setEditingTask}
                       onDelete={handleDeleteTask}
+                      selected={selectedTaskIds.has(task.id)}
+                      onToggleSelect={toggleTaskSelection}
                       isBlinking={blinkingId === task.id}
                     />
                   ))}
@@ -1132,6 +1448,8 @@ export default function TaskBoardPage() {
                       onComplete={setCompletingTask}
                       onEdit={setEditingTask}
                       onDelete={handleDeleteTask}
+                      selectedTaskIds={selectedTaskIds}
+                      onToggleSelect={toggleTaskSelection}
                       blinkingId={blinkingId}
                     />
                   ))}
@@ -1161,13 +1479,56 @@ export default function TaskBoardPage() {
         />
       )}
 
+      {showBulkCompleteModal && (
+        <BulkCompleteModal
+          count={selectedVisibleTasks.filter((task) => task.status !== 'completed').length}
+          onConfirm={(actualTime, autoWorklog) => {
+            bulkCompleteMutation.mutate({
+              taskIds: selectedVisibleTasks
+                .filter((task) => task.status !== 'completed')
+                .map((task) => task.id),
+              actualTime,
+              autoWorklog,
+            })
+          }}
+          onCancel={() => setShowBulkCompleteModal(false)}
+        />
+      )}
+
       {completingTask && (
         <CompleteModal
           task={completingTask}
-          onConfirm={(actualTime, autoWorklog, memo) =>
-            completeMutation.mutate({ id: completingTask.id, actualTime, autoWorklog, memo })
-          }
-          onCancel={() => setCompletingTask(null)}
+          onConfirm={(actualTime, autoWorklog, memo) => {
+            const isBulkQueue = bulkCompleteQueue.length > 0
+            const remainingQueue = isBulkQueue ? bulkCompleteQueue.slice(1) : []
+
+            completeMutation.mutate(
+              { id: completingTask.id, actualTime, autoWorklog, memo },
+              {
+                onSuccess: () => {
+                  if (isBulkQueue) {
+                    if (remainingQueue.length > 0) {
+                      setBulkCompleteQueue(remainingQueue)
+                      setCompletingTask(remainingQueue[0])
+                    } else {
+                      setBulkCompleteQueue([])
+                      setCompletingTask(null)
+                      setSelectedTaskIds(new Set())
+                      addToast('success', '선택한 업무를 순차 완료했습니다.')
+                    }
+                    return
+                  }
+
+                  setCompletingTask(null)
+                  addToast('success', '작업이 완료 처리되었습니다.')
+                },
+              },
+            )
+          }}
+          onCancel={() => {
+            setCompletingTask(null)
+            setBulkCompleteQueue([])
+          }}
         />
       )}
 

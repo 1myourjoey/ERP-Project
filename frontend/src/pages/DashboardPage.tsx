@@ -1,6 +1,6 @@
 ﻿import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
 import EditTaskModal from '../components/EditTaskModal'
@@ -45,6 +45,7 @@ const DAY_LABEL = {
 
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
@@ -259,6 +260,7 @@ export default function DashboardPage() {
           onQuickComplete={setCompletingTask}
           onOpenQuickAdd={openQuickAdd}
           onOpenWorkflow={setSelectedWorkflow}
+          onOpenTaskBoard={() => navigate('/tasks')}
           onUndoComplete={(taskId) => undoCompleteMut.mutate(taskId)}
         />
       ) : (

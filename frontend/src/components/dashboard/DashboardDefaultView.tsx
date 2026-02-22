@@ -46,6 +46,7 @@ interface DashboardDefaultViewProps {
   onQuickComplete: (task: Task) => void
   onOpenQuickAdd: (target: 'today' | 'tomorrow', fundId?: number | null) => void
   onOpenWorkflow: (workflow: ActiveWorkflow) => void
+  onOpenTaskBoard: () => void
   onUndoComplete: (taskId: number) => void
 }
 
@@ -81,14 +82,26 @@ function DashboardDefaultView({
   onQuickComplete,
   onOpenQuickAdd,
   onOpenWorkflow,
+  onOpenTaskBoard,
   onUndoComplete,
 }: DashboardDefaultViewProps) {
   const navigate = useNavigate()
+  const overdueTodayCount = todayTasks.filter((task) => {
+    if (task.status === 'completed' || !task.deadline) return false
+    const deadline = new Date(task.deadline)
+    return !Number.isNaN(deadline.getTime()) && deadline.getTime() < Date.now()
+  }).length
 
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <DashboardStatCard label="📋 오늘 업무" value={todayTasks.length} onClick={() => onOpenPopup('today')} />
+        <DashboardStatCard
+          label="📋 오늘 업무"
+          value={todayTasks.length}
+          onClick={() => onOpenPopup('today')}
+          variant={overdueTodayCount > 0 ? 'danger' : 'default'}
+          valueSuffix={overdueTodayCount > 0 ? `(+${overdueTodayCount} 지연)` : null}
+        />
         <DashboardStatCard label={`📅 이번 주 (${thisWeekRangeLabel})`} value={thisWeekTasks.length} onClick={() => onOpenPopup('this_week')} />
         <DashboardStatCard label="🔄 진행 워크플로" value={activeWorkflows.length} onClick={() => onOpenPopup('workflows')} />
         <DashboardStatCard label="📁 미수집 서류" value={missingDocuments.length} onClick={() => onOpenPopup('documents')} />
@@ -116,6 +129,7 @@ function DashboardDefaultView({
             loading={workflowsLoading}
             onOpenPopup={() => onOpenPopup('workflows')}
             onOpenWorkflow={onOpenWorkflow}
+            onOpenTaskBoard={onOpenTaskBoard}
             onOpenWorkflowPage={() => navigate('/workflows')}
           />
           <DashboardTaskPanels
@@ -133,6 +147,7 @@ function DashboardDefaultView({
             onQuickComplete={onQuickComplete}
             onOpenPopup={onOpenPopup}
             onOpenQuickAdd={onOpenQuickAdd}
+            onOpenTaskBoard={onOpenTaskBoard}
           />
         </div>
 
