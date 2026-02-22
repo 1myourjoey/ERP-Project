@@ -22,16 +22,16 @@ type Accent = {
 }
 
 const CARD_ACCENTS: Accent[] = [
-  { border: 'border-l-blue-400', tint: 'bg-blue-50/80', text: 'text-blue-700' },
-  { border: 'border-l-indigo-400', tint: 'bg-indigo-50/80', text: 'text-indigo-700' },
-  { border: 'border-l-emerald-400', tint: 'bg-emerald-50/80', text: 'text-emerald-700' },
-  { border: 'border-l-amber-400', tint: 'bg-amber-50/80', text: 'text-amber-700' },
-  { border: 'border-l-slate-400', tint: 'bg-slate-50/80', text: 'text-slate-700' },
+  { border: 'border-l-blue-400', tint: 'bg-white', text: 'text-blue-700' },
+  { border: 'border-l-indigo-400', tint: 'bg-white', text: 'text-indigo-700' },
+  { border: 'border-l-emerald-400', tint: 'bg-white', text: 'text-emerald-700' },
+  { border: 'border-l-amber-400', tint: 'bg-white', text: 'text-amber-700' },
+  { border: 'border-l-slate-400', tint: 'bg-white', text: 'text-slate-700' },
 ]
 
 const DEFAULT_ACCENT: Accent = {
   border: 'border-l-gray-300',
-  tint: 'bg-gray-50/90',
+  tint: 'bg-white',
   text: 'text-gray-600',
 }
 
@@ -334,6 +334,18 @@ export default function TaskPipelineView({
     workflowByStage.set(stage, [...list].sort((a, b) => workflowSortKey(a).localeCompare(workflowSortKey(b))))
   }
 
+  const waitingLane = useMemo(() => ({
+    key: 'waiting' as const,
+    label: '대기 (기한 미배정)',
+    icon: Inbox,
+    colorClass: 'text-slate-700',
+    borderClass: 'border-slate-200',
+    tasks: waitingTasks,
+    workflows: workflowByStage.get('waiting') ?? [],
+    compactThreshold: 7,
+    editable: true,
+  }), [waitingTasks, workflowByStage])
+
   const stageColumns = useMemo(() => [
     {
       key: 'overdue' as const,
@@ -341,7 +353,7 @@ export default function TaskPipelineView({
       icon: AlertTriangle,
       colorClass: 'text-red-700',
       borderClass: 'border-red-200',
-      bgClass: 'bg-red-50',
+      subLabel: '',
       tasks: overdueStageTasks,
       workflows: workflowByStage.get('overdue') ?? [],
       compactThreshold: 5,
@@ -351,9 +363,8 @@ export default function TaskPipelineView({
       key: 'today' as const,
       label: '오늘',
       icon: Clock3,
-      colorClass: 'text-blue-700',
-      borderClass: 'border-blue-200',
-      bgClass: 'bg-blue-50',
+      colorClass: 'text-orange-700',
+      borderClass: 'border-orange-200',
       subLabel: `내일 ${tomorrowTasks.length}건`,
       tasks: todayStageTasks,
       workflows: workflowByStage.get('today') ?? [],
@@ -364,9 +375,9 @@ export default function TaskPipelineView({
       key: 'thisWeek' as const,
       label: '이번 주',
       icon: CalendarDays,
-      colorClass: 'text-indigo-700',
-      borderClass: 'border-indigo-200',
-      bgClass: 'bg-indigo-50',
+      colorClass: 'text-amber-700',
+      borderClass: 'border-amber-200',
+      subLabel: '',
       tasks: thisWeekStageTasks,
       workflows: workflowByStage.get('thisWeek') ?? [],
       compactThreshold: 5,
@@ -376,25 +387,13 @@ export default function TaskPipelineView({
       key: 'upcoming' as const,
       label: '예정',
       icon: ArrowRight,
-      colorClass: 'text-amber-700',
-      borderClass: 'border-amber-200',
-      bgClass: 'bg-amber-50',
+      colorClass: 'text-blue-700',
+      borderClass: 'border-blue-200',
+      subLabel: '',
       tasks: upcomingStageTasks,
       workflows: workflowByStage.get('upcoming') ?? [],
       compactThreshold: 5,
       editable: false,
-    },
-    {
-      key: 'waiting' as const,
-      label: '대기',
-      icon: Inbox,
-      colorClass: 'text-slate-700',
-      borderClass: 'border-slate-200',
-      bgClass: 'bg-slate-50',
-      tasks: waitingTasks,
-      workflows: workflowByStage.get('waiting') ?? [],
-      compactThreshold: 5,
-      editable: true,
     },
   ], [
     overdueStageTasks,
@@ -402,14 +401,18 @@ export default function TaskPipelineView({
     todayStageTasks,
     tomorrowTasks.length,
     upcomingStageTasks,
-    waitingTasks,
     workflowByStage,
   ])
+
+  const pipelineColumnsForLinks = useMemo(
+    () => [waitingLane, ...stageColumns],
+    [waitingLane, stageColumns],
+  )
 
   const pipelineItems = useMemo(() => {
     const items: PipelineItem[] = []
 
-    stageColumns.forEach((column, stageIndex) => {
+    pipelineColumnsForLinks.forEach((column, stageIndex) => {
       let order = 0
 
       for (const workflow of column.workflows) {
@@ -439,7 +442,7 @@ export default function TaskPipelineView({
     })
 
     return items
-  }, [stageColumns])
+  }, [pipelineColumnsForLinks])
 
   const linkCandidates = useMemo(() => {
     type Participant = {
@@ -591,7 +594,10 @@ export default function TaskPipelineView({
 
   return (
     <div className={fullScreen ? '' : 'card-base'}>
-      <div ref={pipelineRef} className={`relative mx-auto flex w-full max-w-[1400px] gap-3 px-2 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[560px]'}`}>
+      <div
+        ref={pipelineRef}
+        className={`relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[620px]'}`}
+      >
         <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" aria-hidden="true">
           {linkPaths.map((link) => {
             const isActive = activeCardKey ? link.fromKey === activeCardKey || link.toKey === activeCardKey : false
@@ -611,95 +617,129 @@ export default function TaskPipelineView({
           })}
         </svg>
 
-        {stageColumns.map((column) => {
-          const grouped = Array.from(groupByCategory(column.tasks).entries())
-          const flatTasks = column.tasks
-          const isCompact = column.compactThreshold > 0 && flatTasks.length > column.compactThreshold
-          const Icon = column.icon
-
-          return (
-            <div key={column.key} className={`relative z-10 flex h-full flex-1 flex-col rounded-lg border ${column.borderClass} ${column.bgClass} p-3`}>
-              <div className="mb-2 flex shrink-0 items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Icon size={14} className={column.colorClass} />
-                  <div className="flex items-center gap-1.5">
-                    <p className={`text-sm font-semibold ${column.colorClass}`}>{column.label}</p>
-                    {'subLabel' in column && <p className="text-[10px] text-gray-500">{column.subLabel}</p>}
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500">{column.tasks.length + column.workflows.length}건</span>
+        <div className="relative z-10 flex h-full min-h-0 flex-col gap-3">
+          <div className={`rounded-xl border ${waitingLane.borderClass} bg-slate-50/40 p-2.5`}>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Inbox size={14} className={waitingLane.colorClass} />
+                <p className={`text-sm font-semibold ${waitingLane.colorClass}`}>{waitingLane.label}</p>
               </div>
+              <span className="text-xs text-gray-500">{waitingLane.tasks.length + waitingLane.workflows.length}건</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {waitingLane.workflows.map((workflow) => {
+                const accent = getAccent(workflow.fund_name || workflow.gp_entity_name || workflow.name)
+                const { percent } = parseProgress(workflow.progress)
+                const cardKey = `wf-${workflow.id}`
 
-              <div className="flex-1 space-y-2 overflow-y-hidden">
-                {column.workflows.map((workflow) => {
-                  const accent = getAccent(workflow.fund_name || workflow.gp_entity_name || workflow.name)
-                  const { percent } = parseProgress(workflow.progress)
-                  const cardKey = `wf-${workflow.id}`
+                return (
+                  <button
+                    key={cardKey}
+                    {...cardInteraction(cardKey)}
+                    onClick={() => onClickWorkflow(workflow)}
+                    className={`min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
+                      <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                    </div>
+                  </button>
+                )
+              })}
+              {(waitingLane.compactThreshold > 0 && waitingLane.tasks.length > waitingLane.compactThreshold
+                ? waitingLane.tasks
+                : flattenTasksForDisplay(waitingLane.tasks)
+              ).map((task) => {
+                const cardKey = `task-${task.id}`
+                return (
+                  <button
+                    key={cardKey}
+                    {...cardInteraction(cardKey)}
+                    onClick={() => onClickTask(task, { editable: true })}
+                    className="group relative min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300"
+                    title="클릭하여 마감일 배정"
+                  >
+                    <span className="pointer-events-none absolute left-2 top-0 -translate-y-full rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      클릭하여 마감일 배정
+                    </span>
+                    <p className="truncate text-xs font-semibold text-gray-800">{task.title}</p>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                      <span className="truncate">{task.fund_name || task.gp_entity_name || '일반'}</span>
+                      <span className="shrink-0">기한 없음</span>
+                    </div>
+                  </button>
+                )
+              })}
+              {waitingLane.workflows.length === 0 && waitingLane.tasks.length === 0 && (
+                <p className="min-w-[224px] rounded border border-dashed border-gray-300 bg-white px-2 py-4 text-center text-xs text-gray-400">
+                  대기 업무 없음
+                </p>
+              )}
+            </div>
+          </div>
 
-                  return (
-                    <button
-                      key={cardKey}
-                      {...cardInteraction(cardKey)}
-                      onClick={() => onClickWorkflow(workflow)}
-                      className={`w-full rounded border border-gray-200 border-l-4 px-2 py-2 text-left transition-colors hover:bg-white ${accent.border} ${accent.tint}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
-                        </div>
-                        <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {stageColumns.map((column) => {
+              const grouped = Array.from(groupByCategory(column.tasks).entries())
+              const flatTasks = column.tasks
+              const isCompact = column.compactThreshold > 0 && flatTasks.length > column.compactThreshold
+              const Icon = column.icon
+
+              return (
+                <div key={column.key} className={`relative z-10 flex h-full min-h-0 flex-col rounded-xl border ${column.borderClass} bg-white p-2.5`}>
+                  <div className="mb-2 flex shrink-0 items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Icon size={14} className={column.colorClass} />
+                      <div className="flex items-center gap-1.5">
+                        <p className={`text-sm font-semibold ${column.colorClass}`}>{column.label}</p>
+                        {column.subLabel && <p className="text-[10px] text-gray-500">{column.subLabel}</p>}
                       </div>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
-                      </div>
-                      <p className={`mt-1 truncate text-[10px] ${accent.text}`}>
-                        {workflow.fund_name || workflow.gp_entity_name || '-'}
-                        {workflow.next_step_date ? ` · ${formatShortDate(workflow.next_step_date)}` : ''}
-                      </p>
-                    </button>
-                  )
-                })}
+                    </div>
+                    <span className="text-xs text-gray-500">{column.tasks.length + column.workflows.length}건</span>
+                  </div>
 
-                {!column.workflows.length && !grouped.length && (
-                  <p className="rounded border border-dashed border-gray-200 bg-white px-2 py-5 text-center text-xs text-gray-400">업무 없음</p>
-                )}
-
-                {isCompact ? (
-                  <div className="space-y-1.5">
-                    {flatTasks.map((task) => {
-                      const accent = getAccent(task.fund_name || task.gp_entity_name || task.title)
-                      const cardKey = `task-${task.id}`
-                      const deadlineBorder = taskDeadlineBorderClass(task, todayIso, weekEndIso)
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+                    {column.workflows.map((workflow) => {
+                      const accent = getAccent(workflow.fund_name || workflow.gp_entity_name || workflow.name)
+                      const { percent } = parseProgress(workflow.progress)
+                      const cardKey = `wf-${workflow.id}`
 
                       return (
                         <button
                           key={cardKey}
                           {...cardInteraction(cardKey)}
-                          onClick={() => onClickTask(task, { editable: column.editable })}
-                          className={`group relative w-full rounded border border-gray-200 border-l-4 px-2 py-1.5 text-left transition-colors hover:bg-white ${deadlineBorder} ${accent.tint}`}
+                          onClick={() => onClickWorkflow(workflow)}
+                          className={`w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
                         >
-                          <p className="truncate text-xs text-gray-800">{task.title}</p>
-                          <div className="pointer-events-none invisible absolute left-full top-0 z-20 ml-2 w-52 rounded border border-gray-200 bg-white p-2 text-[11px] text-gray-600 shadow-lg group-hover:visible">
-                            <p className="font-medium text-gray-800">{task.title}</p>
-                            <p className="mt-1">마감: {task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</p>
-                            <p>예상: {task.estimated_time || '-'}</p>
-                            <p>대상: {task.fund_name || task.gp_entity_name || '일반'}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
+                            </div>
+                            <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
                           </div>
+                          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                            <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                          </div>
+                          <p className={`mt-1 truncate text-[10px] ${accent.text}`}>
+                            {workflow.fund_name || workflow.gp_entity_name || '-'}
+                            {workflow.next_step_date ? ` · ${formatShortDate(workflow.next_step_date)}` : ''}
+                          </p>
                         </button>
                       )
                     })}
-                  </div>
-                ) : (
-                  grouped.map(([category, tasks]) => (
-                    <div key={`${column.key}-${category}`}>
-                      <div className="mb-1 flex items-center gap-1.5">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
-                        <span className="text-[10px] text-gray-400">{tasks.length}</span>
-                      </div>
+
+                    {!column.workflows.length && !grouped.length && (
+                      <p className="rounded border border-dashed border-gray-200 bg-white px-2 py-5 text-center text-xs text-gray-400">업무 없음</p>
+                    )}
+
+                    {isCompact ? (
                       <div className="space-y-1.5">
-                        {tasks.map((task) => {
-                          const accent = getAccent(task.fund_name || task.gp_entity_name || task.title)
+                        {flatTasks.map((task) => {
                           const cardKey = `task-${task.id}`
                           const deadlineBorder = taskDeadlineBorderClass(task, todayIso, weekEndIso)
 
@@ -708,24 +748,57 @@ export default function TaskPipelineView({
                               key={cardKey}
                               {...cardInteraction(cardKey)}
                               onClick={() => onClickTask(task, { editable: column.editable })}
-                              className={`w-full rounded border border-gray-200 border-l-4 px-2 py-2 text-left transition-colors hover:bg-white ${deadlineBorder} ${accent.tint}`}
+                              className={`group relative w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-1.5 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
                             >
-                              <p className="truncate text-xs font-medium text-gray-800">{task.title}</p>
-                              <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
-                                <span className={`truncate ${accent.text}`}>{task.fund_name || task.gp_entity_name || '일반'}</span>
-                                <span className="shrink-0">{task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</span>
+                              <p className="truncate text-xs text-gray-800">{task.title}</p>
+                              <div className="pointer-events-none invisible absolute left-full top-0 z-20 ml-2 w-52 rounded border border-gray-200 bg-white p-2 text-[11px] text-gray-600 shadow-lg group-hover:visible">
+                                <p className="font-medium text-gray-800">{task.title}</p>
+                                <p className="mt-1">마감: {task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</p>
+                                <p>예상: {task.estimated_time || '-'}</p>
+                                <p>대상: {task.fund_name || task.gp_entity_name || '일반'}</p>
                               </div>
                             </button>
                           )
                         })}
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )
-        })}
+                    ) : (
+                      grouped.map(([category, tasks]) => (
+                        <div key={`${column.key}-${category}`}>
+                          <div className="mb-1 flex items-center gap-1.5">
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
+                            <span className="text-[10px] text-gray-400">{tasks.length}</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {tasks.map((task) => {
+                              const accent = getAccent(task.fund_name || task.gp_entity_name || task.title)
+                              const cardKey = `task-${task.id}`
+                              const deadlineBorder = taskDeadlineBorderClass(task, todayIso, weekEndIso)
+
+                              return (
+                                <button
+                                  key={cardKey}
+                                  {...cardInteraction(cardKey)}
+                                  onClick={() => onClickTask(task, { editable: column.editable })}
+                                  className={`w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
+                                >
+                                  <p className="truncate text-xs font-medium text-gray-800">{task.title}</p>
+                                  <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                                    <span className={`truncate ${accent.text}`}>{task.fund_name || task.gp_entity_name || '일반'}</span>
+                                    <span className="shrink-0">{task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</span>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3 px-2 text-[11px] text-gray-600">
         <span className="inline-flex items-center gap-1">

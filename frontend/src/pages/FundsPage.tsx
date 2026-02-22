@@ -552,7 +552,7 @@ export default function FundsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'funds_lp_migration_template.xlsx'
+      link.download = 'LP_일괄등록_양식.xlsx'
       document.body.appendChild(link)
       link.click()
       link.remove()

@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 import io
+from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -79,6 +80,28 @@ MIGRATION_LP_HEADERS = [
     "business_number",
     "address",
 ]
+
+MIGRATION_LP_HEADER_LABELS = {
+    "fund_key": "조합키",
+    "name": "LP명",
+    "type": "LP유형",
+    "commitment": "약정금액",
+    "paid_in": "누적납입액",
+    "contact": "연락처",
+    "business_number": "사업자번호",
+    "address": "주소",
+}
+
+MIGRATION_LP_HEADER_ALIASES = {
+    "fund_key": ["조합키"],
+    "name": ["LP명"],
+    "type": ["LP유형"],
+    "commitment": ["약정금액", "commitment_amount"],
+    "paid_in": ["누적납입액"],
+    "contact": ["연락처"],
+    "business_number": ["사업자번호"],
+    "address": ["주소"],
+}
 
 MIGRATION_FUND_TYPES = {
     "투자조합",
@@ -194,13 +217,22 @@ def _parse_number_cell(
     return parsed
 
 
-def _read_sheet_rows(worksheet, headers: list[str], sheet_name: str) -> tuple[list[dict], list[FundMigrationErrorItem]]:
+def _read_sheet_rows(
+    worksheet,
+    headers: list[str],
+    sheet_name: str,
+    header_aliases: dict[str, list[str]] | None = None,
+) -> tuple[list[dict], list[FundMigrationErrorItem]]:
     errors: list[FundMigrationErrorItem] = []
     header_values = next(worksheet.iter_rows(min_row=1, max_row=1, values_only=True), tuple())
     header_map = {_to_str(header_values[idx]): idx for idx in range(len(header_values))}
+    header_aliases = header_aliases or {}
+    column_index_map: dict[str, int] = {}
 
     for header in headers:
-        if header not in header_map:
+        candidate_labels = [header, *header_aliases.get(header, [])]
+        matched_index = next((header_map[label] for label in candidate_labels if label in header_map), None)
+        if matched_index is None:
             errors.append(
                 FundMigrationErrorItem(
                     row=1,
@@ -208,18 +240,23 @@ def _read_sheet_rows(worksheet, headers: list[str], sheet_name: str) -> tuple[li
                     reason=f"{sheet_name} 시트에 필수 컬럼이 없습니다",
                 )
             )
+            continue
+        column_index_map[header] = matched_index
 
     if errors:
         return [], errors
 
     rows: list[dict] = []
     for row_no, row_values in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
+        first_value = _to_str(row_values[0] if row_values else None)
+        if first_value.startswith("#"):
+            continue
         if all(value is None or _to_str(value) == "" for value in row_values):
             continue
 
         item: dict = {"__row": row_no}
         for header in headers:
-            idx = header_map[header]
+            idx = column_index_map[header]
             item[header] = row_values[idx] if idx < len(row_values) else None
         rows.append(item)
     return rows, errors
@@ -374,7 +411,12 @@ def _parse_and_validate_migration(
     fund_sheet = workbook["Funds"]
     lp_sheet = workbook["LPs"]
     raw_funds, fund_sheet_errors = _read_sheet_rows(fund_sheet, MIGRATION_FUND_HEADERS, "Funds")
-    raw_lps, lp_sheet_errors = _read_sheet_rows(lp_sheet, MIGRATION_LP_HEADERS, "LPs")
+    raw_lps, lp_sheet_errors = _read_sheet_rows(
+        lp_sheet,
+        MIGRATION_LP_HEADERS,
+        "LPs",
+        header_aliases=MIGRATION_LP_HEADER_ALIASES,
+    )
 
     if fund_sheet_errors or lp_sheet_errors:
         errors = [*fund_sheet_errors, *lp_sheet_errors]
@@ -1010,7 +1052,17 @@ def download_migration_template():
     )
 
     lp_sheet = workbook.create_sheet("LPs")
-    lp_sheet.append(MIGRATION_LP_HEADERS)
+    lp_sheet.append([MIGRATION_LP_HEADER_LABELS.get(key, key) for key in MIGRATION_LP_HEADERS])
+    lp_sheet.append([
+        "#입력가이드",
+        "예: 예시 기관 LP",
+        "기관투자자 / 개인투자자 / GP",
+        "숫자만 입력 (원)",
+        "숫자만 입력 (원)",
+        "담당자 연락처",
+        "예: 111-22-33333",
+        "도로명 또는 지번 주소",
+    ])
     lp_sheet.append(
         [
             "FUND-001",
@@ -1036,6 +1088,20 @@ def download_migration_template():
         ]
     )
 
+    try:
+        from openpyxl.styles import Font, PatternFill
+
+        helper_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+        helper_font = Font(color="6B7280", italic=True, size=10)
+        for column_index in range(1, len(MIGRATION_LP_HEADERS) + 1):
+            helper_cell = lp_sheet.cell(row=2, column=column_index)
+            helper_cell.fill = helper_fill
+            helper_cell.font = helper_font
+        lp_sheet.freeze_panes = "A3"
+    except Exception:
+        # Formatting failure should not block template download.
+        pass
+
     guide_sheet = workbook.create_sheet("Guide")
     guide_sheet.append(["항목", "설명"])
     guide_sheet.append(["Sheets", "Funds / LPs / Guide 시트를 유지하세요."])
@@ -1047,10 +1113,16 @@ def download_migration_template():
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
+    filename = "LP_일괄등록_양식.xlsx"
+    encoded_filename = quote(filename)
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="funds_lp_migration_template.xlsx"'},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"LP_bulk_upload_template.xlsx\"; filename*=UTF-8''{encoded_filename}"
+            )
+        },
     )
 
 

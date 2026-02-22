@@ -1,9 +1,8 @@
 ﻿import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Check, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, Lightbulb, X } from 'lucide-react'
 
-import { fetchTaskCompletionCheck } from '../lib/api'
-import LottieAnimation from './LottieAnimation'
+import { fetchTaskCompletionCheck, fetchWorkLogLessonsByCategory } from '../lib/api'
 import TimeSelect from './TimeSelect'
 
 interface CompleteTaskLike {
@@ -11,6 +10,8 @@ interface CompleteTaskLike {
   title: string
   estimated_time: string | null
   fund_name?: string | null
+  category?: string | null
+  fund_id?: number | null
 }
 
 interface CompleteModalProps {
@@ -28,6 +29,7 @@ export default function CompleteModal({
 }: CompleteModalProps) {
   const [actualTime, setActualTime] = useState(task.estimated_time || '')
   const [memo, setMemo] = useState('')
+  const [showLessons, setShowLessons] = useState(true)
   const [autoWorklog, setAutoWorklog] = useState(() => {
     const saved = window.localStorage.getItem(storageKey)
     return saved == null ? true : saved === 'true'
@@ -40,6 +42,19 @@ export default function CompleteModal({
     staleTime: 0,
   })
 
+  const normalizedCategory = (task.category || '').trim()
+  const lessonQuery = useQuery({
+    queryKey: ['worklog-lessons', normalizedCategory, task.fund_id ?? null, 5],
+    queryFn: () =>
+      fetchWorkLogLessonsByCategory({
+        category: normalizedCategory,
+        fund_id: task.fund_id ?? undefined,
+        limit: 5,
+      }),
+    enabled: normalizedCategory.length > 0,
+    staleTime: 30_000,
+  })
+
   const missingDocuments = completionCheck.data?.missing_documents ?? []
   const warnings = completionCheck.data?.warnings ?? []
   const canComplete = completionCheck.data?.can_complete ?? true
@@ -50,21 +65,56 @@ export default function CompleteModal({
     <>
       <div className="modal-overlay fixed inset-0 z-50 bg-black/40" onClick={onCancel} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="modal-content w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-content w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-emerald-700">업무 완료</h3>
+            <h3 className="text-lg font-semibold text-emerald-700">✅ 업무 완료</h3>
             <button onClick={onCancel} className="icon-btn text-gray-400 hover:text-gray-600" aria-label="닫기">
               <X size={20} />
             </button>
           </div>
 
-          <div className="mb-3 flex flex-col items-center rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-            <LottieAnimation src="/animations/success-check.lottie" className="h-16 w-16" loop={false} />
-            <p className="mt-1 text-sm font-medium text-emerald-700">좋은 결과를 만들고 있습니다.</p>
+          <p className="mb-1 text-sm text-gray-700">{task.title}</p>
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+            {task.fund_name && <p className="text-blue-600">{task.fund_name}</p>}
+            {task.category && <p className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">{task.category}</p>}
           </div>
 
-          <p className="mb-1 text-sm text-gray-700">{task.title}</p>
-          {task.fund_name && <p className="mb-3 text-xs text-blue-600">{task.fund_name}</p>}
+          <div className="mb-3 overflow-hidden rounded-lg border border-amber-200 bg-amber-50">
+            <button
+              type="button"
+              onClick={() => setShowLessons((prev) => !prev)}
+              className="flex w-full items-center justify-between px-3 py-2 text-left"
+            >
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-900">
+                <Lightbulb size={14} />
+                과거 교훈 리마인드
+              </span>
+              <ChevronDown size={14} className={`text-amber-700 transition-transform ${showLessons ? 'rotate-180' : ''}`} />
+            </button>
+            {showLessons && (
+              <div className="space-y-1 border-t border-amber-200 px-3 py-2">
+                {normalizedCategory.length === 0 ? (
+                  <p className="text-xs text-amber-800">카테고리가 지정되지 않아 교훈을 불러올 수 없습니다.</p>
+                ) : lessonQuery.isLoading ? (
+                  <p className="text-xs text-amber-800">교훈을 불러오는 중입니다...</p>
+                ) : lessonQuery.isError ? (
+                  <p className="text-xs text-amber-800">교훈 조회에 실패했습니다.</p>
+                ) : (lessonQuery.data?.length ?? 0) === 0 ? (
+                  <p className="text-xs text-amber-800">참고할 과거 교훈이 없습니다.</p>
+                ) : (
+                  lessonQuery.data!.map((lesson) => (
+                    <div key={lesson.id} className="rounded border border-amber-200 bg-white px-2 py-1.5 text-xs text-gray-700">
+                      <p>• {lesson.content}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        {lesson.is_same_fund ? '같은 조합' : '다른 조합'}
+                        {lesson.fund_name ? ` · ${lesson.fund_name}` : ''}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           {isChecking && (
             <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">

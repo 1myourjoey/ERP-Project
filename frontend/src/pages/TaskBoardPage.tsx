@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Clock, GitBranch, HelpCircle, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Clock, GitBranch, HelpCircle, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -15,7 +15,9 @@ import {
   bulkCompleteTasks,
   bulkDeleteTasks,
   completeTask,
+  createTaskCategory,
   createTask,
+  deleteTaskCategory,
   deleteTask,
   fetchDashboardBase,
   fetchDashboardWorkflows,
@@ -24,6 +26,7 @@ import {
   fetchWorkflow,
   fetchWorkflowInstance,
   fetchTask,
+  fetchTaskCategories,
   fetchTasks,
   fetchWorkflows,
   fetchTaskBoard,
@@ -38,6 +41,7 @@ import type {
   Fund,
   GPEntity,
   Task,
+  TaskCategory,
   TaskBoard,
   TaskCreate,
   WorkflowListItem,
@@ -61,6 +65,8 @@ const VIEW_TABS = [
   { key: 'calendar', label: '캘린더' },
   { key: 'pipeline', label: '파이프라인' },
 ] as const
+
+const DEFAULT_TASK_CATEGORY_NAMES = ['투자실행', 'LP보고', '사후관리', '규약/총회', '서류관리', '일반'] as const
 
 type BoardView = (typeof VIEW_TABS)[number]['key']
 
@@ -369,7 +375,7 @@ function WorkflowGroupCard({
   )
 }
 
-function AddTaskForm({ quadrant }: { quadrant: string }) {
+function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; categoryOptions: string[] }) {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [open, setOpen] = useState(false)
@@ -378,6 +384,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
   const [deadlineHour, setDeadlineHour] = useState('')
   const [estimatedTime, setEstimatedTime] = useState('')
   const [relatedTarget, setRelatedTarget] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('')
 
   const { data: funds = [] } = useQuery<Fund[]>({
@@ -415,6 +422,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
     setDeadlineHour('')
     setEstimatedTime('')
     setRelatedTarget('')
+    setSelectedCategory('')
     setSelectedTemplateId('')
     setOpen(false)
   }
@@ -454,6 +462,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           quadrant,
           deadline: combineDeadline(deadlineDate, deadlineHour),
           estimated_time: estimatedTime || null,
+          category: selectedCategory || null,
           fund_id: selectedFundId || null,
           gp_entity_id: selectedGpEntityId || null,
         })
@@ -524,7 +533,7 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-1 gap-1 md:grid-cols-3">
         <div>
           <label className="form-label text-[10px]">관련 대상</label>
           <select
@@ -545,6 +554,19 @@ function AddTaskForm({ quadrant }: { quadrant: string }) {
                 <option key={`fund-${fund.id}`} value={`fund:${fund.id}`}>{fund.name}</option>
               ))}
             </optgroup>
+          </select>
+        </div>
+        <div>
+          <label className="form-label text-[10px]">카테고리</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="form-input-sm"
+          >
+            <option value="">카테고리 선택</option>
+            {categoryOptions.map((categoryName) => (
+              <option key={categoryName} value={categoryName}>{categoryName}</option>
+            ))}
           </select>
         </div>
         <div>
@@ -586,12 +608,14 @@ function EditTaskModal({
   onCancel,
   fundsForFilter,
   gpEntities,
+  categoryOptions,
 }: {
   task: Task
   onSave: (id: number, data: Partial<TaskCreate>) => void
   onCancel: () => void
   fundsForFilter: Fund[]
   gpEntities: GPEntity[]
+  categoryOptions: string[]
 }) {
   const initialDeadline = splitDeadline(task.deadline)
   const [title, setTitle] = useState(task.title)
@@ -715,12 +739,9 @@ function EditTaskModal({
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">없음</option>
-                  <option value="투자실행">투자실행</option>
-                  <option value="LP보고">LP보고</option>
-                  <option value="사후관리">사후관리</option>
-                  <option value="규약/총회">규약/총회</option>
-                  <option value="서류관리">서류관리</option>
-                  <option value="일반">일반</option>
+                  {categoryOptions.map((categoryName) => (
+                    <option key={categoryName} value={categoryName}>{categoryName}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -977,6 +998,75 @@ function BulkCompleteModal({
   )
 }
 
+function CategoryManagerModal({
+  categories,
+  newCategoryName,
+  onChangeNewCategory,
+  onCreate,
+  onDelete,
+  onClose,
+  creating,
+  deletingCategoryId,
+}: {
+  categories: TaskCategory[]
+  newCategoryName: string
+  onChangeNewCategory: (value: string) => void
+  onCreate: () => void
+  onDelete: (category: TaskCategory) => void
+  onClose: () => void
+  creating: boolean
+  deletingCategoryId: number | null
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-900">카테고리 관리</h3>
+            <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600" aria-label="닫기">×</button>
+          </div>
+
+          <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+            {categories.length === 0 ? (
+              <p className="text-xs text-gray-500">등록된 카테고리가 없습니다.</p>
+            ) : (
+              categories.map((category) => (
+                <div key={category.id} className="flex items-center justify-between rounded bg-white px-3 py-2">
+                  <span className="text-sm text-gray-700">{category.name}</span>
+                  <button
+                    onClick={() => onDelete(category)}
+                    className="text-xs text-red-600 hover:text-red-700 disabled:opacity-60"
+                    disabled={deletingCategoryId === category.id}
+                  >
+                    {deletingCategoryId === category.id ? '삭제 중...' : '삭제'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              value={newCategoryName}
+              onChange={(event) => onChangeNewCategory(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') onCreate()
+              }}
+              placeholder="새 카테고리 이름"
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+            <button onClick={onCreate} disabled={creating || !newCategoryName.trim()} className="primary-btn btn-sm disabled:opacity-60">
+              {creating ? '추가 중...' : '추가'}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-gray-500">사용 중인 카테고리는 삭제 시 경고가 표시됩니다.</p>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function TaskBoardPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1009,6 +1099,9 @@ export default function TaskBoardPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
   const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false)
   const [bulkCompleteQueue, setBulkCompleteQueue] = useState<Task[]>([])
+  const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
 
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
@@ -1020,6 +1113,12 @@ export default function TaskBoardPage() {
         statusFilter === 'completed' ? completedYear : undefined,
         statusFilter === 'completed' && completedMonth !== '' ? completedMonth : undefined,
       ),
+  })
+
+  const { data: taskCategories = [] } = useQuery<TaskCategory[]>({
+    queryKey: ['task-categories'],
+    queryFn: fetchTaskCategories,
+    staleTime: 60_000,
   })
 
   const { data: fundsForFilter = [] } = useQuery<Fund[]>({
@@ -1196,10 +1295,43 @@ export default function TaskBoardPage() {
     },
   })
 
+  const createCategoryMutation = useMutation({
+    mutationFn: (name: string) => createTaskCategory(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-categories'] })
+      setNewCategoryName('')
+      addToast('success', '카테고리를 추가했습니다.')
+    },
+  })
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (category: TaskCategory) => deleteTaskCategory(category.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-categories'] })
+      setDeletingCategoryId(null)
+      addToast('success', '카테고리를 삭제했습니다.')
+    },
+    onError: () => {
+      setDeletingCategoryId(null)
+    },
+  })
+
   const handleDeleteTask = (id: number) => {
     if (window.confirm('이 작업을 삭제하시겠습니까?')) {
       deleteMutation.mutate(id)
     }
+  }
+
+  const handleCreateCategory = () => {
+    const normalized = newCategoryName.trim()
+    if (!normalized) return
+    createCategoryMutation.mutate(normalized)
+  }
+
+  const handleDeleteCategory = (category: TaskCategory) => {
+    if (!window.confirm(`[${category.name}] 카테고리를 삭제하시겠습니까?`)) return
+    setDeletingCategoryId(category.id)
+    deleteCategoryMutation.mutate(category)
   }
 
   const findTaskById = async (taskId: number): Promise<Task | null> => {
@@ -1256,9 +1388,27 @@ export default function TaskBoardPage() {
     () => allVisibleTasks.filter((task) => selectedTaskIds.has(task.id)),
     [allVisibleTasks, selectedTaskIds],
   )
-  const overdueCount = useMemo(
-    () => allVisibleTasks.filter((task) => isOverdueTask(task)).length,
+  const categoryNames = useMemo(() => {
+    const names = new Set<string>(DEFAULT_TASK_CATEGORY_NAMES)
+    for (const category of taskCategories) {
+      const normalized = category.name.trim()
+      if (normalized) names.add(normalized)
+    }
+    for (const quadrant of QUADRANTS) {
+      for (const task of board?.[quadrant.key] || []) {
+        if (task.category) names.add(task.category)
+      }
+    }
+    return [...names]
+  }, [board, taskCategories])
+
+  const overdueTasks = useMemo(
+    () => allVisibleTasks.filter((task) => isOverdueTask(task)),
     [allVisibleTasks],
+  )
+  const overdueCount = useMemo(
+    () => overdueTasks.length,
+    [overdueTasks],
   )
   const urgentTasks = useMemo(
     () =>
@@ -1355,6 +1505,21 @@ export default function TaskBoardPage() {
       return
     }
     bulkDeleteMutation.mutate({ taskIds: selectedVisibleTasks.map((task) => task.id) })
+  }
+
+  const handleOverdueConfirm = () => {
+    setStatusFilter('pending')
+    setFundFilter('')
+    setBoardView('board')
+
+    const firstOverdueTask = overdueTasks[0]
+    if (!firstOverdueTask) return
+
+    setPendingScrollId(firstOverdueTask.id)
+    setBlinkingId(firstOverdueTask.id)
+    window.setTimeout(() => {
+      setBlinkingId((prev) => (prev === firstOverdueTask.id ? null : prev))
+    }, 3000)
   }
 
   const handleUrgentConfirm = () => {
@@ -1481,6 +1646,14 @@ export default function TaskBoardPage() {
               ))}
             </optgroup>
           </select>
+
+          <button
+            onClick={() => setShowCategoryManager(true)}
+            className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+          >
+            <Tag size={12} />
+            카테고리 관리
+          </button>
         </div>
       </div>
 
@@ -1510,18 +1683,21 @@ export default function TaskBoardPage() {
         </div>
       )}
 
+      {overdueTasks.length > 0 && (
+        <div className="mb-2 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-sm font-medium text-red-900">🔴 기한 경과 업무가 {overdueTasks.length}건 있습니다.</p>
+          <button onClick={handleOverdueConfirm} className="btn-sm rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100">
+            업무 확인
+          </button>
+        </div>
+      )}
+
       {urgentTasks.length > 0 && (
-        <div className="info-banner mb-4">
-          <div className="info-banner-icon" aria-hidden="true">⏰</div>
-          <p className="info-banner-text">기한 24시간 이내 업무가 {urgentTasks.length}건 있습니다.</p>
-          <div className="info-banner-action">
-            <button
-              onClick={handleUrgentConfirm}
-              className="secondary-btn btn-sm"
-            >
-              업무 확인
-            </button>
-          </div>
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="text-sm font-medium text-orange-900">⏰ 24시간 이내 마감 업무가 {urgentTasks.length}건 있습니다.</p>
+          <button onClick={handleUrgentConfirm} className="btn-sm rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100">
+            업무 확인
+          </button>
         </div>
       )}
 
@@ -1550,7 +1726,13 @@ export default function TaskBoardPage() {
               upcomingTasks={pipelineUpcomingTasks}
               noDeadlineTasks={pipelineNoDeadlineTasks}
               activeWorkflows={pipelineActiveWorkflows}
-              onClickTask={(task) => setDetailTask(task)}
+              onClickTask={(task, options) => {
+                if (options?.editable) {
+                  setEditingTask(task)
+                  return
+                }
+                setDetailTask(task)
+              }}
               onClickWorkflow={(workflow) => {
                 navigate('/workflows', { state: { highlightWorkflowId: workflow.id } })
               }}
@@ -1623,7 +1805,7 @@ export default function TaskBoardPage() {
                 </div>
 
                 <div className="mt-2">
-                  <AddTaskForm quadrant={quadrant.key} />
+                  <AddTaskForm quadrant={quadrant.key} categoryOptions={categoryNames} />
                 </div>
               </div>
             )
@@ -1631,11 +1813,28 @@ export default function TaskBoardPage() {
         </div>
       )}
 
+      {showCategoryManager && (
+        <CategoryManagerModal
+          categories={taskCategories}
+          newCategoryName={newCategoryName}
+          onChangeNewCategory={setNewCategoryName}
+          onCreate={handleCreateCategory}
+          onDelete={handleDeleteCategory}
+          onClose={() => {
+            setShowCategoryManager(false)
+            setNewCategoryName('')
+          }}
+          creating={createCategoryMutation.isPending}
+          deletingCategoryId={deletingCategoryId}
+        />
+      )}
+
       {editingTask && (
         <EditTaskModal
           task={editingTask}
           fundsForFilter={fundsForFilter}
           gpEntities={gpEntities}
+          categoryOptions={categoryNames}
           onSave={(id, data) => updateMutation.mutate({ id, data })}
           onCancel={() => setEditingTask(null)}
         />
@@ -1711,4 +1910,5 @@ export default function TaskBoardPage() {
     </div>
   )
 }
+
 

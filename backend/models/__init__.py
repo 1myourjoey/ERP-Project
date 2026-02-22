@@ -31,6 +31,7 @@ from .phase3 import (
 )
 from .checklist import Checklist, ChecklistItem
 from .calendar_event import CalendarEvent
+from .task_category import TaskCategory
 
 __all__ = [
     "Task",
@@ -54,4 +55,5 @@ __all__ = [
     "ExitCommittee", "ExitCommitteeFund", "ExitTrade",
     "Checklist", "ChecklistItem",
     "CalendarEvent",
+    "TaskCategory",
 ]

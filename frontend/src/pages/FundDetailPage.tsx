@@ -117,8 +117,6 @@ const STANDARD_NOTICE_TYPES = [
   { notice_type: 'amendment', label: '규약 변경 통지', default_days: 14 },
 ]
 
-const NOTICE_TYPE_MAP = new Map(STANDARD_NOTICE_TYPES.map((item) => [item.notice_type, item]))
-
 const FUND_TYPE_OPTIONS = [
   '투자조합',
   '벤처투자조합',
@@ -2553,79 +2551,49 @@ export default function FundDetailPage() {
               ) : (
                 <div className="space-y-2">
                   {(fundDetail.notice_periods ?? []).map((row) => (
-                    <div key={row.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 text-sm border border-gray-200 rounded-lg p-2">
+                    <div key={row.id} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-2 text-sm md:grid-cols-12">
                       <div className="md:col-span-4 font-medium text-gray-800">{row.label}</div>
-                      <div className="md:col-span-2 text-gray-700">
+                      <div className="md:col-span-3 text-gray-700">
                         {row.business_days}{row.day_basis === 'calendar' ? '일' : '영업일'}
                       </div>
-                      <div className="md:col-span-2 text-gray-500">
-                        {row.day_basis === 'calendar' ? '일반일' : '영업일'}
-                      </div>
-                      <div className="md:col-span-4 text-gray-500">{row.memo || '-'}</div>
+                      <div className="md:col-span-5 text-gray-500">{row.memo || '-'}</div>
                     </div>
                   ))}
                 </div>
               )
             ) : (
               <div className="space-y-2">
-                <datalist id="notice-type-options">
-                  {STANDARD_NOTICE_TYPES.map((item) => (
-                    <option key={item.notice_type} value={item.notice_type}>{item.label}</option>
-                  ))}
-                </datalist>
-
                 {noticeDraft.map((row, idx) => (
-                  <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-gray-200 rounded-lg p-2">
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지 유형</label>
-                      <input
-                        value={row.notice_type}
-                        onChange={(e) => {
-                          const nextType = e.target.value
-                          const standard = NOTICE_TYPE_MAP.get(nextType)
-                          setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? {
-                            ...item,
-                            notice_type: nextType,
-                            label: item.label || standard?.label || '',
-                            business_days: Number.isFinite(item.business_days) ? item.business_days : (standard?.default_days ?? 0),
-                            day_basis: item.day_basis === 'calendar' ? 'calendar' : 'business',
-                          } : item))
-                        }}
-                        list="notice-type-options"
-                        placeholder="notice_type"
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      />
-                    </div>
+                  <div key={row._row_id} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-2 md:grid-cols-12">
                     <div className="md:col-span-4">
                       <label className="mb-1 block text-[10px] font-medium text-gray-500">표시명</label>
                       <input
                         value={row.label}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
                         placeholder="표시명"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="w-full rounded border px-2 py-1 text-sm"
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지일수</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.business_days}
-                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, business_days: Math.max(0, Number(e.target.value || 0)) } : item))}
-                        placeholder="통지일수"
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">기준</label>
-                      <select
-                        value={row.day_basis === 'calendar' ? 'calendar' : 'business'}
-                        onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, day_basis: e.target.value as 'business' | 'calendar' } : item))}
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      >
-                        <option value="business">영업일</option>
-                        <option value="calendar">일반일</option>
-                      </select>
+                    <div className="md:col-span-4">
+                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지기간</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={row.business_days}
+                          onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, business_days: Math.max(0, Number(e.target.value || 0)) } : item))}
+                          placeholder="통지일수"
+                          className="w-24 rounded border px-2 py-1 text-sm"
+                        />
+                        <select
+                          value={row.day_basis === 'calendar' ? 'calendar' : 'business'}
+                          onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, day_basis: e.target.value as 'business' | 'calendar' } : item))}
+                          className="rounded border px-2 py-1 text-sm"
+                        >
+                          <option value="business">영업일</option>
+                          <option value="calendar">일반일</option>
+                        </select>
+                      </div>
                     </div>
                     <div className="md:col-span-3">
                       <label className="mb-1 block text-[10px] font-medium text-gray-500">메모/조항</label>
@@ -2633,12 +2601,12 @@ export default function FundDetailPage() {
                         value={row.memo || ''}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
                         placeholder="메모 / 조항"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="w-full rounded border px-2 py-1 text-sm"
                       />
                     </div>
                     <button
                       onClick={() => setNoticeDraft((prev) => prev.filter((_, itemIdx) => itemIdx !== idx))}
-                      className="md:col-span-1 px-2 py-1 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100"
+                      className="md:col-span-1 rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
                     >
                       삭제
                     </button>
@@ -2648,7 +2616,7 @@ export default function FundDetailPage() {
                 <button
                   onClick={() => setNoticeDraft((prev) => [...prev, {
                     _row_id: `notice-new-${Date.now()}-${prev.length}`,
-                    notice_type: '',
+                    notice_type: `custom_${Date.now()}`,
                     label: '',
                     business_days: 0,
                     day_basis: 'business',

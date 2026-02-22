@@ -12,10 +12,12 @@ from seed.seed_accounts import seed_accounts
 from scripts.seed_data import seed_all
 from routers import (
     tasks,
+    task_categories,
     task_completion,
     task_bulk,
     workflows,
     worklogs,
+    worklog_lessons,
     dashboard,
     funds,
     investments,
@@ -173,9 +175,11 @@ app.add_middleware(
 )
 
 app.include_router(tasks.router)
+app.include_router(task_categories.router)
 app.include_router(task_completion.router)
 app.include_router(task_bulk.router)
 app.include_router(workflows.router)
+app.include_router(worklog_lessons.router)
 app.include_router(worklogs.router)
 app.include_router(dashboard.router)
 app.include_router(funds.router)

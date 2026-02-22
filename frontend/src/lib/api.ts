@@ -21,6 +21,10 @@ export const fetchTasks = (
 export const fetchTask = (id: number): Promise<Task> => api.get(`/tasks/${id}`).then(r => r.data)
 export const fetchTaskCompletionCheck = (id: number): Promise<TaskCompletionCheckResult> =>
   api.get(`/tasks/${id}/completion-check`).then(r => r.data)
+export const fetchTaskCategories = (): Promise<TaskCategory[]> => api.get('/task-categories').then(r => r.data)
+export const createTaskCategory = (name: string): Promise<TaskCategory> =>
+  api.post('/task-categories', { name }).then(r => r.data)
+export const deleteTaskCategory = (id: number): Promise<void> => api.delete(`/task-categories/${id}`).then(() => undefined)
 export const createTask = (data: TaskCreate) => api.post('/tasks', data).then(r => r.data)
 export const updateTask = (id: number, data: Partial<TaskCreate>) => api.put(`/tasks/${id}`, data).then(r => r.data)
 export const moveTask = (id: number, quadrant: string) => api.patch(`/tasks/${id}/move`, { quadrant }).then(r => r.data)
@@ -356,6 +360,9 @@ export const fetchWorkLogCategories = (): Promise<string[]> => api.get('/worklog
 export const createWorkLog = (data: WorkLogInput): Promise<WorkLog> => api.post('/worklogs', data).then(r => r.data)
 export const updateWorkLog = (id: number, data: Partial<WorkLogInput>): Promise<WorkLog> => api.put(`/worklogs/${id}`, data).then(r => r.data)
 export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
+export const fetchWorkLogLessonsByCategory = (
+  params: { category: string; fund_id?: number | null; limit?: number },
+): Promise<WorkLogLessonReminder[]> => api.get('/worklogs/lessons', { params }).then(r => r.data)
 export const fetchWorkLogInsights = (period: 'week' | 'month' | 'quarter' = 'month'): Promise<WorkLogInsights> =>
   api.get('/worklogs/insights', { params: { period } }).then(r => r.data)
 
@@ -517,6 +524,11 @@ export interface TaskBoard {
   Q2: Task[]
   Q3: Task[]
   Q4: Task[]
+}
+
+export interface TaskCategory {
+  id: number
+  name: string
 }
 
 export interface WorkflowListItem {
@@ -1674,6 +1686,18 @@ export interface WorkLog {
   details: WorkLogDetail[]
   lessons: WorkLogLesson[]
   follow_ups: WorkLogFollowUp[]
+}
+
+export interface WorkLogLessonReminder {
+  id: number
+  content: string
+  worklog_id: number
+  worklog_date: string
+  task_id: number
+  task_title: string
+  fund_id: number | null
+  fund_name: string | null
+  is_same_fund: boolean
 }
 
 export interface WorkLogInsights {

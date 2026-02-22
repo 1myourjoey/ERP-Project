@@ -108,6 +108,96 @@ function isFormationAssemblyWorkflow(instance: WorkflowInstance): boolean {
   return workflowName.includes('결성총회') || instanceName.includes('결성총회') || memo.includes('formation_slot=결성총회개최')
 }
 
+type InstanceDueTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
+
+function parseInstanceProgress(progress: string): { percent: number } {
+  const match = progress.match(/(\d+)\/(\d+)/)
+  if (!match) return { percent: 0 }
+  const current = Number.parseInt(match[1], 10)
+  const total = Number.parseInt(match[2], 10)
+  if (!Number.isFinite(current) || !Number.isFinite(total) || total <= 0) return { percent: 0 }
+  return { percent: Math.max(0, Math.min(100, Math.round((current / total) * 100))) }
+}
+
+function parseIsoAsLocalDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const normalized = value.includes('T') ? value : `${value}T00:00:00`
+  const parsed = new Date(normalized)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function isSameLocalDate(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+  )
+}
+
+function resolveInstanceDueTone(nextStepDate: string | null | undefined, now = new Date()): { tone: InstanceDueTone; diffDays: number | null; dueTime: number } {
+  const parsedDate = parseIsoAsLocalDate(nextStepDate)
+  if (!parsedDate) {
+    return { tone: 'none', diffDays: null, dueTime: Number.MAX_SAFE_INTEGER }
+  }
+  const dueTime = parsedDate.getTime()
+  if (isSameLocalDate(parsedDate, now)) {
+    return { tone: 'today', diffDays: 0, dueTime }
+  }
+  if (dueTime < now.getTime()) {
+    return { tone: 'overdue', diffDays: null, dueTime }
+  }
+
+  const dayMs = 24 * 60 * 60 * 1000
+  const diffDays = Math.floor((startOfLocalDay(parsedDate).getTime() - startOfLocalDay(now).getTime()) / dayMs)
+  if (diffDays >= 1 && diffDays <= 7) {
+    return { tone: 'this_week', diffDays, dueTime }
+  }
+  return { tone: 'later', diffDays, dueTime }
+}
+
+function dueToneRank(tone: InstanceDueTone): number {
+  switch (tone) {
+    case 'overdue':
+      return 0
+    case 'today':
+      return 1
+    case 'this_week':
+      return 2
+    case 'later':
+      return 3
+    case 'none':
+    default:
+      return 4
+  }
+}
+
+function dueToneBadge(meta: { tone: InstanceDueTone; diffDays: number | null }): { label: string; className: string } | null {
+  if (meta.tone === 'overdue') {
+    return {
+      label: '지연',
+      className: 'rounded-full border border-red-300 bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800',
+    }
+  }
+  if (meta.tone === 'today') {
+    return {
+      label: '오늘',
+      className: 'rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800',
+    }
+  }
+  if (meta.tone === 'this_week') {
+    return {
+      label: meta.diffDays && meta.diffDays > 0 ? `D-${meta.diffDays}` : '이번주',
+      className: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800',
+    }
+  }
+  return null
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -1228,21 +1318,73 @@ function InstanceList({
     })
   }
 
+  const instanceRows = useMemo(() => {
+    const rows = (data ?? []).map((inst) => {
+      const nextStep = inst.step_instances.find((step) => step.status !== 'completed' && step.status !== 'skipped') ?? null
+      const dueMeta = resolveInstanceDueTone(nextStep?.calculated_date)
+      const { percent } = parseInstanceProgress(inst.progress || '')
+      return {
+        inst,
+        nextStep,
+        dueMeta,
+        progressPercent: percent,
+      }
+    })
+
+    if (status === 'active') {
+      rows.sort((a, b) => {
+        const rankDiff = dueToneRank(a.dueMeta.tone) - dueToneRank(b.dueMeta.tone)
+        if (rankDiff !== 0) return rankDiff
+        if (a.dueMeta.dueTime !== b.dueMeta.dueTime) return a.dueMeta.dueTime - b.dueMeta.dueTime
+        return a.inst.id - b.inst.id
+      })
+    } else {
+      rows.sort((a, b) => {
+        const completedA = a.inst.completed_at ? new Date(a.inst.completed_at).getTime() : 0
+        const completedB = b.inst.completed_at ? new Date(b.inst.completed_at).getTime() : 0
+        return completedB - completedA
+      })
+    }
+
+    return rows
+  }, [data, status])
+
+  const activeSummary = useMemo(() => {
+    if (status !== 'active') return null
+    const total = instanceRows.length
+    const overdue = instanceRows.filter((row) => row.dueMeta.tone === 'overdue').length
+    const weekDue = instanceRows.filter((row) => row.dueMeta.tone === 'today' || row.dueMeta.tone === 'this_week').length
+    return { total, overdue, weekDue }
+  }, [instanceRows, status])
+
   if (isLoading) return <PageLoading />
-  if (!(data?.length)) return <EmptyState emoji="🔄" message="진행 중인 워크플로가 없어요" className="py-10" />
+  if (!(instanceRows.length)) {
+    return <EmptyState emoji="🔄" message={status === 'active' ? '진행 중인 워크플로가 없어요' : '완료된 워크플로가 없어요'} className="py-10" />
+  }
 
   return (
     <div className="space-y-3">
-      {data.map((inst: WorkflowInstance) => {
-        const nextCompletableStep = inst.step_instances.find(
-          (step) => step.status !== 'completed' && step.status !== 'skipped',
-        )
+      {activeSummary && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+          진행 중 {activeSummary.total}건 | 🔴 지연 {activeSummary.overdue}건 | 이번 주 마감 {activeSummary.weekDue}건
+        </div>
+      )}
+
+      {instanceRows.map(({ inst, nextStep: nextCompletableStep, dueMeta, progressPercent }) => {
+        const dueBadge = dueToneBadge(dueMeta)
         return (
         <div key={inst.id} className="card-base overflow-hidden p-0">
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between p-4 text-left hover:bg-gray-50">
-            <div>
-              <p className="text-sm font-medium text-gray-800">{inst.name}</p>
-              <p className="text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left hover:bg-gray-50">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-gray-800">{inst.name}</p>
+              <p className="truncate text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+                </div>
+                <span className="text-[10px] font-medium text-gray-600">{inst.progress}</span>
+                {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -1265,6 +1407,17 @@ function InstanceList({
                   수정
                 </button>
               )}
+              {status === 'active' && nextCompletableStep && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setOpenId(inst.id)
+                  }}
+                  className="secondary-btn text-sm"
+                >
+                  다음 단계 보기
+                </button>
+              )}
               {status === 'active' && canSwapWorkflowTemplate(inst) && (
                 <button
                   onClick={(event) => {
@@ -1278,7 +1431,6 @@ function InstanceList({
                   템플릿 교체
                 </button>
               )}
-              <span className="tag tag-gray">{inst.progress}</span>
               <ChevronRight size={16} className={`text-gray-400 transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
             </div>
           </div>
@@ -1351,6 +1503,11 @@ function InstanceList({
                   nextCompletableStep?.id === step.id &&
                   step.status !== 'completed' &&
                   step.status !== 'skipped'
+                const isCurrentStep =
+                  status === 'active' &&
+                  nextCompletableStep?.id === step.id &&
+                  step.status !== 'completed' &&
+                  step.status !== 'skipped'
                 return (
                   <div key={step.id} className="flex items-center gap-2 rounded bg-gray-50 p-2 text-sm">
                     {step.status === 'completed' ? (
@@ -1378,8 +1535,13 @@ function InstanceList({
                     ) : (
                       <span className="w-4" />
                     )}
-                    <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.step_name}</span>
+                    <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{step.step_name}</span>
                     <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
+                    {isCurrentStep && (
+                      <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                        현재 단계
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500">{step.calculated_date}</span>
                     {(() => {
                       const matchingDocs = docTemplates.filter(
