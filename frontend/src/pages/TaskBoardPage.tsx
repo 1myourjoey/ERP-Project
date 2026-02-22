@@ -46,6 +46,7 @@ import type {
   TaskCreate,
   WorkflowListItem,
 } from '../lib/api'
+import { invalidateFundRelated, invalidateTaskRelated } from '../lib/queryInvalidation'
 
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -453,8 +454,7 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
             memo: '',
           },
         })
-        queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-        queryClient.invalidateQueries({ queryKey: ['workflow-instances'] })
+        invalidateFundRelated(queryClient, selectedFundId)
         addToast('success', '워크플로 인스턴스를 생성했습니다.')
       } else {
         await createTaskMut.mutateAsync({
@@ -469,8 +469,7 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
         addToast('success', '작업이 추가되었습니다.')
       }
 
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       resetForm()
     } catch {
       // Axios interceptor already shows toast.
@@ -1176,11 +1175,33 @@ export default function TaskBoardPage() {
 
   useEffect(() => {
     if (!pendingScrollId || boardView !== 'board') return
-    const el = document.getElementById(`task-${pendingScrollId}`)
-    if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setPendingScrollId(null)
-  }, [board, boardView, pendingScrollId])
+
+    let cancelled = false
+    let timer: number | null = null
+    let attempts = 0
+
+    const tryScroll = () => {
+      if (cancelled) return
+      const el = document.getElementById(`task-${pendingScrollId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setPendingScrollId(null)
+        return
+      }
+      attempts += 1
+      if (attempts >= 12) return
+      timer = window.setTimeout(tryScroll, 120)
+    }
+
+    tryScroll()
+
+    return () => {
+      cancelled = true
+      if (timer != null) {
+        window.clearTimeout(timer)
+      }
+    }
+  }, [board, boardView, pendingScrollId, blinkingId])
 
   useEffect(() => {
     setMobileFilterHintStatus(statusFilter)
@@ -1223,8 +1244,7 @@ export default function TaskBoardPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TaskCreate> }) => updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       setEditingTask(null)
       addToast('success', '작업이 수정되었습니다.')
     },
@@ -1243,8 +1263,7 @@ export default function TaskBoardPage() {
       memo?: string
     }) => completeTask(id, actualTime, autoWorklog, memo),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
     },
   })
 
@@ -1259,8 +1278,7 @@ export default function TaskBoardPage() {
       autoWorklog: boolean
     }) => bulkCompleteTasks({ task_ids: taskIds, actual_time: actualTime, auto_worklog: autoWorklog }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       setShowBulkCompleteModal(false)
       setSelectedTaskIds(new Set())
       addToast('success', `일괄 완료 처리: ${result.completed_count}건`)
@@ -1270,8 +1288,7 @@ export default function TaskBoardPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       addToast('success', '작업이 삭제되었습니다.')
     },
   })
@@ -1279,8 +1296,7 @@ export default function TaskBoardPage() {
   const bulkDeleteMutation = useMutation({
     mutationFn: ({ taskIds }: { taskIds: number[] }) => bulkDeleteTasks({ task_ids: taskIds }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       setSelectedTaskIds(new Set())
       addToast('success', `일괄 삭제 완료: ${result.deleted_count}건`)
     },
@@ -1289,8 +1305,7 @@ export default function TaskBoardPage() {
   const moveMutation = useMutation({
     mutationFn: ({ id, quadrant }: { id: number; quadrant: string }) => moveTask(id, quadrant),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       addToast('success', '작업 위치가 변경되었습니다.')
     },
   })

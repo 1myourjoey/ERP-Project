@@ -70,6 +70,54 @@ MIGRATION_FUND_HEADERS = [
     "account_number",
 ]
 
+MIGRATION_FUND_HEADER_LABELS = {
+    "fund_key": "조합키",
+    "name": "조합명",
+    "type": "조합유형",
+    "status": "상태",
+    "formation_date": "등록성립일",
+    "registration_number": "등록번호",
+    "registration_date": "등록일",
+    "gp": "GP",
+    "fund_manager": "대표펀드매니저",
+    "co_gp": "공동GP",
+    "trustee": "수탁사",
+    "commitment_total": "약정총액",
+    "gp_commitment": "GP약정액",
+    "contribution_type": "출자방식",
+    "investment_period_end": "투자기간종료일",
+    "maturity_date": "만기일",
+    "dissolution_date": "해산일",
+    "mgmt_fee_rate": "관리보수율(%)",
+    "performance_fee_rate": "성과보수율(%)",
+    "hurdle_rate": "허들레이트(%)",
+    "account_number": "계좌번호",
+}
+
+MIGRATION_FUND_HEADER_ALIASES = {
+    "fund_key": ["조합키"],
+    "name": ["조합명"],
+    "type": ["조합유형", "fund_type"],
+    "status": ["상태"],
+    "formation_date": ["등록성립일", "formation_dt"],
+    "registration_number": ["등록번호", "사업자번호"],
+    "registration_date": ["등록일"],
+    "gp": ["GP"],
+    "fund_manager": ["대표펀드매니저"],
+    "co_gp": ["공동GP"],
+    "trustee": ["수탁사"],
+    "commitment_total": ["약정총액", "약정금액"],
+    "gp_commitment": ["GP약정액"],
+    "contribution_type": ["출자방식"],
+    "investment_period_end": ["투자기간종료일"],
+    "maturity_date": ["만기일"],
+    "dissolution_date": ["해산일"],
+    "mgmt_fee_rate": ["관리보수율(%)"],
+    "performance_fee_rate": ["성과보수율(%)"],
+    "hurdle_rate": ["허들레이트(%)"],
+    "account_number": ["계좌번호"],
+}
+
 MIGRATION_LP_HEADERS = [
     "fund_key",
     "name",
@@ -410,7 +458,12 @@ def _parse_and_validate_migration(
 
     fund_sheet = workbook["Funds"]
     lp_sheet = workbook["LPs"]
-    raw_funds, fund_sheet_errors = _read_sheet_rows(fund_sheet, MIGRATION_FUND_HEADERS, "Funds")
+    raw_funds, fund_sheet_errors = _read_sheet_rows(
+        fund_sheet,
+        MIGRATION_FUND_HEADERS,
+        "Funds",
+        header_aliases=MIGRATION_FUND_HEADER_ALIASES,
+    )
     raw_lps, lp_sheet_errors = _read_sheet_rows(
         lp_sheet,
         MIGRATION_LP_HEADERS,
@@ -1024,7 +1077,32 @@ def download_migration_template():
     workbook = openpyxl.Workbook()
     funds_sheet = workbook.active
     funds_sheet.title = "Funds"
-    funds_sheet.append(MIGRATION_FUND_HEADERS)
+    funds_sheet.append([MIGRATION_FUND_HEADER_LABELS.get(key, key) for key in MIGRATION_FUND_HEADERS])
+    funds_sheet.append(
+        [
+            "#입력가이드",
+            "조합명 입력",
+            "벤처투자조합/투자조합/신기술투자조합 등",
+            "forming/active/dissolved/liquidated",
+            "YYYY-MM-DD",
+            "사업자등록번호/고유번호 (선택)",
+            "YYYY-MM-DD (선택)",
+            "GP 명칭",
+            "대표 펀드매니저",
+            "공동 GP (선택)",
+            "수탁사",
+            "숫자만 입력 (원)",
+            "숫자만 입력 (원)",
+            "분할/일시 등",
+            "YYYY-MM-DD (선택)",
+            "YYYY-MM-DD (선택)",
+            "YYYY-MM-DD (선택)",
+            "숫자(%)",
+            "숫자(%)",
+            "숫자(%)",
+            "계좌번호 (선택)",
+        ]
+    )
     funds_sheet.append(
         [
             "FUND-001",
@@ -1093,6 +1171,11 @@ def download_migration_template():
 
         helper_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
         helper_font = Font(color="6B7280", italic=True, size=10)
+        for column_index in range(1, len(MIGRATION_FUND_HEADERS) + 1):
+            helper_cell = funds_sheet.cell(row=2, column=column_index)
+            helper_cell.fill = helper_fill
+            helper_cell.font = helper_font
+        funds_sheet.freeze_panes = "A3"
         for column_index in range(1, len(MIGRATION_LP_HEADERS) + 1):
             helper_cell = lp_sheet.cell(row=2, column=column_index)
             helper_cell.fill = helper_fill
@@ -1105,7 +1188,7 @@ def download_migration_template():
     guide_sheet = workbook.create_sheet("Guide")
     guide_sheet.append(["항목", "설명"])
     guide_sheet.append(["Sheets", "Funds / LPs / Guide 시트를 유지하세요."])
-    guide_sheet.append(["필수값", "Funds: fund_key,name,type / LPs: fund_key,name,type"])
+    guide_sheet.append(["필수값", "Funds: 조합키,조합명,조합유형 / LPs: 조합키,LP명,LP유형"])
     guide_sheet.append(["날짜형식", "YYYY-MM-DD"])
     guide_sheet.append(["숫자형식", "0 이상의 숫자"])
     guide_sheet.append(["Import", "반드시 validate 후 import를 실행하세요."])
@@ -1113,14 +1196,14 @@ def download_migration_template():
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
-    filename = "LP_일괄등록_양식.xlsx"
+    filename = "조합_및_LP_일괄등록_양식.xlsx"
     encoded_filename = quote(filename)
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": (
-                f"attachment; filename=\"LP_bulk_upload_template.xlsx\"; filename*=UTF-8''{encoded_filename}"
+                f"attachment; filename=\"Fund_LP_bulk_upload_template.xlsx\"; filename*=UTF-8''{encoded_filename}"
             )
         },
     )

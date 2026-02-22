@@ -27,6 +27,7 @@ import { Plus, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import FundCoreFields, { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
 import KrwAmountInput from '../components/common/KrwAmountInput'
+import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
@@ -520,8 +521,7 @@ export default function FundsPage() {
       return created
     },
     onSuccess: (created: Fund) => {
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fundOverview'] })
+      invalidateFundRelated(queryClient, created.id)
       setShowCreateFund(false)
       addToast('success', '조합이 생성되었습니다.')
       navigate(`/funds/${created.id}`)
@@ -552,7 +552,7 @@ export default function FundsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'LP_일괄등록_양식.xlsx'
+      link.download = '조합_및_LP_일괄등록_양식.xlsx'
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -583,10 +583,7 @@ export default function FundsPage() {
         addToast('error', `Import 실패: 오류 ${result.errors.length}건`)
         return
       }
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['fund'] })
-      queryClient.invalidateQueries({ queryKey: ['fundOverview'] })
-      queryClient.invalidateQueries({ queryKey: ['lpAddressBooks'] })
+      invalidateFundRelated(queryClient)
       addToast('success', `Import 완료 (조합 ${result.created_funds + result.updated_funds}건, LP ${result.created_lps + result.updated_lps}건)`)
     },
   })

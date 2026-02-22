@@ -78,6 +78,43 @@ class WorkflowStepDocumentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WorkflowStepInstanceDocumentInput(BaseModel):
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+    document_template_id: Optional[int] = None
+    checked: bool = False
+
+
+class WorkflowStepInstanceDocumentUpdate(BaseModel):
+    name: Optional[str] = None
+    required: Optional[bool] = None
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+    document_template_id: Optional[int] = None
+    checked: Optional[bool] = None
+
+
+class WorkflowStepInstanceDocumentCheckRequest(BaseModel):
+    checked: bool
+
+
+class WorkflowStepInstanceDocumentResponse(BaseModel):
+    id: int
+    step_instance_id: int
+    workflow_step_document_id: Optional[int] = None
+    document_template_id: Optional[int] = None
+    name: str
+    required: bool = True
+    timing: Optional[str] = None
+    notes: Optional[str] = None
+    checked: bool = False
+    template_name: Optional[str] = None
+    template_category: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
 class WorkflowStepResponse(BaseModel):
     id: int
     workflow_id: int
@@ -170,6 +207,7 @@ class WorkflowStepInstanceResponse(BaseModel):
     task_id: Optional[int] = None
     estimated_time: Optional[str] = None
     memo: Optional[str] = None
+    step_documents: list[WorkflowStepInstanceDocumentResponse] = []
     model_config = {"from_attributes": True}
 
 

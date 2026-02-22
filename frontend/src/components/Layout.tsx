@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   KanbanSquare,
   BookOpen,
-  CheckSquare,
   BarChart3,
   Building2,
   PieChart,
@@ -55,7 +54,6 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
     items: [
       { to: '/tasks', label: '업무 보드', icon: KanbanSquare },
       { to: '/worklogs', label: '업무 기록', icon: BookOpen },
-      { to: '/checklists', label: '체크리스트', icon: CheckSquare },
     ],
   },
   {

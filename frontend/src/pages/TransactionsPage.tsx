@@ -17,6 +17,7 @@ import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface InvestmentOption {
   id: number
@@ -206,6 +207,7 @@ export default function TransactionsPage() {
   const createMut = useMutation({
     mutationFn: (data: TransactionInput) => createTransaction(data),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['investment'] })
       setShowCreate(false)
@@ -216,6 +218,7 @@ export default function TransactionsPage() {
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TransactionInput> }) => updateTransaction(id, data),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['investment'] })
       setEditingId(null)
@@ -226,6 +229,7 @@ export default function TransactionsPage() {
   const deleteMut = useMutation({
     mutationFn: (id: number) => deleteTransaction(id),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['investment'] })
       addToast('success', '거래를 삭제했습니다.')

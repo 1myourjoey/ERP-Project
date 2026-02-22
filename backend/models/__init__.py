@@ -7,7 +7,7 @@ from .workflow import (
     WorkflowDocument,
     WorkflowWarning,
 )
-from .workflow_instance import WorkflowInstance, WorkflowStepInstance
+from .workflow_instance import WorkflowInstance, WorkflowStepInstance, WorkflowStepInstanceDocument
 from .document_template import DocumentTemplate
 from .fund import Fund, LP, LPTransfer, FundNoticePeriod, FundKeyTerm
 from .gp_entity import GPEntity
@@ -37,7 +37,7 @@ __all__ = [
     "Task",
     "WorkLog", "WorkLogDetail", "WorkLogLesson", "WorkLogFollowUp",
     "Workflow", "WorkflowStep", "WorkflowStepDocument", "WorkflowDocument", "WorkflowWarning",
-    "WorkflowInstance", "WorkflowStepInstance",
+    "WorkflowInstance", "WorkflowStepInstance", "WorkflowStepInstanceDocument",
     "DocumentTemplate",
     "Fund", "LP", "LPTransfer", "FundNoticePeriod", "FundKeyTerm",
     "GPEntity",

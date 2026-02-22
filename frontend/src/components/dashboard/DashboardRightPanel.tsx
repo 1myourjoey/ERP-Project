@@ -159,7 +159,10 @@ function DashboardRightPanel({
                       </p>
                       {badge && <span className={badge.className}>{badge.text}</span>}
                     </div>
-                    <p className="feed-card-meta">{notice.workflow_instance_name}</p>
+                    <p className="feed-card-meta">
+                      {notice.source_label ? `${notice.source_label} ` : ''}
+                      {notice.workflow_instance_name}
+                    </p>
                     <p className="mt-0.5 text-[11px] text-gray-500">기한 {formatShortDate(notice.deadline)}</p>
                   </button>
                 )
@@ -187,12 +190,17 @@ function DashboardRightPanel({
                         navigate('/tasks', { state: { highlightTaskId: report.task_id } })
                         return
                       }
+                      if (report.source_label === '[워크플로]') {
+                        navigate('/workflows')
+                        return
+                      }
                       navigate('/reports', { state: { highlightId: report.id } })
                     }}
                     className="feed-card w-full text-left"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="feed-card-title">
+                        {report.source_label ? `${report.source_label} ` : ''}
                         {report.report_target} | {report.period}
                       </p>
                       {badge && <span className={badge.className}>{badge.text}</span>}

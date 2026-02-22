@@ -16,6 +16,7 @@ import { useToast } from '../contexts/ToastContext'
 import { Plus, Trash2, Clock, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { invalidateTaskRelated } from '../lib/queryInvalidation'
 
 function DynamicList({
   label,
@@ -432,8 +433,7 @@ export default function WorkLogsPage() {
   const createMut = useMutation({
     mutationFn: createWorkLog,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
-      queryClient.invalidateQueries({ queryKey: ['worklogInsights'] })
+      invalidateTaskRelated(queryClient)
       setShowAdd(false)
       addToast('success', '업무 기록이 추가되었습니다.')
     },
@@ -442,8 +442,7 @@ export default function WorkLogsPage() {
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<WorkLogInput> }) => updateWorkLog(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
-      queryClient.invalidateQueries({ queryKey: ['worklogInsights'] })
+      invalidateTaskRelated(queryClient)
       setEditingLog(null)
       addToast('success', '업무 기록이 수정되었습니다.')
     },
@@ -452,8 +451,7 @@ export default function WorkLogsPage() {
   const deleteMut = useMutation({
     mutationFn: deleteWorkLog,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['worklogs'] })
-      queryClient.invalidateQueries({ queryKey: ['worklogInsights'] })
+      invalidateTaskRelated(queryClient)
       addToast('success', '업무 기록이 삭제되었습니다.')
     },
   })

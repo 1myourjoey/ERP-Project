@@ -9,7 +9,7 @@ from models.fund import FundNoticePeriod
 from models.investment import InvestmentDocument
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
-from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
+from models.workflow_instance import WorkflowInstance, WorkflowStepInstance, WorkflowStepInstanceDocument
 
 # Fixed-date Korean public holidays.
 FIXED_HOLIDAYS: set[tuple[int, int]] = {
@@ -206,6 +206,18 @@ def instantiate_workflow(
             calculated_date=calc_date,
             task_id=task.id,
         )
+        for step_doc in step.step_documents or []:
+            step_instance.step_documents.append(
+                WorkflowStepInstanceDocument(
+                    workflow_step_document_id=step_doc.id,
+                    document_template_id=step_doc.document_template_id,
+                    name=step_doc.name,
+                    required=bool(step_doc.required),
+                    timing=step_doc.timing,
+                    notes=step_doc.notes,
+                    checked=False,
+                )
+            )
         db.add(step_instance)
 
     if investment_id:

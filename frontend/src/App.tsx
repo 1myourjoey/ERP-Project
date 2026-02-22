@@ -17,7 +17,6 @@ import FundOperationsPage from './pages/FundOperationsPage'
 import AccountingPage from './pages/AccountingPage'
 import ExitsPage from './pages/ExitsPage'
 import ReportsPage from './pages/ReportsPage'
-import ChecklistsPage from './pages/ChecklistsPage'
 import DocumentsPage from './pages/DocumentsPage'
 import TemplateManagementPage from './pages/TemplateManagementPage'
 
@@ -44,7 +43,7 @@ export default function App() {
         <Route path="/accounting" element={<AccountingPage />} />
         <Route path="/exits" element={<ExitsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/checklists" element={<ChecklistsPage />} />
+        <Route path="/checklists" element={<Navigate to="/workflows?tab=checklists" replace />} />
         <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/documents/generate" element={<DocumentsPage />} />
         <Route path="/templates" element={<TemplateManagementPage />} />

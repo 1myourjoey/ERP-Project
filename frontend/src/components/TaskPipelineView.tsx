@@ -1,4 +1,4 @@
-﻿import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowRight, CalendarDays, Clock3, Inbox } from 'lucide-react'
 
 import type { ActiveWorkflow, Task } from '../lib/api'
@@ -346,6 +346,16 @@ export default function TaskPipelineView({
     editable: true,
   }), [waitingTasks, workflowByStage])
 
+  const waitingCount = waitingLane.tasks.length + waitingLane.workflows.length
+  const [isWaitingCollapsed, setIsWaitingCollapsed] = useState(false)
+
+  useEffect(() => {
+    if (waitingCount === 0) {
+      setIsWaitingCollapsed(true)
+      return
+    }
+    setIsWaitingCollapsed(false)
+  }, [waitingCount])
   const stageColumns = useMemo(() => [
     {
       key: 'overdue' as const,
@@ -624,62 +634,81 @@ export default function TaskPipelineView({
                 <Inbox size={14} className={waitingLane.colorClass} />
                 <p className={`text-sm font-semibold ${waitingLane.colorClass}`}>{waitingLane.label}</p>
               </div>
-              <span className="text-xs text-gray-500">{waitingLane.tasks.length + waitingLane.workflows.length}건</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{waitingCount}건</span>
+                <button
+                  type="button"
+                  onClick={() => setIsWaitingCollapsed((prev) => !prev)}
+                  className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                >
+                  {isWaitingCollapsed ? '펼치기' : '접기'}
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {waitingLane.workflows.map((workflow) => {
-                const accent = getAccent(workflow.fund_name || workflow.gp_entity_name || workflow.name)
-                const { percent } = parseProgress(workflow.progress)
-                const cardKey = `wf-${workflow.id}`
+            {isWaitingCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setIsWaitingCollapsed(false)}
+                className="w-full rounded border border-dashed border-gray-300 bg-white px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-50"
+              >
+                📥 대기 ({waitingCount}건)
+              </button>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {waitingLane.workflows.map((workflow) => {
+                  const accent = getAccent(workflow.fund_name || workflow.gp_entity_name || workflow.name)
+                  const { percent } = parseProgress(workflow.progress)
+                  const cardKey = `wf-${workflow.id}`
 
-                return (
-                  <button
-                    key={cardKey}
-                    {...cardInteraction(cardKey)}
-                    onClick={() => onClickWorkflow(workflow)}
-                    className={`min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
-                      <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
-                    </div>
-                    <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
-                    </div>
-                  </button>
-                )
-              })}
-              {(waitingLane.compactThreshold > 0 && waitingLane.tasks.length > waitingLane.compactThreshold
-                ? waitingLane.tasks
-                : flattenTasksForDisplay(waitingLane.tasks)
-              ).map((task) => {
-                const cardKey = `task-${task.id}`
-                return (
-                  <button
-                    key={cardKey}
-                    {...cardInteraction(cardKey)}
-                    onClick={() => onClickTask(task, { editable: true })}
-                    className="group relative min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300"
-                    title="클릭하여 마감일 배정"
-                  >
-                    <span className="pointer-events-none absolute left-2 top-0 -translate-y-full rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
-                      클릭하여 마감일 배정
-                    </span>
-                    <p className="truncate text-xs font-semibold text-gray-800">{task.title}</p>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
-                      <span className="truncate">{task.fund_name || task.gp_entity_name || '일반'}</span>
-                      <span className="shrink-0">기한 없음</span>
-                    </div>
-                  </button>
-                )
-              })}
-              {waitingLane.workflows.length === 0 && waitingLane.tasks.length === 0 && (
-                <p className="min-w-[224px] rounded border border-dashed border-gray-300 bg-white px-2 py-4 text-center text-xs text-gray-400">
-                  대기 업무 없음
-                </p>
-              )}
-            </div>
+                  return (
+                    <button
+                      key={cardKey}
+                      {...cardInteraction(cardKey)}
+                      onClick={() => onClickWorkflow(workflow)}
+                      className={`min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
+                        <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                        <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+                      </div>
+                    </button>
+                  )
+                })}
+                {(waitingLane.compactThreshold > 0 && waitingLane.tasks.length > waitingLane.compactThreshold
+                  ? waitingLane.tasks
+                  : flattenTasksForDisplay(waitingLane.tasks)
+                ).map((task) => {
+                  const cardKey = `task-${task.id}`
+                  return (
+                    <button
+                      key={cardKey}
+                      {...cardInteraction(cardKey)}
+                      onClick={() => onClickTask(task, { editable: true })}
+                      className="group relative min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300"
+                      title="클릭하여 마감일 배정"
+                    >
+                      <span className="pointer-events-none absolute left-2 top-0 -translate-y-full rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        클릭하여 마감일 배정
+                      </span>
+                      <p className="truncate text-xs font-semibold text-gray-800">{task.title}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                        <span className="truncate">{task.fund_name || task.gp_entity_name || '일반'}</span>
+                        <span className="shrink-0">기한 없음</span>
+                      </div>
+                    </button>
+                  )
+                })}
+                {waitingLane.workflows.length === 0 && waitingLane.tasks.length === 0 && (
+                  <p className="min-w-[224px] rounded border border-dashed border-gray-300 bg-white px-2 py-4 text-center text-xs text-gray-400">
+                    대기 업무 없음
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">

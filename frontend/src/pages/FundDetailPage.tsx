@@ -63,6 +63,7 @@ import { useToast } from '../contexts/ToastContext'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
+import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface FundInvestmentListItem {
   id: number
@@ -945,15 +946,8 @@ function CapitalCallWizard({
         create_workflow: true,
         items: payloadItems,
       })
+      invalidateFundRelated(queryClient, fund.id)
       queryClient.invalidateQueries({ queryKey: ['capitalCalls', { fund_id: fund.id }] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fund.id] })
-      queryClient.invalidateQueries({ queryKey: ['fundDetails', fund.id] })
-      queryClient.invalidateQueries({ queryKey: ['fundLPs', fund.id] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fund.id] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       addToast('success', '출자 요청을 등록했습니다.')
       onClose()
     } catch {
@@ -1407,11 +1401,14 @@ export default function FundDetailPage() {
     [workflowTemplates],
   )
 
+  const invalidateFundLinked = () => {
+    invalidateFundRelated(queryClient, fundId)
+  }
+
   const updateFundMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<FundInput> }) => updateFund(targetId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      invalidateFundLinked()
       setEditingFund(false)
       addToast('success', '조합이 수정되었습니다.')
     },
@@ -1431,7 +1428,7 @@ export default function FundDetailPage() {
       return updateFundNoticePeriods(fundId, payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      invalidateFundLinked()
       setEditingNotices(false)
       addToast('success', '통지기간이 저장되었습니다.')
     },
@@ -1450,7 +1447,7 @@ export default function FundDetailPage() {
       return updateFundKeyTerms(fundId, payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      invalidateFundLinked()
       setEditingKeyTerms(false)
       addToast('success', '주요 계약 조항이 저장되었습니다.')
     },
@@ -1459,7 +1456,7 @@ export default function FundDetailPage() {
   const deleteFundMut = useMutation({
     mutationFn: deleteFund,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      invalidateFundLinked()
       addToast('success', '조합이 삭제되었습니다.')
       navigate('/funds')
     },
@@ -1468,8 +1465,7 @@ export default function FundDetailPage() {
   const createLPMut = useMutation({
     mutationFn: ({ data }: { data: LPInput }) => createFundLP(fundId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      invalidateFundLinked()
       setShowCreateLP(false)
       addToast('success', 'LP가 추가되었습니다.')
     },
@@ -1478,7 +1474,7 @@ export default function FundDetailPage() {
   const updateLPMut = useMutation({
     mutationFn: ({ lpId, data }: { lpId: number; data: Partial<LPInput> }) => updateFundLP(fundId, lpId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      invalidateFundLinked()
       setEditingLPId(null)
       addToast('success', 'LP가 수정되었습니다.')
     },
@@ -1487,8 +1483,7 @@ export default function FundDetailPage() {
   const deleteLPMut = useMutation({
     mutationFn: (lpId: number) => deleteFundLP(fundId, lpId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
+      invalidateFundLinked()
       addToast('success', 'LP가 삭제되었습니다.')
     },
   })
@@ -1496,11 +1491,8 @@ export default function FundDetailPage() {
   const createLPTransferMut = useMutation({
     mutationFn: (data: LPTransferInput) => createLPTransfer(fundId, data),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setTransferSourceLp(null)
       addToast('success', 'LP 양수양도 워크플로우를 시작했습니다.')
     },
@@ -1509,10 +1501,8 @@ export default function FundDetailPage() {
   const completeLPTransferMut = useMutation({
     mutationFn: (transferId: number) => completeLPTransfer(fundId, transferId),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
       addToast('success', 'LP 양수양도를 완료 처리했습니다.')
     },
   })
@@ -1520,6 +1510,7 @@ export default function FundDetailPage() {
   const cancelLPTransferMut = useMutation({
     mutationFn: (transferId: number) => updateLPTransfer(fundId, transferId, { status: 'cancelled' }),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['lpTransfers', fundId] })
       addToast('success', 'LP 양수양도를 취소 처리했습니다.')
     },
@@ -1528,9 +1519,8 @@ export default function FundDetailPage() {
   const createDistMut = useMutation({
     mutationFn: (data: DistributionInput) => createDistribution(data),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['funds'] })
       addToast('success', '배분을 등록했습니다.')
     },
   })
@@ -1539,8 +1529,8 @@ export default function FundDetailPage() {
     mutationFn: ({ distId, data }: { distId: number; data: Partial<DistributionInput> }) =>
       updateDistribution(distId, data),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       setEditingDistId(null)
       setEditDistribution(null)
       addToast('success', '배분을 수정했습니다.')
@@ -1550,8 +1540,8 @@ export default function FundDetailPage() {
   const deleteDistMut = useMutation({
     mutationFn: (distId: number) => deleteDistribution(distId),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       addToast('success', '배분을 삭제했습니다.')
     },
   })
@@ -1560,9 +1550,9 @@ export default function FundDetailPage() {
     mutationFn: ({ distributionId, data }: { distributionId: number; data: DistributionItemInput }) =>
       createDistributionItem(distributionId, data),
     onSuccess: (_data, variables) => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       addToast('success', 'LP 배분 항목을 추가했습니다.')
     },
   })
@@ -1578,9 +1568,9 @@ export default function FundDetailPage() {
       data: Partial<DistributionItemInput>
     }) => updateDistributionItem(distributionId, itemId, data),
     onSuccess: (_data, variables) => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       setEditingDistItemId(null)
       setEditDistributionItem(null)
       addToast('success', 'LP 배분 항목을 수정했습니다.')
@@ -1591,9 +1581,9 @@ export default function FundDetailPage() {
     mutationFn: ({ distributionId, itemId }: { distributionId: number; itemId: number }) =>
       deleteDistributionItem(distributionId, itemId),
     onSuccess: (_data, variables) => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['distributionItems', variables.distributionId] })
       queryClient.invalidateQueries({ queryKey: ['distributions', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       addToast('success', 'LP 배분 항목을 삭제했습니다.')
     },
   })
@@ -1601,8 +1591,8 @@ export default function FundDetailPage() {
   const createAssemblyMut = useMutation({
     mutationFn: (data: AssemblyInput) => createAssembly(data),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       addToast('success', '총회를 등록했습니다.')
     },
   })
@@ -1611,8 +1601,8 @@ export default function FundDetailPage() {
     mutationFn: ({ assemblyId, data }: { assemblyId: number; data: Partial<AssemblyInput> }) =>
       updateAssembly(assemblyId, data),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       setEditingAssemblyId(null)
       setEditAssembly(null)
       addToast('success', '총회를 수정했습니다.')
@@ -1622,8 +1612,8 @@ export default function FundDetailPage() {
   const deleteAssemblyMut = useMutation({
     mutationFn: (assemblyId: number) => deleteAssembly(assemblyId),
     onSuccess: () => {
+      invalidateFundLinked()
       queryClient.invalidateQueries({ queryKey: ['assemblies', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
       addToast('success', '총회를 삭제했습니다.')
     },
   })
@@ -1644,8 +1634,7 @@ export default function FundDetailPage() {
         trigger_date: triggerDate,
       }),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
+      invalidateFundLinked()
       setFormationTemplateModal(null)
       setSelectedFormationTemplateId('')
       addToast('success', `${data.workflow_name} 워크플로를 추가했습니다.`)

@@ -31,6 +31,7 @@ import {
   type TaskCreate,
   type WorkflowInstance,
 } from '../lib/api'
+import { invalidateTaskRelated } from '../lib/queryInvalidation'
 
 const DAY_LABEL = {
   Mon: '월',
@@ -97,14 +98,7 @@ export default function DashboardPage() {
   })
 
   const invalidateDashboardQueries = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-base'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-workflows'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-sidebar'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-completed'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-upcoming-notices'] })
-    queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-    queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
+    invalidateTaskRelated(queryClient)
     queryClient.invalidateQueries({ queryKey: ['funds'] })
   }, [queryClient])
 

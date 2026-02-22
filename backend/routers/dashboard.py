@@ -317,7 +317,7 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
             }
         )
 
-    submitted_statuses = ["?쒖텧?꾨즺", "?꾩넚?꾨즺"]
+    submitted_statuses = ["제출완료", "전송완료", "submitted", "sent"]
     upcoming_reports: list[dict] = []
     report_rows = (
         db.query(RegularReport)
@@ -343,8 +343,44 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
                 "status": report.status,
                 "days_remaining": (report.due_date - today).days if report.due_date else None,
                 "task_id": None,
+                "source_label": "[조합규약]",
             }
         )
+
+    active_instances = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active").all()
+    for instance in active_instances:
+        fund_name = None
+        if instance.fund_id is not None:
+            fund = db.get(Fund, instance.fund_id)
+            fund_name = fund.name if fund else None
+        if fund_name is None and instance.gp_entity_id is not None:
+            gp_entity = db.get(GPEntity, instance.gp_entity_id)
+            fund_name = gp_entity.name if gp_entity else None
+
+        for step_instance in instance.step_instances:
+            if step_instance.status in ("completed", "skipped"):
+                continue
+            if not step_instance.step or not step_instance.step.is_report:
+                continue
+            if step_instance.calculated_date is None:
+                continue
+            if step_instance.calculated_date > today + timedelta(days=7):
+                continue
+
+            upcoming_reports.append(
+                {
+                    "id": -1_000_000 - step_instance.id,
+                    "report_target": step_instance.step.name or "워크플로 보고 단계",
+                    "fund_id": instance.fund_id,
+                    "fund_name": fund_name,
+                    "period": "워크플로 단계",
+                    "due_date": step_instance.calculated_date.isoformat(),
+                    "status": step_instance.status,
+                    "days_remaining": (step_instance.calculated_date - today).days,
+                    "task_id": step_instance.task_id,
+                    "source_label": "[워크플로]",
+                }
+            )
 
     report_tasks = (
         db.query(Task)
@@ -369,11 +405,12 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
                 "report_target": task.title,
                 "fund_id": task_payload.fund_id,
                 "fund_name": task_payload.fund_name,
-                "period": "?낅Т",
+                "period": "업무",
                 "due_date": deadline_date.isoformat(),
                 "status": task.status,
                 "days_remaining": (deadline_date - today).days,
                 "task_id": task.id,
+                "source_label": "[업무]",
             }
         )
     upcoming_reports.sort(
@@ -486,6 +523,20 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
     notice_cache: dict[int, dict[str, FundNoticePeriod]] = {}
     fund_name_cache: dict[int, str] = {}
     results: list[dict] = []
+    seen_keys: set[tuple] = set()
+
+    def append_notice(row: dict) -> None:
+        key = (
+            row.get("source_label"),
+            row.get("workflow_instance_id"),
+            row.get("task_id"),
+            row.get("deadline"),
+            row.get("notice_label"),
+        )
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        results.append(row)
 
     for instance in active_instances:
         fund_id = instance.fund_id
@@ -499,14 +550,11 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
         if fund_id not in notice_cache:
             rows = db.query(FundNoticePeriod).filter(FundNoticePeriod.fund_id == fund_id).all()
             notice_cache[fund_id] = {row.notice_type.lower(): row for row in rows}
-
         notice_map = notice_cache[fund_id]
-        if not notice_map:
-            continue
 
         if fund_id not in fund_name_cache:
             fund = db.get(Fund, fund_id)
-            fund_name_cache[fund_id] = fund.name if fund else f"議고빀 #{fund_id}"
+            fund_name_cache[fund_id] = fund.name if fund else f"Fund #{fund_id}"
         fund_name = fund_name_cache[fund_id]
 
         for step_instance in instance.step_instances:
@@ -521,20 +569,37 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
 
             step_name = step_instance.step.name if step_instance.step else ""
             step_timing = step_instance.step.timing if step_instance.step else ""
-            matched_notice_type = _match_notice_type(step_name, step_timing, notice_map)
-            if not matched_notice_type:
+
+            if notice_map:
+                matched_notice_type = _match_notice_type(step_name, step_timing, notice_map)
+                if matched_notice_type:
+                    notice = notice_map[matched_notice_type]
+                    append_notice(
+                        {
+                            "fund_name": fund_name,
+                            "notice_label": notice.label,
+                            "deadline": deadline.isoformat(),
+                            "days_remaining": (deadline - today).days,
+                            "workflow_instance_name": instance.name,
+                            "workflow_instance_id": instance.id,
+                            "task_id": None,
+                            "source_label": "[조합규약]",
+                        }
+                    )
+
+            if not step_instance.step or not step_instance.step.is_notice:
                 continue
 
-            notice = notice_map[matched_notice_type]
-            results.append(
+            append_notice(
                 {
                     "fund_name": fund_name,
-                    "notice_label": notice.label,
+                    "notice_label": step_name or "통지 단계",
                     "deadline": deadline.isoformat(),
                     "days_remaining": (deadline - today).days,
                     "workflow_instance_name": instance.name,
                     "workflow_instance_id": instance.id,
-                    "task_id": None,
+                    "task_id": step_instance.task_id,
+                    "source_label": "[워크플로]",
                 }
             )
 
@@ -555,15 +620,16 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
         if deadline is None:
             continue
         task_payload = _task_response(db, task)
-        results.append(
+        append_notice(
             {
-                "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "?낅Т",
+                "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "업무",
                 "notice_label": task.title,
                 "deadline": deadline.isoformat(),
                 "days_remaining": (deadline - today).days,
-                "workflow_instance_name": "?낅Т",
+                "workflow_instance_name": "업무",
                 "workflow_instance_id": task.workflow_instance_id,
                 "task_id": task.id,
+                "source_label": "[업무]",
             }
         )
 

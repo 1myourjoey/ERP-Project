@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
+  createWorkflowTemplate,
   createTask,
   fetchInvestments,
   fetchChecklists,
@@ -17,10 +18,12 @@ import {
   type ChecklistInput,
   type ChecklistItemInput,
   type ChecklistListItem,
+  type WorkflowTemplateInput,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { invalidateTaskRelated } from '../lib/queryInvalidation'
 
 const CHECKLIST_CATEGORY_OPTIONS = ['투자점검', '결성준비', '연말결산', '감사준비', '규약관리', '일반']
 
@@ -39,7 +42,7 @@ const EMPTY_ITEM: ChecklistItemInput = {
   notes: '',
 }
 
-export default function ChecklistsPage() {
+export default function ChecklistsPage({ embedded = false }: { embedded?: boolean }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { addToast } = useToast()
@@ -50,6 +53,45 @@ export default function ChecklistsPage() {
   const [showItemCreate, setShowItemCreate] = useState(false)
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [convertedChecklistIds, setConvertedChecklistIds] = useState<Set<number>>(new Set())
+
+  const buildWorkflowTemplateFromChecklist = (row: Checklist): WorkflowTemplateInput => {
+    const steps = [...(row.items ?? [])]
+      .sort((a, b) => a.order - b.order)
+      .map((item, index) => ({
+        order: index + 1,
+        name: item.name,
+        timing: 'D-day',
+        timing_offset_days: 0,
+        estimated_time: '',
+        quadrant: 'Q2',
+        memo: item.notes || '',
+        is_notice: false,
+        is_report: false,
+        step_documents: [],
+      }))
+
+    return {
+      name: `${row.name} (체크리스트 변환)`,
+      trigger_description: '레거시 체크리스트 변환 템플릿',
+      category: row.category || '체크리스트',
+      total_duration: '',
+      steps: steps.length > 0 ? steps : [{
+        order: 1,
+        name: '기본 단계',
+        timing: 'D-day',
+        timing_offset_days: 0,
+        estimated_time: '',
+        quadrant: 'Q2',
+        memo: '',
+        is_notice: false,
+        is_report: false,
+        step_documents: [],
+      }],
+      documents: [],
+      warnings: [],
+    }
+  }
 
   const { data: checklists, isLoading } = useQuery<ChecklistListItem[]>({
     queryKey: ['checklists'],
@@ -146,6 +188,33 @@ export default function ChecklistsPage() {
     },
   })
 
+  const convertToWorkflowMut = useMutation({
+    mutationFn: (row: Checklist) => createWorkflowTemplate(buildWorkflowTemplateFromChecklist(row)),
+    onSuccess: (createdTemplate, sourceChecklist) => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      setConvertedChecklistIds((prev) => {
+        const next = new Set(prev)
+        next.add(sourceChecklist.id)
+        return next
+      })
+      addToast('success', `워크플로 템플릿으로 변환되었습니다: ${createdTemplate.name}`)
+      navigate('/workflows?tab=templates')
+    },
+  })
+
+  const handleConvertChecklist = (row: Checklist | null | undefined) => {
+    if (!row) {
+      addToast('info', '변환할 체크리스트를 선택하세요.')
+      return
+    }
+    if ((row.items ?? []).length === 0) {
+      addToast('error', '항목이 없는 체크리스트는 변환할 수 없습니다.')
+      return
+    }
+    if (!confirm('이 체크리스트를 워크플로 템플릿으로 변환하시겠습니까?')) return
+    convertToWorkflowMut.mutate(row)
+  }
+
   const handleAddTaskFromChecklist = async () => {
     if (!checklist) return
 
@@ -168,8 +237,7 @@ export default function ChecklistsPage() {
         fund_id: null,
         investment_id: checklist.investment_id || null,
       })
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      invalidateTaskRelated(queryClient)
       addToast('success', '업무가 생성되었습니다.')
     } catch {
       addToast('error', '업무 생성에 실패했습니다.')
@@ -177,15 +245,46 @@ export default function ChecklistsPage() {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-      <h2 className="page-title">☑️ 체크리스트</h2>
-          <p className="page-subtitle">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
+    <div className={embedded ? 'space-y-4' : 'page-container'}>
+      {!embedded ? (
+        <div className="page-header">
+          <div>
+            <h2 className="page-title">☑️ 체크리스트</h2>
+            <p className="page-subtitle">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
+          </div>
+          <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
+            + 체크리스트
+          </button>
         </div>
-        <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
-          + 체크리스트
-        </button>
+      ) : (
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-800">☑️ 체크리스트(레거시)</h3>
+          <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
+            + 체크리스트
+          </button>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <p className="text-sm font-semibold text-amber-900">💡 체크리스트 기능이 워크플로와 통합됩니다.</p>
+        <p className="mt-1 text-xs text-amber-800">
+          기존 체크리스트 항목을 워크플로 템플릿으로 변환해 단계형 업무 흐름으로 이어서 관리할 수 있습니다.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            className="secondary-btn"
+            onClick={() => handleConvertChecklist(checklist)}
+            disabled={convertToWorkflowMut.isPending || !checklist}
+          >
+            {convertToWorkflowMut.isPending ? '변환 중...' : '워크플로로 변환'}
+          </button>
+          <button
+            className="secondary-btn"
+            onClick={() => navigate('/workflows?tab=checklists')}
+          >
+            자세히 보기
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -227,7 +326,14 @@ export default function ChecklistsPage() {
                   }}
                   className={`w-full rounded border p-3 text-left ${selectedId === cl.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
                 >
-                  <p className="text-sm font-medium text-gray-800">{cl.name}</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {cl.name}
+                    {convertedChecklistIds.has(cl.id) && (
+                      <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                        워크플로 변환됨
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
                 </button>
               ))}
@@ -255,16 +361,28 @@ export default function ChecklistsPage() {
             <div className="card-base">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">{checklist.name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {checklist.name}
+                    {convertedChecklistIds.has(checklist.id) && (
+                      <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                        워크플로 변환됨
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
                 </div>
                 <div className="flex gap-2">
                   <button className="secondary-btn" onClick={handleAddTaskFromChecklist}>업무에 추가</button>
-                  {checklist.investment_id && (
-                    <button className="secondary-btn" onClick={() => navigate('/workflows')}>
-                      워크플로우 →
-                    </button>
-                  )}
+                  <button
+                    className="secondary-btn"
+                    onClick={() => handleConvertChecklist(checklist)}
+                    disabled={convertToWorkflowMut.isPending}
+                  >
+                    {convertToWorkflowMut.isPending ? '변환 중...' : '워크플로로 변환'}
+                  </button>
+                  <button className="secondary-btn" onClick={() => navigate('/workflows?tab=checklists')}>
+                    워크플로우 →
+                  </button>
                   <button className="secondary-btn" onClick={() => setEditingChecklist(true)}>수정</button>
                   <button
                     className="danger-btn"

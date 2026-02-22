@@ -105,6 +105,37 @@ export const swapWorkflowInstanceTemplate = (
   instanceId: number,
   data: WorkflowInstanceTemplateSwapInput,
 ): Promise<WorkflowInstance> => api.put(`/workflow-instances/${instanceId}/swap-template`, data).then(r => r.data)
+export const listWorkflowStepInstanceDocuments = (
+  instanceId: number,
+  stepId: number,
+): Promise<WorkflowStepInstanceDocument[]> =>
+  api.get(`/workflow-instances/${instanceId}/steps/${stepId}/documents`).then(r => r.data)
+export const addWorkflowStepInstanceDocument = (
+  instanceId: number,
+  stepId: number,
+  data: WorkflowStepInstanceDocumentInput,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.post(`/workflow-instances/${instanceId}/steps/${stepId}/documents`, data).then(r => r.data)
+export const updateWorkflowStepInstanceDocument = (
+  instanceId: number,
+  stepId: number,
+  documentId: number,
+  data: WorkflowStepInstanceDocumentUpdate,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.put(`/workflow-instances/${instanceId}/steps/${stepId}/documents/${documentId}`, data).then(r => r.data)
+export const deleteWorkflowStepInstanceDocument = (
+  instanceId: number,
+  stepId: number,
+  documentId: number,
+): Promise<{ ok: boolean }> =>
+  api.delete(`/workflow-instances/${instanceId}/steps/${stepId}/documents/${documentId}`).then(r => r.data)
+export const checkWorkflowStepInstanceDocument = (
+  instanceId: number,
+  stepId: number,
+  documentId: number,
+  checked: boolean,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/documents/${documentId}/check`, { checked }).then(r => r.data)
 
 // -- Document Templates --
 export const fetchDocumentTemplates = (category?: string): Promise<DocumentTemplate[]> =>
@@ -608,6 +639,20 @@ export interface DocumentTemplate {
   updated_at?: string | null
 }
 
+export interface WorkflowStepInstanceDocument {
+  id: number
+  step_instance_id: number
+  workflow_step_document_id?: number | null
+  document_template_id?: number | null
+  name: string
+  required: boolean
+  timing?: string | null
+  notes?: string | null
+  checked: boolean
+  template_name?: string | null
+  template_category?: string | null
+}
+
 export interface WorkflowStepInstance {
   id: number
   instance_id: number
@@ -622,6 +667,7 @@ export interface WorkflowStepInstance {
   task_id: number | null
   estimated_time: string | null
   memo: string | null
+  step_documents: WorkflowStepInstanceDocument[]
 }
 
 export interface WorkflowInstance {
@@ -675,6 +721,24 @@ export interface WorkflowStepCompleteInput {
 export interface WorkflowStepLPPaidInInput {
   lp_id: number
   paid_in: number
+}
+
+export interface WorkflowStepInstanceDocumentInput {
+  name: string
+  required?: boolean
+  timing?: string | null
+  notes?: string | null
+  document_template_id?: number | null
+  checked?: boolean
+}
+
+export interface WorkflowStepInstanceDocumentUpdate {
+  name?: string
+  required?: boolean
+  timing?: string | null
+  notes?: string | null
+  document_template_id?: number | null
+  checked?: boolean
 }
 
 export interface WorkflowStepInput {
@@ -1213,6 +1277,7 @@ export interface UpcomingReport {
   status: string
   days_remaining: number | null
   task_id?: number | null
+  source_label?: string | null
 }
 
 export interface UpcomingNotice {
@@ -1223,6 +1288,7 @@ export interface UpcomingNotice {
   workflow_instance_name: string
   workflow_instance_id?: number | null
   task_id?: number | null
+  source_label?: string | null
 }
 
 export interface NoticeDeadlineResult {

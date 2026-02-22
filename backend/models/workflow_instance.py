@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -45,3 +45,39 @@ class WorkflowStepInstance(Base):
     instance = relationship("WorkflowInstance", back_populates="step_instances")
     step = relationship("WorkflowStep")
     task = relationship("Task")
+    step_documents = relationship(
+        "WorkflowStepInstanceDocument",
+        back_populates="step_instance",
+        cascade="all, delete-orphan",
+        order_by="WorkflowStepInstanceDocument.id",
+    )
+
+
+class WorkflowStepInstanceDocument(Base):
+    __tablename__ = "workflow_step_instance_documents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    step_instance_id = Column(Integer, ForeignKey("workflow_step_instances.id", ondelete="CASCADE"), nullable=False)
+    workflow_step_document_id = Column(Integer, ForeignKey("workflow_step_documents.id"), nullable=True)
+    document_template_id = Column(Integer, ForeignKey("document_templates.id"), nullable=True)
+    name = Column(String, nullable=False)
+    required = Column(Boolean, nullable=False, default=True)
+    timing = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    checked = Column(Boolean, nullable=False, default=False)
+
+    step_instance = relationship("WorkflowStepInstance", back_populates="step_documents")
+    source_document = relationship("WorkflowStepDocument")
+    document_template = relationship("DocumentTemplate", lazy="joined")
+
+    @property
+    def template_name(self) -> str | None:
+        if not self.document_template:
+            return None
+        return self.document_template.name
+
+    @property
+    def template_category(self) -> str | None:
+        if not self.document_template:
+            return None
+        return self.document_template.category

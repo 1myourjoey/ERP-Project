@@ -1,11 +1,14 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import {
+  addWorkflowStepInstanceDocument,
   calculateDeadline,
   cancelWorkflowInstance,
+  checkWorkflowStepInstanceDocument,
   completeWorkflowStep,
   createWorkflowTemplate,
+  deleteWorkflowStepInstanceDocument,
   deleteWorkflowInstance,
   deleteWorkflowTemplate,
   fetchCompanies,
@@ -22,6 +25,7 @@ import {
   instantiateWorkflow,
   swapWorkflowInstanceTemplate,
   undoWorkflowStep,
+  updateWorkflowStepInstanceDocument,
   updateWorkflowInstance,
   updateWorkflowTemplate,
   type Company,
@@ -36,6 +40,7 @@ import {
   type WorkflowStepDocumentInput,
   type WorkflowStepLPPaidInInput,
   type WorkflowStepInstance,
+  type WorkflowStepInstanceDocument,
   type WorkflowTemplate,
   type WorkflowTemplateInput,
 } from '../lib/api'
@@ -45,9 +50,25 @@ import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 import DrawerOverlay from '../components/common/DrawerOverlay'
+import { invalidateFundRelated } from '../lib/queryInvalidation'
+import ChecklistsPage from './ChecklistsPage'
 
 type WorkflowLocationState = {
   expandInstanceId?: number
+}
+
+type StepDocumentDraft = {
+  name: string
+  required: boolean
+  timing: string
+  notes: string
+}
+
+const EMPTY_STEP_DOCUMENT_DRAFT: StepDocumentDraft = {
+  name: '',
+  required: true,
+  timing: '',
+  notes: '',
 }
 
 interface InvestmentListItem {
@@ -919,9 +940,8 @@ function WorkflowDetail({
       company_id: instCompanyId === '' ? undefined : instCompanyId,
       investment_id: instInvestmentId === '' ? undefined : instInvestmentId,
     }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    onSuccess: (instance) => {
+      invalidateFundRelated(queryClient, instance.fund_id)
       addToast('success', '워크플로우 인스턴스가 시작되었습니다.')
       setShowRun(false)
       setInstName('')
@@ -1061,6 +1081,12 @@ function InstanceList({
   const [editInstance, setEditInstance] = useState<{ name: string; trigger_date: string; memo: string } | null>(null)
   const [swapTarget, setSwapTarget] = useState<WorkflowInstance | null>(null)
   const [swapTemplateId, setSwapTemplateId] = useState<number | ''>('')
+  const [newStepDocDrafts, setNewStepDocDrafts] = useState<Record<number, StepDocumentDraft>>({})
+  const [editingStepDocument, setEditingStepDocument] = useState<{
+    stepId: number
+    documentId: number
+    draft: StepDocumentDraft
+  } | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['workflowInstances', { status }], queryFn: () => fetchWorkflowInstances({ status }) })
   const { data: workflowTemplates = [] } = useQuery<WorkflowListItem[]>({
@@ -1105,26 +1131,48 @@ function InstanceList({
   }
 
   const invalidateCapitalLinkedQueries = (fundId?: number | null) => {
-    queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-    queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    queryClient.invalidateQueries({ queryKey: ['capitalCalls'] })
-    queryClient.invalidateQueries({ queryKey: ['capitalCallItems'] })
+    invalidateFundRelated(queryClient, fundId)
     queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId'] })
-    queryClient.invalidateQueries({ queryKey: ['capitalCallSummary'] })
-    queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
-    queryClient.invalidateQueries({ queryKey: ['funds'] })
-    queryClient.invalidateQueries({ queryKey: ['fund'] })
     if (fundId) {
-      queryClient.invalidateQueries({ queryKey: ['fund', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fundDetails', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fundLPs', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCalls', fundId] })
       queryClient.invalidateQueries({ queryKey: ['capitalCallItemsByCallId', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', fundId] })
-      queryClient.invalidateQueries({ queryKey: ['fundPerformance', fundId] })
     }
+  }
+
+  const getNewStepDocDraft = (stepId: number): StepDocumentDraft =>
+    newStepDocDrafts[stepId] ?? EMPTY_STEP_DOCUMENT_DRAFT
+
+  const setNewStepDocDraft = (stepId: number, patch: Partial<StepDocumentDraft>) => {
+    setNewStepDocDrafts((prev) => {
+      const base = prev[stepId] ?? EMPTY_STEP_DOCUMENT_DRAFT
+      return {
+        ...prev,
+        [stepId]: {
+          ...base,
+          ...patch,
+        },
+      }
+    })
+  }
+
+  const clearNewStepDocDraft = (stepId: number) => {
+    setNewStepDocDrafts((prev) => {
+      const next = { ...prev }
+      delete next[stepId]
+      return next
+    })
+  }
+
+  const startEditingStepDocument = (stepId: number, document: WorkflowStepInstanceDocument) => {
+    setEditingStepDocument({
+      stepId,
+      documentId: document.id,
+      draft: {
+        name: document.name,
+        required: document.required,
+        timing: document.timing ?? '',
+        notes: document.notes ?? '',
+      },
+    })
   }
 
   const collectFormationLPPaidInUpdates = async (fundId: number): Promise<WorkflowStepLPPaidInInput[] | null> => {
@@ -1171,6 +1219,16 @@ function InstanceList({
   }
 
   const handleCompleteStep = async (instance: WorkflowInstance, step: WorkflowStepInstance) => {
+    const requiredUncheckedCount = (step.step_documents ?? []).filter(
+      (doc) => doc.required && !doc.checked,
+    ).length
+    if (requiredUncheckedCount > 0) {
+      const shouldComplete = window.confirm(
+        `필수 서류 ${requiredUncheckedCount}건이 미확인 상태입니다. 그래도 완료하시겠습니까?`,
+      )
+      if (!shouldComplete) return
+    }
+
     const isFormationPaidInStep =
       !!instance.fund_id &&
       isFormationWorkflowInstance(instance) &&
@@ -1213,10 +1271,97 @@ function InstanceList({
       invalidateCapitalLinkedQueries(instance.fund_id)
       const isFormationWorkflow = instance.workflow_name.includes('결성')
       if (instance.status === 'completed' && isFormationWorkflow) {
-        addToast('success', "워크플로우가 완료되어 조합 상태가 '운용 중'으로 변경되었습니다.")
+        addToast('success', "워크플로우가 완료되어 조합 상태가 '운용 중'으로 변경되었습니다. 업무일지에 자동 기록됩니다.")
       } else {
-        addToast('success', '단계가 완료되었습니다.')
+        addToast('success', '단계가 완료되었습니다. 업무일지에 자동 기록됩니다.')
       }
+    },
+  })
+
+  const checkStepDocumentMut = useMutation({
+    mutationFn: ({
+      instanceId,
+      stepId,
+      documentId,
+      checked,
+    }: {
+      instanceId: number
+      stepId: number
+      documentId: number
+      checked: boolean
+      fundId?: number | null
+    }) => checkWorkflowStepInstanceDocument(instanceId, stepId, documentId, checked),
+    onSuccess: (_document, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+    },
+  })
+
+  const addStepDocumentMut = useMutation({
+    mutationFn: ({
+      instanceId,
+      stepId,
+      data,
+    }: {
+      instanceId: number
+      stepId: number
+      data: StepDocumentDraft
+      fundId?: number | null
+    }) =>
+      addWorkflowStepInstanceDocument(instanceId, stepId, {
+        name: data.name.trim(),
+        required: data.required,
+        timing: data.timing.trim() || null,
+        notes: data.notes.trim() || null,
+      }),
+    onSuccess: (_document, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      clearNewStepDocDraft(variables.stepId)
+      addToast('success', '단계 서류를 추가했습니다.')
+    },
+  })
+
+  const updateStepDocumentMut = useMutation({
+    mutationFn: ({
+      instanceId,
+      stepId,
+      documentId,
+      data,
+    }: {
+      instanceId: number
+      stepId: number
+      documentId: number
+      data: StepDocumentDraft
+      fundId?: number | null
+    }) =>
+      updateWorkflowStepInstanceDocument(instanceId, stepId, documentId, {
+        name: data.name.trim(),
+        required: data.required,
+        timing: data.timing.trim() || null,
+        notes: data.notes.trim() || null,
+      }),
+    onSuccess: (_document, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      if (editingStepDocument?.documentId === variables.documentId) {
+        setEditingStepDocument(null)
+      }
+      addToast('success', '단계 서류를 수정했습니다.')
+    },
+  })
+
+  const deleteStepDocumentMut = useMutation({
+    mutationFn: ({
+      instanceId,
+      stepId,
+      documentId,
+    }: {
+      instanceId: number
+      stepId: number
+      documentId: number
+      fundId?: number | null
+    }) => deleteWorkflowStepInstanceDocument(instanceId, stepId, documentId),
+    onSuccess: (_result, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      addToast('success', '단계 서류를 삭제했습니다.')
     },
   })
 
@@ -1229,11 +1374,17 @@ function InstanceList({
   })
 
   const updateInstanceMut = useMutation({
-    mutationFn: ({ instanceId, data }: { instanceId: number; data: { name: string; trigger_date: string; memo: string | null } }) =>
+    mutationFn: ({
+      instanceId,
+      data,
+    }: {
+      instanceId: number
+      data: { name: string; trigger_date: string; memo: string | null }
+      fundId?: number | null
+    }) =>
       updateWorkflowInstance(instanceId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflowInstances'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    onSuccess: (_instance, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
       setEditingInstanceId(null)
       setEditInstance(null)
       addToast('success', '인스턴스를 수정했습니다.')
@@ -1472,6 +1623,7 @@ function InstanceList({
                         if (!editInstance.name.trim() || !editInstance.trigger_date) return
                         updateInstanceMut.mutate({
                           instanceId: inst.id,
+                          fundId: inst.fund_id,
                           data: {
                             name: editInstance.name.trim(),
                             trigger_date: editInstance.trigger_date,
@@ -1508,61 +1660,297 @@ function InstanceList({
                   nextCompletableStep?.id === step.id &&
                   step.status !== 'completed' &&
                   step.status !== 'skipped'
+                const stepDocuments = step.step_documents ?? []
+                const requiredUncheckedCount = stepDocuments.filter((doc) => doc.required && !doc.checked).length
+                const canMutateStepDocuments =
+                  status === 'active' && step.status !== 'completed' && step.status !== 'skipped'
+                const hasDraft = Boolean(newStepDocDrafts[step.id])
+                const newDraft = getNewStepDocDraft(step.id)
+                const editingCurrentDocument =
+                  editingStepDocument && editingStepDocument.stepId === step.id ? editingStepDocument : null
                 return (
-                  <div key={step.id} className="flex items-center gap-1.5 rounded bg-gray-50 px-2 py-1.5 text-xs">
-                    {step.status === 'completed' ? (
-                      <div className="flex items-center gap-1">
-                        <Check size={14} className="text-emerald-600" />
-                        {status === 'active' && (
+                  <div key={step.id} className="space-y-1 rounded bg-gray-50 px-2 py-1.5 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {step.status === 'completed' ? (
+                        <div className="flex items-center gap-1">
+                          <Check size={14} className="text-emerald-600" />
+                          {status === 'active' && (
+                            <button
+                              onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
+                              className="text-[10px] text-gray-400 hover:text-blue-600"
+                            >
+                              되돌리기
+                            </button>
+                          )}
+                        </div>
+                      ) : status === 'active' ? (
+                        canComplete ? (
                           <button
-                            onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
-                            className="text-[10px] text-gray-400 hover:text-blue-600"
+                            onClick={() => handleCompleteStep(inst, step)}
+                            className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-green-500"
+                            disabled={completeMut.isPending}
+                          />
+                        ) : (
+                          <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-gray-200 bg-gray-100" />
+                        )
+                      ) : (
+                        <span className="w-4" />
+                      )}
+                      <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{step.step_name}</span>
+                      <span className="text-[11px] text-gray-500">{labelStatus(step.status)}</span>
+                      {isCurrentStep && (
+                        <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
+                          현재 단계
+                        </span>
+                      )}
+                      <span className="text-[11px] text-gray-500">{step.calculated_date}</span>
+                      {(() => {
+                        const matchingDocs = docTemplates.filter(
+                          (template) =>
+                            template.workflow_step_label &&
+                            step.step_name.includes(template.workflow_step_label),
+                        )
+                        if (matchingDocs.length === 0 || !inst.fund_id) return null
+                        return (
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleGenerateDocuments(matchingDocs, inst)
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
                           >
-                            되돌리기
+                            📄 문서 ({matchingDocs.length}종)
+                          </button>
+                        )
+                      })()}
+                      {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
+                    </div>
+
+                    <div className="ml-5 rounded border border-gray-200 bg-white px-2 py-2">
+                      <div className="mb-1 flex items-center justify-between">
+                        <p className="text-[11px] font-semibold text-gray-700">📄 단계 서류 {stepDocuments.length}건</p>
+                        {canMutateStepDocuments && (
+                          <button
+                            onClick={() => setNewStepDocDraft(step.id, {})}
+                            className="text-[11px] text-blue-600 hover:text-blue-700"
+                          >
+                            + 서류 추가
                           </button>
                         )}
                       </div>
-                    ) : status === 'active' ? (
-                      canComplete ? (
-                        <button
-                          onClick={() => handleCompleteStep(inst, step)}
-                          className="h-4 w-4 rounded-full border-2 border-gray-300 hover:border-green-500"
-                          disabled={completeMut.isPending}
-                        />
+
+                      {stepDocuments.length === 0 ? (
+                        <p className="text-[11px] text-gray-400">등록된 단계 서류가 없습니다.</p>
                       ) : (
-                        <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-gray-200 bg-gray-100" />
-                      )
-                    ) : (
-                      <span className="w-4" />
-                    )}
-                    <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{step.step_name}</span>
-                    <span className="text-[11px] text-gray-500">{labelStatus(step.status)}</span>
-                    {isCurrentStep && (
-                      <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
-                        현재 단계
-                      </span>
-                    )}
-                    <span className="text-[11px] text-gray-500">{step.calculated_date}</span>
-                    {(() => {
-                      const matchingDocs = docTemplates.filter(
-                        (template) =>
-                          template.workflow_step_label &&
-                          step.step_name.includes(template.workflow_step_label),
-                      )
-                      if (matchingDocs.length === 0 || !inst.fund_id) return null
-                      return (
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleGenerateDocuments(matchingDocs, inst)
-                          }}
-                          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
-                        >
-                          📄 문서 ({matchingDocs.length}종)
-                        </button>
-                      )
-                    })()}
-                    {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
+                        <div className="space-y-1.5">
+                          {stepDocuments.map((doc) => {
+                            const isEditing = editingCurrentDocument?.documentId === doc.id
+                            return (
+                              <div key={doc.id} className={`rounded border px-2 py-1.5 ${doc.checked ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'}`}>
+                                {isEditing && editingCurrentDocument ? (
+                                  <div className="space-y-2">
+                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                                      <input
+                                        value={editingCurrentDocument.draft.name}
+                                        onChange={(event) =>
+                                          setEditingStepDocument((prev) => (prev ? {
+                                            ...prev,
+                                            draft: { ...prev.draft, name: event.target.value },
+                                          } : prev))
+                                        }
+                                        placeholder="서류명"
+                                        className="form-input"
+                                      />
+                                      <input
+                                        value={editingCurrentDocument.draft.timing}
+                                        onChange={(event) =>
+                                          setEditingStepDocument((prev) => (prev ? {
+                                            ...prev,
+                                            draft: { ...prev.draft, timing: event.target.value },
+                                          } : prev))
+                                        }
+                                        placeholder="시점 (선택)"
+                                        className="form-input"
+                                      />
+                                      <input
+                                        value={editingCurrentDocument.draft.notes}
+                                        onChange={(event) =>
+                                          setEditingStepDocument((prev) => (prev ? {
+                                            ...prev,
+                                            draft: { ...prev.draft, notes: event.target.value },
+                                          } : prev))
+                                        }
+                                        placeholder="메모 (선택)"
+                                        className="form-input"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <label className="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                                        <input
+                                          type="checkbox"
+                                          checked={editingCurrentDocument.draft.required}
+                                          onChange={(event) =>
+                                            setEditingStepDocument((prev) => (prev ? {
+                                              ...prev,
+                                              draft: { ...prev.draft, required: event.target.checked },
+                                            } : prev))
+                                          }
+                                        />
+                                        필수
+                                      </label>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() =>
+                                            updateStepDocumentMut.mutate({
+                                              instanceId: inst.id,
+                                              stepId: step.id,
+                                              documentId: doc.id,
+                                              data: editingCurrentDocument.draft,
+                                              fundId: inst.fund_id,
+                                            })
+                                          }
+                                          disabled={updateStepDocumentMut.isPending || !editingCurrentDocument.draft.name.trim()}
+                                          className="primary-btn btn-sm"
+                                        >
+                                          저장
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingStepDocument(null)}
+                                          className="secondary-btn btn-sm"
+                                        >
+                                          취소
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={doc.checked}
+                                      disabled={!canMutateStepDocuments || checkStepDocumentMut.isPending}
+                                      onChange={(event) =>
+                                        checkStepDocumentMut.mutate({
+                                          instanceId: inst.id,
+                                          stepId: step.id,
+                                          documentId: doc.id,
+                                          checked: event.target.checked,
+                                          fundId: inst.fund_id,
+                                        })
+                                      }
+                                      className="mt-1"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[12px] font-medium text-gray-800">
+                                        {doc.name}
+                                        <span className={`ml-1 rounded px-1 py-0.5 text-[10px] ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'}`}>
+                                          {doc.required ? '필수' : '선택'}
+                                        </span>
+                                      </p>
+                                      <p className="text-[11px] text-gray-500">
+                                        {doc.timing || '시점 미정'}
+                                        {doc.notes ? ` | ${doc.notes}` : ''}
+                                        {doc.template_name ? ` | 템플릿: ${doc.template_name}` : ''}
+                                      </p>
+                                    </div>
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${doc.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                      {doc.checked ? '확인 완료' : '미확인'}
+                                    </span>
+                                    {canMutateStepDocuments && (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() => startEditingStepDocument(step.id, doc)}
+                                          className="text-[10px] text-blue-600 hover:text-blue-700"
+                                        >
+                                          수정
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (!confirm('이 단계 서류를 삭제하시겠습니까?')) return
+                                            deleteStepDocumentMut.mutate({
+                                              instanceId: inst.id,
+                                              stepId: step.id,
+                                              documentId: doc.id,
+                                              fundId: inst.fund_id,
+                                            })
+                                          }}
+                                          className="text-[10px] text-red-600 hover:text-red-700"
+                                        >
+                                          삭제
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {hasDraft && (
+                        <div className="mt-2 space-y-2 rounded border border-dashed border-blue-300 bg-blue-50 p-2">
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                            <input
+                              value={newDraft.name}
+                              onChange={(event) => setNewStepDocDraft(step.id, { name: event.target.value })}
+                              placeholder="서류명"
+                              className="form-input"
+                            />
+                            <input
+                              value={newDraft.timing}
+                              onChange={(event) => setNewStepDocDraft(step.id, { timing: event.target.value })}
+                              placeholder="시점 (선택)"
+                              className="form-input"
+                            />
+                            <input
+                              value={newDraft.notes}
+                              onChange={(event) => setNewStepDocDraft(step.id, { notes: event.target.value })}
+                              placeholder="메모 (선택)"
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <label className="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                              <input
+                                type="checkbox"
+                                checked={newDraft.required}
+                                onChange={(event) => setNewStepDocDraft(step.id, { required: event.target.checked })}
+                              />
+                              필수
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() =>
+                                  addStepDocumentMut.mutate({
+                                    instanceId: inst.id,
+                                    stepId: step.id,
+                                    data: newDraft,
+                                    fundId: inst.fund_id,
+                                  })
+                                }
+                                disabled={addStepDocumentMut.isPending || !newDraft.name.trim()}
+                                className="primary-btn btn-sm"
+                              >
+                                추가
+                              </button>
+                              <button
+                                onClick={() => clearNewStepDocDraft(step.id)}
+                                className="secondary-btn btn-sm"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {requiredUncheckedCount > 0 && (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700">
+                          ⚠️ 필수 서류 {requiredUncheckedCount}건 미확인
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -1677,9 +2065,15 @@ export default function WorkflowsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const locationState = (location.state as WorkflowLocationState | null) ?? null
 
-  const [tab, setTab] = useState<'templates' | 'active' | 'completed'>('active')
+  const requestedTab = searchParams.get('tab')
+  const isSupportedTab = (value: string | null): value is 'templates' | 'active' | 'completed' | 'checklists' =>
+    value === 'templates' || value === 'active' || value === 'completed' || value === 'checklists'
+  const [tab, setTab] = useState<'templates' | 'active' | 'completed' | 'checklists'>(
+    isSupportedTab(requestedTab) ? requestedTab : 'active',
+  )
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -1708,12 +2102,33 @@ export default function WorkflowsPage() {
   }
 
   useEffect(() => {
+    if (!isSupportedTab(requestedTab)) {
+      if (tab !== 'active') setTab('active')
+      return
+    }
+    if (requestedTab !== tab) {
+      setTab(requestedTab)
+    }
+  }, [requestedTab, tab])
+
+  const changeTab = (nextTab: 'templates' | 'active' | 'completed' | 'checklists') => {
+    setTab(nextTab)
+    const nextParams = new URLSearchParams(searchParams)
+    if (nextTab === 'active') nextParams.delete('tab')
+    else nextParams.set('tab', nextTab)
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  useEffect(() => {
     if (!locationState?.expandInstanceId) return
-    const frame = window.requestAnimationFrame(() => {
+    if (tab !== 'active') {
       setTab('active')
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [locationState?.expandInstanceId])
+    }
+    if (requestedTab == null) return
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('tab')
+    setSearchParams(nextParams, { replace: true })
+  }, [locationState?.expandInstanceId, requestedTab, searchParams, setSearchParams, tab])
 
   const createMut = useMutation({
     mutationFn: createWorkflowTemplate,
@@ -1780,8 +2195,8 @@ export default function WorkflowsPage() {
           <p className="page-subtitle">실행 중/완료 워크플로 중심으로 진행 상황을 관리합니다.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setTab('templates')} className="secondary-btn">템플릿 관리(관리자)</button>
-          <button onClick={() => { setTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 템플릿 생성</button>
+          <button onClick={() => changeTab('templates')} className="secondary-btn">템플릿 관리(관리자)</button>
+          <button onClick={() => { changeTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 템플릿 생성</button>
         </div>
       </div>
 
@@ -1791,8 +2206,9 @@ export default function WorkflowsPage() {
             { key: 'active' as const, label: '진행 중' },
             { key: 'completed' as const, label: '완료' },
             { key: 'templates' as const, label: '템플릿(관리자)' },
+            { key: 'checklists' as const, label: '체크리스트(레거시)' },
           ].map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={`border-b-2 pb-2 text-sm ${tab === t.key ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t.label}</button>
+            <button key={t.key} onClick={() => changeTab(t.key)} className={`border-b-2 pb-2 text-sm ${tab === t.key ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t.label}</button>
           ))}
         </div>
       </div>
@@ -1888,6 +2304,9 @@ export default function WorkflowsPage() {
         />
       )}
       {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
+      {tab === 'checklists' && (
+        <ChecklistsPage embedded />
+      )}
 
       {mode === 'create' && (
         <DrawerOverlay

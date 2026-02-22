@@ -54,6 +54,7 @@ class UpcomingReportItem(BaseModel):
     status: str
     days_remaining: Optional[int] = None
     task_id: Optional[int] = None
+    source_label: Optional[str] = None
 
 
 class DashboardBaseResponse(BaseModel):
@@ -113,3 +114,4 @@ class UpcomingNoticeItem(BaseModel):
     workflow_instance_name: str
     workflow_instance_id: Optional[int] = None
     task_id: Optional[int] = None
+    source_label: Optional[str] = None

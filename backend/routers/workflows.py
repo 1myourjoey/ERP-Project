@@ -21,7 +21,9 @@ from models.workflow import (
     WorkflowWarning,
 )
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
+from models.workflow_instance import WorkflowStepInstanceDocument
 from models.task import Task
+from models.worklog import WorkLog
 from schemas.workflow import (
     WorkflowResponse,
     WorkflowListItem,
@@ -35,6 +37,10 @@ from schemas.workflow import (
     WorkflowInstanceUpdateRequest,
     WorkflowInstanceResponse,
     WorkflowStepInstanceResponse,
+    WorkflowStepInstanceDocumentInput,
+    WorkflowStepInstanceDocumentUpdate,
+    WorkflowStepInstanceDocumentResponse,
+    WorkflowStepInstanceDocumentCheckRequest,
     WorkflowStepCompleteRequest,
     WorkflowInstanceSwapTemplateRequest,
     WorkflowStepLPPaidInInput,
@@ -375,6 +381,97 @@ def _append_step_documents(
                 notes=doc.notes,
             )
         )
+
+def _clone_step_documents_to_instance_step(
+    step_instance: WorkflowStepInstance,
+    workflow_step: WorkflowStep | None,
+) -> None:
+    if workflow_step is None:
+        return
+    for doc in workflow_step.step_documents or []:
+        step_instance.step_documents.append(
+            WorkflowStepInstanceDocument(
+                workflow_step_document_id=doc.id,
+                document_template_id=doc.document_template_id,
+                name=doc.name,
+                required=bool(doc.required),
+                timing=doc.timing,
+                notes=doc.notes,
+                checked=False,
+            )
+        )
+
+def _resolve_step_instance_for_document_mutation(
+    db: Session,
+    *,
+    instance_id: int,
+    step_instance_id: int,
+    require_active: bool = True,
+) -> WorkflowStepInstance:
+    step_instance = db.get(WorkflowStepInstance, step_instance_id)
+    if not step_instance or step_instance.instance_id != instance_id:
+        raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
+    instance = db.get(WorkflowInstance, instance_id)
+    if not instance:
+        raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+    if require_active and instance.status != "active":
+        raise HTTPException(status_code=400, detail="진행 중 인스턴스만 서류를 수정할 수 있습니다")
+    return step_instance
+
+def _resolve_step_instance_document(
+    db: Session,
+    *,
+    step_instance_id: int,
+    document_id: int,
+) -> WorkflowStepInstanceDocument:
+    document = (
+        db.query(WorkflowStepInstanceDocument)
+        .filter(
+            WorkflowStepInstanceDocument.id == document_id,
+            WorkflowStepInstanceDocument.step_instance_id == step_instance_id,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="단계 서류를 찾을 수 없습니다")
+    return document
+
+def _create_worklog_for_completed_step(
+    *,
+    db: Session,
+    instance: WorkflowInstance,
+    step_instance: WorkflowStepInstance,
+    workflow: Workflow | None,
+    workflow_step: WorkflowStep | None,
+    task: Task | None,
+    actual_time: str | None,
+) -> None:
+    workflow_name = (workflow.name if workflow else instance.name) or instance.name
+    step_name = (
+        workflow_step.name
+        if workflow_step and workflow_step.name
+        else (step_instance.step.name if step_instance.step else "단계")
+    )
+    estimated_time = (
+        workflow_step.estimated_time
+        if workflow_step and workflow_step.estimated_time
+        else (step_instance.step.estimated_time if step_instance.step else None)
+    )
+    resolved_actual_time = actual_time or estimated_time
+    category = (workflow.category if workflow and workflow.category else None) or "워크플로"
+
+    db.add(
+        WorkLog(
+            date=date.today(),
+            category=category,
+            title=f"[{workflow_name}] - [{step_name}]",
+            content=(task.memo if task else None),
+            status="completed",
+            estimated_time=estimated_time,
+            actual_time=resolved_actual_time,
+            task_id=task.id if task else None,
+        )
+    )
 
 def _mark_capital_call_items_paid(db: Session, capital_call_id: int) -> None:
     call = db.get(CapitalCall, capital_call_id)
@@ -986,19 +1083,176 @@ def swap_instance_template(
         db.add(task)
         db.flush()
 
-        db.add(
-            WorkflowStepInstance(
-                instance_id=instance.id,
-                workflow_step_id=step.id,
-                calculated_date=calc_date,
-                status=step_status,
-                task_id=task.id,
-            )
+        step_instance = WorkflowStepInstance(
+            instance_id=instance.id,
+            workflow_step_id=step.id,
+            calculated_date=calc_date,
+            status=step_status,
+            task_id=task.id,
         )
+        _clone_step_documents_to_instance_step(step_instance, step)
+        db.add(step_instance)
 
     db.commit()
     db.refresh(instance)
     return _build_instance_response(instance, db)
+
+@router.get(
+    "/api/workflow-instances/{instance_id}/steps/{step_instance_id}/documents",
+    response_model=list[WorkflowStepInstanceDocumentResponse],
+)
+def list_step_instance_documents(
+    instance_id: int,
+    step_instance_id: int,
+    db: Session = Depends(get_db),
+):
+    step_instance = _resolve_step_instance_for_document_mutation(
+        db,
+        instance_id=instance_id,
+        step_instance_id=step_instance_id,
+        require_active=False,
+    )
+    return (
+        db.query(WorkflowStepInstanceDocument)
+        .filter(WorkflowStepInstanceDocument.step_instance_id == step_instance.id)
+        .order_by(WorkflowStepInstanceDocument.id.asc())
+        .all()
+    )
+
+@router.post(
+    "/api/workflow-instances/{instance_id}/steps/{step_instance_id}/documents",
+    response_model=WorkflowStepInstanceDocumentResponse,
+    status_code=201,
+)
+def add_step_instance_document(
+    instance_id: int,
+    step_instance_id: int,
+    data: WorkflowStepInstanceDocumentInput,
+    db: Session = Depends(get_db),
+):
+    step_instance = _resolve_step_instance_for_document_mutation(
+        db,
+        instance_id=instance_id,
+        step_instance_id=step_instance_id,
+    )
+    document_payload = WorkflowStepDocumentInput(
+        name=data.name,
+        required=data.required,
+        timing=data.timing,
+        notes=data.notes,
+        document_template_id=data.document_template_id,
+    )
+    template_id, name = _resolve_step_document_payload(db, document_payload)
+
+    document = WorkflowStepInstanceDocument(
+        step_instance_id=step_instance.id,
+        workflow_step_document_id=None,
+        document_template_id=template_id,
+        name=name,
+        required=bool(data.required),
+        timing=data.timing,
+        notes=data.notes,
+        checked=bool(data.checked),
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+@router.put(
+    "/api/workflow-instances/{instance_id}/steps/{step_instance_id}/documents/{document_id}",
+    response_model=WorkflowStepInstanceDocumentResponse,
+)
+def update_step_instance_document(
+    instance_id: int,
+    step_instance_id: int,
+    document_id: int,
+    data: WorkflowStepInstanceDocumentUpdate,
+    db: Session = Depends(get_db),
+):
+    step_instance = _resolve_step_instance_for_document_mutation(
+        db,
+        instance_id=instance_id,
+        step_instance_id=step_instance_id,
+    )
+    document = _resolve_step_instance_document(
+        db,
+        step_instance_id=step_instance.id,
+        document_id=document_id,
+    )
+
+    payload = data.model_dump(exclude_unset=True)
+    if "name" in payload or "document_template_id" in payload:
+        document_payload = WorkflowStepDocumentInput(
+            name=payload.get("name", document.name),
+            required=payload.get("required", document.required),
+            timing=payload.get("timing", document.timing),
+            notes=payload.get("notes", document.notes),
+            document_template_id=payload.get("document_template_id", document.document_template_id),
+        )
+        template_id, name = _resolve_step_document_payload(db, document_payload)
+        document.document_template_id = template_id
+        document.name = name
+
+    if "required" in payload:
+        document.required = bool(payload["required"])
+    if "timing" in payload:
+        document.timing = payload["timing"]
+    if "notes" in payload:
+        document.notes = payload["notes"]
+    if "checked" in payload:
+        document.checked = bool(payload["checked"])
+
+    db.commit()
+    db.refresh(document)
+    return document
+
+@router.delete("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/documents/{document_id}")
+def delete_step_instance_document(
+    instance_id: int,
+    step_instance_id: int,
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    step_instance = _resolve_step_instance_for_document_mutation(
+        db,
+        instance_id=instance_id,
+        step_instance_id=step_instance_id,
+    )
+    document = _resolve_step_instance_document(
+        db,
+        step_instance_id=step_instance.id,
+        document_id=document_id,
+    )
+    db.delete(document)
+    db.commit()
+    return {"ok": True}
+
+@router.patch(
+    "/api/workflow-instances/{instance_id}/steps/{step_instance_id}/documents/{document_id}/check",
+    response_model=WorkflowStepInstanceDocumentResponse,
+)
+def check_step_instance_document(
+    instance_id: int,
+    step_instance_id: int,
+    document_id: int,
+    data: WorkflowStepInstanceDocumentCheckRequest,
+    db: Session = Depends(get_db),
+):
+    step_instance = _resolve_step_instance_for_document_mutation(
+        db,
+        instance_id=instance_id,
+        step_instance_id=step_instance_id,
+    )
+    document = _resolve_step_instance_document(
+        db,
+        step_instance_id=step_instance.id,
+        document_id=document_id,
+    )
+    document.checked = bool(data.checked)
+    db.commit()
+    db.refresh(document)
+    return document
 
 @router.patch("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/complete")
 def complete_step(
@@ -1054,15 +1308,26 @@ def complete_step(
     else:
         si.notes = data.notes
 
+    linked_task: Task | None = None
     if si.task_id:
-        task = db.get(Task, si.task_id)
-        if task:
-            task.status = "completed"
-            task.completed_at = datetime.now()
-            task.actual_time = data.actual_time
+        linked_task = db.get(Task, si.task_id)
+        if linked_task:
+            linked_task.status = "completed"
+            linked_task.completed_at = datetime.now()
+            linked_task.actual_time = data.actual_time
             if data.notes:
-                existing_memo = task.memo or ""
-                task.memo = f"{existing_memo}\n[완료 메모] {data.notes}".strip()
+                existing_memo = linked_task.memo or ""
+                linked_task.memo = f"{existing_memo}\n[완료 메모] {data.notes}".strip()
+
+    _create_worklog_for_completed_step(
+        db=db,
+        instance=instance,
+        step_instance=si,
+        workflow=workflow_template,
+        workflow_step=completed_wf_step,
+        task=linked_task,
+        actual_time=data.actual_time,
+    )
 
     # Session autoflush is disabled globally, so persist current-step completion
     # before querying for the next pending step.
@@ -1252,6 +1517,10 @@ def _build_instance_response(instance: WorkflowInstance, db: Session) -> Workflo
 
     step_responses = []
     for si in ordered_steps:
+        documents = sorted(
+            si.step_documents or [],
+            key=lambda row: (row.id or 0),
+        )
         step_responses.append(WorkflowStepInstanceResponse(
             id=si.id,
             instance_id=si.instance_id,
@@ -1274,6 +1543,22 @@ def _build_instance_response(instance: WorkflowInstance, db: Session) -> Workflo
             estimated_time=si.step.estimated_time if si.step else None,
 
             memo=si.step.memo if si.step else None,
+            step_documents=[
+                WorkflowStepInstanceDocumentResponse(
+                    id=document.id,
+                    step_instance_id=document.step_instance_id,
+                    workflow_step_document_id=document.workflow_step_document_id,
+                    document_template_id=document.document_template_id,
+                    name=document.name,
+                    required=document.required,
+                    timing=document.timing,
+                    notes=document.notes,
+                    checked=document.checked,
+                    template_name=document.template_name,
+                    template_category=document.template_category,
+                )
+                for document in documents
+            ],
 
         ))
 

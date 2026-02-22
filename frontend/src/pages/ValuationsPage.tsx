@@ -17,6 +17,7 @@ import { formatKRW } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface InvestmentOption {
   id: number
@@ -191,6 +192,7 @@ export default function ValuationsPage() {
   const createMut = useMutation({
     mutationFn: (data: ValuationInput) => createValuation(data),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['valuations'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       setShowCreate(false)
@@ -201,6 +203,7 @@ export default function ValuationsPage() {
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ValuationInput> }) => updateValuation(id, data),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['valuations'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       setEditingId(null)
@@ -211,6 +214,7 @@ export default function ValuationsPage() {
   const deleteMut = useMutation({
     mutationFn: (id: number) => deleteValuation(id),
     onSuccess: () => {
+      invalidateFundRelated(queryClient, filters.fund_id)
       queryClient.invalidateQueries({ queryKey: ['valuations'] })
       queryClient.invalidateQueries({ queryKey: ['fundPerformance'] })
       addToast('success', '평가를 삭제했습니다.')
