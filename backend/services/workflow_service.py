@@ -150,6 +150,7 @@ def instantiate_workflow(
     notice_overrides: dict[str, int] | None = None,
     auto_commit: bool = True,
 ) -> WorkflowInstance:
+    task_category = (workflow.category or "").strip() or None
     instance = WorkflowInstance(
         workflow_id=workflow.id,
         name=name,
@@ -191,6 +192,7 @@ def instantiate_workflow(
             status="pending",
             workflow_instance_id=instance.id,
             workflow_step_order=step.order,
+            category=task_category,
             fund_id=fund_id,
             investment_id=investment_id,
             gp_entity_id=gp_entity_id,
@@ -257,7 +259,11 @@ def instantiate_workflow(
                 task.status = "in_progress"
 
     if auto_commit:
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         db.refresh(instance)
     else:
         db.flush()

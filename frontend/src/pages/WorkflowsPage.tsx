@@ -18,6 +18,7 @@ import {
   fetchFunds,
   fetchGPEntities,
   fetchInvestments,
+  fetchTaskCategories,
   fetchWorkflow,
   fetchWorkflowInstances,
   fetchWorkflows,
@@ -34,6 +35,7 @@ import {
   type GPEntity,
   type NoticeDeadlineResult,
   type LP,
+  type TaskCategory,
   type WorkflowInstance,
   type WorkflowListItem,
   type WorkflowStep,
@@ -442,6 +444,17 @@ function TemplateModal({
     queryKey: ['documentTemplates'],
     queryFn: () => fetchDocumentTemplates(),
   })
+  const { data: taskCategories = [] } = useQuery<TaskCategory[]>({
+    queryKey: ['task-categories'],
+    queryFn: () => fetchTaskCategories(),
+  })
+  const categoryOptions = useMemo(
+    () =>
+      taskCategories
+        .map((row) => row.name.trim())
+        .filter((name) => name.length > 0),
+    [taskCategories],
+  )
   const [documentDraft, setDocumentDraft] = useState({
     name: '',
     required: true,
@@ -664,7 +677,21 @@ function TemplateModal({
       <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <div><label className="form-label">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
-          <div><label className="form-label">카테고리</label><input value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+          <div>
+            <label className="form-label">카테고리</label>
+            <input
+              value={form.category || ''}
+              onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
+              placeholder="기존 카테고리 선택 또는 직접 입력"
+              list="workflow-template-category-options"
+              className="form-input"
+            />
+            <datalist id="workflow-template-category-options">
+              {categoryOptions.map((categoryName) => (
+                <option key={categoryName} value={categoryName} />
+              ))}
+            </datalist>
+          </div>
           <div><label className="form-label">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="form-input" /></div>
           <div><label className="form-label">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
         </div>

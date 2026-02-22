@@ -177,30 +177,33 @@ def create_lp_transfer(
         status="pending",
         notes=data.notes,
     )
-    db.add(transfer)
-    db.flush()
+    try:
+        db.add(transfer)
+        db.flush()
 
-    template = _ensure_lp_transfer_workflow_template(db)
-    trigger_date = data.transfer_date or date.today()
-    to_lp_name = (
-        (to_lp.name if to_lp else data.to_lp_name) or "신규 LP"
-    ).strip()
-    instance = instantiate_workflow(
-        db=db,
-        workflow=template,
-        name=_build_transfer_workflow_name(
-            fund_name=fund.name,
-            from_lp_name=from_lp.name,
-            to_lp_name=to_lp_name,
-        ),
-        trigger_date=trigger_date,
-        memo=f"lp_transfer_id={transfer.id}",
-        fund_id=fund_id,
-    )
+        template = _ensure_lp_transfer_workflow_template(db)
+        trigger_date = data.transfer_date or date.today()
+        to_lp_name = ((to_lp.name if to_lp else data.to_lp_name) or "신규 LP").strip()
+        instance = instantiate_workflow(
+            db=db,
+            workflow=template,
+            name=_build_transfer_workflow_name(
+                fund_name=fund.name,
+                from_lp_name=from_lp.name,
+                to_lp_name=to_lp_name,
+            ),
+            trigger_date=trigger_date,
+            memo=f"lp_transfer_id={transfer.id}",
+            fund_id=fund_id,
+            auto_commit=False,
+        )
 
-    transfer.workflow_instance_id = instance.id
-    transfer.status = "in_progress"
-    db.commit()
+        transfer.workflow_instance_id = instance.id
+        transfer.status = "in_progress"
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(transfer)
     return _build_transfer_response(db, transfer)
 
@@ -225,7 +228,11 @@ def update_lp_transfer(
     for key, value in payload.items():
         setattr(transfer, key, value)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(transfer)
     return _build_transfer_response(db, transfer)
 
@@ -250,6 +257,7 @@ def complete_lp_transfer(
     try:
         apply_lp_transfer_completion(db, transfer)
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if transfer.workflow_instance_id:
@@ -261,6 +269,10 @@ def complete_lp_transfer(
             instance.status = "completed"
             instance.completed_at = datetime.now()
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(transfer)
     return _build_transfer_response(db, transfer)

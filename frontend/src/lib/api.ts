@@ -6,8 +6,28 @@ const api = axios.create({ baseURL: '/api' })
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ detail?: string }>) => {
-    const message = error.response?.data?.detail || '오류가 발생했습니다.'
-    pushToast('error', message)
+    const status = error.response?.status ?? null
+    const detail = (error.response?.data?.detail || '').trim()
+
+    let toastType: 'error' | 'warning' | 'info' = 'error'
+    let message = detail || '오류가 발생했습니다.'
+
+    if (!error.response) {
+      message = '네트워크 연결을 확인해주세요.'
+    } else if (status === 409) {
+      toastType = 'warning'
+      message = detail || '이미 존재하는 데이터입니다.'
+    } else if (status === 422) {
+      toastType = 'info'
+      message = detail || '입력값을 확인해주세요.'
+    } else if (status !== null && status >= 500) {
+      message = detail || '서버 오류가 발생했습니다. 다시 시도해주세요.'
+    } else if (status === 400) {
+      toastType = 'info'
+      message = detail || '요청 값을 확인해주세요.'
+    }
+
+    pushToast(toastType, message)
     return Promise.reject(new Error(message))
   },
 )
@@ -1759,8 +1779,8 @@ export interface WorkLogLessonReminder {
   content: string
   worklog_id: number
   worklog_date: string
-  task_id: number
-  task_title: string
+  task_id: number | null
+  task_title: string | null
   fund_id: number | null
   fund_name: string | null
   is_same_fund: boolean

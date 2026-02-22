@@ -74,43 +74,107 @@ def _step_instance_order_key(step_instance) -> tuple[int, int]:
     return (step_order, step_instance.id or 0)
 
 
-def _task_response(db: Session, task: Task) -> TaskResponse:
+def _build_task_lookup_context(db: Session, tasks: list[Task]) -> dict[str, dict[int, object]]:
+    investment_ids = {row.investment_id for row in tasks if row.investment_id is not None}
+    workflow_instance_ids = {row.workflow_instance_id for row in tasks if row.workflow_instance_id is not None}
+    fund_ids = {row.fund_id for row in tasks if row.fund_id is not None}
+    gp_entity_ids = {row.gp_entity_id for row in tasks if row.gp_entity_id is not None}
+    company_ids: set[int] = set()
+
+    investments: list[Investment] = []
+    if investment_ids:
+        investments = db.query(Investment).filter(Investment.id.in_(investment_ids)).all()
+        fund_ids.update(row.fund_id for row in investments if row.fund_id is not None)
+        company_ids.update(row.company_id for row in investments if row.company_id is not None)
+
+    instances: list[WorkflowInstance] = []
+    if workflow_instance_ids:
+        instances = db.query(WorkflowInstance).filter(WorkflowInstance.id.in_(workflow_instance_ids)).all()
+        fund_ids.update(row.fund_id for row in instances if row.fund_id is not None)
+        gp_entity_ids.update(row.gp_entity_id for row in instances if row.gp_entity_id is not None)
+        company_ids.update(row.company_id for row in instances if row.company_id is not None)
+
+    funds: list[Fund] = []
+    if fund_ids:
+        funds = db.query(Fund).filter(Fund.id.in_(fund_ids)).all()
+
+    gp_entities: list[GPEntity] = []
+    if gp_entity_ids:
+        gp_entities = db.query(GPEntity).filter(GPEntity.id.in_(gp_entity_ids)).all()
+
+    companies: list[PortfolioCompany] = []
+    if company_ids:
+        companies = db.query(PortfolioCompany).filter(PortfolioCompany.id.in_(company_ids)).all()
+
+    return {
+        "investments": {row.id: row for row in investments},
+        "instances": {row.id: row for row in instances},
+        "funds": {row.id: row for row in funds},
+        "gp_entities": {row.id: row for row in gp_entities},
+        "companies": {row.id: row for row in companies},
+    }
+
+
+def _task_response(
+    db: Session,
+    task: Task,
+    lookup_context: dict[str, dict[int, object]] | None = None,
+) -> TaskResponse:
+    context = lookup_context or {}
+    investment_by_id: dict[int, Investment] = context.get("investments", {})  # type: ignore[assignment]
+    instance_by_id: dict[int, WorkflowInstance] = context.get("instances", {})  # type: ignore[assignment]
+    fund_by_id: dict[int, Fund] = context.get("funds", {})  # type: ignore[assignment]
+    gp_entity_by_id: dict[int, GPEntity] = context.get("gp_entities", {})  # type: ignore[assignment]
+    company_by_id: dict[int, PortfolioCompany] = context.get("companies", {})  # type: ignore[assignment]
+
     payload = TaskResponse.model_validate(task).model_dump()
 
-    investment = db.get(Investment, task.investment_id) if task.investment_id else None
+    investment = None
+    if task.investment_id:
+        investment = investment_by_id.get(task.investment_id) or db.get(Investment, task.investment_id)
+
     fund_id = task.fund_id or (investment.fund_id if investment else None)
     gp_entity_id = task.gp_entity_id
 
     fund_name = None
     if fund_id:
-        fund = db.get(Fund, fund_id)
+        fund = fund_by_id.get(fund_id) or db.get(Fund, fund_id)
         fund_name = fund.name if fund else None
 
     gp_entity_name = None
     if gp_entity_id:
-        gp_entity = db.get(GPEntity, gp_entity_id)
+        gp_entity = gp_entity_by_id.get(gp_entity_id) or db.get(GPEntity, gp_entity_id)
         gp_entity_name = gp_entity.name if gp_entity else None
 
     company_name = None
     if investment:
-        company = db.get(PortfolioCompany, investment.company_id)
+        company = company_by_id.get(investment.company_id) or db.get(PortfolioCompany, investment.company_id)
         company_name = company.name if company else None
 
     if (not fund_name or not company_name or not gp_entity_name) and task.workflow_instance_id:
-        instance = db.get(WorkflowInstance, task.workflow_instance_id)
+        instance = (
+            instance_by_id.get(task.workflow_instance_id)
+            or db.get(WorkflowInstance, task.workflow_instance_id)
+        )
         if instance:
             if not fund_name and instance.fund_id:
-                wf_fund = db.get(Fund, instance.fund_id)
+                wf_fund = fund_by_id.get(instance.fund_id) or db.get(Fund, instance.fund_id)
                 fund_name = wf_fund.name if wf_fund else None
                 if fund_id is None:
                     fund_id = instance.fund_id
             if not gp_entity_name and instance.gp_entity_id:
-                gp_entity = db.get(GPEntity, instance.gp_entity_id)
+                gp_entity = (
+                    gp_entity_by_id.get(instance.gp_entity_id)
+                    or db.get(GPEntity, instance.gp_entity_id)
+                )
                 gp_entity_name = gp_entity.name if gp_entity else None
                 if gp_entity_id is None:
                     gp_entity_id = instance.gp_entity_id
             if not company_name and instance.company_id:
-                wf_company = db.get(PortfolioCompany, instance.company_id)
+                wf_company = (
+                    company_by_id.get(instance.company_id)
+                    or db.get(PortfolioCompany, instance.company_id)
+                )
                 company_name = wf_company.name if wf_company else None
 
     payload["fund_id"] = fund_id
@@ -132,7 +196,11 @@ def _sync_workflow_state(db: Session) -> None:
         if reconcile_workflow_instance_state(db, instance):
             needs_commit = True
     if needs_commit:
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
 
 def _dashboard_base_payload(db: Session, today: date) -> dict:
@@ -161,6 +229,7 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
         .order_by(Task.deadline.asc().nullslast())
         .all()
     )
+    pending_task_context = _build_task_lookup_context(db, pending_tasks)
 
     today_tasks: list[TaskResponse] = []
     tomorrow_tasks: list[TaskResponse] = []
@@ -169,7 +238,7 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
     no_deadline_tasks: list[TaskResponse] = []
 
     for task in pending_tasks:
-        task_resp = _task_response(db, task)
+        task_resp = _task_response(db, task, pending_task_context)
         deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
         if deadline is None:
             no_deadline_tasks.append(task_resp)
@@ -394,11 +463,12 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
         .limit(20)
         .all()
     )
+    report_task_context = _build_task_lookup_context(db, report_tasks)
     for task in report_tasks:
         deadline_date = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
         if deadline_date is None:
             continue
-        task_payload = _task_response(db, task)
+        task_payload = _task_response(db, task, report_task_context)
         upcoming_reports.append(
             {
                 "id": -task.id,
@@ -463,11 +533,15 @@ def _dashboard_completed_payload(db: Session, today: date) -> dict:
         .order_by(Task.completed_at.desc())
         .all()
     )
+    completed_context = _build_task_lookup_context(
+        db,
+        [*completed_today, *completed_this_week, *completed_last_week],
+    )
 
     return {
-        "completed_today": [_task_response(db, task) for task in completed_today],
-        "completed_this_week": [_task_response(db, task) for task in completed_this_week],
-        "completed_last_week": [_task_response(db, task) for task in completed_last_week],
+        "completed_today": [_task_response(db, task, completed_context) for task in completed_today],
+        "completed_this_week": [_task_response(db, task, completed_context) for task in completed_this_week],
+        "completed_last_week": [_task_response(db, task, completed_context) for task in completed_last_week],
         "completed_today_count": len(completed_today),
         "completed_this_week_count": len(completed_this_week),
     }
@@ -615,11 +689,12 @@ def upcoming_notices(days: int = 30, db: Session = Depends(get_db)):
         .order_by(Task.deadline.asc(), Task.id.desc())
         .all()
     )
+    notice_task_context = _build_task_lookup_context(db, notice_tasks)
     for task in notice_tasks:
         deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
         if deadline is None:
             continue
-        task_payload = _task_response(db, task)
+        task_payload = _task_response(db, task, notice_task_context)
         append_notice(
             {
                 "fund_name": task_payload.fund_name or task_payload.gp_entity_name or "업무",

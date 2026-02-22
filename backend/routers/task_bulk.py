@@ -4,11 +4,13 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.calendar_event import CalendarEvent
 from models.task import Task
+from models.task_category import TaskCategory
 from models.worklog import WorkLog, WorkLogDetail
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -58,6 +60,27 @@ class BulkDeleteResponse(BaseModel):
     deleted_count: int
 
 
+def _normalize_category_name(value: str | None) -> str:
+    return (value or "").strip()
+
+
+def _ensure_task_category_exists(db: Session, category_name: str | None) -> str | None:
+    normalized_name = _normalize_category_name(category_name)
+    if not normalized_name:
+        return None
+
+    existing = (
+        db.query(TaskCategory)
+        .filter(func.lower(TaskCategory.name) == normalized_name.lower())
+        .first()
+    )
+    if existing:
+        return existing.name
+
+    db.add(TaskCategory(name=normalized_name))
+    return normalized_name
+
+
 def _load_tasks_or_404(db: Session, task_ids: list[int]) -> list[Task]:
     rows = db.query(Task).filter(Task.id.in_(task_ids)).all()
     found_ids = {row.id for row in rows}
@@ -93,10 +116,11 @@ def bulk_complete_tasks(payload: BulkCompletePayload, db: Session = Depends(get_
         completed_count += 1
 
         if payload.auto_worklog:
+            worklog_category = _ensure_task_category_exists(db, task.category) or "업무"
             content = task.memo or f"{task.title} 완료"
             worklog = WorkLog(
                 date=date.today(),
-                category="업무",
+                category=worklog_category,
                 title=f"[완료] {task.title}",
                 content=content,
                 status="완료",
@@ -108,7 +132,11 @@ def bulk_complete_tasks(payload: BulkCompletePayload, db: Session = Depends(get_
             if task.memo:
                 db.add(WorkLogDetail(worklog_id=worklog.id, content=task.memo, order=0))
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return BulkCompleteResponse(completed_count=completed_count, skipped_count=skipped_count)
 
 
@@ -119,5 +147,9 @@ def bulk_delete_tasks(payload: BulkTaskIdPayload, db: Session = Depends(get_db))
 
     db.query(CalendarEvent).filter(CalendarEvent.task_id.in_(task_ids)).delete(synchronize_session=False)
     db.query(Task).filter(Task.id.in_(task_ids)).delete(synchronize_session=False)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return BulkDeleteResponse(deleted_count=len(task_ids))

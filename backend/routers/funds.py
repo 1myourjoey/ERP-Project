@@ -1583,21 +1583,25 @@ def add_formation_workflow(
 
     trigger_date = data.trigger_date or fund.formation_date or date.today()
     formation_slot_token = _normalize_template_identifier(formation_slot_name)
-    instance = instantiate_workflow(
-        db=db,
-        workflow=template,
-        name=f"[{fund.name}] {template.name}",
-        trigger_date=trigger_date,
-        memo=(
-            "manual_fund_formation_workflow "
-            f"fund_id={fund.id} "
-            f"template_id={template.id} "
-            f"{FORMATION_SLOT_MEMO_PREFIX}{formation_slot_token}"
-        ),
-        fund_id=fund.id,
-        auto_commit=False,
-    )
-    db.commit()
+    try:
+        instance = instantiate_workflow(
+            db=db,
+            workflow=template,
+            name=f"[{fund.name}] {template.name}",
+            trigger_date=trigger_date,
+            memo=(
+                "manual_fund_formation_workflow "
+                f"fund_id={fund.id} "
+                f"template_id={template.id} "
+                f"{FORMATION_SLOT_MEMO_PREFIX}{formation_slot_token}"
+            ),
+            fund_id=fund.id,
+            auto_commit=False,
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return FundFormationWorkflowAddResponse(
         instance_id=instance.id,

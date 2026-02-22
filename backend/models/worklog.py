@@ -7,8 +7,8 @@ class WorkLog(Base):
     __tablename__ = "worklogs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    date = Column(Date, nullable=False)
-    category = Column(String, nullable=False)
+    date = Column(Date, nullable=False, index=True)
+    category = Column(String, nullable=False, index=True)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=True)
     status = Column(String, default="완료")  # 완료, 진행중
@@ -16,7 +16,7 @@ class WorkLog(Base):
     actual_time = Column(String, nullable=True)
     time_diff = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
 
     details = relationship("WorkLogDetail", back_populates="worklog", cascade="all, delete-orphan")
     lessons = relationship("WorkLogLesson", back_populates="worklog", cascade="all, delete-orphan")

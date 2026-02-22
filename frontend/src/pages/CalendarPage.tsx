@@ -14,6 +14,7 @@ import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { resolveDateTone } from '../lib/taskUrgency'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -64,20 +65,16 @@ function compareEvents(a: CalendarEvent, b: CalendarEvent) {
   return at.localeCompare(bt)
 }
 
-function isUrgentDate(date: string) {
-  const target = parseDate(date)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  return isSameDate(target, today) || isSameDate(target, tomorrow)
-}
-
 function eventTone(event: CalendarEvent) {
   if (event.status === 'completed') return 'tag tag-green'
-  if (event.event_type === 'task') return 'tag tag-blue'
-  if (event.status !== 'completed' && isUrgentDate(event.date)) return 'tag tag-red'
-  return 'tag tag-indigo'
+  if (event.event_type !== 'task') return 'tag tag-indigo'
+
+  const tone = resolveDateTone(event.date)
+  if (tone === 'overdue') return 'tag tag-red'
+  if (tone === 'today') return 'rounded bg-orange-100 px-2 py-1 text-orange-700'
+  if (tone === 'this_week') return 'rounded bg-amber-100 px-2 py-1 text-amber-700'
+  if (tone === 'none') return 'rounded bg-gray-100 px-2 py-1 text-gray-600'
+  return 'tag tag-blue'
 }
 
 export default function CalendarPage() {
@@ -212,9 +209,11 @@ export default function CalendarPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-        <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-blue-700">업무 마감</span>
+        <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-blue-700">업무(일반)</span>
+        <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">업무(오늘)</span>
+        <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-1 text-amber-700">업무(이번주)</span>
+        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">업무(지연)</span>
         <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-1 text-indigo-700">일반 일정</span>
-        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">긴급 일정</span>
         <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-green-700">완료 일정</span>
       </div>
 

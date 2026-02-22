@@ -1,4 +1,4 @@
-﻿import { useState, type ChangeEvent } from 'react'
+import { memo, useState, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorkLogs,
@@ -193,15 +193,17 @@ function WorkLogForm({
   )
 }
 
-function WorkLogEntry({
-  log,
-  onDelete,
-  onEdit,
-}: {
+interface WorkLogEntryProps {
   log: WorkLog
   onDelete: (id: number) => void
   onEdit: (log: WorkLog) => void
-}) {
+}
+
+const WorkLogEntry = memo(function WorkLogEntry({
+  log,
+  onDelete,
+  onEdit,
+}: WorkLogEntryProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -288,7 +290,8 @@ function WorkLogEntry({
       )}
     </div>
   )
-}
+})
+WorkLogEntry.displayName = 'WorkLogEntry'
 
 function renderInsights(insights: WorkLogInsights) {
   const completedRate = insights.total_logs

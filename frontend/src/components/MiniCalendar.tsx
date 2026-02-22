@@ -10,10 +10,11 @@ import {
   type CalendarEventInput,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
+import { resolveDateTone, type TaskDeadlineTone } from '../lib/taskUrgency'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 
-type EventTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
+type EventTone = TaskDeadlineTone
 
 interface MiniCalendarProps {
   onTaskClick?: (taskId: number) => void
@@ -32,10 +33,6 @@ function parseDate(date: string) {
   return new Date(y, m - 1, d)
 }
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
 function getCalendarCells(year: number, month: number) {
   const firstDay = new Date(year, month, 1)
   const startOffset = (firstDay.getDay() + 6) % 7
@@ -47,21 +44,9 @@ function getCalendarCells(year: number, month: number) {
   })
 }
 
-function taskDateTone(dateText: string, today: Date): EventTone {
-  const date = parseDate(dateText)
-  const todayStart = startOfDay(today).getTime()
-  const dateStart = startOfDay(date).getTime()
-  const diffDays = Math.floor((dateStart - todayStart) / (24 * 60 * 60 * 1000))
-
-  if (diffDays < 0) return 'overdue'
-  if (diffDays === 0) return 'today'
-  if (diffDays <= 7) return 'this_week'
-  return 'later'
-}
-
 function getEventTone(event: CalendarEvent, today: Date): EventTone {
   if (event.event_type !== 'task' || event.status === 'completed') return 'none'
-  return taskDateTone(event.date, today)
+  return resolveDateTone(event.date, today)
 }
 
 function dotClass(event: CalendarEvent, today: Date) {
@@ -85,6 +70,12 @@ function statusBadge(event: CalendarEvent, today: Date): { text: string; classNa
   const tone = getEventTone(event, today)
   if (tone === 'overdue') {
     return { text: '지연', className: 'rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700' }
+  }
+  if (tone === 'today') {
+    return { text: '오늘', className: 'rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700' }
+  }
+  if (tone === 'this_week') {
+    return { text: '이번주', className: 'rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700' }
   }
   if (event.status === 'completed') {
     return { text: '완료', className: 'rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700' }

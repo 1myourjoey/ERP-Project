@@ -1,4 +1,4 @@
-﻿export type ToastType = 'success' | 'error' | 'info'
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 let toastHandler: ((type: ToastType, message: string) => void) | null = null
 

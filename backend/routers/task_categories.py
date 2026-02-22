@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -41,7 +42,13 @@ def _ensure_defaults(db: Session) -> None:
 
     for name in DEFAULT_TASK_CATEGORIES:
         db.add(TaskCategory(name=name))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("", response_model=list[TaskCategoryResponse])
@@ -63,7 +70,14 @@ def create_task_category(data: TaskCategoryCreate, db: Session = Depends(get_db)
 
     row = TaskCategory(name=name)
     db.add(row)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="이미 존재하는 카테고리입니다.") from exc
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(row)
     return row
 
@@ -79,4 +93,8 @@ def delete_task_category(category_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=f"{in_use_count}건의 업무에서 사용 중입니다.")
 
     db.delete(row)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

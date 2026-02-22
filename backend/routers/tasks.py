@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import extract
+from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -11,6 +11,7 @@ from models.fund import Fund
 from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
 from models.task import Task
+from models.task_category import TaskCategory
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
@@ -29,6 +30,27 @@ MONTHLY_REMINDER_TITLES = (
     '농금원 월보고 ({year_month})',
     '벤처협회 VICS 월보고 ({year_month})',
 )
+
+
+def _normalize_category_name(value: str | None) -> str:
+    return (value or '').strip()
+
+
+def _ensure_task_category_exists(db: Session, category_name: str | None) -> str | None:
+    normalized_name = _normalize_category_name(category_name)
+    if not normalized_name:
+        return None
+
+    existing = (
+        db.query(TaskCategory)
+        .filter(func.lower(TaskCategory.name) == normalized_name.lower())
+        .first()
+    )
+    if existing:
+        return existing.name
+
+    db.add(TaskCategory(name=normalized_name))
+    return normalized_name
 
 
 def _resolve_task_links(
@@ -68,43 +90,107 @@ def _resolve_task_links(
     return resolved_fund_id, investment_id, resolved_gp_entity_id
 
 
-def _to_task_response(db: Session, task: Task) -> TaskResponse:
+def _build_task_lookup_context(db: Session, tasks: list[Task]) -> dict[str, dict[int, object]]:
+    investment_ids = {row.investment_id for row in tasks if row.investment_id is not None}
+    workflow_instance_ids = {row.workflow_instance_id for row in tasks if row.workflow_instance_id is not None}
+    fund_ids = {row.fund_id for row in tasks if row.fund_id is not None}
+    gp_entity_ids = {row.gp_entity_id for row in tasks if row.gp_entity_id is not None}
+    company_ids: set[int] = set()
+
+    investments: list[Investment] = []
+    if investment_ids:
+        investments = db.query(Investment).filter(Investment.id.in_(investment_ids)).all()
+        fund_ids.update(row.fund_id for row in investments if row.fund_id is not None)
+        company_ids.update(row.company_id for row in investments if row.company_id is not None)
+
+    instances: list[WorkflowInstance] = []
+    if workflow_instance_ids:
+        instances = db.query(WorkflowInstance).filter(WorkflowInstance.id.in_(workflow_instance_ids)).all()
+        fund_ids.update(row.fund_id for row in instances if row.fund_id is not None)
+        gp_entity_ids.update(row.gp_entity_id for row in instances if row.gp_entity_id is not None)
+        company_ids.update(row.company_id for row in instances if row.company_id is not None)
+
+    funds: list[Fund] = []
+    if fund_ids:
+        funds = db.query(Fund).filter(Fund.id.in_(fund_ids)).all()
+
+    gp_entities: list[GPEntity] = []
+    if gp_entity_ids:
+        gp_entities = db.query(GPEntity).filter(GPEntity.id.in_(gp_entity_ids)).all()
+
+    companies: list[PortfolioCompany] = []
+    if company_ids:
+        companies = db.query(PortfolioCompany).filter(PortfolioCompany.id.in_(company_ids)).all()
+
+    return {
+        'investments': {row.id: row for row in investments},
+        'instances': {row.id: row for row in instances},
+        'funds': {row.id: row for row in funds},
+        'gp_entities': {row.id: row for row in gp_entities},
+        'companies': {row.id: row for row in companies},
+    }
+
+
+def _to_task_response(
+    db: Session,
+    task: Task,
+    lookup_context: dict[str, dict[int, object]] | None = None,
+) -> TaskResponse:
+    context = lookup_context or {}
+    investment_by_id: dict[int, Investment] = context.get('investments', {})  # type: ignore[assignment]
+    instance_by_id: dict[int, WorkflowInstance] = context.get('instances', {})  # type: ignore[assignment]
+    fund_by_id: dict[int, Fund] = context.get('funds', {})  # type: ignore[assignment]
+    gp_entity_by_id: dict[int, GPEntity] = context.get('gp_entities', {})  # type: ignore[assignment]
+    company_by_id: dict[int, PortfolioCompany] = context.get('companies', {})  # type: ignore[assignment]
+
     payload = TaskResponse.model_validate(task).model_dump()
 
-    investment = db.get(Investment, task.investment_id) if task.investment_id else None
+    investment = None
+    if task.investment_id:
+        investment = investment_by_id.get(task.investment_id) or db.get(Investment, task.investment_id)
+
     fund_id = task.fund_id or (investment.fund_id if investment else None)
     gp_entity_id = task.gp_entity_id
 
     fund_name = None
     if fund_id:
-        fund = db.get(Fund, fund_id)
+        fund = fund_by_id.get(fund_id) or db.get(Fund, fund_id)
         fund_name = fund.name if fund else None
 
     gp_entity_name = None
     if gp_entity_id:
-        gp_entity = db.get(GPEntity, gp_entity_id)
+        gp_entity = gp_entity_by_id.get(gp_entity_id) or db.get(GPEntity, gp_entity_id)
         gp_entity_name = gp_entity.name if gp_entity else None
 
     company_name = None
     if investment:
-        company = db.get(PortfolioCompany, investment.company_id)
+        company = company_by_id.get(investment.company_id) or db.get(PortfolioCompany, investment.company_id)
         company_name = company.name if company else None
 
     if (not fund_name or not company_name or not gp_entity_name) and task.workflow_instance_id:
-        instance = db.get(WorkflowInstance, task.workflow_instance_id)
+        instance = (
+            instance_by_id.get(task.workflow_instance_id)
+            or db.get(WorkflowInstance, task.workflow_instance_id)
+        )
         if instance:
             if not fund_name and instance.fund_id:
-                wf_fund = db.get(Fund, instance.fund_id)
+                wf_fund = fund_by_id.get(instance.fund_id) or db.get(Fund, instance.fund_id)
                 fund_name = wf_fund.name if wf_fund else None
                 if fund_id is None:
                     fund_id = instance.fund_id
             if not gp_entity_name and instance.gp_entity_id:
-                gp_entity = db.get(GPEntity, instance.gp_entity_id)
+                gp_entity = (
+                    gp_entity_by_id.get(instance.gp_entity_id)
+                    or db.get(GPEntity, instance.gp_entity_id)
+                )
                 gp_entity_name = gp_entity.name if gp_entity else None
                 if gp_entity_id is None:
                     gp_entity_id = instance.gp_entity_id
             if not company_name and instance.company_id:
-                wf_company = db.get(PortfolioCompany, instance.company_id)
+                wf_company = (
+                    company_by_id.get(instance.company_id)
+                    or db.get(PortfolioCompany, instance.company_id)
+                )
                 company_name = wf_company.name if wf_company else None
 
     payload['fund_id'] = fund_id
@@ -256,11 +342,12 @@ def get_task_board(
             query = query.filter(extract('month', Task.completed_at) == month)
 
     tasks = query.order_by(Task.deadline.asc().nullslast(), Task.created_at.asc()).all()
+    lookup_context = _build_task_lookup_context(db, tasks)
 
     board: dict[str, list[TaskResponse]] = {'Q1': [], 'Q2': [], 'Q3': [], 'Q4': []}
     for task in tasks:
         if task.quadrant in board:
-            board[task.quadrant].append(_to_task_response(db, task))
+            board[task.quadrant].append(_to_task_response(db, task, lookup_context))
     return board
 
 
@@ -286,7 +373,8 @@ def list_tasks(
         query = query.filter(Task.category == category)
 
     rows = query.order_by(Task.deadline.asc().nullslast(), Task.created_at.asc()).all()
-    return [_to_task_response(db, row) for row in rows]
+    lookup_context = _build_task_lookup_context(db, rows)
+    return [_to_task_response(db, row, lookup_context) for row in rows]
 
 
 @router.get('/{task_id}', response_model=TaskResponse)
@@ -325,6 +413,7 @@ def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
             status='pending',
             category='보고',
         )
+        _ensure_task_category_exists(db, task.category)
         db.add(task)
         db.flush()
 
@@ -338,7 +427,11 @@ def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
         )
         created.append(title)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return {'year_month': year_month, 'created': created, 'skipped': skipped}
 
 
@@ -355,6 +448,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db)):
     payload['investment_id'] = resolved_investment_id
     payload['gp_entity_id'] = resolved_gp_entity_id
 
+    _ensure_task_category_exists(db, payload.get('category'))
     task = Task(**payload)
     db.add(task)
     db.flush()
@@ -369,7 +463,11 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db)):
             )
         )
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return _to_task_response(db, task)
 
@@ -395,6 +493,7 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     payload['investment_id'] = resolved_investment_id
     payload['gp_entity_id'] = resolved_gp_entity_id
 
+    _ensure_task_category_exists(db, payload.get('category', task.category))
     for key, val in payload.items():
         setattr(task, key, val)
 
@@ -421,7 +520,11 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     elif linked_event:
         db.delete(linked_event)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return _to_task_response(db, task)
 
@@ -435,7 +538,11 @@ def move_task(task_id: int, data: TaskMove, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail='유효하지 않은 사분면입니다')
 
     task.quadrant = data.quadrant
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return _to_task_response(db, task)
 
@@ -458,11 +565,12 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
 
     if data.auto_worklog:
         from models.worklog import WorkLog, WorkLogDetail
+        worklog_category = _ensure_task_category_exists(db, task.category) or "업무"
 
         worklog_content = data.memo or task.memo or f'{task.title} 완료'
         worklog = WorkLog(
             date=date.today(),
-            category='업무',
+            category=worklog_category,
             title=f'[완료] {task.title}',
             content=worklog_content,
             status='완료',
@@ -477,7 +585,11 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
         elif task.memo:
             db.add(WorkLogDetail(worklog_id=worklog.id, content=task.memo, order=0))
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return _to_task_response(db, task)
 
@@ -494,7 +606,11 @@ def undo_complete_task(task_id: int, db: Session = Depends(get_db)):
     task.completed_at = None
     task.actual_time = None
     _sync_workflow_on_task_undo(db=db, task=task)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return _to_task_response(db, task)
 
@@ -507,4 +623,8 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
 
     db.query(CalendarEvent).filter(CalendarEvent.task_id == task.id).delete()
     db.delete(task)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

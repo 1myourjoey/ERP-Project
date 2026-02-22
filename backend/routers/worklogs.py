@@ -3,9 +3,11 @@ from datetime import date, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.task_category import TaskCategory
 from models.worklog import WorkLog, WorkLogDetail, WorkLogLesson, WorkLogFollowUp
 from schemas.worklog import (
     WORKLOG_CATEGORIES,
@@ -17,6 +19,27 @@ from schemas.worklog import (
 )
 
 router = APIRouter(prefix="/api/worklogs", tags=["worklogs"])
+
+
+def _normalize_category_name(value: str | None) -> str:
+    return (value or "").strip()
+
+
+def _ensure_task_category_exists(db: Session, category_name: str | None) -> str | None:
+    normalized_name = _normalize_category_name(category_name)
+    if not normalized_name:
+        return None
+
+    existing = (
+        db.query(TaskCategory)
+        .filter(func.lower(TaskCategory.name) == normalized_name.lower())
+        .first()
+    )
+    if existing:
+        return existing.name
+
+    db.add(TaskCategory(name=normalized_name))
+    return normalized_name
 
 
 def parse_time_to_minutes(time_str: str | None) -> int:
@@ -194,6 +217,7 @@ def get_worklog(worklog_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=WorkLogResponse, status_code=201)
 def create_worklog(data: WorkLogCreate, db: Session = Depends(get_db)):
+    _ensure_task_category_exists(db, data.category)
     wl = WorkLog(
         date=data.date,
         category=data.category,
@@ -213,7 +237,11 @@ def create_worklog(data: WorkLogCreate, db: Session = Depends(get_db)):
         wl.follow_ups.append(WorkLogFollowUp(content=follow_up.content, target_date=follow_up.target_date, order=follow_up.order or i))
 
     db.add(wl)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(wl)
     return wl
 
@@ -224,7 +252,9 @@ def update_worklog(worklog_id: int, data: WorkLogUpdate, db: Session = Depends(g
     if not wl:
         raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
 
-    for key, value in data.model_dump(exclude_unset=True, exclude={"details", "lessons", "follow_ups"}).items():
+    scalar_payload = data.model_dump(exclude_unset=True, exclude={"details", "lessons", "follow_ups"})
+    _ensure_task_category_exists(db, scalar_payload.get("category", wl.category))
+    for key, value in scalar_payload.items():
         setattr(wl, key, value)
 
     if data.details is not None:
@@ -242,7 +272,11 @@ def update_worklog(worklog_id: int, data: WorkLogUpdate, db: Session = Depends(g
         for i, follow_up in enumerate(data.follow_ups):
             wl.follow_ups.append(WorkLogFollowUp(content=follow_up.content, target_date=follow_up.target_date, order=follow_up.order or i))
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(wl)
     return wl
 
@@ -253,4 +287,8 @@ def delete_worklog(worklog_id: int, db: Session = Depends(get_db)):
     if not wl:
         raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
     db.delete(wl)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import case
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -18,8 +18,8 @@ class WorkLogLessonReminder(BaseModel):
     content: str
     worklog_id: int
     worklog_date: date
-    task_id: int
-    task_title: str
+    task_id: int | None = None
+    task_title: str | None = None
     fund_id: int | None = None
     fund_name: str | None = None
     is_same_fund: bool = False
@@ -35,13 +35,19 @@ def get_lessons_by_category(
     normalized_category = category.strip()
     if not normalized_category:
         raise HTTPException(status_code=400, detail="category는 필수입니다.")
+    normalized_category_key = normalized_category.lower()
 
     query = (
         db.query(WorkLogLesson, WorkLog, Task, Fund)
         .join(WorkLog, WorkLog.id == WorkLogLesson.worklog_id)
-        .join(Task, Task.id == WorkLog.task_id)
+        .outerjoin(Task, Task.id == WorkLog.task_id)
         .outerjoin(Fund, Fund.id == Task.fund_id)
-        .filter(Task.category == normalized_category)
+        .filter(
+            or_(
+                func.lower(WorkLog.category) == normalized_category_key,
+                func.lower(Task.category) == normalized_category_key,
+            )
+        )
     )
 
     if fund_id is not None:
@@ -67,11 +73,11 @@ def get_lessons_by_category(
             content=lesson.content,
             worklog_id=worklog.id,
             worklog_date=worklog.date,
-            task_id=task.id,
-            task_title=task.title,
-            fund_id=task.fund_id,
+            task_id=task.id if task else worklog.task_id,
+            task_title=task.title if task else worklog.title,
+            fund_id=task.fund_id if task else None,
             fund_name=fund.name if fund else None,
-            is_same_fund=(fund_id is not None and task.fund_id == fund_id),
+            is_same_fund=(fund_id is not None and task is not None and task.fund_id == fund_id),
         )
         for lesson, worklog, task, fund in rows
     ]

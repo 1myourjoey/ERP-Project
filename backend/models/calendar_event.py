@@ -8,7 +8,7 @@ class CalendarEvent(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
-    date = Column(Date, nullable=False)
+    date = Column(Date, nullable=False, index=True)
     time = Column(Time, nullable=True)
     duration = Column(Integer, nullable=True)
     description = Column(Text, nullable=True)

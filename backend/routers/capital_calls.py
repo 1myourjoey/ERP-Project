@@ -505,7 +505,11 @@ def create_capital_call(data: CapitalCallCreate, db: Session = Depends(get_db)):
     _ensure_fund(db, data.fund_id)
     row = CapitalCall(**data.model_dump())
     db.add(row)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(row)
     return CapitalCallResponse(**_serialize_capital_call(row, db))
 
@@ -520,7 +524,11 @@ def update_capital_call(capital_call_id: int, data: CapitalCallUpdate, db: Sessi
     _ensure_fund(db, next_fund_id)
     for key, value in payload.items():
         setattr(row, key, value)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(row)
     return CapitalCallResponse(**_serialize_capital_call(row, db))
 
@@ -535,7 +543,11 @@ def delete_capital_call(capital_call_id: int, db: Session = Depends(get_db)):
     db.delete(row)
     db.flush()
     recalculate_fund_stats(db, fund_id)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get(
@@ -724,10 +736,14 @@ def delete_capital_call_item(capital_call_id: int, item_id: int, db: Session = D
     call = db.get(CapitalCall, capital_call_id)
     if not call:
         raise HTTPException(status_code=404, detail="Capital call not found")
-    db.delete(row)
-    db.flush()
-    recalculate_fund_stats(db, call.fund_id)
-    db.commit()
+    try:
+        db.delete(row)
+        db.flush()
+        recalculate_fund_stats(db, call.fund_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/api/capital-calls/summary/{fund_id}", response_model=CapitalCallSummaryResponse)

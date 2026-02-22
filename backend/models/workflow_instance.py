@@ -1,4 +1,15 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, func, Boolean
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -31,16 +42,19 @@ class WorkflowInstance(Base):
 
 class WorkflowStepInstance(Base):
     __tablename__ = "workflow_step_instances"
+    __table_args__ = (
+        UniqueConstraint("instance_id", "workflow_step_id", name="uq_step_instance"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    instance_id = Column(Integer, ForeignKey("workflow_instances.id", ondelete="CASCADE"))
+    instance_id = Column(Integer, ForeignKey("workflow_instances.id", ondelete="CASCADE"), index=True)
     workflow_step_id = Column(Integer, ForeignKey("workflow_steps.id"))
     calculated_date = Column(Date, nullable=False)
     status = Column(String, default="pending")  # pending, in_progress, completed, skipped
     completed_at = Column(DateTime, nullable=True)
     actual_time = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
 
     instance = relationship("WorkflowInstance", back_populates="step_instances")
     step = relationship("WorkflowStep")
@@ -57,7 +71,12 @@ class WorkflowStepInstanceDocument(Base):
     __tablename__ = "workflow_step_instance_documents"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    step_instance_id = Column(Integer, ForeignKey("workflow_step_instances.id", ondelete="CASCADE"), nullable=False)
+    step_instance_id = Column(
+        Integer,
+        ForeignKey("workflow_step_instances.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     workflow_step_document_id = Column(Integer, ForeignKey("workflow_step_documents.id"), nullable=True)
     document_template_id = Column(Integer, ForeignKey("document_templates.id"), nullable=True)
     name = Column(String, nullable=False)

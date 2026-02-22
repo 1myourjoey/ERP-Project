@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, HelpCircle, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -47,6 +47,7 @@ import type {
   WorkflowListItem,
 } from '../lib/api'
 import { invalidateFundRelated, invalidateTaskRelated } from '../lib/queryInvalidation'
+import { resolveDeadlineTone, type TaskDeadlineTone } from '../lib/taskUrgency'
 
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
@@ -107,52 +108,14 @@ function combineDeadline(date: string, hour: string): string | null {
   return hour ? `${date}T${hour}` : date
 }
 
-function parseTaskDeadline(deadline: string | null): Date | null {
-  if (!deadline) return null
-  const parsed = new Date(deadline)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed
-}
-
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
-function isSameLocalDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate()
-  )
-}
-
 function isOverdueTask(task: Task, now = new Date()): boolean {
   if (task.status === 'completed') return false
-  const deadline = parseTaskDeadline(task.deadline)
-  if (!deadline) return false
-  return deadline.getTime() < now.getTime()
-}
-
-type TaskDeadlineTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
-
-function taskDeadlineTone(task: Task, now = new Date()): TaskDeadlineTone {
-  const deadline = parseTaskDeadline(task.deadline)
-  if (!deadline) return 'none'
-  if (task.status === 'completed') return 'later'
-
-  if (deadline.getTime() < now.getTime()) return 'overdue'
-  if (isSameLocalDay(deadline, now)) return 'today'
-
-  const dayStart = startOfDay(now).getTime()
-  const deadlineStart = startOfDay(deadline).getTime()
-  const diffDays = Math.floor((deadlineStart - dayStart) / (24 * 60 * 60 * 1000))
-  if (diffDays >= 1 && diffDays <= 7) return 'this_week'
-
-  return 'later'
+  return resolveDeadlineTone(task.deadline, now) === 'overdue'
 }
 
 function taskUrgencyMeta(task: Task): { cardClass: string; badgeClass: string; label: string | null } {
-  switch (taskDeadlineTone(task)) {
+  const tone: TaskDeadlineTone = task.status === 'completed' ? 'later' : resolveDeadlineTone(task.deadline)
+  switch (tone) {
     case 'overdue':
       return {
         cardClass: 'border-2 border-red-600 bg-red-200',
@@ -219,15 +182,7 @@ function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: W
   return { standalone, workflows }
 }
 
-function TaskItem({
-  task,
-  onComplete,
-  onDelete,
-  onEdit,
-  selected,
-  onToggleSelect,
-  isBlinking = false,
-}: {
+interface TaskItemProps {
   task: Task
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
@@ -235,7 +190,17 @@ function TaskItem({
   selected: boolean
   onToggleSelect: (taskId: number, selected: boolean) => void
   isBlinking?: boolean
-}) {
+}
+
+const TaskItem = memo(function TaskItem({
+  task,
+  onComplete,
+  onDelete,
+  onEdit,
+  selected,
+  onToggleSelect,
+  isBlinking = false,
+}: TaskItemProps) {
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : null
@@ -312,17 +277,10 @@ function TaskItem({
       </div>
     </div>
   )
-}
+})
+TaskItem.displayName = 'TaskItem'
 
-function WorkflowGroupCard({
-  group,
-  onComplete,
-  onDelete,
-  onEdit,
-  selectedTaskIds,
-  onToggleSelect,
-  blinkingId,
-}: {
+interface WorkflowGroupCardProps {
   group: WorkflowGroup
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
@@ -330,7 +288,17 @@ function WorkflowGroupCard({
   selectedTaskIds: Set<number>
   onToggleSelect: (taskId: number, selected: boolean) => void
   blinkingId: number | null
-}) {
+}
+
+const WorkflowGroupCard = memo(function WorkflowGroupCard({
+  group,
+  onComplete,
+  onDelete,
+  onEdit,
+  selectedTaskIds,
+  onToggleSelect,
+  blinkingId,
+}: WorkflowGroupCardProps) {
   const hasBlinkingTask = blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
   const [expanded, setExpanded] = useState(hasBlinkingTask)
 
@@ -374,7 +342,8 @@ function WorkflowGroupCard({
       )}
     </div>
   )
-}
+})
+WorkflowGroupCard.displayName = 'WorkflowGroupCard'
 
 function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; categoryOptions: string[] }) {
   const queryClient = useQueryClient()
@@ -1331,25 +1300,25 @@ export default function TaskBoardPage() {
     },
   })
 
-  const handleDeleteTask = (id: number) => {
+  const handleDeleteTask = useCallback((id: number) => {
     if (window.confirm('이 작업을 삭제하시겠습니까?')) {
       deleteMutation.mutate(id)
     }
-  }
+  }, [deleteMutation])
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = useCallback(() => {
     const normalized = newCategoryName.trim()
     if (!normalized) return
     createCategoryMutation.mutate(normalized)
-  }
+  }, [createCategoryMutation, newCategoryName])
 
-  const handleDeleteCategory = (category: TaskCategory) => {
+  const handleDeleteCategory = useCallback((category: TaskCategory) => {
     if (!window.confirm(`[${category.name}] 카테고리를 삭제하시겠습니까?`)) return
     setDeletingCategoryId(category.id)
     deleteCategoryMutation.mutate(category)
-  }
+  }, [deleteCategoryMutation])
 
-  const findTaskById = async (taskId: number): Promise<Task | null> => {
+  const findTaskById = useCallback(async (taskId: number): Promise<Task | null> => {
     const normalizedTaskId = Math.abs(Number(taskId))
     if (!Number.isFinite(normalizedTaskId) || normalizedTaskId <= 0) return null
 
@@ -1371,18 +1340,18 @@ export default function TaskBoardPage() {
       }
       return null
     }
-  }
+  }, [calendarTaskMap])
 
-  const handleMiniCalendarTaskClick = async (taskId: number) => {
+  const handleMiniCalendarTaskClick = useCallback(async (taskId: number) => {
     const target = await findTaskById(taskId)
     if (!target) {
       addToast('error', '업무 상세 정보를 찾지 못했습니다.')
       return
     }
     setDetailTask(target)
-  }
+  }, [addToast, findTaskById])
 
-  const handleMiniCalendarTaskComplete = async (taskId: number) => {
+  const handleMiniCalendarTaskComplete = useCallback(async (taskId: number) => {
     const target = await findTaskById(taskId)
     if (!target) {
       addToast('error', '완료할 업무 정보를 찾지 못했습니다.')
@@ -1393,7 +1362,7 @@ export default function TaskBoardPage() {
       return
     }
     setCompletingTask(target)
-  }
+  }, [addToast, findTaskById])
 
   const allVisibleTasks = useMemo(
     () => QUADRANTS.flatMap((quadrant) => filterByFund(board?.[quadrant.key] || [])),
@@ -1476,7 +1445,7 @@ export default function TaskBoardPage() {
     })
   }, [allVisibleTasks])
 
-  const toggleTaskSelection = (taskId: number, selected: boolean) => {
+  const toggleTaskSelection = useCallback((taskId: number, selected: boolean) => {
     setSelectedTaskIds((prev) => {
       const next = new Set(prev)
       if (selected) {
@@ -1486,13 +1455,13 @@ export default function TaskBoardPage() {
       }
       return next
     })
-  }
+  }, [])
 
-  const clearSelectedTasks = () => {
+  const clearSelectedTasks = useCallback(() => {
     setSelectedTaskIds(new Set())
-  }
+  }, [])
 
-  const handleBulkComplete = () => {
+  const handleBulkComplete = useCallback(() => {
     const pendingTasks = selectedVisibleTasks.filter((task) => task.status !== 'completed')
     if (pendingTasks.length === 0) {
       addToast('error', '완료 가능한 업무가 선택되지 않았습니다.')
@@ -1509,9 +1478,9 @@ export default function TaskBoardPage() {
 
     setBulkCompleteQueue([])
     setShowBulkCompleteModal(true)
-  }
+  }, [addToast, selectedVisibleTasks])
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedVisibleTasks.length === 0) {
       addToast('error', '선택된 업무가 없습니다.')
       return
@@ -1520,9 +1489,9 @@ export default function TaskBoardPage() {
       return
     }
     bulkDeleteMutation.mutate({ taskIds: selectedVisibleTasks.map((task) => task.id) })
-  }
+  }, [addToast, bulkDeleteMutation, selectedVisibleTasks])
 
-  const handleOverdueConfirm = () => {
+  const handleOverdueConfirm = useCallback(() => {
     setStatusFilter('pending')
     setFundFilter('')
     setBoardView('board')
@@ -1535,9 +1504,9 @@ export default function TaskBoardPage() {
     window.setTimeout(() => {
       setBlinkingId((prev) => (prev === firstOverdueTask.id ? null : prev))
     }, 3000)
-  }
+  }, [overdueTasks])
 
-  const handleUrgentConfirm = () => {
+  const handleUrgentConfirm = useCallback(() => {
     setStatusFilter('pending')
     setFundFilter('')
     setBoardView('board')
@@ -1550,7 +1519,7 @@ export default function TaskBoardPage() {
     window.setTimeout(() => {
       setBlinkingId((prev) => (prev === firstUrgentTask.id ? null : prev))
     }, 3000)
-  }
+  }, [urgentTasks])
 
   if (isLoading) return <PageLoading />
 
