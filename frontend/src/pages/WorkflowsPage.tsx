@@ -1363,9 +1363,9 @@ function InstanceList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {activeSummary && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900 sm:text-sm">
           진행 중 {activeSummary.total}건 | 🔴 지연 {activeSummary.overdue}건 | 이번 주 마감 {activeSummary.weekDue}건
         </div>
       )}
@@ -1374,27 +1374,27 @@ function InstanceList({
         const dueBadge = dueToneBadge(dueMeta)
         return (
         <div key={inst.id} className="card-base overflow-hidden p-0">
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left hover:bg-gray-50">
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-gray-50">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-800">{inst.name}</p>
-              <p className="truncate text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-gray-200">
+              <p className="truncate text-[13px] font-medium text-gray-800">{inst.name}</p>
+              <p className="truncate text-[11px] text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <div className="h-1.5 w-36 overflow-hidden rounded-full bg-gray-200">
                   <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
                 </div>
                 <span className="text-[10px] font-medium text-gray-600">{inst.progress}</span>
                 {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={(event) => {
                   event.stopPropagation()
                   onPrintInstance(inst)
                 }}
-                className="secondary-btn inline-flex items-center gap-1"
+                className="secondary-btn btn-sm inline-flex items-center gap-1"
               >
-                <Printer size={14} /> 인쇄
+                <Printer size={13} /> 인쇄
               </button>
               {status === 'active' && (
                 <button
@@ -1402,7 +1402,7 @@ function InstanceList({
                     event.stopPropagation()
                     toggleInstanceEdit(inst)
                   }}
-                  className="secondary-btn text-sm"
+                  className="secondary-btn btn-sm text-xs"
                 >
                   수정
                 </button>
@@ -1413,7 +1413,7 @@ function InstanceList({
                     event.stopPropagation()
                     setOpenId(inst.id)
                   }}
-                  className="secondary-btn text-sm"
+                  className="secondary-btn btn-sm text-xs"
                 >
                   다음 단계 보기
                 </button>
@@ -1424,7 +1424,7 @@ function InstanceList({
                     event.stopPropagation()
                     openSwapTemplateModal(inst)
                   }}
-                  className="secondary-btn inline-flex items-center gap-1 text-sm"
+                  className="secondary-btn btn-sm inline-flex items-center gap-1 text-xs"
                   title="진행 전(0%) 워크플로 템플릿 교체"
                 >
                   <RefreshCcw size={13} />
@@ -1435,9 +1435,9 @@ function InstanceList({
             </div>
           </div>
           {openId === inst.id && (
-            <div className="border-t border-gray-100 p-3 space-y-1.5">
+            <div className="space-y-1 border-t border-gray-100 px-2.5 py-2">
               {status === 'active' && editingInstanceId === inst.id && editInstance && (
-                <div className="mb-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+                <div className="mb-2 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                   <div>
                     <label className="form-label">인스턴스 이름</label>
                     <input
@@ -1509,7 +1509,7 @@ function InstanceList({
                   step.status !== 'completed' &&
                   step.status !== 'skipped'
                 return (
-                  <div key={step.id} className="flex items-center gap-2 rounded bg-gray-50 p-2 text-sm">
+                  <div key={step.id} className="flex items-center gap-1.5 rounded bg-gray-50 px-2 py-1.5 text-xs">
                     {step.status === 'completed' ? (
                       <div className="flex items-center gap-1">
                         <Check size={14} className="text-emerald-600" />
@@ -1536,13 +1536,13 @@ function InstanceList({
                       <span className="w-4" />
                     )}
                     <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{step.step_name}</span>
-                    <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
+                    <span className="text-[11px] text-gray-500">{labelStatus(step.status)}</span>
                     {isCurrentStep && (
-                      <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                      <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
                         현재 단계
                       </span>
                     )}
-                    <span className="text-xs text-gray-500">{step.calculated_date}</span>
+                    <span className="text-[11px] text-gray-500">{step.calculated_date}</span>
                     {(() => {
                       const matchingDocs = docTemplates.filter(
                         (template) =>
@@ -1567,7 +1567,7 @@ function InstanceList({
                 )
               })}
               {status === 'active' && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
                       if (confirm('이 인스턴스를 취소하시겠습니까?')) cancelMut.mutate(inst.id)
