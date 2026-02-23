@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -24,6 +24,7 @@ class CapitalCall(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     items = relationship("CapitalCallItem", back_populates="capital_call", cascade="all, delete-orphan")
+    details = relationship("CapitalCallDetail", back_populates="capital_call", cascade="all, delete-orphan")
     linked_workflow_instance = relationship("WorkflowInstance")
 
 
@@ -41,6 +42,22 @@ class CapitalCallItem(Base):
     capital_call = relationship("CapitalCall", back_populates="items")
 
 
+class CapitalCallDetail(Base):
+    __tablename__ = "capital_call_details"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    capital_call_id = Column(Integer, ForeignKey("capital_calls.id", ondelete="CASCADE"), nullable=False, index=True)
+    lp_id = Column(Integer, ForeignKey("lps.id"), nullable=False, index=True)
+    commitment_ratio = Column(Float, nullable=True)
+    call_amount = Column(Float, nullable=False, default=0)
+    paid_amount = Column(Float, nullable=False, default=0)
+    paid_date = Column(Date, nullable=True)
+    status = Column(String, nullable=False, default="미납입")
+    reminder_sent = Column(Boolean, nullable=False, default=False)
+
+    capital_call = relationship("CapitalCall", back_populates="details")
+
+
 class Distribution(Base):
     __tablename__ = "distributions"
 
@@ -55,6 +72,7 @@ class Distribution(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     items = relationship("DistributionItem", back_populates="distribution", cascade="all, delete-orphan")
+    details = relationship("DistributionDetail", back_populates="distribution", cascade="all, delete-orphan")
 
 
 class DistributionItem(Base):
@@ -67,6 +85,19 @@ class DistributionItem(Base):
     profit = Column(Integer, nullable=False, default=0)
 
     distribution = relationship("Distribution", back_populates="items")
+
+
+class DistributionDetail(Base):
+    __tablename__ = "distribution_details"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    distribution_id = Column(Integer, ForeignKey("distributions.id", ondelete="CASCADE"), nullable=False, index=True)
+    lp_id = Column(Integer, ForeignKey("lps.id"), nullable=False, index=True)
+    distribution_amount = Column(Float, nullable=False, default=0)
+    distribution_type = Column(String, nullable=False, default="수익배분")
+    paid = Column(Boolean, nullable=False, default=False)
+
+    distribution = relationship("Distribution", back_populates="details")
 
 
 class Assembly(Base):
@@ -96,6 +127,9 @@ class ExitCommittee(Base):
     analyst_opinion = Column(Text, nullable=True)
     vote_result = Column(String, nullable=True)
     performance_fee = Column(Float, nullable=True)
+    agenda_summary = Column(Text, nullable=True)
+    resolution = Column(Text, nullable=True)
+    attendees = Column(Text, nullable=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -129,5 +163,9 @@ class ExitTrade(Base):
     fees = Column(Integer, nullable=False, default=0)
     net_amount = Column(Integer, nullable=True)
     realized_gain = Column(Integer, nullable=True)
+    settlement_status = Column(String, nullable=False, default="미정산")
+    settlement_date = Column(Date, nullable=True)
+    settlement_amount = Column(Float, nullable=True)
+    related_transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=True, index=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

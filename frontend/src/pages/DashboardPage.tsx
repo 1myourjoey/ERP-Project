@@ -217,6 +217,11 @@ export default function DashboardPage() {
         completedLastWeekTasks={completedLastWeekTasks}
         completedTodayCount={completedTodayCount}
         completedThisWeekCount={completedThisWeekCount}
+        investmentReviewActiveCount={baseData.investment_review_active_count || 0}
+        totalNav={baseData.total_nav || 0}
+        unpaidLpCount={baseData.unpaid_lp_count || 0}
+        pendingFeeCount={baseData.pending_fee_count || 0}
+        bizReportInProgressCount={baseData.biz_report_in_progress_count || 0}
         sidebarLoading={sidebarLoading}
         completedLoading={completedLoading}
         completingTaskId={completeTaskMut.variables?.id ?? null}

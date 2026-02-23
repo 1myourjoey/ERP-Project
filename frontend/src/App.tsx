@@ -10,12 +10,15 @@ import FundDetailPage from './pages/FundDetailPage'
 import LPManagementPage from './pages/LPManagementPage'
 import InvestmentsPage from './pages/InvestmentsPage'
 import InvestmentDetailPage from './pages/InvestmentDetailPage'
+import InvestmentReviewPage from './pages/InvestmentReviewPage'
 import BizReportsPage from './pages/BizReportsPage'
 import TransactionsPage from './pages/TransactionsPage'
 import ValuationsPage from './pages/ValuationsPage'
 import FundOperationsPage from './pages/FundOperationsPage'
 import AccountingPage from './pages/AccountingPage'
 import ExitsPage from './pages/ExitsPage'
+import FeeManagementPage from './pages/FeeManagementPage'
+import UsersPage from './pages/UsersPage'
 import ReportsPage from './pages/ReportsPage'
 import DocumentsPage from './pages/DocumentsPage'
 import TemplateManagementPage from './pages/TemplateManagementPage'
@@ -35,6 +38,7 @@ export default function App() {
         <Route path="/fund-overview" element={<FundOverviewPage />} />
         <Route path="/funds/:id" element={<FundDetailPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
+        <Route path="/investment-reviews" element={<InvestmentReviewPage />} />
         <Route path="/investments/:id" element={<InvestmentDetailPage />} />
         <Route path="/biz-reports" element={<BizReportsPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
@@ -42,6 +46,8 @@ export default function App() {
         <Route path="/fund-operations" element={<FundOperationsPage />} />
         <Route path="/accounting" element={<AccountingPage />} />
         <Route path="/exits" element={<ExitsPage />} />
+        <Route path="/fee-management" element={<FeeManagementPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/checklists" element={<Navigate to="/workflows?tab=checklists" replace />} />
         <Route path="/documents" element={<DocumentsPage />} />

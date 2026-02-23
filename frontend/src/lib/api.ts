@@ -331,6 +331,27 @@ export const createInvestment = (data: InvestmentInput) => api.post('/investment
 export const updateInvestment = (id: number, data: Partial<InvestmentInput>) => api.put(`/investments/${id}`, data).then(r => r.data)
 export const deleteInvestment = (id: number) => api.delete(`/investments/${id}`)
 
+export const fetchInvestmentReviews = (params?: { status?: string }): Promise<InvestmentReview[]> =>
+  api.get('/investment-reviews', { params }).then(r => r.data)
+export const fetchInvestmentReview = (id: number): Promise<InvestmentReviewDetail> =>
+  api.get(`/investment-reviews/${id}`).then(r => r.data)
+export const createInvestmentReview = (data: InvestmentReviewInput): Promise<InvestmentReview> =>
+  api.post('/investment-reviews', data).then(r => r.data)
+export const updateInvestmentReview = (id: number, data: Partial<InvestmentReviewInput>): Promise<InvestmentReview> =>
+  api.put(`/investment-reviews/${id}`, data).then(r => r.data)
+export const deleteInvestmentReview = (id: number) => api.delete(`/investment-reviews/${id}`)
+export const updateInvestmentReviewStatus = (id: number, status: string): Promise<InvestmentReview> =>
+  api.patch(`/investment-reviews/${id}/status`, { status }).then(r => r.data)
+export const convertInvestmentReview = (id: number): Promise<InvestmentReviewConvertResult> =>
+  api.post(`/investment-reviews/${id}/convert`).then(r => r.data)
+export const fetchReviewComments = (reviewId: number): Promise<ReviewComment[]> =>
+  api.get(`/investment-reviews/${reviewId}/comments`).then(r => r.data)
+export const createReviewComment = (reviewId: number, data: ReviewCommentInput): Promise<ReviewComment> =>
+  api.post(`/investment-reviews/${reviewId}/comments`, data).then(r => r.data)
+export const deleteReviewComment = (commentId: number) => api.delete(`/review-comments/${commentId}`)
+export const fetchInvestmentReviewWeeklySummary = (): Promise<InvestmentReviewWeeklySummary> =>
+  api.get('/investment-reviews/weekly-summary').then(r => r.data)
+
 export const fetchInvestmentDocuments = (investmentId: number) => api.get(`/investments/${investmentId}/documents`).then(r => r.data)
 export const createInvestmentDocument = (investmentId: number, data: InvestmentDocumentInput) => api.post(`/investments/${investmentId}/documents`, data).then(r => r.data)
 export const updateInvestmentDocument = (investmentId: number, documentId: number, data: Partial<InvestmentDocumentInput>) => api.put(`/investments/${investmentId}/documents/${documentId}`, data).then(r => r.data)
@@ -340,12 +361,44 @@ export const fetchVoteRecords = (params?: { company_id?: number; investment_id?:
 export const createVoteRecord = (data: VoteRecordInput): Promise<VoteRecord> => api.post('/vote-records', data).then(r => r.data)
 export const updateVoteRecord = (id: number, data: Partial<VoteRecordInput>): Promise<VoteRecord> => api.put(`/vote-records/${id}`, data).then(r => r.data)
 export const deleteVoteRecord = (id: number) => api.delete(`/vote-records/${id}`)
-export const fetchTransactions = (params?: { investment_id?: number; fund_id?: number; company_id?: number; type?: string }): Promise<Transaction[]> => api.get('/transactions', { params }).then(r => r.data)
+export const fetchTransactions = (
+  params?: {
+    investment_id?: number
+    fund_id?: number
+    company_id?: number
+    type?: string
+    transaction_subtype?: string
+    date_from?: string
+    date_to?: string
+  },
+): Promise<Transaction[]> => api.get('/transactions', { params }).then(r => r.data)
 export const fetchInvestmentTransactions = (investmentId: number): Promise<Transaction[]> => api.get(`/investments/${investmentId}/transactions`).then(r => r.data)
 export const fetchTransaction = (id: number): Promise<Transaction> => api.get(`/transactions/${id}`).then(r => r.data)
 export const createTransaction = (data: TransactionInput): Promise<Transaction> => api.post('/transactions', data).then(r => r.data)
 export const updateTransaction = (id: number, data: Partial<TransactionInput>): Promise<Transaction> => api.put(`/transactions/${id}`, data).then(r => r.data)
 export const deleteTransaction = (id: number) => api.delete(`/transactions/${id}`)
+export const fetchTransactionLedger = (
+  params?: {
+    investment_id?: number
+    fund_id?: number
+    company_id?: number
+    type?: string
+    transaction_subtype?: string
+    date_from?: string
+    date_to?: string
+  },
+): Promise<TransactionLedgerItem[]> => api.get('/transactions/ledger', { params }).then(r => r.data)
+export const fetchTransactionSummary = (
+  params?: {
+    investment_id?: number
+    fund_id?: number
+    company_id?: number
+    type?: string
+    transaction_subtype?: string
+    date_from?: string
+    date_to?: string
+  },
+): Promise<TransactionSummary> => api.get('/transactions/summary', { params }).then(r => r.data)
 export const fetchValuations = (params?: { investment_id?: number; fund_id?: number; company_id?: number; method?: string }): Promise<Valuation[]> => api.get('/valuations', { params }).then(r => r.data)
 export const fetchInvestmentValuations = (investmentId: number): Promise<Valuation[]> => api.get(`/investments/${investmentId}/valuations`).then(r => r.data)
 export const fetchValuation = (id: number): Promise<Valuation> => api.get(`/valuations/${id}`).then(r => r.data)
@@ -424,9 +477,109 @@ export const fetchExitTrade = (id: number): Promise<ExitTrade> => api.get(`/exit
 export const createExitTrade = (data: ExitTradeInput): Promise<ExitTrade> => api.post('/exit-trades', data).then(r => r.data)
 export const updateExitTrade = (id: number, data: Partial<ExitTradeInput>): Promise<ExitTrade> => api.put(`/exit-trades/${id}`, data).then(r => r.data)
 export const deleteExitTrade = (id: number) => api.delete(`/exit-trades/${id}`)
+export const settleExitTrade = (id: number, data: ExitTradeSettleInput): Promise<ExitTrade> =>
+  api.patch(`/exit-trades/${id}/settle`, data).then(r => r.data)
+export const fetchExitDashboard = (fund_id?: number): Promise<ExitDashboardResponse> =>
+  api.get('/exits/dashboard', { params: { fund_id } }).then(r => r.data)
+export const generateExitDistribution = (tradeId: number): Promise<{ ok: boolean; distribution_id: number; trade_id: number }> =>
+  api.post('/exits/generate-distribution', null, { params: { trade_id: tradeId } }).then(r => r.data)
 
 export const fetchFundPerformance = (fundId: number, params?: { as_of_date?: string }): Promise<FundPerformance> =>
   api.get(`/funds/${fundId}/performance`, { params }).then(r => r.data)
+
+export const fetchValuationNavSummary = (): Promise<ValuationNavSummaryItem[]> =>
+  api.get('/valuations/nav-summary').then(r => r.data)
+export const fetchValuationHistory = (investmentId: number): Promise<ValuationHistoryPoint[]> =>
+  api.get(`/valuations/history/${investmentId}`).then(r => r.data)
+export const bulkCreateValuations = (data: ValuationBulkCreateInput): Promise<Valuation[]> =>
+  api.post('/valuations/bulk', data).then(r => r.data)
+export const fetchValuationDashboard = (fund_id?: number): Promise<ValuationDashboardResponse> =>
+  api.get('/valuations/dashboard', { params: { fund_id } }).then(r => r.data)
+
+export const fetchCapitalCallDetails = (capitalCallId: number): Promise<CapitalCallDetail[]> =>
+  api.get(`/capital-calls/${capitalCallId}/details`).then(r => r.data)
+export const generateCapitalCallDetails = (
+  capitalCallId: number,
+  replaceExisting = true,
+): Promise<CapitalCallDetail[]> =>
+  api.post(`/capital-calls/${capitalCallId}/details/auto-generate`, null, {
+    params: { replace_existing: replaceExisting },
+  }).then(r => r.data)
+export const updateCapitalCallDetail = (
+  detailId: number,
+  data: CapitalCallDetailUpdateInput,
+): Promise<CapitalCallDetail> => api.patch(`/capital-call-details/${detailId}`, data).then(r => r.data)
+
+export const fetchDistributionDetails = (distributionId: number): Promise<DistributionDetail[]> =>
+  api.get(`/distributions/${distributionId}/details`).then(r => r.data)
+export const generateDistributionDetails = (
+  distributionId: number,
+  replaceExisting = true,
+): Promise<DistributionDetail[]> =>
+  api.post(`/distributions/${distributionId}/details/auto-generate`, null, {
+    params: { replace_existing: replaceExisting },
+  }).then(r => r.data)
+export const updateDistributionDetail = (
+  detailId: number,
+  data: DistributionDetailUpdateInput,
+): Promise<DistributionDetail> => api.patch(`/distribution-details/${detailId}`, data).then(r => r.data)
+
+export const fetchManagementFees = (params?: { fund_id?: number; year?: number }): Promise<ManagementFeeResponse[]> =>
+  api.get('/fees/management', { params }).then(r => r.data)
+export const fetchManagementFeesByFund = (fundId: number): Promise<ManagementFeeResponse[]> =>
+  api.get(`/fees/management/fund/${fundId}`).then(r => r.data)
+export const calculateManagementFee = (data: ManagementFeeCalculateInput): Promise<ManagementFeeResponse> =>
+  api.post('/fees/management/calculate', data).then(r => r.data)
+export const updateManagementFee = (id: number, data: ManagementFeeUpdateInput): Promise<ManagementFeeResponse> =>
+  api.patch(`/fees/management/${id}`, data).then(r => r.data)
+export const fetchFeeConfig = (fundId: number): Promise<FeeConfigResponse> =>
+  api.get(`/fees/config/${fundId}`).then(r => r.data)
+export const updateFeeConfig = (fundId: number, data: FeeConfigInput): Promise<FeeConfigResponse> =>
+  api.put(`/fees/config/${fundId}`, data).then(r => r.data)
+export const simulatePerformanceFee = (data: PerformanceFeeSimulateInput): Promise<PerformanceFeeSimulationResponse> =>
+  api.post('/fees/performance/simulate', data).then(r => r.data)
+export const fetchPerformanceFeeSimulations = (fundId: number): Promise<PerformanceFeeSimulationResponse[]> =>
+  api.get(`/fees/performance/fund/${fundId}`).then(r => r.data)
+export const updatePerformanceFeeSimulation = (
+  id: number,
+  data: PerformanceFeeSimulationUpdateInput,
+): Promise<PerformanceFeeSimulationResponse> => api.patch(`/fees/performance/${id}`, data).then(r => r.data)
+export const fetchFeeWaterfall = (fundId: number): Promise<WaterfallResponse> =>
+  api.get(`/fees/waterfall/${fundId}`).then(r => r.data)
+
+export const fetchBizReportMatrix = (year?: number): Promise<BizReportMatrixResponse> =>
+  api.get('/biz-reports/matrix', { params: { year } }).then(r => r.data)
+export const fetchBizReportTemplates = (): Promise<BizReportTemplateResponse[]> =>
+  api.get('/biz-report-templates').then(r => r.data)
+export const createBizReportTemplate = (data: BizReportTemplateInput): Promise<BizReportTemplateResponse> =>
+  api.post('/biz-report-templates', data).then(r => r.data)
+export const fetchBizReportRequests = (reportId: number): Promise<BizReportRequestResponse[]> =>
+  api.get(`/biz-reports/${reportId}/requests`).then(r => r.data)
+export const generateBizReportRequests = (reportId: number): Promise<BizReportRequestResponse[]> =>
+  api.post(`/biz-reports/${reportId}/requests/generate`).then(r => r.data)
+export const updateBizReportRequest = (
+  requestId: number,
+  data: BizReportRequestUpdateInput,
+): Promise<BizReportRequestResponse> => api.patch(`/biz-report-requests/${requestId}`, data).then(r => r.data)
+export const detectBizReportAnomalies = (requestId: number): Promise<BizReportAnomalyResponse[]> =>
+  api.post(`/biz-report-requests/${requestId}/detect-anomalies`).then(r => r.data)
+export const fetchBizReportAnomalies = (requestId: number): Promise<BizReportAnomalyResponse[]> =>
+  api.get(`/biz-report-requests/${requestId}/anomalies`).then(r => r.data)
+export const fetchBizReportCommentDiff = (requestId: number): Promise<BizReportCommentDiffResponse> =>
+  api.get(`/biz-report-requests/${requestId}/comment-diff`).then(r => r.data)
+export const generateBizReportExcel = (reportId: number): Promise<BizReportGenerationResponse> =>
+  api.post(`/biz-reports/${reportId}/generate-excel`).then(r => r.data)
+export const generateBizReportDocx = (reportId: number): Promise<BizReportGenerationResponse> =>
+  api.post(`/biz-reports/${reportId}/generate-docx`).then(r => r.data)
+
+export const fetchUsers = (activeOnly = false): Promise<UserResponse[]> =>
+  api.get('/users', { params: { active_only: activeOnly } }).then(r => r.data)
+export const createUser = (data: UserCreateInput): Promise<UserResponse> =>
+  api.post('/users', data).then(r => r.data)
+export const updateUser = (id: number, data: UserUpdateInput): Promise<UserResponse> =>
+  api.put(`/users/${id}`, data).then(r => r.data)
+export const deactivateUser = (id: number): Promise<UserResponse> =>
+  api.patch(`/users/${id}/deactivate`).then(r => r.data)
 
 // -- Checklist --
 export const fetchChecklists = (params?: { investment_id?: number }): Promise<ChecklistListItem[]> =>
@@ -467,6 +620,11 @@ export interface DashboardBaseResponse {
   date: string
   day_of_week: string
   monthly_reminder: boolean
+  investment_review_active_count: number
+  total_nav: number
+  unpaid_lp_count: number
+  pending_fee_count: number
+  biz_report_in_progress_count: number
   today: { tasks: Task[]; total_estimated_time: string }
   tomorrow: { tasks: Task[]; total_estimated_time: string }
   this_week: Task[]
@@ -522,6 +680,7 @@ export interface FundOverviewItem {
   no: number
   id: number
   name: string
+  status?: string | null
   fund_type: string
   fund_manager: string | null
   formation_date: string | null
@@ -546,6 +705,7 @@ export interface FundOverviewTotals {
   total_paid_in: number
   gp_commitment: number
   total_invested: number
+  total_distributed?: number
   uninvested: number
   investment_assets: number
   company_count: number
@@ -1077,6 +1237,10 @@ export interface LPAddressBook {
   updated_at: string | null
   related_funds_count?: number
   related_funds?: LPAddressBookRelatedFund[]
+  total_commitment?: number
+  total_paid_in?: number
+  outstanding_balance?: number
+  paid_in_ratio?: number
 }
 
 export interface LPAddressBookRelatedFund {
@@ -1222,6 +1386,18 @@ export interface CompanyInput {
   memo?: string | null
 }
 
+export interface Investment {
+  id: number
+  fund_id: number
+  company_id: number
+  fund_name?: string
+  company_name?: string
+  investment_date?: string | null
+  amount?: number | null
+  instrument?: string | null
+  status?: string
+}
+
 export interface InvestmentInput {
   fund_id: number
   company_id: number
@@ -1238,6 +1414,101 @@ export interface InvestmentInput {
   valuation_post?: number | null
   ownership_pct?: number | null
   board_seat?: string | null
+}
+
+export interface InvestmentReviewInput {
+  company_name: string
+  sector?: string | null
+  stage?: string | null
+  deal_source?: string | null
+  reviewer?: string | null
+  status?: string | null
+  target_amount?: number | null
+  pre_valuation?: number | null
+  post_valuation?: number | null
+  instrument?: string | null
+  fund_id?: number | null
+  review_start_date?: string | null
+  dd_start_date?: string | null
+  committee_date?: string | null
+  decision_date?: string | null
+  execution_date?: string | null
+  review_opinion?: string | null
+  committee_opinion?: string | null
+  decision_result?: string | null
+  rejection_reason?: string | null
+  investment_id?: number | null
+}
+
+export interface ReviewCommentInput {
+  author: string
+  content: string
+  comment_type?: string | null
+}
+
+export interface ReviewComment {
+  id: number
+  review_id: number
+  author: string
+  content: string
+  comment_type: string
+  created_at: string
+}
+
+export interface InvestmentReview {
+  id: number
+  company_name: string
+  sector: string | null
+  stage: string | null
+  deal_source: string | null
+  reviewer: string | null
+  status: string
+  target_amount: number | null
+  pre_valuation: number | null
+  post_valuation: number | null
+  instrument: string | null
+  fund_id: number | null
+  review_start_date: string | null
+  dd_start_date: string | null
+  committee_date: string | null
+  decision_date: string | null
+  execution_date: string | null
+  review_opinion: string | null
+  committee_opinion: string | null
+  decision_result: string | null
+  rejection_reason: string | null
+  investment_id: number | null
+  created_at: string
+  updated_at: string
+  comment_count?: number
+  recent_activity_at?: string | null
+}
+
+export interface InvestmentReviewDetail extends InvestmentReview {
+  comments: ReviewComment[]
+}
+
+export interface InvestmentReviewConvertResult {
+  review_id: number
+  investment_id: number
+  company_id: number
+  status: string
+}
+
+export interface InvestmentReviewWeeklyActivity {
+  review_id: number
+  company_name: string
+  status: string
+  updated_at: string
+  comment_count: number
+}
+
+export interface InvestmentReviewWeeklySummary {
+  status_counts: Record<string, number>
+  new_count: number
+  status_changed_count: number
+  comments_added_count: number
+  recent_activities: InvestmentReviewWeeklyActivity[]
 }
 
 export interface InvestmentDocumentInput {
@@ -1278,6 +1549,10 @@ export interface TransactionInput {
   company_id: number
   transaction_date: string
   type: string
+  transaction_subtype?: string | null
+  counterparty?: string | null
+  conversion_detail?: string | null
+  settlement_date?: string | null
   amount: number
   shares_change?: number | null
   balance_before?: number | null
@@ -1294,6 +1569,10 @@ export interface Transaction {
   company_id: number
   transaction_date: string
   type: string
+  transaction_subtype: string | null
+  counterparty: string | null
+  conversion_detail: string | null
+  settlement_date: string | null
   amount: number
   shares_change: number | null
   balance_before: number | null
@@ -1304,6 +1583,23 @@ export interface Transaction {
   created_at: string
   fund_name?: string
   company_name?: string
+}
+
+export interface TransactionLedgerItem extends Transaction {
+  running_balance: number | null
+}
+
+export interface TransactionSummaryItem {
+  type: string
+  transaction_subtype: string | null
+  count: number
+  total_amount: number
+}
+
+export interface TransactionSummary {
+  total_count: number
+  total_amount: number
+  items: TransactionSummaryItem[]
 }
 
 export interface ValuationInput {
@@ -1922,6 +2218,374 @@ export interface WorkLogInsights {
   recent_lessons: string[]
   follow_up_rate: { total: number; completed: number }
   category_avg_time: Record<string, number>
+}
+
+export interface ValuationInput {
+  valuation_method?: string | null
+  instrument_type?: string | null
+  conversion_price?: number | null
+  exercise_price?: number | null
+  liquidation_pref?: number | null
+  participation_cap?: number | null
+  fair_value_per_share?: number | null
+  total_fair_value?: number | null
+  book_value?: number | null
+  unrealized_gain_loss?: number | null
+  valuation_date?: string | null
+}
+
+export interface Valuation {
+  valuation_method?: string | null
+  instrument_type?: string | null
+  conversion_price?: number | null
+  exercise_price?: number | null
+  liquidation_pref?: number | null
+  participation_cap?: number | null
+  fair_value_per_share?: number | null
+  total_fair_value?: number | null
+  book_value?: number | null
+  unrealized_gain_loss?: number | null
+  valuation_date?: string | null
+}
+
+export interface ExitTradeInput {
+  settlement_status?: string | null
+  settlement_date?: string | null
+  settlement_amount?: number | null
+  related_transaction_id?: number | null
+}
+
+export interface ExitTrade {
+  settlement_status?: string | null
+  settlement_date?: string | null
+  settlement_amount?: number | null
+  related_transaction_id?: number | null
+}
+
+export interface ExitTradeSettleInput {
+  settlement_amount: number
+  settlement_date: string
+  memo?: string | null
+}
+
+export interface ExitDashboardItem {
+  investment_id: number
+  company_name: string
+  invested_amount: number
+  recovered_amount: number
+  moic: number | null
+  status: string
+}
+
+export interface ExitDashboardResponse {
+  total_invested: number
+  total_recovered: number
+  total_moic: number | null
+  items: ExitDashboardItem[]
+}
+
+export interface ValuationNavSummaryItem {
+  fund_id: number
+  fund_name: string
+  total_nav: number
+  total_unrealized_gain_loss: number
+  valuation_count: number
+}
+
+export interface ValuationHistoryPoint {
+  id: number
+  as_of_date: string
+  valuation_date: string | null
+  total_fair_value: number | null
+  book_value: number | null
+  unrealized_gain_loss: number | null
+  method: string | null
+  valuation_method: string | null
+}
+
+export interface ValuationBulkItemInput {
+  investment_id: number
+  fund_id: number
+  company_id: number
+  value: number
+  book_value?: number | null
+  total_fair_value?: number | null
+  unrealized_gain_loss?: number | null
+  method?: string | null
+  valuation_method?: string | null
+  instrument?: string | null
+  instrument_type?: string | null
+  basis?: string | null
+}
+
+export interface ValuationBulkCreateInput {
+  as_of_date: string
+  valuation_date?: string | null
+  evaluator?: string | null
+  items: ValuationBulkItemInput[]
+}
+
+export interface ValuationDashboardItem {
+  investment_id: number
+  company_name: string
+  instrument: string | null
+  instrument_type: string | null
+  book_value: number | null
+  total_fair_value: number | null
+  unrealized_gain_loss: number | null
+  valuation_date: string | null
+  method: string | null
+  valuation_method: string | null
+}
+
+export interface ValuationDashboardResponse {
+  total_nav: number
+  total_unrealized_gain_loss: number
+  valuation_count: number
+  unvalued_count: number
+  items: ValuationDashboardItem[]
+}
+
+export interface CapitalCallDetail {
+  id: number
+  capital_call_id: number
+  lp_id: number
+  commitment_ratio: number | null
+  call_amount: number
+  paid_amount: number
+  paid_date: string | null
+  status: string
+  reminder_sent: boolean
+  lp_name: string | null
+}
+
+export interface CapitalCallDetailUpdateInput {
+  commitment_ratio?: number | null
+  call_amount?: number | null
+  paid_amount?: number | null
+  paid_date?: string | null
+  status?: string | null
+  reminder_sent?: boolean
+}
+
+export interface DistributionDetail {
+  id: number
+  distribution_id: number
+  lp_id: number
+  distribution_amount: number
+  distribution_type: string
+  paid: boolean
+  lp_name: string | null
+}
+
+export interface DistributionDetailUpdateInput {
+  distribution_amount?: number | null
+  distribution_type?: string | null
+  paid?: boolean
+}
+
+export interface ManagementFeeCalculateInput {
+  fund_id: number
+  year: number
+  quarter: number
+}
+
+export interface ManagementFeeUpdateInput {
+  status?: string | null
+  invoice_date?: string | null
+  payment_date?: string | null
+  memo?: string | null
+}
+
+export interface ManagementFeeResponse {
+  id: number
+  fund_id: number
+  year: number
+  quarter: number
+  fee_basis: string
+  fee_rate: number
+  basis_amount: number
+  fee_amount: number
+  status: string
+  invoice_date: string | null
+  payment_date: string | null
+  memo: string | null
+  created_at: string
+  fund_name: string | null
+}
+
+export interface FeeConfigInput {
+  mgmt_fee_rate: number
+  mgmt_fee_basis: string
+  mgmt_fee_period: string
+  liquidation_fee_rate?: number | null
+  liquidation_fee_basis?: string | null
+  hurdle_rate: number
+  carry_rate: number
+  catch_up_rate?: number | null
+  clawback: boolean
+}
+
+export interface FeeConfigResponse extends FeeConfigInput {
+  id: number
+  fund_id: number
+}
+
+export interface PerformanceFeeSimulateInput {
+  fund_id: number
+  simulation_date: string
+  scenario?: string
+}
+
+export interface PerformanceFeeSimulationUpdateInput {
+  status?: string | null
+}
+
+export interface PerformanceFeeSimulationResponse {
+  id: number
+  fund_id: number
+  simulation_date: string
+  scenario: string
+  total_paid_in: number | null
+  total_distributed: number | null
+  hurdle_amount: number | null
+  excess_profit: number | null
+  carry_amount: number | null
+  lp_net_return: number | null
+  status: string
+  created_at: string
+  fund_name: string | null
+}
+
+export interface WaterfallResponse {
+  total_distributed: number
+  lp_return_of_capital: number
+  lp_hurdle_return: number
+  gp_catch_up: number
+  gp_carry: number
+  lp_residual: number
+}
+
+export interface BizReportTemplateInput {
+  name: string
+  report_type: string
+  required_fields?: string | null
+  template_file_id?: number | null
+  instructions?: string | null
+}
+
+export interface BizReportTemplateResponse extends BizReportTemplateInput {
+  id: number
+  created_at: string
+}
+
+export interface BizReportRequestUpdateInput {
+  request_date?: string | null
+  deadline?: string | null
+  status?: string | null
+  revenue?: number | null
+  operating_income?: number | null
+  net_income?: number | null
+  total_assets?: number | null
+  total_equity?: number | null
+  cash?: number | null
+  employees?: number | null
+  prev_revenue?: number | null
+  prev_operating_income?: number | null
+  prev_net_income?: number | null
+  comment?: string | null
+  reviewer_comment?: string | null
+  risk_flag?: string | null
+}
+
+export interface BizReportRequestResponse {
+  id: number
+  biz_report_id: number
+  investment_id: number
+  investment_name: string | null
+  request_date: string | null
+  deadline: string | null
+  status: string
+  revenue: number | null
+  operating_income: number | null
+  net_income: number | null
+  total_assets: number | null
+  total_equity: number | null
+  cash: number | null
+  employees: number | null
+  prev_revenue: number | null
+  prev_operating_income: number | null
+  prev_net_income: number | null
+  comment: string | null
+  reviewer_comment: string | null
+  risk_flag: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BizReportAnomalyResponse {
+  id: number
+  request_id: number
+  anomaly_type: string
+  severity: string
+  detail: string | null
+  acknowledged: boolean
+  created_at: string
+}
+
+export interface BizReportCommentDiffResponse {
+  current_comment: string | null
+  previous_comment: string | null
+  changed: boolean
+}
+
+export interface BizReportMatrixCell {
+  quarter: string
+  status: string
+  report_id: number | null
+}
+
+export interface BizReportMatrixRow {
+  fund_id: number
+  fund_name: string
+  cells: BizReportMatrixCell[]
+}
+
+export interface BizReportMatrixResponse {
+  rows: BizReportMatrixRow[]
+}
+
+export interface BizReportGenerationResponse {
+  filename: string
+  content_type: string
+  base64_data: string
+}
+
+export interface UserCreateInput {
+  email: string
+  name: string
+  role?: string
+  department?: string | null
+  is_active?: boolean
+}
+
+export interface UserUpdateInput {
+  email?: string | null
+  name?: string | null
+  role?: string | null
+  department?: string | null
+  is_active?: boolean
+}
+
+export interface UserResponse {
+  id: number
+  email: string
+  name: string
+  role: string
+  department: string | null
+  is_active: boolean
+  last_login_at: string | null
+  created_at: string
 }
 
 

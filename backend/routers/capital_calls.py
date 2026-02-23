@@ -8,13 +8,15 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.fund import Fund, LP
-from models.phase3 import CapitalCall, CapitalCallItem
+from models.phase3 import CapitalCall, CapitalCallDetail, CapitalCallItem
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from schemas.phase3 import (
     CapitalCallBatchCreate,
     CapitalCallCreate,
+    CapitalCallDetailResponse,
+    CapitalCallDetailUpdate,
     CapitalCallItemCreate,
     CapitalCallItemListItem,
     CapitalCallItemResponse,
@@ -302,6 +304,22 @@ def _serialize_capital_call(call: CapitalCall, db: Session, fund_name: str = "")
         "created_at": call.created_at,
         "fund_name": fund_name,
     }
+
+
+def _serialize_capital_call_detail(row: CapitalCallDetail, db: Session) -> CapitalCallDetailResponse:
+    lp = db.get(LP, row.lp_id)
+    return CapitalCallDetailResponse(
+        id=row.id,
+        capital_call_id=row.capital_call_id,
+        lp_id=row.lp_id,
+        commitment_ratio=float(row.commitment_ratio) if row.commitment_ratio is not None else None,
+        call_amount=float(row.call_amount or 0),
+        paid_amount=float(row.paid_amount or 0),
+        paid_date=row.paid_date,
+        status=row.status,
+        reminder_sent=bool(row.reminder_sent),
+        lp_name=lp.name if lp else None,
+    )
 
 
 def _append_workflow_variance_log(instance: WorkflowInstance, message: str) -> None:
@@ -744,6 +762,129 @@ def delete_capital_call_item(capital_call_id: int, item_id: int, db: Session = D
     except Exception:
         db.rollback()
         raise
+
+
+@router.get(
+    "/api/capital-calls/{capital_call_id}/details",
+    response_model=list[CapitalCallDetailResponse],
+)
+def list_capital_call_details(capital_call_id: int, db: Session = Depends(get_db)):
+    call = db.get(CapitalCall, capital_call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Capital call not found")
+    rows = (
+        db.query(CapitalCallDetail)
+        .filter(CapitalCallDetail.capital_call_id == capital_call_id)
+        .order_by(CapitalCallDetail.id.asc())
+        .all()
+    )
+    return [_serialize_capital_call_detail(row, db) for row in rows]
+
+
+@router.post(
+    "/api/capital-calls/{capital_call_id}/details/auto-generate",
+    response_model=list[CapitalCallDetailResponse],
+)
+def auto_generate_capital_call_details(
+    capital_call_id: int,
+    replace_existing: bool = True,
+    db: Session = Depends(get_db),
+):
+    call = db.get(CapitalCall, capital_call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Capital call not found")
+
+    lp_rows = (
+        db.query(LP)
+        .filter(LP.fund_id == call.fund_id)
+        .order_by(LP.id.asc())
+        .all()
+    )
+    lp_rows = [row for row in lp_rows if float(row.commitment or 0) > 0]
+    if not lp_rows:
+        raise HTTPException(status_code=400, detail="약정금이 있는 LP가 없어 자동 생성할 수 없습니다")
+
+    if replace_existing:
+        for existing in (
+            db.query(CapitalCallDetail)
+            .filter(CapitalCallDetail.capital_call_id == capital_call_id)
+            .all()
+        ):
+            db.delete(existing)
+
+    total_commitment = sum(float(row.commitment or 0) for row in lp_rows)
+    total_amount = float(call.total_amount or 0)
+    assigned = 0.0
+    created: list[CapitalCallDetail] = []
+    for idx, lp in enumerate(lp_rows):
+        ratio = float(lp.commitment or 0) / total_commitment if total_commitment else 0.0
+        if idx == len(lp_rows) - 1:
+            amount = max(total_amount - assigned, 0.0)
+        else:
+            amount = round(total_amount * ratio, 2)
+            assigned += amount
+        row = CapitalCallDetail(
+            capital_call_id=capital_call_id,
+            lp_id=lp.id,
+            commitment_ratio=round(ratio * 100, 4),
+            call_amount=amount,
+            paid_amount=0,
+            paid_date=None,
+            status="미납입" if amount > 0 else "완납",
+            reminder_sent=False,
+        )
+        db.add(row)
+        created.append(row)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    for row in created:
+        db.refresh(row)
+    return [_serialize_capital_call_detail(row, db) for row in created]
+
+
+@router.patch(
+    "/api/capital-call-details/{detail_id}",
+    response_model=CapitalCallDetailResponse,
+)
+def update_capital_call_detail(
+    detail_id: int,
+    data: CapitalCallDetailUpdate,
+    db: Session = Depends(get_db),
+):
+    row = db.get(CapitalCallDetail, detail_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Capital call detail not found")
+
+    payload = data.model_dump(exclude_unset=True)
+    if "status" in payload and payload["status"] is not None:
+        payload["status"] = payload["status"].strip()
+    for key, value in payload.items():
+        setattr(row, key, value)
+
+    paid_amount = float(row.paid_amount or 0)
+    call_amount = float(row.call_amount or 0)
+    if "status" not in payload:
+        if paid_amount <= 0:
+            row.status = "미납입"
+        elif paid_amount < call_amount:
+            row.status = "일부납입"
+        else:
+            row.status = "완납"
+    if paid_amount > 0 and row.paid_date is None:
+        row.paid_date = date.today()
+    if paid_amount <= 0 and row.status == "미납입":
+        row.paid_date = None
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(row)
+    return _serialize_capital_call_detail(row, db)
 
 
 @router.get("/api/capital-calls/summary/{fund_id}", response_model=CapitalCallSummaryResponse)

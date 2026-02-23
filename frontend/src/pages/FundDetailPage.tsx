@@ -22,10 +22,13 @@ import {
   fetchDistributionItems,
   fetchDistributions,
   fetchDocumentStatus,
+  fetchFeeConfig,
   fetchFund,
   fetchInvestments,
+  fetchManagementFeesByFund,
   fetchLPTransfers,
   fetchLPAddressBooks,
+  fetchValuations,
   fetchWorkflows,
   fetchWorkflowInstances,
   updateAssembly,
@@ -49,12 +52,15 @@ import {
   type FundNoticePeriodInput,
   type CapitalCall,
   type CapitalCallSummary,
+  type FeeConfigResponse,
   type LP,
   type LPAddressBook,
   type LPInput,
   type LPTransfer,
   type LPTransferInput,
+  type ManagementFeeResponse,
   type NoticeDeadlineResult,
+  type Valuation,
   type WorkflowInstance,
   type WorkflowListItem,
 } from '../lib/api'
@@ -141,6 +147,8 @@ const FUND_DETAIL_TABS = [
   { id: 'info', label: '기본정보' },
   { id: 'capital', label: '자본 및 LP 현황' },
   { id: 'portfolio', label: '투자 포트폴리오' },
+  { id: 'nav', label: 'NAV 추이' },
+  { id: 'fees', label: '보수' },
   { id: 'terms', label: '규약 및 컴플라이언스' },
 ] as const
 
@@ -1151,6 +1159,24 @@ export default function FundDetailPage() {
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
 
+  const { data: fundValuations = [] } = useQuery<Valuation[]>({
+    queryKey: ['valuations', { fund_id: fundId }],
+    queryFn: () => fetchValuations({ fund_id: fundId }),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: fundManagementFees = [] } = useQuery<ManagementFeeResponse[]>({
+    queryKey: ['fees', 'management', fundId],
+    queryFn: () => fetchManagementFeesByFund(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: fundFeeConfig } = useQuery<FeeConfigResponse>({
+    queryKey: ['fees', 'config', fundId],
+    queryFn: () => fetchFeeConfig(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
   const { data: missingDocs } = useQuery<DocumentStatusItem[]>({
     queryKey: ['documentStatus', { fund_id: fundId, status: 'pending' }],
     queryFn: () => fetchDocumentStatus({ fund_id: fundId, status: 'pending' }),
@@ -1251,6 +1277,45 @@ export default function FundDetailPage() {
   const totalInvestmentAmount = useMemo(
     () => (investments ?? []).reduce((sum, inv) => sum + (inv.amount ?? 0), 0),
     [investments],
+  )
+
+  const navSeries = useMemo(() => {
+    const grouped = new Map<string, number>()
+    for (const row of fundValuations) {
+      const dateKey = row.valuation_date || row.as_of_date
+      if (!dateKey) continue
+      const navValue = Number(row.total_fair_value ?? row.value ?? 0)
+      grouped.set(dateKey, (grouped.get(dateKey) || 0) + navValue)
+    }
+    return [...grouped.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, nav]) => ({ date, nav }))
+  }, [fundValuations])
+
+  const navSparklinePath = useMemo(() => {
+    if (navSeries.length < 2) return ''
+    const width = 100
+    const height = 36
+    const min = Math.min(...navSeries.map((row) => row.nav))
+    const max = Math.max(...navSeries.map((row) => row.nav))
+    const range = Math.max(1, max - min)
+    return navSeries
+      .map((row, index) => {
+        const x = (index / (navSeries.length - 1)) * width
+        const y = height - ((row.nav - min) / range) * height
+        return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+      })
+      .join(' ')
+  }, [navSeries])
+
+  const latestNav = navSeries.length > 0 ? navSeries[navSeries.length - 1].nav : 0
+  const feeTotalAmount = useMemo(
+    () => fundManagementFees.reduce((sum, row) => sum + Number(row.fee_amount || 0), 0),
+    [fundManagementFees],
+  )
+  const feePendingCount = useMemo(
+    () => fundManagementFees.filter((row) => row.status !== '수령').length,
+    [fundManagementFees],
   )
 
   const sortedCapitalCalls = useMemo(
@@ -3023,6 +3088,126 @@ export default function FundDetailPage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'nav' && (
+            <div className="card-base space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">NAV 추이</h3>
+                <button onClick={() => navigate('/valuations')} className="secondary-btn">가치평가 화면으로 이동</button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  최신 NAV
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatKRW(latestNav)}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  평가 레코드 수
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{fundValuations.length}건</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  시계열 포인트
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{navSeries.length}개</p>
+                </div>
+              </div>
+
+              {navSeries.length === 0 ? (
+                <p className="rounded border border-dashed border-gray-300 px-3 py-8 text-center text-sm text-gray-500">
+                  NAV 추이를 계산할 평가 데이터가 없습니다.
+                </p>
+              ) : (
+                <div className="rounded border border-gray-200 bg-white p-3">
+                  <svg viewBox="0 0 100 36" className="h-32 w-full">
+                    {navSparklinePath ? (
+                      <path d={navSparklinePath} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" />
+                    ) : (
+                      <line x1="0" y1="18" x2="100" y2="18" stroke="#93c5fd" strokeWidth="2" />
+                    )}
+                  </svg>
+                  <div className="mt-2 overflow-auto">
+                    <table className="min-w-[480px] w-full text-sm">
+                      <thead className="bg-gray-50 text-xs text-gray-500">
+                        <tr>
+                          <th className="px-3 py-2 text-left">기준일</th>
+                          <th className="px-3 py-2 text-right">NAV</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {[...navSeries].reverse().slice(0, 8).map((row) => (
+                          <tr key={row.date}>
+                            <td className="px-3 py-2">{toDate(row.date)}</td>
+                            <td className="px-3 py-2 text-right">{formatKRW(row.nav)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'fees' && (
+            <div className="card-base space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">보수</h3>
+                <button onClick={() => navigate('/fee-management')} className="secondary-btn">보수 관리 화면으로 이동</button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  관리보수율
+                  <p className="mt-1 text-base font-semibold text-gray-900">
+                    {fundFeeConfig?.mgmt_fee_rate != null ? `${(Number(fundFeeConfig.mgmt_fee_rate) * 100).toFixed(2)}%` : '-'}
+                  </p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  관리보수 기준
+                  <p className="mt-1 text-base font-semibold text-gray-900">{fundFeeConfig?.mgmt_fee_basis || '-'}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  누적 관리보수
+                  <p className="mt-1 text-base font-semibold text-gray-900">{formatKRW(feeTotalAmount)}</p>
+                </div>
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  미수령 건수
+                  <p className="mt-1 text-base font-semibold text-gray-900">{feePendingCount}건</p>
+                </div>
+              </div>
+
+              <div className="overflow-auto rounded border border-gray-200">
+                <table className="min-w-[720px] w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">분기</th>
+                      <th className="px-3 py-2 text-left">기준</th>
+                      <th className="px-3 py-2 text-right">기준금액</th>
+                      <th className="px-3 py-2 text-right">보수금액</th>
+                      <th className="px-3 py-2 text-left">상태</th>
+                      <th className="px-3 py-2 text-left">청구/수령일</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {fundManagementFees.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">관리보수 이력이 없습니다.</td>
+                      </tr>
+                    ) : (
+                      fundManagementFees.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-3 py-2">{row.year} Q{row.quarter}</td>
+                          <td className="px-3 py-2">{row.fee_basis}</td>
+                          <td className="px-3 py-2 text-right">{formatKRW(row.basis_amount)}</td>
+                          <td className="px-3 py-2 text-right">{formatKRW(row.fee_amount)}</td>
+                          <td className="px-3 py-2">{row.status}</td>
+                          <td className="px-3 py-2">{toDate(row.payment_date || row.invoice_date)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

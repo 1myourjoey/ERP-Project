@@ -54,6 +54,26 @@ export function invalidateFundRelated(queryClient: QueryClient, fundId?: number 
     ['capitalCallSummary'],
     ['fundPerformance'],
     ['lpAddressBooks'],
+    ['transactions'],
+    ['transactionLedger'],
+    ['transactionSummary'],
+    ['valuations'],
+    ['valuations', 'dashboard'],
+    ['valuations', 'nav-summary'],
+    ['capitalCallDetails'],
+    ['distributionDetails'],
+    ['fees', 'management'],
+    ['fees', 'performance'],
+    ['fees', 'config'],
+    ['fees', 'waterfall'],
+    ['bizReports', 'matrix'],
+    ['bizReportRequests'],
+    ['bizReportAnomalies'],
+    ['bizReportTemplates'],
+    ['users'],
+    ['investmentReviews'],
+    ['investmentReview'],
+    ['investmentReviewWeeklySummary'],
   ])
   if (fundId) {
     invalidateMany(queryClient, [
@@ -63,6 +83,49 @@ export function invalidateFundRelated(queryClient: QueryClient, fundId?: number 
       ['capitalCalls', fundId],
       ['capitalCallSummary', fundId],
       ['fundPerformance', fundId],
+      ['valuations', 'dashboard', fundId],
+      ['fees', 'management', fundId],
+      ['fees', 'performance', fundId],
+      ['fees', 'config', fundId],
+      ['fees', 'waterfall', fundId],
+      ['investmentReviews', fundId],
+      ['transactions', fundId],
     ])
   }
+}
+
+export function invalidateFeeRelated(queryClient: QueryClient, fundId?: number | null) {
+  invalidateMany(queryClient, [
+    ['fees', 'management'],
+    ['fees', 'performance'],
+    ['fees', 'config'],
+    ['fees', 'waterfall'],
+    ['dashboard'],
+    ['dashboard-base'],
+  ])
+  if (fundId) {
+    invalidateMany(queryClient, [
+      ['fees', 'management', fundId],
+      ['fees', 'performance', fundId],
+      ['fees', 'config', fundId],
+      ['fees', 'waterfall', fundId],
+    ])
+  }
+}
+
+export function invalidateBizReportRelated(queryClient: QueryClient) {
+  invalidateMany(queryClient, [
+    ['bizReports'],
+    ['bizReports', 'matrix'],
+    ['bizReportRequests'],
+    ['bizReportAnomalies'],
+    ['bizReportCommentDiff'],
+    ['bizReportTemplates'],
+    ['dashboard'],
+    ['dashboard-base'],
+  ])
+}
+
+export function invalidateUserRelated(queryClient: QueryClient) {
+  invalidateMany(queryClient, [['users']])
 }

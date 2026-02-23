@@ -93,6 +93,40 @@ class CapitalCallItemListItem(CapitalCallItemResponse):
     lp_name: str = ""
 
 
+class CapitalCallDetailCreate(BaseModel):
+    lp_id: int
+    commitment_ratio: Optional[float] = None
+    call_amount: float
+    paid_amount: float = 0
+    paid_date: Optional[date] = None
+    status: str = "미납입"
+    reminder_sent: bool = False
+
+
+class CapitalCallDetailUpdate(BaseModel):
+    commitment_ratio: Optional[float] = None
+    call_amount: Optional[float] = None
+    paid_amount: Optional[float] = None
+    paid_date: Optional[date] = None
+    status: Optional[str] = None
+    reminder_sent: Optional[bool] = None
+
+
+class CapitalCallDetailResponse(BaseModel):
+    id: int
+    capital_call_id: int
+    lp_id: int
+    commitment_ratio: Optional[float] = None
+    call_amount: float
+    paid_amount: float
+    paid_date: Optional[date] = None
+    status: str
+    reminder_sent: bool
+    lp_name: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class CapitalCallSummaryCall(BaseModel):
     id: int
     round: int
@@ -183,6 +217,31 @@ class DistributionItemListItem(DistributionItemResponse):
     lp_name: str = ""
 
 
+class DistributionDetailCreate(BaseModel):
+    lp_id: int
+    distribution_amount: float
+    distribution_type: str = "수익배분"
+    paid: bool = False
+
+
+class DistributionDetailUpdate(BaseModel):
+    distribution_amount: Optional[float] = None
+    distribution_type: Optional[str] = None
+    paid: Optional[bool] = None
+
+
+class DistributionDetailResponse(BaseModel):
+    id: int
+    distribution_id: int
+    lp_id: int
+    distribution_amount: float
+    distribution_type: str
+    paid: bool
+    lp_name: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class AssemblyCreate(BaseModel):
     fund_id: int
     type: str
@@ -231,6 +290,9 @@ class ExitCommitteeCreate(BaseModel):
     analyst_opinion: Optional[str] = None
     vote_result: Optional[str] = None
     performance_fee: Optional[float] = None
+    agenda_summary: Optional[str] = None
+    resolution: Optional[str] = None
+    attendees: Optional[str] = None
     memo: Optional[str] = None
 
 
@@ -244,6 +306,9 @@ class ExitCommitteeUpdate(BaseModel):
     analyst_opinion: Optional[str] = None
     vote_result: Optional[str] = None
     performance_fee: Optional[float] = None
+    agenda_summary: Optional[str] = None
+    resolution: Optional[str] = None
+    attendees: Optional[str] = None
     memo: Optional[str] = None
 
 
@@ -258,6 +323,9 @@ class ExitCommitteeResponse(BaseModel):
     analyst_opinion: Optional[str] = None
     vote_result: Optional[str] = None
     performance_fee: Optional[float] = None
+    agenda_summary: Optional[str] = None
+    resolution: Optional[str] = None
+    attendees: Optional[str] = None
     memo: Optional[str] = None
     created_at: datetime
 
@@ -304,6 +372,10 @@ class ExitTradeCreate(BaseModel):
     fees: int = 0
     net_amount: Optional[int] = None
     realized_gain: Optional[int] = None
+    settlement_status: str = "미정산"
+    settlement_date: Optional[date] = None
+    settlement_amount: Optional[float] = None
+    related_transaction_id: Optional[int] = None
     memo: Optional[str] = None
 
 
@@ -320,6 +392,10 @@ class ExitTradeUpdate(BaseModel):
     fees: Optional[int] = None
     net_amount: Optional[int] = None
     realized_gain: Optional[int] = None
+    settlement_status: Optional[str] = None
+    settlement_date: Optional[date] = None
+    settlement_amount: Optional[float] = None
+    related_transaction_id: Optional[int] = None
     memo: Optional[str] = None
 
 
@@ -337,6 +413,10 @@ class ExitTradeResponse(BaseModel):
     fees: int
     net_amount: Optional[int] = None
     realized_gain: Optional[int] = None
+    settlement_status: str
+    settlement_date: Optional[date] = None
+    settlement_amount: Optional[float] = None
+    related_transaction_id: Optional[int] = None
     memo: Optional[str] = None
     created_at: datetime
 
@@ -346,6 +426,28 @@ class ExitTradeResponse(BaseModel):
 class ExitTradeListItem(ExitTradeResponse):
     fund_name: str = ""
     company_name: str = ""
+
+
+class ExitTradeSettleRequest(BaseModel):
+    settlement_amount: float
+    settlement_date: date
+    memo: Optional[str] = None
+
+
+class ExitDashboardItem(BaseModel):
+    investment_id: int
+    company_name: str
+    invested_amount: float
+    recovered_amount: float
+    moic: Optional[float] = None
+    status: str
+
+
+class ExitDashboardResponse(BaseModel):
+    total_invested: float
+    total_recovered: float
+    total_moic: Optional[float] = None
+    items: list[ExitDashboardItem]
 
 
 class FundPerformanceResponse(BaseModel):

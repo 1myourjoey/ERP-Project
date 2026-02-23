@@ -21,6 +21,7 @@ from routers import (
     dashboard,
     funds,
     investments,
+    investment_reviews,
     checklists,
     calendar_events,
     document_status,
@@ -31,6 +32,8 @@ from routers import (
     distributions,
     assemblies,
     exits,
+    fees,
+    users,
     performance,
     biz_reports,
     regular_reports,
@@ -169,6 +172,10 @@ def ensure_sqlite_compat_columns():
             ("investments", "valuation_post", "REAL"),
             ("investments", "ownership_pct", "REAL"),
             ("investments", "board_seat", "TEXT"),
+            ("transactions", "transaction_subtype", "TEXT"),
+            ("transactions", "counterparty", "TEXT"),
+            ("transactions", "conversion_detail", "TEXT"),
+            ("transactions", "settlement_date", "DATE"),
             ("exit_committees", "performance_fee", "REAL"),
             ("biz_reports", "fund_id", "INTEGER"),
             ("checklists", "investment_id", "INTEGER"),
@@ -191,9 +198,239 @@ def ensure_sqlite_compat_columns():
             ("lp_address_books", "created_at", "DATETIME"),
             ("lp_address_books", "updated_at", "DATETIME"),
             ("fund_notice_periods", "day_basis", "TEXT DEFAULT 'business'"),
+            ("valuations", "valuation_method", "TEXT"),
+            ("valuations", "instrument_type", "TEXT"),
+            ("valuations", "conversion_price", "REAL"),
+            ("valuations", "exercise_price", "REAL"),
+            ("valuations", "liquidation_pref", "REAL"),
+            ("valuations", "participation_cap", "REAL"),
+            ("valuations", "fair_value_per_share", "REAL"),
+            ("valuations", "total_fair_value", "REAL"),
+            ("valuations", "book_value", "REAL"),
+            ("valuations", "unrealized_gain_loss", "REAL"),
+            ("valuations", "valuation_date", "DATE"),
+            ("exit_committees", "agenda_summary", "TEXT"),
+            ("exit_committees", "resolution", "TEXT"),
+            ("exit_committees", "attendees", "TEXT"),
+            ("exit_trades", "settlement_status", "TEXT DEFAULT 'pending'"),
+            ("exit_trades", "settlement_date", "DATE"),
+            ("exit_trades", "settlement_amount", "REAL"),
+            ("exit_trades", "related_transaction_id", "INTEGER"),
         ]:
             if has_table(table) and not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+
+        if has_table("exit_trades") and has_column("exit_trades", "settlement_status"):
+            conn.exec_driver_sql(
+                "UPDATE exit_trades SET settlement_status = 'pending' "
+                "WHERE settlement_status IS NULL OR TRIM(settlement_status) = ''"
+            )
+
+        if has_table("capital_calls") and not has_table("capital_call_details"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE capital_call_details (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    capital_call_id INTEGER NOT NULL,
+                    lp_id INTEGER NOT NULL,
+                    commitment_ratio REAL,
+                    call_amount REAL NOT NULL DEFAULT 0,
+                    paid_amount REAL NOT NULL DEFAULT 0,
+                    paid_date DATE,
+                    status TEXT NOT NULL DEFAULT '미납',
+                    reminder_sent INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY(capital_call_id) REFERENCES capital_calls(id) ON DELETE CASCADE,
+                    FOREIGN KEY(lp_id) REFERENCES lps(id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_capital_call_details_capital_call_id ON capital_call_details(capital_call_id)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_capital_call_details_lp_id ON capital_call_details(lp_id)"
+            )
+
+        if has_table("distributions") and not has_table("distribution_details"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE distribution_details (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    distribution_id INTEGER NOT NULL,
+                    lp_id INTEGER NOT NULL,
+                    distribution_amount REAL NOT NULL DEFAULT 0,
+                    distribution_type TEXT NOT NULL DEFAULT '수익배분',
+                    paid INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY(distribution_id) REFERENCES distributions(id) ON DELETE CASCADE,
+                    FOREIGN KEY(lp_id) REFERENCES lps(id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_distribution_details_distribution_id ON distribution_details(distribution_id)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_distribution_details_lp_id ON distribution_details(lp_id)"
+            )
+
+        if not has_table("management_fees"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE management_fees (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fund_id INTEGER NOT NULL,
+                    year INTEGER NOT NULL,
+                    quarter INTEGER NOT NULL,
+                    fee_basis TEXT NOT NULL DEFAULT 'commitment',
+                    fee_rate REAL NOT NULL DEFAULT 0,
+                    basis_amount REAL NOT NULL DEFAULT 0,
+                    fee_amount REAL NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT '계산완료',
+                    invoice_date DATE,
+                    payment_date DATE,
+                    memo TEXT,
+                    created_at DATETIME,
+                    FOREIGN KEY(fund_id) REFERENCES funds(id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_management_fees_fund_id ON management_fees(fund_id)"
+            )
+
+        if not has_table("fee_configs"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE fee_configs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fund_id INTEGER NOT NULL UNIQUE,
+                    mgmt_fee_rate REAL NOT NULL DEFAULT 0.02,
+                    mgmt_fee_basis TEXT NOT NULL DEFAULT 'commitment',
+                    mgmt_fee_period TEXT NOT NULL DEFAULT 'operating',
+                    liquidation_fee_rate REAL,
+                    liquidation_fee_basis TEXT,
+                    hurdle_rate REAL NOT NULL DEFAULT 0.08,
+                    carry_rate REAL NOT NULL DEFAULT 0.20,
+                    catch_up_rate REAL,
+                    clawback INTEGER NOT NULL DEFAULT 1,
+                    FOREIGN KEY(fund_id) REFERENCES funds(id)
+                )
+                """
+            )
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_fee_configs_fund_id ON fee_configs(fund_id)")
+
+        if not has_table("performance_fee_simulations"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE performance_fee_simulations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fund_id INTEGER NOT NULL,
+                    simulation_date DATE NOT NULL,
+                    scenario TEXT NOT NULL DEFAULT 'base',
+                    total_paid_in REAL,
+                    total_distributed REAL,
+                    hurdle_amount REAL,
+                    excess_profit REAL,
+                    carry_amount REAL,
+                    lp_net_return REAL,
+                    status TEXT NOT NULL DEFAULT '시뮬레이션',
+                    created_at DATETIME,
+                    FOREIGN KEY(fund_id) REFERENCES funds(id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_performance_fee_simulations_fund_id ON performance_fee_simulations(fund_id)"
+            )
+
+        if not has_table("biz_report_templates"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE biz_report_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    report_type TEXT NOT NULL,
+                    required_fields TEXT,
+                    template_file_id INTEGER,
+                    instructions TEXT,
+                    created_at DATETIME
+                )
+                """
+            )
+
+        if has_table("biz_reports") and not has_table("biz_report_requests"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE biz_report_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    biz_report_id INTEGER NOT NULL,
+                    investment_id INTEGER NOT NULL,
+                    request_date DATE,
+                    deadline DATE,
+                    status TEXT NOT NULL DEFAULT '미요청',
+                    revenue REAL,
+                    operating_income REAL,
+                    net_income REAL,
+                    total_assets REAL,
+                    total_equity REAL,
+                    cash REAL,
+                    employees INTEGER,
+                    prev_revenue REAL,
+                    prev_operating_income REAL,
+                    prev_net_income REAL,
+                    comment TEXT,
+                    reviewer_comment TEXT,
+                    risk_flag TEXT,
+                    created_at DATETIME,
+                    updated_at DATETIME,
+                    FOREIGN KEY(biz_report_id) REFERENCES biz_reports(id) ON DELETE CASCADE,
+                    FOREIGN KEY(investment_id) REFERENCES investments(id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_biz_report_requests_biz_report_id ON biz_report_requests(biz_report_id)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_biz_report_requests_investment_id ON biz_report_requests(investment_id)"
+            )
+
+        if has_table("biz_report_requests") and not has_table("biz_report_anomalies"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE biz_report_anomalies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    request_id INTEGER NOT NULL,
+                    anomaly_type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    detail TEXT,
+                    acknowledged INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME,
+                    FOREIGN KEY(request_id) REFERENCES biz_report_requests(id) ON DELETE CASCADE
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_biz_report_anomalies_request_id ON biz_report_anomalies(request_id)"
+            )
+
+        if not has_table("users"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL,
+                    password_hash TEXT,
+                    role TEXT NOT NULL DEFAULT 'viewer',
+                    department TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    last_login_at DATETIME,
+                    created_at DATETIME
+                )
+                """
+            )
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)")
 
         if has_table("fund_notice_periods") and has_column("fund_notice_periods", "day_basis"):
             conn.exec_driver_sql(
@@ -240,6 +477,7 @@ app.include_router(worklogs.router)
 app.include_router(dashboard.router)
 app.include_router(funds.router)
 app.include_router(investments.router)
+app.include_router(investment_reviews.router)
 app.include_router(checklists.router)
 app.include_router(calendar_events.router)
 app.include_router(document_status.router)
@@ -250,6 +488,8 @@ app.include_router(capital_calls.router)
 app.include_router(distributions.router)
 app.include_router(assemblies.router)
 app.include_router(exits.router)
+app.include_router(fees.router)
+app.include_router(users.router)
 app.include_router(performance.router)
 app.include_router(biz_reports.router)
 app.include_router(regular_reports.router)

@@ -37,6 +37,11 @@ interface DashboardDefaultViewProps {
   completedLastWeekTasks: Task[]
   completedTodayCount: number
   completedThisWeekCount: number
+  investmentReviewActiveCount: number
+  totalNav: number
+  unpaidLpCount: number
+  pendingFeeCount: number
+  bizReportInProgressCount: number
   sidebarLoading: boolean
   completedLoading: boolean
   completingTaskId: number | null
@@ -74,6 +79,11 @@ function DashboardDefaultView({
   completedLastWeekTasks,
   completedTodayCount,
   completedThisWeekCount,
+  investmentReviewActiveCount,
+  totalNav,
+  unpaidLpCount,
+  pendingFeeCount,
+  bizReportInProgressCount,
   sidebarLoading,
   completedLoading,
   completingTaskId,
@@ -133,6 +143,13 @@ function DashboardDefaultView({
         <DashboardStatCard label="📁 미수집 서류" value={missingDocuments.length} onClick={() => onOpenPopup('documents')} />
         <DashboardStatCard label="📊 보고 마감" value={upcomingReports.length} onClick={() => onOpenPopup('reports')} />
         <DashboardStatCard label="✅ 오늘 완료" value={completedTodayCount} onClick={() => onOpenPopup('completed')} variant="emerald" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <DashboardStatCard label="🧾 진행 심의" value={investmentReviewActiveCount} onClick={() => navigate('/investment-reviews')} />
+        <DashboardStatCard label="💎 운용 NAV" value={Math.round(totalNav || 0)} valueSuffix="원" onClick={() => navigate('/valuations')} />
+        <DashboardStatCard label="⚠️ 미납 LP" value={unpaidLpCount} onClick={() => navigate('/fund-operations')} variant={unpaidLpCount > 0 ? 'danger' : 'default'} />
+        <DashboardStatCard label="💼 미수령 보수" value={pendingFeeCount} onClick={() => navigate('/fee-management')} />
+        <DashboardStatCard label="📝 진행 보고" value={bizReportInProgressCount} onClick={() => navigate('/biz-reports')} />
       </div>
 
       {monthlyReminder && (

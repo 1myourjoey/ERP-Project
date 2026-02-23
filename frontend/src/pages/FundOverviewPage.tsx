@@ -58,17 +58,26 @@ export default function FundOverviewPage() {
     window.open(url, '_blank')
   }
 
-  const summaryCards = useMemo(
+  const kpiCards = useMemo(
     () => [
-      { label: '조합 수', value: formatNumber(funds.length) },
-      { label: '약정총액 합계', value: formatMillion(totals?.commitment_total) },
-      { label: '납입총액 합계', value: formatMillion(totals?.total_paid_in) },
-      { label: 'GP출자금 합계', value: formatMillion(totals?.gp_commitment) },
-      { label: '투자총액 합계', value: formatMillion(totals?.total_invested) },
-      { label: '미투자액 합계', value: formatMillion(totals?.uninvested) },
-      { label: '투자업체수 합계', value: formatNumber(totals?.company_count) },
+      { label: '총 약정액', value: `${formatMillion(totals?.commitment_total)} 백만원` },
+      {
+        label: '투자율',
+        value:
+          totals?.commitment_total && totals.commitment_total > 0
+            ? `${formatPercent((totals.total_invested / totals.commitment_total) * 100)}`
+            : '-',
+      },
+      {
+        label: '배분율',
+        value:
+          totals?.commitment_total && totals.commitment_total > 0 && (totals.total_distributed ?? null) != null
+            ? `${formatPercent(((totals.total_distributed || 0) / totals.commitment_total) * 100)}`
+            : '-',
+      },
+      { label: '운용 NAV', value: `${formatMillion(totals?.investment_assets)} 백만원` },
     ],
-    [funds.length, totals],
+    [totals],
   )
 
   return (
@@ -99,8 +108,8 @@ export default function FundOverviewPage() {
         <p className="info-banner-text">조합을 클릭하여 상세 정보를 확인하세요.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        {summaryCards.map((card) => (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {kpiCards.map((card) => (
           <div key={card.label} className="card-base p-4">
             <p className="text-xs text-gray-500">{card.label}</p>
             <p className="mt-1 text-lg font-semibold text-gray-900">{card.value}</p>
@@ -126,6 +135,7 @@ export default function FundOverviewPage() {
                   <th className="table-head-cell sticky left-0 z-30 bg-gray-50">NO</th>
                   <th className="table-head-cell">조합명</th>
                   <th className="table-head-cell">조합 구분</th>
+                  <th className="table-head-cell">상태</th>
                   <th className="table-head-cell">대표 펀드매니저</th>
                   <th className="table-head-cell">등록(성립)일</th>
                   <th className="table-head-cell">투자기간 종료일</th>
@@ -153,11 +163,22 @@ export default function FundOverviewPage() {
                     <td className="table-body-cell sticky left-0 z-10 bg-white font-medium">{fund.no}</td>
                     <td className="table-body-cell font-medium text-gray-900">{fund.name}</td>
                     <td className="table-body-cell text-gray-700">{fund.fund_type}</td>
+                    <td className="table-body-cell">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                        {fund.status || '-'}
+                      </span>
+                    </td>
                     <td className="table-body-cell text-gray-700">{fund.fund_manager || '-'}</td>
                     <td className="table-body-cell text-gray-600">{fund.registration_date || fund.formation_date || '-'}</td>
                     <td className="table-body-cell text-gray-600">{fund.investment_period_end || '-'}</td>
                     <td className={`table-body-cell font-medium ${getRatioClass(fund.investment_period_progress)}`}>
-                      {formatPercent(fund.investment_period_progress)}
+                      <div>{formatPercent(fund.investment_period_progress)}</div>
+                      <div className="mt-1 h-1.5 w-full rounded-full bg-gray-100">
+                        <div
+                          className="h-1.5 rounded-full bg-blue-500"
+                          style={{ width: `${Math.max(0, Math.min(100, fund.investment_period_progress || 0))}%` }}
+                        />
+                      </div>
                     </td>
                     <td className="table-body-cell text-gray-600">{fund.maturity_date || '-'}</td>
                     <td className="table-body-cell text-right">{formatMillion(fund.commitment_total)}</td>
@@ -175,7 +196,7 @@ export default function FundOverviewPage() {
                   </tr>
                 ))}
                 <tr className="sticky bottom-0 z-20 border-t-2 border-gray-900 bg-gray-100 font-semibold text-gray-900 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-                  <td className="sticky left-0 z-30 bg-gray-100 px-3 py-3" colSpan={8}>
+                  <td className="sticky left-0 z-30 bg-gray-100 px-3 py-3" colSpan={9}>
                     합계
                   </td>
                   <td className="px-3 py-3 text-right">{formatMillion(totals?.commitment_total)}</td>

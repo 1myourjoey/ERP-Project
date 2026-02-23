@@ -61,6 +61,11 @@ class DashboardBaseResponse(BaseModel):
     date: str
     day_of_week: str
     monthly_reminder: bool
+    investment_review_active_count: int = 0
+    total_nav: float = 0
+    unpaid_lp_count: int = 0
+    pending_fee_count: int = 0
+    biz_report_in_progress_count: int = 0
     today: DashboardTaskBucket
     tomorrow: DashboardTaskBucket
     this_week: list[TaskResponse] = Field(default_factory=list)
@@ -90,6 +95,11 @@ class DashboardTodayResponse(BaseModel):
     date: str
     day_of_week: str
     monthly_reminder: bool
+    investment_review_active_count: int = 0
+    total_nav: float = 0
+    unpaid_lp_count: int = 0
+    pending_fee_count: int = 0
+    biz_report_in_progress_count: int = 0
     today: DashboardTaskBucket
     tomorrow: DashboardTaskBucket
     this_week: list[TaskResponse] = Field(default_factory=list)

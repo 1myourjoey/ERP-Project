@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   KanbanSquare,
+  ClipboardCheck,
   BookOpen,
   BarChart3,
   Building2,
@@ -17,6 +18,7 @@ import {
   Landmark,
   Files,
   FileCode2,
+  Users,
   Menu,
   Search,
   X,
@@ -62,6 +64,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
       { to: '/fund-overview', label: '조합 개요', icon: BarChart3 },
       { to: '/funds', label: '조합 관리', icon: Building2 },
       { to: '/investments', label: '투자 관리', icon: PieChart },
+      { to: '/investment-reviews', label: '투자 심의', icon: ClipboardCheck },
       { to: '/workflows', label: '워크플로우', icon: GitBranch },
       { to: '/exits', label: '회수 관리', icon: TrendingDown },
     ],
@@ -72,12 +75,14 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
       { to: '/transactions', label: '거래원장', icon: ListTree },
       { to: '/valuations', label: '가치평가', icon: LineChart },
       { to: '/accounting', label: '회계 관리', icon: Calculator },
+      { to: '/fee-management', label: '보수 관리', icon: Landmark },
     ],
   },
   {
     label: '관리',
     items: [
       { to: '/lp-management', label: 'LP 관리', icon: Building2 },
+      { to: '/users', label: '사용자 관리', icon: Users },
       { to: '/biz-reports', label: '영업보고', icon: FileText },
       { to: '/reports', label: '보고공시', icon: Send },
       { to: '/fund-operations', label: '조합 운영', icon: Landmark },

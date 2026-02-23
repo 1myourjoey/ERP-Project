@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.calendar_event import CalendarEvent
+from models.investment_review import InvestmentReview
 from models.task import Task
 from schemas.calendar_event import CalendarEventCreate, CalendarEventUpdate, CalendarEventResponse
 
@@ -95,6 +96,40 @@ def list_events(
                     "color": "#8b5cf6" if is_workflow_task else "#3b82f6",
                 }
             )
+
+    review_query = db.query(InvestmentReview).filter(InvestmentReview.committee_date.isnot(None))
+    if date_from:
+        review_query = review_query.filter(InvestmentReview.committee_date >= date_from)
+    if date_to:
+        review_query = review_query.filter(InvestmentReview.committee_date <= date_to)
+    if year and month:
+        month_start = date(year, month, 1)
+        month_end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        review_query = review_query.filter(
+            InvestmentReview.committee_date >= month_start,
+            InvestmentReview.committee_date < month_end,
+        )
+    for review in review_query.order_by(InvestmentReview.committee_date.asc(), InvestmentReview.id.asc()).all():
+        review_status = (review.status or "").strip()
+        review_done = review_status in {"완료", "중단"}
+        mapped_status = "completed" if review_done else "pending"
+        if status and status != mapped_status:
+            continue
+        events.append(
+            {
+                "id": -2_000_000 - review.id,
+                "title": f"투심위: {review.company_name}",
+                "date": review.committee_date,
+                "time": None,
+                "duration": None,
+                "description": review.committee_opinion or review.review_opinion,
+                "status": mapped_status,
+                "task_id": None,
+                "quadrant": None,
+                "event_type": "committee",
+                "color": "#f97316",
+            }
+        )
 
     events.sort(key=lambda event: (event["date"], event["time"] or time.max, event["id"]))
     return events

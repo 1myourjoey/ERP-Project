@@ -12,6 +12,13 @@ import {
 import { useToast } from '../contexts/ToastContext'
 
 const LP_TYPE_OPTIONS = ['institutional', 'individual', 'GP']
+const LP_TYPE_LABEL: Record<string, string> = {
+  institutional: '기관투자자',
+  individual: '개인',
+  GP: '법인',
+  corporate: '법인',
+  government: '정부기관',
+}
 
 const EMPTY_FORM: LPAddressBookInput = {
   name: '',
@@ -28,6 +35,7 @@ export default function LPManagementPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [keyword, setKeyword] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [editing, setEditing] = useState<LPAddressBook | null>(null)
   const [form, setForm] = useState<LPAddressBookInput>(EMPTY_FORM)
@@ -94,12 +102,19 @@ export default function LPManagementPage() {
     createMut.mutate(payload)
   }
 
+  const visibleBooks = books.filter((book) => {
+    if (!typeFilter) return true
+    return (book.type || '').toLowerCase() === typeFilter.toLowerCase()
+  })
+
+  const formatAmount = (value?: number) => `₩${Math.round(value || 0).toLocaleString('ko-KR')}`
+
   return (
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">LP Management</h2>
-          <p className="page-subtitle">Manage global LP master data and related funds.</p>
+          <h2 className="page-title">LP 관리</h2>
+          <p className="page-subtitle">유형별 LP 현황과 출자 진행률을 함께 관리합니다.</p>
         </div>
       </div>
 
@@ -192,9 +207,21 @@ export default function LPManagementPage() {
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search name/type/business number"
+              placeholder="이름/유형/사업자번호 검색"
               className="rounded-lg border px-3 py-2 text-sm"
             />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+            >
+              <option value="">전체 유형</option>
+              {Array.from(new Set(books.map((book) => book.type).filter(Boolean))).map((type) => (
+                <option key={type} value={type}>
+                  {LP_TYPE_LABEL[type] || type}
+                </option>
+              ))}
+            </select>
             <label className="inline-flex items-center gap-1 text-xs text-gray-600">
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
               Include inactive
@@ -204,29 +231,51 @@ export default function LPManagementPage() {
 
         {isLoading ? (
           <p className="text-sm text-gray-500">Loading...</p>
-        ) : !books.length ? (
+        ) : !visibleBooks.length ? (
           <p className="text-sm text-gray-400">No entries found.</p>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
-                  <th className="px-2 py-2 text-left">Name</th>
-                  <th className="px-2 py-2 text-left">Type</th>
-                  <th className="px-2 py-2 text-left">Business No</th>
-                  <th className="px-2 py-2 text-left">Contact</th>
-                  <th className="px-2 py-2 text-left">Related Funds</th>
-                  <th className="px-2 py-2 text-left">Status</th>
-                  <th className="px-2 py-2 text-left">Actions</th>
+                  <th className="px-2 py-2 text-left">이름</th>
+                  <th className="px-2 py-2 text-left">유형</th>
+                  <th className="px-2 py-2 text-left">사업자번호</th>
+                  <th className="px-2 py-2 text-left">연락처</th>
+                  <th className="px-2 py-2 text-right">약정액</th>
+                  <th className="px-2 py-2 text-right">납입액</th>
+                  <th className="px-2 py-2 text-left">납입 진행률</th>
+                  <th className="px-2 py-2 text-right">출자 잔액</th>
+                  <th className="px-2 py-2 text-left">연관 조합</th>
+                  <th className="px-2 py-2 text-left">상태</th>
+                  <th className="px-2 py-2 text-left">작업</th>
                 </tr>
               </thead>
               <tbody>
-                {books.map((book) => (
+                {visibleBooks.map((book) => (
                   <tr key={book.id} className="border-t">
                     <td className="px-2 py-2">{book.name}</td>
-                    <td className="px-2 py-2">{book.type}</td>
+                    <td className="px-2 py-2">{LP_TYPE_LABEL[book.type] || book.type}</td>
                     <td className="px-2 py-2">{book.business_number || '-'}</td>
                     <td className="px-2 py-2">{book.contact || '-'}</td>
+                    <td className="px-2 py-2 text-right">{formatAmount(book.total_commitment)}</td>
+                    <td className="px-2 py-2 text-right">{formatAmount(book.total_paid_in)}</td>
+                    <td className="px-2 py-2">
+                      <div className="w-40">
+                        <div className="h-2 rounded-full bg-gray-100">
+                          <div
+                            className="h-2 rounded-full bg-blue-500"
+                            style={{ width: `${Math.max(0, Math.min(100, book.paid_in_ratio || 0))}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] text-gray-500">{(book.paid_in_ratio || 0).toFixed(1)}%</p>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <span className={book.outstanding_balance && book.outstanding_balance > 0 ? 'font-semibold text-amber-700' : 'text-gray-700'}>
+                        {formatAmount(book.outstanding_balance)}
+                      </span>
+                    </td>
                     <td className="px-2 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">

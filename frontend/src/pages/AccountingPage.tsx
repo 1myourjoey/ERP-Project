@@ -21,7 +21,7 @@ import {
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 
-type TabKey = 'accounts' | 'journal' | 'trial'
+type TabKey = 'accounts' | 'journal' | 'ledger' | 'trial'
 
 const CATEGORY_OPTIONS = ['자산', '부채', '자본', '수익', '비용']
 const ENTRY_STATUS_OPTIONS = ['미결재', '결재완료']
@@ -229,6 +229,7 @@ export default function AccountingPage() {
   const [tab, setTab] = useState<TabKey>('accounts')
   const [fundId, setFundId] = useState<number | null>(null)
   const [asOfDate, setAsOfDate] = useState(todayIso())
+  const [ledgerAccountId, setLedgerAccountId] = useState<number | null>(null)
 
   const [newAccount, setNewAccount] = useState<AccountInput>({
     fund_id: null,
@@ -356,6 +357,40 @@ export default function AccountingPage() {
     () => new Map((accounts || []).map((account) => [account.id, `${account.code} ${account.name}`])),
     [accounts],
   )
+  const selectedLedgerAccountId = useMemo(
+    () => ledgerAccountId || accounts?.[0]?.id || null,
+    [ledgerAccountId, accounts],
+  )
+  const ledgerRows = useMemo(() => {
+    if (!selectedLedgerAccountId || !entries?.length) return []
+    const rows = entries
+      .flatMap((entry) =>
+        entry.lines
+          .filter((line) => line.account_id === selectedLedgerAccountId)
+          .map((line) => ({
+            entry_id: entry.id,
+            entry_date: entry.entry_date,
+            description: entry.description || '-',
+            debit: Number(line.debit || 0),
+            credit: Number(line.credit || 0),
+          })),
+      )
+      .sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.entry_id - b.entry_id)
+
+    let running = 0
+    return rows.map((row) => {
+      running += row.debit - row.credit
+      return { ...row, running_balance: running }
+    })
+  }, [entries, selectedLedgerAccountId])
+  const ledgerTotals = useMemo(
+    () => ({
+      debit: ledgerRows.reduce((sum, row) => sum + row.debit, 0),
+      credit: ledgerRows.reduce((sum, row) => sum + row.credit, 0),
+      balance: ledgerRows.length ? ledgerRows[ledgerRows.length - 1].running_balance : 0,
+    }),
+    [ledgerRows],
+  )
 
   return (
     <div className="page-container space-y-4">
@@ -375,6 +410,7 @@ export default function AccountingPage() {
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>계정과목</button>
         <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>전표</button>
+        <button onClick={() => setTab('ledger')} className={`rounded px-3 py-1.5 text-sm ${tab === 'ledger' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>계정별 원장</button>
         <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>합계잔액</button>
       </div>
 
@@ -596,6 +632,75 @@ export default function AccountingPage() {
                 </div>
               ))}
           {!entries?.length && <EmptyState emoji="🧮" message="전표가 없어요" className="py-8" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'ledger' && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">계정별 원장 조회</h3>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">계정과목</label>
+                <select
+                  value={selectedLedgerAccountId || ''}
+                  onChange={(e) => setLedgerAccountId(Number(e.target.value) || null)}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  {(accounts || []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.code} {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-base">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">원장</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-600">
+                    <th className="px-2 py-2">전표일</th>
+                    <th className="px-2 py-2">전표ID</th>
+                    <th className="px-2 py-2">적요</th>
+                    <th className="px-2 py-2 text-right">차변</th>
+                    <th className="px-2 py-2 text-right">대변</th>
+                    <th className="px-2 py-2 text-right">잔액</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerRows.map((row) => (
+                    <tr key={`${row.entry_id}-${row.entry_date}-${row.debit}-${row.credit}`} className="border-b">
+                      <td className="px-2 py-2">{row.entry_date}</td>
+                      <td className="px-2 py-2">#{row.entry_id}</td>
+                      <td className="px-2 py-2">{row.description}</td>
+                      <td className="px-2 py-2 text-right">{formatNumber(row.debit)}</td>
+                      <td className="px-2 py-2 text-right">{formatNumber(row.credit)}</td>
+                      <td className="px-2 py-2 text-right font-medium">{formatNumber(row.running_balance)}</td>
+                    </tr>
+                  ))}
+                  {!ledgerRows.length && (
+                    <tr>
+                      <td colSpan={6} className="px-2 py-1">
+                        <EmptyState emoji="📒" message="선택한 계정 원장 데이터가 없어요" className="py-8" />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 font-semibold text-gray-800">
+                    <td className="px-2 py-2" colSpan={3}>합계</td>
+                    <td className="px-2 py-2 text-right">{formatNumber(ledgerTotals.debit)}</td>
+                    <td className="px-2 py-2 text-right">{formatNumber(ledgerTotals.credit)}</td>
+                    <td className="px-2 py-2 text-right">{formatNumber(ledgerTotals.balance)}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         </div>

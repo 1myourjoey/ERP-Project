@@ -10,6 +10,10 @@ class TransactionCreate(BaseModel):
     company_id: int
     transaction_date: date
     type: str
+    transaction_subtype: Optional[str] = None
+    counterparty: Optional[str] = None
+    conversion_detail: Optional[str] = None
+    settlement_date: Optional[date] = None
     amount: float
     shares_change: Optional[int] = None
     balance_before: Optional[float] = None
@@ -25,6 +29,10 @@ class TransactionUpdate(BaseModel):
     company_id: Optional[int] = None
     transaction_date: Optional[date] = None
     type: Optional[str] = None
+    transaction_subtype: Optional[str] = None
+    counterparty: Optional[str] = None
+    conversion_detail: Optional[str] = None
+    settlement_date: Optional[date] = None
     amount: Optional[float] = None
     shares_change: Optional[int] = None
     balance_before: Optional[float] = None
@@ -41,6 +49,10 @@ class TransactionResponse(BaseModel):
     company_id: int
     transaction_date: date
     type: str
+    transaction_subtype: Optional[str] = None
+    counterparty: Optional[str] = None
+    conversion_detail: Optional[str] = None
+    settlement_date: Optional[date] = None
     amount: float
     shares_change: Optional[int] = None
     balance_before: Optional[float] = None
@@ -56,3 +68,20 @@ class TransactionResponse(BaseModel):
 class TransactionListItem(TransactionResponse):
     fund_name: str = ""
     company_name: str = ""
+
+
+class TransactionLedgerItem(TransactionListItem):
+    running_balance: Optional[float] = None
+
+
+class TransactionSummaryItem(BaseModel):
+    type: str
+    transaction_subtype: Optional[str] = None
+    count: int
+    total_amount: float
+
+
+class TransactionSummaryResponse(BaseModel):
+    total_count: int
+    total_amount: float
+    items: list[TransactionSummaryItem]

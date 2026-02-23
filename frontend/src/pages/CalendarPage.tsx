@@ -67,6 +67,7 @@ function compareEvents(a: CalendarEvent, b: CalendarEvent) {
 
 function eventTone(event: CalendarEvent) {
   if (event.status === 'completed') return 'tag tag-green'
+  if (event.event_type === 'committee') return 'rounded bg-orange-100 px-2 py-1 text-orange-700'
   if (event.event_type !== 'task') return 'tag tag-indigo'
 
   const tone = resolveDateTone(event.date)
@@ -213,6 +214,7 @@ export default function CalendarPage() {
         <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">업무(오늘)</span>
         <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-1 text-amber-700">업무(이번주)</span>
         <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">업무(지연)</span>
+        <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">투심위 일정</span>
         <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-1 text-indigo-700">일반 일정</span>
         <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-green-700">완료 일정</span>
       </div>

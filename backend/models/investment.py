@@ -49,6 +49,7 @@ class Investment(Base):
     documents = relationship("InvestmentDocument", back_populates="investment", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="investment", cascade="all, delete-orphan")
     valuations = relationship("Valuation", back_populates="investment", cascade="all, delete-orphan")
+    reviews = relationship("InvestmentReview", back_populates="investment")
 
 
 class InvestmentDocument(Base):

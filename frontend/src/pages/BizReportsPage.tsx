@@ -1,38 +1,42 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
   createBizReport,
-  createTask,
+  createBizReportTemplate,
   deleteBizReport,
+  detectBizReportAnomalies,
+  fetchBizReportAnomalies,
+  fetchBizReportCommentDiff,
+  fetchBizReportMatrix,
+  fetchBizReportRequests,
+  fetchBizReportTemplates,
   fetchBizReports,
   fetchFunds,
-  fetchTasks,
+  generateBizReportDocx,
+  generateBizReportExcel,
+  generateBizReportRequests,
   updateBizReport,
+  updateBizReportRequest,
   type BizReport,
+  type BizReportAnomalyResponse,
+  type BizReportCommentDiffResponse,
+  type BizReportGenerationResponse,
   type BizReportInput,
+  type BizReportMatrixResponse,
+  type BizReportRequestResponse,
+  type BizReportTemplateInput,
+  type BizReportTemplateResponse,
   type Fund,
-  type Task,
 } from '../lib/api'
-import { formatKRW, labelStatus } from '../lib/labels'
-import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { useToast } from '../contexts/ToastContext'
+import { formatKRW } from '../lib/labels'
 
-interface FilterState {
-  fund_id: number | null
-  year: number | null
-  status: string
-}
+type TabKey = 'matrix' | 'detail' | 'generate'
 
-const STATUS_OPTIONS = ['작성중', '검토중', '완료']
-
-const EMPTY_FILTERS: FilterState = {
-  fund_id: null,
-  year: null,
-  status: '',
-}
-
-const EMPTY_INPUT: BizReportInput = {
+const DEFAULT_REPORT_INPUT: BizReportInput = {
   fund_id: 0,
   report_year: new Date().getFullYear(),
   status: '작성중',
@@ -45,190 +49,180 @@ const EMPTY_INPUT: BizReportInput = {
   irr: null,
   tvpi: null,
   dpi: null,
-  market_overview: '',
-  portfolio_summary: '',
-  investment_activity: '',
-  key_issues: '',
-  outlook: '',
-  memo: '',
+  market_overview: null,
+  portfolio_summary: null,
+  investment_activity: null,
+  key_issues: null,
+  outlook: null,
+  memo: null,
 }
 
-function numInput(value: number | null | undefined): string {
-  return value == null ? '' : String(value)
+function toDateLabel(value: string | null | undefined) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('ko-KR')
 }
 
-function toNumber(value: string): number | null {
-  if (!value.trim()) return null
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
+function statusBadgeClass(status: string | null | undefined) {
+  if (!status) return 'bg-gray-100 text-gray-700'
+  if (status.includes('완료') || status.includes('제출')) return 'bg-emerald-50 text-emerald-700'
+  if (status.includes('검토')) return 'bg-amber-50 text-amber-700'
+  if (status.includes('요청')) return 'bg-blue-50 text-blue-700'
+  return 'bg-gray-100 text-gray-700'
 }
 
-function ReportForm({
-  title,
-  funds,
-  form,
-  loading,
-  onChange,
-  onSubmit,
-  onCancel,
-}: {
-  title: string
-  funds: Fund[]
-  form: BizReportInput
-  loading: boolean
-  onChange: (next: BizReportInput) => void
-  onSubmit: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-700">{title}</h3>
-
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
-          <select
-            value={form.fund_id || ''}
-            onChange={(e) => onChange({ ...form, fund_id: Number(e.target.value) || 0 })}
-            className="w-full rounded border px-2 py-1 text-sm"
-          >
-            <option value="">조합 선택</option>
-            {funds.map((fund) => (
-              <option key={fund.id} value={fund.id}>{fund.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">보고 연도</label>
-          <input
-            type="number"
-            value={form.report_year}
-            onChange={(e) => onChange({ ...form, report_year: Number(e.target.value || new Date().getFullYear()) })}
-            className="w-full rounded border px-2 py-1 text-sm"
-            placeholder="보고 연도"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
-          <select
-            value={form.status || '작성중'}
-            onChange={(e) => onChange({ ...form, status: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
-          >
-            {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">제출일</label>
-          <input
-            type="date"
-            value={form.submission_date || ''}
-            onChange={(e) => onChange({ ...form, submission_date: e.target.value || null })}
-            className="w-full rounded border px-2 py-1 text-sm"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label><input type="number" value={numInput(form.total_commitment)} onChange={(e) => onChange({ ...form, total_commitment: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 약정액" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 납입액</label><input type="number" value={numInput(form.total_paid_in)} onChange={(e) => onChange({ ...form, total_paid_in: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 납입액" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 투자액</label><input type="number" value={numInput(form.total_invested)} onChange={(e) => onChange({ ...form, total_invested: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 투자액" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">총 분배액</label><input type="number" value={numInput(form.total_distributed)} onChange={(e) => onChange({ ...form, total_distributed: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="총 분배액" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">NAV</label><input type="number" value={numInput(form.fund_nav)} onChange={(e) => onChange({ ...form, fund_nav: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="NAV" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">IRR(%)</label><input type="number" step="0.01" value={numInput(form.irr)} onChange={(e) => onChange({ ...form, irr: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="IRR(%)" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">TVPI(x)</label><input type="number" step="0.01" value={numInput(form.tvpi)} onChange={(e) => onChange({ ...form, tvpi: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="TVPI(x)" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">DPI(x)</label><input type="number" step="0.01" value={numInput(form.dpi)} onChange={(e) => onChange({ ...form, dpi: toNumber(e.target.value) })} className="w-full rounded border px-2 py-1 text-sm" placeholder="DPI(x)" /></div>
-      </div>
-
-      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">시장 현황</label><textarea value={form.market_overview || ''} onChange={(e) => onChange({ ...form, market_overview: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="시장 현황" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">포트폴리오 요약</label><textarea value={form.portfolio_summary || ''} onChange={(e) => onChange({ ...form, portfolio_summary: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="포트폴리오 요약" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">투자 활동</label><textarea value={form.investment_activity || ''} onChange={(e) => onChange({ ...form, investment_activity: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="투자 활동" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">주요 이슈</label><textarea value={form.key_issues || ''} onChange={(e) => onChange({ ...form, key_issues: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="주요 이슈" /></div>
-      </div>
-
-      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">향후 계획</label><textarea value={form.outlook || ''} onChange={(e) => onChange({ ...form, outlook: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="향후 계획" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={form.memo || ''} onChange={(e) => onChange({ ...form, memo: e.target.value })} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="메모" /></div>
-      </div>
-
-      <div className="mt-3 flex gap-2">
-        <button onClick={onSubmit} disabled={loading} className="primary-btn">
-          {loading ? '저장 중...' : '저장'}
-        </button>
-        <button onClick={onCancel} className="secondary-btn">취소</button>
-      </div>
-    </div>
-  )
+function downloadGeneratedFile(payload: BizReportGenerationResponse) {
+  const binary = atob(payload.base64_data)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  const blob = new Blob([bytes], { type: payload.content_type })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = payload.filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 export default function BizReportsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
 
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [showCreate, setShowCreate] = useState(false)
-  const [newReport, setNewReport] = useState<BizReportInput>(EMPTY_INPUT)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState<BizReportInput | null>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('matrix')
+  const [yearFilter, setYearFilter] = useState<number>(new Date().getFullYear())
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
 
-  const params = useMemo(
-    () => ({
-      fund_id: filters.fund_id || undefined,
-      year: filters.year || undefined,
-      status: filters.status || undefined,
-    }),
-    [filters],
-  )
-
-  const { data: funds = [] } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
-  const { data: reports, isLoading } = useQuery<BizReport[]>({
-    queryKey: ['bizReports', params],
-    queryFn: () => fetchBizReports(params),
-  })
-  const { data: lpReportTasks = [] } = useQuery<Task[]>({
-    queryKey: ['tasks', { category: 'LP보고' }],
-    queryFn: () => fetchTasks({ category: 'LP보고' }),
+  const [newReportForm, setNewReportForm] = useState<BizReportInput>(DEFAULT_REPORT_INPUT)
+  const [newTemplateForm, setNewTemplateForm] = useState<BizReportTemplateInput>({
+    name: '',
+    report_type: 'quarterly',
+    required_fields: null,
+    template_file_id: null,
+    instructions: null,
   })
 
-  const createMut = useMutation({
+  const { data: funds = [] } = useQuery<Fund[]>({
+    queryKey: ['funds'],
+    queryFn: fetchFunds,
+  })
+
+  const { data: reports = [], isLoading: reportsLoading } = useQuery<BizReport[]>({
+    queryKey: ['bizReports', yearFilter],
+    queryFn: () => fetchBizReports({ year: yearFilter }),
+  })
+
+  const { data: matrixData } = useQuery<BizReportMatrixResponse>({
+    queryKey: ['bizReports', 'matrix', yearFilter],
+    queryFn: () => fetchBizReportMatrix(yearFilter),
+  })
+
+  const { data: templates = [] } = useQuery<BizReportTemplateResponse[]>({
+    queryKey: ['bizReportTemplates'],
+    queryFn: fetchBizReportTemplates,
+  })
+
+  const { data: requestRows = [], isLoading: requestsLoading } = useQuery<BizReportRequestResponse[]>({
+    queryKey: ['bizReportRequests', selectedReportId],
+    queryFn: () => fetchBizReportRequests(selectedReportId as number),
+    enabled: selectedReportId !== null,
+  })
+
+  const { data: anomalies = [] } = useQuery<BizReportAnomalyResponse[]>({
+    queryKey: ['bizReportAnomalies', selectedRequestId],
+    queryFn: () => fetchBizReportAnomalies(selectedRequestId as number),
+    enabled: selectedRequestId !== null,
+  })
+
+  const { data: commentDiff } = useQuery<BizReportCommentDiffResponse>({
+    queryKey: ['bizReportCommentDiff', selectedRequestId],
+    queryFn: () => fetchBizReportCommentDiff(selectedRequestId as number),
+    enabled: selectedRequestId !== null,
+  })
+
+  const reportMap = useMemo(() => new Map(reports.map((row) => [row.id, row])), [reports])
+
+  const createReportMut = useMutation({
     mutationFn: (data: BizReportInput) => createBizReport(data),
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['bizReports'] })
-      setShowCreate(false)
-      setNewReport(EMPTY_INPUT)
-      addToast('success', '영업보고를 등록했습니다.')
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'matrix'] })
+      setSelectedReportId(created.id)
+      setNewReportForm(DEFAULT_REPORT_INPUT)
+      addToast('success', '영업보고를 생성했습니다.')
     },
   })
 
-  const updateMut = useMutation({
+  const updateReportMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<BizReportInput> }) => updateBizReport(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bizReports'] })
-      setEditingId(null)
-      setEditForm(null)
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'matrix'] })
       addToast('success', '영업보고를 수정했습니다.')
     },
   })
 
-  const deleteMut = useMutation({
+  const deleteReportMut = useMutation({
     mutationFn: (id: number) => deleteBizReport(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bizReports'] })
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'matrix'] })
+      setSelectedReportId(null)
       addToast('success', '영업보고를 삭제했습니다.')
     },
   })
 
-  const createTaskMut = useMutation({
-    mutationFn: createTask,
+  const createTemplateMut = useMutation({
+    mutationFn: (data: BizReportTemplateInput) => createBizReportTemplate(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['taskBoard'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      addToast('success', '업무가 생성되었습니다.')
+      queryClient.invalidateQueries({ queryKey: ['bizReportTemplates'] })
+      setNewTemplateForm({ name: '', report_type: 'quarterly', required_fields: null, template_file_id: null, instructions: null })
+      addToast('success', '보고 템플릿을 생성했습니다.')
+    },
+  })
+
+  const generateRequestsMut = useMutation({
+    mutationFn: (reportId: number) => generateBizReportRequests(reportId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+      addToast('success', '투자사 데이터 요청을 생성했습니다.')
+    },
+  })
+
+  const updateRequestMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateBizReportRequest>[1] }) => updateBizReportRequest(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+      addToast('success', '요청 데이터를 저장했습니다.')
+    },
+  })
+
+  const detectAnomalyMut = useMutation({
+    mutationFn: (requestId: number) => detectBizReportAnomalies(requestId),
+    onSuccess: (_, requestId) => {
+      setSelectedRequestId(requestId)
+      queryClient.invalidateQueries({ queryKey: ['bizReportAnomalies', requestId] })
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+      addToast('success', '특이점 감지를 완료했습니다.')
+    },
+  })
+
+  const generateExcelMut = useMutation({
+    mutationFn: (reportId: number) => generateBizReportExcel(reportId),
+    onSuccess: (payload) => {
+      downloadGeneratedFile(payload)
+      addToast('success', '엑셀 보고서를 생성했습니다.')
+    },
+  })
+
+  const generateDocxMut = useMutation({
+    mutationFn: (reportId: number) => generateBizReportDocx(reportId),
+    onSuccess: (payload) => {
+      downloadGeneratedFile(payload)
+      addToast('success', 'DOCX 보고서를 생성했습니다.')
     },
   })
 
@@ -236,212 +230,407 @@ export default function BizReportsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-      <h2 className="page-title">🏢 영업보고</h2>
-          <p className="page-subtitle">조합 단위 연간 영업보고를 작성하고 관리합니다.</p>
+          <h2 className="page-title">영업보고</h2>
+          <p className="page-subtitle">보고 매트릭스, 투자사 요청/검토, 문서 생성까지 한 화면에서 운영합니다.</p>
         </div>
-        <button onClick={() => setShowCreate((prev) => !prev)} className="primary-btn">+ 영업보고 작성</button>
       </div>
 
-      <div className="card-base space-y-2">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
-            <select
-              value={filters.fund_id || ''}
-              onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
-              className="w-full rounded border px-2 py-1 text-sm"
-            >
-              <option value="">전체 조합</option>
-              {funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
-            </select>
-          </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('matrix')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'matrix' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          보고 매트릭스
+        </button>
+        <button
+          onClick={() => setActiveTab('detail')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'detail' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          보고 상세/검토
+        </button>
+        <button
+          onClick={() => setActiveTab('generate')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'generate' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          보고서 생성
+        </button>
+      </div>
 
+      <div className="card-base">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
             <input
               type="number"
-              value={filters.year || ''}
-              onChange={(e) => setFilters((prev) => ({ ...prev, year: Number(e.target.value) || null }))}
+              value={yearFilter}
+              onChange={(e) => setYearFilter(Number(e.target.value || new Date().getFullYear()))}
               className="w-full rounded border px-2 py-1 text-sm"
-              placeholder="연도"
             />
           </div>
-
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">보고 선택</label>
             <select
-              value={filters.status}
-              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              value={selectedReportId || ''}
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : null
+                setSelectedReportId(next)
+                setSelectedRequestId(null)
+              }}
               className="w-full rounded border px-2 py-1 text-sm"
             >
-              <option value="">전체 상태</option>
-              {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+              <option value="">보고 선택</option>
+              {reports.map((row) => (
+                <option key={row.id} value={row.id}>
+                  #{row.id} · {(funds.find((f) => f.id === row.fund_id)?.name || row.fund_name || `조합 ${row.fund_id}`)} · {row.report_year}
+                </option>
+              ))}
             </select>
           </div>
-
-          <div className="flex items-end">
-            <button onClick={() => setFilters(EMPTY_FILTERS)} className="secondary-btn">필터 초기화</button>
+          <div className="md:col-span-3 rounded bg-gray-50 p-2 text-xs text-gray-600">
+            선택 보고 상태: {selectedReportId ? (reportMap.get(selectedReportId)?.status || '-') : '미선택'} ·
+            제출일: {selectedReportId ? toDateLabel(reportMap.get(selectedReportId)?.submission_date) : '-'}
           </div>
         </div>
       </div>
 
-      {showCreate && (
-        <ReportForm
-          title="신규 영업보고"
-          funds={funds}
-          form={newReport}
-          loading={createMut.isPending}
-          onChange={setNewReport}
-          onSubmit={() => {
-            if (!newReport.fund_id || !newReport.report_year) return
-            createMut.mutate({
-              ...newReport,
-              market_overview: newReport.market_overview?.trim() || null,
-              portfolio_summary: newReport.portfolio_summary?.trim() || null,
-              investment_activity: newReport.investment_activity?.trim() || null,
-              key_issues: newReport.key_issues?.trim() || null,
-              outlook: newReport.outlook?.trim() || null,
-              memo: newReport.memo?.trim() || null,
-            })
-          }}
-          onCancel={() => setShowCreate(false)}
-        />
-      )}
+      {activeTab === 'matrix' && (
+        <>
+          <div className="card-base overflow-hidden">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">조합 × 분기 보고 매트릭스</h3>
+            {!matrixData?.rows?.length ? (
+              <EmptyState emoji="📊" message="매트릭스 데이터가 없습니다." className="py-8" />
+            ) : (
+              <div className="overflow-auto">
+                <table className="min-w-[760px] w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">조합</th>
+                      <th className="px-3 py-2 text-center">1Q</th>
+                      <th className="px-3 py-2 text-center">2Q</th>
+                      <th className="px-3 py-2 text-center">3Q</th>
+                      <th className="px-3 py-2 text-center">4Q</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {matrixData.rows.map((row) => (
+                      <tr key={row.fund_id}>
+                        <td className="px-3 py-2 font-medium text-gray-800">{row.fund_name}</td>
+                        {row.cells.map((cell) => (
+                          <td key={`${row.fund_id}-${cell.quarter}`} className="px-3 py-2 text-center">
+                            <span className={`rounded px-2 py-0.5 text-xs ${statusBadgeClass(cell.status)}`}>{cell.status}</span>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
-      {editingId && editForm && (
-        <ReportForm
-          title="영업보고 수정"
-          funds={funds}
-          form={editForm}
-          loading={updateMut.isPending}
-          onChange={(next) => setEditForm(next)}
-          onSubmit={() => {
-            updateMut.mutate({
-              id: editingId,
-              data: {
-                ...editForm,
-                market_overview: editForm.market_overview?.trim() || null,
-                portfolio_summary: editForm.portfolio_summary?.trim() || null,
-                investment_activity: editForm.investment_activity?.trim() || null,
-                key_issues: editForm.key_issues?.trim() || null,
-                outlook: editForm.outlook?.trim() || null,
-                memo: editForm.memo?.trim() || null,
-              },
-            })
-          }}
-          onCancel={() => {
-            setEditingId(null)
-            setEditForm(null)
-          }}
-        />
-      )}
-
-      <div className="space-y-3">
-        {isLoading ? (
-          <PageLoading />
-        ) : !(reports?.length) ? (
-          <EmptyState emoji="🏢" message="영업보고가 없어요" action={() => setShowCreate(true)} actionLabel="영업보고 작성" />
-        ) : (
-          reports.map((report) => (
-            <div key={report.id} className="card-base">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-800">{report.fund_name || `조합 #${report.fund_id}`} | {report.report_year}년 영업보고</p>
-                <div className="flex items-center gap-1">
-                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{labelStatus(report.status)}</span>
-                  <button
-                    onClick={() =>
-                      createTaskMut.mutate({
-                        title: `${report.fund_name || `조합 #${report.fund_id}`} ${report.report_year} 영업보고서 작성`,
-                        fund_id: report.fund_id,
-                        category: 'LP보고',
-                        quadrant: 'Q1',
-                        deadline: report.submission_date || null,
-                      })
-                    }
-                    className="text-xs text-blue-600 hover:underline"
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="card-base">
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">영업보고 생성</h3>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+                  <select
+                    value={newReportForm.fund_id || ''}
+                    onChange={(e) => setNewReportForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
+                    className="w-full rounded border px-2 py-1 text-sm"
                   >
-                    업무 추가
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingId(report.id)
-                      setEditForm({
-                        fund_id: report.fund_id,
-                        report_year: report.report_year,
-                        status: report.status,
-                        submission_date: report.submission_date,
-                        total_commitment: report.total_commitment,
-                        total_paid_in: report.total_paid_in,
-                        total_invested: report.total_invested,
-                        total_distributed: report.total_distributed,
-                        fund_nav: report.fund_nav,
-                        irr: report.irr,
-                        tvpi: report.tvpi,
-                        dpi: report.dpi,
-                        market_overview: report.market_overview,
-                        portfolio_summary: report.portfolio_summary,
-                        investment_activity: report.investment_activity,
-                        key_issues: report.key_issues,
-                        outlook: report.outlook,
-                        memo: report.memo,
-                      })
-                    }}
-                    className="secondary-btn"
+                    <option value="">조합 선택</option>
+                    {funds.map((fund) => (
+                      <option key={fund.id} value={fund.id}>{fund.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+                  <input
+                    type="number"
+                    value={newReportForm.report_year}
+                    onChange={(e) => setNewReportForm((prev) => ({ ...prev, report_year: Number(e.target.value || new Date().getFullYear()) }))}
+                    className="w-full rounded border px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                  <select
+                    value={newReportForm.status || '작성중'}
+                    onChange={(e) => setNewReportForm((prev) => ({ ...prev, status: e.target.value }))}
+                    className="w-full rounded border px-2 py-1 text-sm"
                   >
-                    수정
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('이 영업보고를 삭제하시겠습니까?')) {
-                        deleteMut.mutate(report.id)
-                      }
-                    }}
-                    className="danger-btn"
-                  >
-                    삭제
-                  </button>
+                    <option value="작성중">작성중</option>
+                    <option value="검토중">검토중</option>
+                    <option value="완료">완료</option>
+                  </select>
                 </div>
               </div>
-
-              <p className="mt-1 text-xs text-gray-500">제출일: {report.submission_date || '-'} </p>
-
-              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3 text-sm">
-                <div className="rounded bg-gray-50 p-2">약정: {formatKRW(report.total_commitment)}</div>
-                <div className="rounded bg-gray-50 p-2">납입: {formatKRW(report.total_paid_in)}</div>
-                <div className="rounded bg-gray-50 p-2">투자: {formatKRW(report.total_invested)}</div>
-                <div className="rounded bg-gray-50 p-2">분배: {formatKRW(report.total_distributed)}</div>
-                <div className="rounded bg-gray-50 p-2">IRR: {report.irr != null ? `${report.irr}%` : '-'}</div>
-                <div className="rounded bg-gray-50 p-2">TVPI / DPI: {report.tvpi ?? '-'}x / {report.dpi ?? '-'}x</div>
-              </div>
-
-              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-                <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>시장:</strong> {report.market_overview || '-'}</p>
-                <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>포트폴리오:</strong> {report.portfolio_summary || '-'}</p>
-                <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>투자활동:</strong> {report.investment_activity || '-'}</p>
-                <p className="rounded bg-gray-50 p-2 text-sm text-gray-700"><strong>이슈/전망:</strong> {[report.key_issues, report.outlook].filter(Boolean).join(' / ') || '-'}</p>
-              </div>
-              {lpReportTasks.filter((task) => task.fund_id === report.fund_id && task.category === 'LP보고').length > 0 && (
-                <div className="mt-2 border-t pt-2">
-                  <p className="mb-1 text-xs font-medium text-gray-500">연관 업무</p>
-                  <div className="space-y-1">
-                    {lpReportTasks
-                      .filter((task) => task.fund_id === report.fund_id && task.category === 'LP보고')
-                      .map((task) => (
-                        <div key={task.id} className="flex items-center gap-2 text-xs">
-                          <span className={task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-700'}>
-                            {task.title}
-                          </span>
-                          {task.estimated_time && <span className="text-gray-400">{task.estimated_time}</span>}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => {
+                  if (!newReportForm.fund_id) {
+                    addToast('warning', '조합을 선택해 주세요.')
+                    return
+                  }
+                  createReportMut.mutate(newReportForm)
+                }}
+                className="primary-btn mt-3"
+                disabled={createReportMut.isPending}
+              >
+                보고 생성
+              </button>
             </div>
-          ))
-        )}
-      </div>
+
+            <div className="card-base">
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">템플릿 관리</h3>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <input
+                  value={newTemplateForm.name}
+                  onChange={(e) => setNewTemplateForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="템플릿 이름"
+                  className="rounded border px-2 py-1 text-sm"
+                />
+                <select
+                  value={newTemplateForm.report_type}
+                  onChange={(e) => setNewTemplateForm((prev) => ({ ...prev, report_type: e.target.value }))}
+                  className="rounded border px-2 py-1 text-sm"
+                >
+                  <option value="quarterly">quarterly</option>
+                  <option value="semi-annual">semi-annual</option>
+                  <option value="annual">annual</option>
+                </select>
+              </div>
+              <button
+                onClick={() => {
+                  if (!newTemplateForm.name.trim()) {
+                    addToast('warning', '템플릿 이름을 입력해 주세요.')
+                    return
+                  }
+                  createTemplateMut.mutate({ ...newTemplateForm, name: newTemplateForm.name.trim() })
+                }}
+                className="secondary-btn mt-2"
+              >
+                템플릿 생성
+              </button>
+              <div className="mt-2 space-y-1">
+                {templates.slice(0, 5).map((tpl) => (
+                  <div key={tpl.id} className="rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                    {tpl.name} · {tpl.report_type}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card-base">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">영업보고 목록</h3>
+            {reportsLoading ? (
+              <PageLoading />
+            ) : !reports.length ? (
+              <EmptyState emoji="🧾" message="보고가 없습니다." className="py-8" />
+            ) : (
+              <div className="space-y-2">
+                {reports.map((report) => (
+                  <div key={report.id} className="rounded border border-gray-200 p-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          #{report.id} · {report.fund_name || `조합 ${report.fund_id}`} · {report.report_year}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          NAV {formatKRW(Number(report.fund_nav || 0))} · IRR {report.irr != null ? `${report.irr}%` : '-'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`rounded px-2 py-0.5 text-xs ${statusBadgeClass(report.status)}`}>{report.status}</span>
+                        <button
+                          onClick={() => updateReportMut.mutate({ id: report.id, data: { status: report.status === '완료' ? '작성중' : '완료' } })}
+                          className="secondary-btn"
+                        >
+                          상태변경
+                        </button>
+                        <button onClick={() => setSelectedReportId(report.id)} className="secondary-btn">선택</button>
+                        <button onClick={() => deleteReportMut.mutate(report.id)} className="danger-btn">삭제</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'detail' && (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="card-base">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-gray-700">투자사 데이터 요청</h3>
+              <button
+                onClick={() => selectedReportId && generateRequestsMut.mutate(selectedReportId)}
+                disabled={!selectedReportId || generateRequestsMut.isPending}
+                className="secondary-btn"
+              >
+                요청 일괄생성
+              </button>
+            </div>
+
+            {requestsLoading ? (
+              <PageLoading />
+            ) : !selectedReportId ? (
+              <EmptyState emoji="📌" message="상단에서 보고를 선택해 주세요." className="py-8" />
+            ) : !requestRows.length ? (
+              <EmptyState emoji="📨" message="요청 데이터가 없습니다. 일괄생성 버튼을 눌러주세요." className="py-8" />
+            ) : (
+              <div className="space-y-2">
+                {requestRows.map((row) => (
+                  <div key={row.id} className="rounded border border-gray-200 p-2">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{row.investment_name || `투자건 ${row.investment_id}`}</p>
+                        <p className="text-xs text-gray-500">요청일 {toDateLabel(row.request_date)} · 마감일 {toDateLabel(row.deadline)}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => detectAnomalyMut.mutate(row.id)}
+                          className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100"
+                        >
+                          특이점 감지
+                        </button>
+                        <button
+                          onClick={() => setSelectedRequestId(row.id)}
+                          className="secondary-btn"
+                        >
+                          상세
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                      <input
+                        type="number"
+                        defaultValue={row.revenue || ''}
+                        placeholder="매출"
+                        className="rounded border px-2 py-1 text-sm"
+                        onBlur={(e) => updateRequestMut.mutate({ id: row.id, data: { revenue: e.target.value ? Number(e.target.value) : null } })}
+                      />
+                      <input
+                        type="number"
+                        defaultValue={row.operating_income || ''}
+                        placeholder="영업이익"
+                        className="rounded border px-2 py-1 text-sm"
+                        onBlur={(e) => updateRequestMut.mutate({ id: row.id, data: { operating_income: e.target.value ? Number(e.target.value) : null } })}
+                      />
+                      <input
+                        type="number"
+                        defaultValue={row.net_income || ''}
+                        placeholder="순이익"
+                        className="rounded border px-2 py-1 text-sm"
+                        onBlur={(e) => updateRequestMut.mutate({ id: row.id, data: { net_income: e.target.value ? Number(e.target.value) : null } })}
+                      />
+                      <select
+                        defaultValue={row.status}
+                        className="rounded border px-2 py-1 text-sm"
+                        onChange={(e) => updateRequestMut.mutate({ id: row.id, data: { status: e.target.value } })}
+                      >
+                        <option value="미요청">미요청</option>
+                        <option value="요청">요청</option>
+                        <option value="제출">제출</option>
+                        <option value="검토중">검토중</option>
+                        <option value="완료">완료</option>
+                        <option value="반려">반려</option>
+                      </select>
+                    </div>
+                    <textarea
+                      defaultValue={row.comment || ''}
+                      placeholder="분기 코멘트"
+                      className="mt-2 w-full rounded border px-2 py-1 text-sm"
+                      rows={2}
+                      onBlur={(e) => updateRequestMut.mutate({ id: row.id, data: { comment: e.target.value || null } })}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card-base">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">특이점/코멘트 Diff</h3>
+            {!selectedRequestId ? (
+              <EmptyState emoji="🔎" message="요청 건 상세를 선택해 주세요." className="py-8" />
+            ) : (
+              <>
+                <div className="mb-2 rounded border border-gray-200 p-2">
+                  <p className="mb-1 text-xs font-medium text-gray-600">코멘트 변경 비교</p>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="rounded bg-gray-50 p-2">
+                      <p className="mb-1 text-[11px] text-gray-500">이전 분기</p>
+                      <p className="text-sm text-gray-700">{commentDiff?.previous_comment || '-'}</p>
+                    </div>
+                    <div className="rounded bg-blue-50 p-2">
+                      <p className="mb-1 text-[11px] text-gray-500">현재 분기</p>
+                      <p className="text-sm text-gray-700">{commentDiff?.current_comment || '-'}</p>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">변경 여부: {commentDiff?.changed ? '변경됨' : '동일'}</p>
+                </div>
+
+                <div className="space-y-1">
+                  {anomalies.length === 0 ? (
+                    <EmptyState emoji="✅" message="감지된 특이점이 없습니다." className="py-6" />
+                  ) : (
+                    anomalies.map((row) => (
+                      <div key={row.id} className="rounded border border-gray-200 p-2">
+                        <p className="text-sm font-medium text-gray-800">{row.anomaly_type}</p>
+                        <p className="text-xs text-gray-500">심각도: {row.severity}</p>
+                        <p className="mt-1 text-sm text-gray-700">{row.detail || '-'}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'generate' && (
+        <div className="card-base">
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">보고서 생성</h3>
+          {!selectedReportId ? (
+            <EmptyState emoji="📁" message="상단에서 보고를 선택해 주세요." className="py-8" />
+          ) : (
+            <>
+              <div className="mb-3 rounded border border-gray-200 p-3">
+                <p className="text-sm font-medium text-gray-800">
+                  #{selectedReportId} · {reportMap.get(selectedReportId)?.fund_name || `조합 ${reportMap.get(selectedReportId)?.fund_id}`}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  보고연도 {reportMap.get(selectedReportId)?.report_year} · 상태 {reportMap.get(selectedReportId)?.status}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => generateExcelMut.mutate(selectedReportId)}
+                  disabled={generateExcelMut.isPending}
+                  className="primary-btn"
+                >
+                  엑셀 생성/다운로드
+                </button>
+                <button
+                  onClick={() => generateDocxMut.mutate(selectedReportId)}
+                  disabled={generateDocxMut.isPending}
+                  className="secondary-btn"
+                >
+                  DOCX 생성/다운로드
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
-

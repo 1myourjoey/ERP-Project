@@ -49,5 +49,9 @@ class LPAddressBookResponse(BaseModel):
     updated_at: Optional[datetime] = None
     related_funds_count: int = 0
     related_funds: list[LPAddressBookRelatedFund] = Field(default_factory=list)
+    total_commitment: float = 0
+    total_paid_in: float = 0
+    outstanding_balance: float = 0
+    paid_in_ratio: float = 0
 
     model_config = {"from_attributes": True}

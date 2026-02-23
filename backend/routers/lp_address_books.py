@@ -71,8 +71,28 @@ def _collect_related_funds(db: Session, row: LPAddressBook) -> list[LPAddressBoo
     ]
 
 
+def _collect_related_lps(db: Session, row: LPAddressBook) -> list[LP]:
+    conditions = [LP.address_book_id == row.id]
+    if row.business_number:
+        conditions.append(LP.business_number == row.business_number)
+    if row.name:
+        conditions.append(LP.name == row.name)
+
+    return (
+        db.query(LP)
+        .filter(or_(*conditions))
+        .order_by(LP.id.asc())
+        .all()
+    )
+
+
 def _to_response(db: Session, row: LPAddressBook) -> LPAddressBookResponse:
     related_funds = _collect_related_funds(db, row)
+    related_lps = _collect_related_lps(db, row)
+    total_commitment = float(sum(float(lp.commitment or 0) for lp in related_lps))
+    total_paid_in = float(sum(float(lp.paid_in or 0) for lp in related_lps))
+    outstanding_balance = max(total_commitment - total_paid_in, 0.0)
+    paid_in_ratio = round((total_paid_in / total_commitment) * 100, 1) if total_commitment else 0.0
     return LPAddressBookResponse(
         id=row.id,
         name=row.name,
@@ -87,6 +107,10 @@ def _to_response(db: Session, row: LPAddressBook) -> LPAddressBookResponse:
         updated_at=row.updated_at,
         related_funds_count=len(related_funds),
         related_funds=related_funds,
+        total_commitment=total_commitment,
+        total_paid_in=total_paid_in,
+        outstanding_balance=outstanding_balance,
+        paid_in_ratio=paid_in_ratio,
     )
 
 

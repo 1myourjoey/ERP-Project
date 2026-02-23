@@ -16,6 +16,7 @@ import {
   deleteVoteRecord,
   fetchChecklists,
   fetchInvestmentValuations,
+  fetchInvestmentReviews,
   createValuation,
   updateValuation,
   deleteValuation,
@@ -30,6 +31,7 @@ import {
   type ValuationInput,
   type WorkflowInstance,
   type ChecklistListItem,
+  type InvestmentReview,
 } from '../lib/api'
 import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
@@ -84,7 +86,7 @@ const EMPTY_VALUATION: ValuationInput = {
 const VOTE_TYPE_OPTIONS = ['주주총회', '이사회', '서면결의']
 const VOTE_DECISION_OPTIONS = ['찬성', '반대', '기권', '미행사']
 
-type DetailTab = 'overview' | 'post' | 'workflows' | 'documents' | 'exit'
+type DetailTab = 'overview' | 'post' | 'workflows' | 'documents' | 'reviews' | 'exit'
 
 function toInvestmentInput(detail: InvestmentDetail): InvestmentInput {
   return {
@@ -167,6 +169,12 @@ export default function InvestmentDetailPage() {
     enabled: Number.isFinite(investmentId) && investmentId > 0,
   })
 
+  const { data: investmentReviews = [] } = useQuery<InvestmentReview[]>({
+    queryKey: ['investmentReviews', { scope: 'detail', investment_id: investmentId }],
+    queryFn: () => fetchInvestmentReviews(),
+    enabled: Number.isFinite(investmentId) && investmentId > 0,
+  })
+
   const fundName = useMemo(
     () => funds?.find(f => f.id === selectedInvestment?.fund_id)?.name || '-',
     [funds, selectedInvestment?.fund_id],
@@ -184,6 +192,13 @@ export default function InvestmentDetailPage() {
     const moic = invested > 0 ? net / invested : null
     return { invested, gross, gain, fee, net, moic }
   }, [selectedInvestment?.amount, exitMultiple, exitFeeRate])
+  const linkedReviewHistory = useMemo(
+    () =>
+      investmentReviews
+        .filter((row) => row.investment_id === investmentId)
+        .sort((a, b) => (new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())),
+    [investmentReviews, investmentId],
+  )
 
   const updateInvestmentMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<InvestmentInput> }) => updateInvestment(targetId, data),
@@ -309,7 +324,8 @@ export default function InvestmentDetailPage() {
             { key: 'post' as const, label: '② 사후 관리' },
             { key: 'workflows' as const, label: '③ 관련된 워크플로' },
             { key: 'documents' as const, label: '④ 문서 및 계약서' },
-            { key: 'exit' as const, label: '⑤ 회수(Exit) 시뮬레이션' },
+            { key: 'reviews' as const, label: '⑤ 심의 이력' },
+            { key: 'exit' as const, label: '⑥ 회수(Exit) 시뮬레이션' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -458,6 +474,39 @@ export default function InvestmentDetailPage() {
                 </div>
               )) : <p className="text-sm text-gray-400">서류가 없습니다.</p>}
             </div>
+            </div>
+          )}
+          {activeTab === 'reviews' && (
+            <div className="card-base space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">심의 이력</h3>
+                <button
+                  className="secondary-btn"
+                  onClick={() => navigate('/investment-reviews')}
+                >
+                  심의 보드 이동
+                </button>
+              </div>
+              {!linkedReviewHistory.length ? (
+                <p className="text-sm text-gray-400">연결된 심의 이력이 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linkedReviewHistory.map((row) => (
+                    <div key={row.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-sm font-medium text-gray-800">
+                        {row.company_name} · {row.status}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        단계 {row.stage || '-'} · 심사역 {row.reviewer || '-'} · 의결결과 {row.decision_result || '-'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        희망투자금 {formatNumber(row.target_amount)} · 최근활동 {formatDate(row.recent_activity_at || row.updated_at)}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600">{row.review_opinion || '-'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {activeTab === 'post' && (

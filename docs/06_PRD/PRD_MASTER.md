@@ -107,6 +107,10 @@
 | Phase 31_4 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ? ?? | 2026-02-22 |
 | Phase 32 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_08_Reports_Documents | ? ?? | 2026-02-23 |
 | Phase 32_HF1 | PRD_03_Workflows, PRD_08_Reports_Documents | ? ?? | 2026-02-23 |
+| Phase 33 | PRD_01_Dashboard, PRD_04_Funds, PRD_05_LP_Management, PRD_06_Investments, PRD_07_Capital_Accounting | ? ?? | 2026-02-23 |
+| Phase 34 | PRD_01_Dashboard, PRD_04_Funds, PRD_06_Investments, PRD_07_Capital_Accounting | ? ?? | 2026-02-23 |
+| Phase 35 | PRD_01_Dashboard, PRD_04_Funds, PRD_06_Investments, PRD_07_Capital_Accounting | ? ?? | 2026-02-23 |
+| Phase 36 | PRD_01_Dashboard, PRD_08_Reports_Documents | ? ?? | 2026-02-23 |
 
 ---
 
@@ -124,3 +128,7 @@
 | 2026-02-22 | v0.8 | Phase 31_4 ?? ?? (???? ?? ???, ???? rollback ??, ???/?? ???) |
 | 2026-02-23 | v0.9 | Phase 32 ?? ?? (???? ??? ?? ????, ?? ?? ?? ??, ????? ?? ???) |
 | 2026-02-23 | v1.0 | Phase 32 Hotfix ?? (periodic_schedules ??? ??? ?? ???? workflows/periodic-schedules API 500 ??) |
+| 2026-02-23 | v1.1 | Phase 33 ?? ?? (투자 심의 파이프라인, 거래원장 세분화, 대시보드 확장 위젯) |
+| 2026-02-23 | v1.2 | Phase 34 ?? ?? (가치평가 고도화, NAV 요약/이력, LP별 출자·배분 상세) |
+| 2026-02-23 | v1.3 | Phase 35 ?? ?? (회수 정산/원장 연계, 관리보수·성과보수·워터폴) |
+| 2026-02-23 | v1.4 | Phase 36 ?? ?? (영업보고 자동화, 이상치 감지, 사용자/역할 관리) |

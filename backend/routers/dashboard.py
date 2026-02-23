@@ -6,11 +6,16 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.biz_report import BizReport
+from models.fee import ManagementFee
 from models.fund import Fund, FundNoticePeriod
 from models.gp_entity import GPEntity
 from models.investment import Investment, InvestmentDocument, PortfolioCompany
+from models.investment_review import InvestmentReview
+from models.phase3 import CapitalCallDetail, CapitalCallItem
 from models.regular_report import RegularReport
 from models.task import Task
+from models.valuation import Valuation
 from models.workflow_instance import WorkflowInstance
 from schemas.dashboard import (
     DashboardBaseResponse,
@@ -223,6 +228,80 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
 
     _sync_workflow_state(db)
 
+    try:
+        investment_review_active_count = int(
+            db.query(func.count(InvestmentReview.id))
+            .filter(InvestmentReview.status.notin_(["완료", "중단"]))
+            .scalar()
+            or 0
+        )
+    except Exception:
+        investment_review_active_count = 0
+
+    total_nav = 0.0
+    try:
+        valuation_rows = (
+            db.query(Valuation)
+            .order_by(Valuation.as_of_date.desc(), Valuation.id.desc())
+            .all()
+        )
+        latest_by_investment: dict[int, Valuation] = {}
+        for row in valuation_rows:
+            if row.investment_id not in latest_by_investment:
+                latest_by_investment[row.investment_id] = row
+        total_nav = sum(
+            float(row.total_fair_value or row.value or 0)
+            for row in latest_by_investment.values()
+        )
+    except Exception:
+        total_nav = 0.0
+
+    unpaid_lp_count = 0
+    try:
+        unpaid_lp_ids = {
+            row.lp_id
+            for row in db.query(CapitalCallDetail)
+            .filter(
+                (CapitalCallDetail.status != "완납")
+                | (CapitalCallDetail.paid_amount < CapitalCallDetail.call_amount)
+            )
+            .all()
+            if row.lp_id is not None
+        }
+        unpaid_lp_count = len(unpaid_lp_ids)
+    except Exception:
+        try:
+            unpaid_lp_ids = {
+                row.lp_id
+                for row in db.query(CapitalCallItem).filter(CapitalCallItem.paid == 0).all()
+                if row.lp_id is not None
+            }
+            unpaid_lp_count = len(unpaid_lp_ids)
+        except Exception:
+            unpaid_lp_count = 0
+
+    pending_fee_count = 0
+    try:
+        pending_fee_count = int(
+            db.query(func.count(ManagementFee.id))
+            .filter(ManagementFee.status != "수령")
+            .scalar()
+            or 0
+        )
+    except Exception:
+        pending_fee_count = 0
+
+    biz_report_in_progress_count = 0
+    try:
+        biz_report_in_progress_count = int(
+            db.query(func.count(BizReport.id))
+            .filter(BizReport.status.notin_(["완료", "확인완료", "전송완료"]))
+            .scalar()
+            or 0
+        )
+    except Exception:
+        biz_report_in_progress_count = 0
+
     pending_tasks = (
         db.query(Task)
         .filter(Task.status.in_(["pending", "in_progress"]))
@@ -263,6 +342,11 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
 
     return {
         "monthly_reminder": monthly_reminder,
+        "investment_review_active_count": investment_review_active_count,
+        "total_nav": total_nav,
+        "unpaid_lp_count": unpaid_lp_count,
+        "pending_fee_count": pending_fee_count,
+        "biz_report_in_progress_count": biz_report_in_progress_count,
         "today": {"tasks": today_tasks, "total_estimated_time": _sum_time(today_tasks)},
         "tomorrow": {"tasks": tomorrow_tasks, "total_estimated_time": _sum_time(tomorrow_tasks)},
         "this_week": week_tasks,

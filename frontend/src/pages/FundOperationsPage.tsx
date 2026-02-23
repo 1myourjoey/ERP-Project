@@ -1,312 +1,343 @@
-﻿import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowUpRight, Building2 } from 'lucide-react'
+﻿import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
-  fetchCapitalCallItems,
+  fetchCapitalCallDetails,
+  fetchCapitalCallSummary,
   fetchCapitalCalls,
+  fetchDistributionDetails,
   fetchDistributions,
   fetchFunds,
+  generateCapitalCallDetails,
+  generateDistributionDetails,
+  updateCapitalCallDetail,
+  updateDistributionDetail,
   type CapitalCall,
-  type CapitalCallItem,
+  type CapitalCallDetail,
+  type CapitalCallSummary,
   type Distribution,
+  type DistributionDetail,
   type Fund,
 } from '../lib/api'
-import { formatKRW, labelStatus } from '../lib/labels'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import { useToast } from '../contexts/ToastContext'
+import { formatKRW } from '../lib/labels'
 
-interface FundCapitalRow {
-  id: number
-  name: string
-  type: string | null
-  formationDate: string | null
-  status: string
-  commitmentTotal: number
-  paidInTotal: number
-  paidInRatio: number
-  outstandingUnpaid: number
-  distributedTotal: number
-  distributedRatio: number
-}
-
-function safeNumber(value: unknown): number {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : 0
-}
-
-function toDateLabel(value: string | null | undefined): string {
+function toDateLabel(value: string | null | undefined) {
   if (!value) return '-'
   return new Date(value).toLocaleDateString('ko-KR')
 }
 
-function toRatioLabel(value: number): string {
-  return `${value.toFixed(1)}%`
-}
-
 export default function FundOperationsPage() {
-  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
 
-  const { data: funds = [], isLoading: isFundsLoading } = useQuery<Fund[]>({
+  const [selectedFundId, setSelectedFundId] = useState<number | null>(null)
+  const [selectedCapitalCallId, setSelectedCapitalCallId] = useState<number | null>(null)
+  const [selectedDistributionId, setSelectedDistributionId] = useState<number | null>(null)
+
+  const { data: funds = [], isLoading: fundsLoading } = useQuery<Fund[]>({
     queryKey: ['funds'],
     queryFn: fetchFunds,
   })
 
-  const { data: capitalCalls = [], isLoading: isCallsLoading } = useQuery<CapitalCall[]>({
-    queryKey: ['capitalCalls', { scope: 'all' }],
-    queryFn: () => fetchCapitalCalls(),
+  useEffect(() => {
+    if (!selectedFundId && funds.length > 0) {
+      setSelectedFundId(funds[0].id)
+    }
+  }, [funds, selectedFundId])
+
+  const { data: capitalCalls = [], isLoading: callsLoading } = useQuery<CapitalCall[]>({
+    queryKey: ['capitalCalls', selectedFundId],
+    queryFn: () => fetchCapitalCalls({ fund_id: selectedFundId || undefined }),
+    enabled: selectedFundId !== null,
   })
 
-  const { data: distributions = [], isLoading: isDistributionsLoading } = useQuery<Distribution[]>({
-    queryKey: ['distributions', { scope: 'all' }],
-    queryFn: () => fetchDistributions(),
+  const { data: distributions = [], isLoading: distributionsLoading } = useQuery<Distribution[]>({
+    queryKey: ['distributions', selectedFundId],
+    queryFn: () => fetchDistributions({ fund_id: selectedFundId || undefined }),
+    enabled: selectedFundId !== null,
   })
 
-  const callIdsKey = useMemo(
-    () => (capitalCalls.length > 0 ? capitalCalls.map((call) => call.id).join(',') : 'none'),
-    [capitalCalls],
-  )
+  const { data: callSummary } = useQuery<CapitalCallSummary>({
+    queryKey: ['capitalCallSummary', selectedFundId],
+    queryFn: () => fetchCapitalCallSummary(selectedFundId as number),
+    enabled: selectedFundId !== null,
+  })
 
-  const { data: callItemsByCallId = {}, isLoading: isCallItemsLoading } = useQuery<Record<number, CapitalCallItem[]>>({
-    queryKey: ['capitalCallItemsByCallId', 'global', callIdsKey],
-    queryFn: async () => {
-      const entries = await Promise.all(
-        capitalCalls.map(async (call) => {
-          const items = await fetchCapitalCallItems(call.id)
-          return [call.id, items] as const
-        }),
-      )
-      return Object.fromEntries(entries)
+  useEffect(() => {
+    if (!selectedCapitalCallId && capitalCalls.length > 0) {
+      setSelectedCapitalCallId(capitalCalls[0].id)
+    }
+    if (capitalCalls.length === 0) {
+      setSelectedCapitalCallId(null)
+    }
+  }, [capitalCalls, selectedCapitalCallId])
+
+  useEffect(() => {
+    if (!selectedDistributionId && distributions.length > 0) {
+      setSelectedDistributionId(distributions[0].id)
+    }
+    if (distributions.length === 0) {
+      setSelectedDistributionId(null)
+    }
+  }, [distributions, selectedDistributionId])
+
+  const { data: capitalCallDetails = [], isLoading: callDetailsLoading } = useQuery<CapitalCallDetail[]>({
+    queryKey: ['capitalCallDetails', selectedCapitalCallId],
+    queryFn: () => fetchCapitalCallDetails(selectedCapitalCallId as number),
+    enabled: selectedCapitalCallId !== null,
+  })
+
+  const { data: distributionDetails = [], isLoading: distributionDetailsLoading } = useQuery<DistributionDetail[]>({
+    queryKey: ['distributionDetails', selectedDistributionId],
+    queryFn: () => fetchDistributionDetails(selectedDistributionId as number),
+    enabled: selectedDistributionId !== null,
+  })
+
+  const generateCallDetailsMut = useMutation({
+    mutationFn: (replaceExisting: boolean) => generateCapitalCallDetails(selectedCapitalCallId as number, replaceExisting),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallDetails', selectedCapitalCallId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', selectedFundId] })
+      addToast('success', '출자요청 LP 상세를 생성했습니다.')
     },
-    enabled: capitalCalls.length > 0,
   })
 
-  const rows = useMemo<FundCapitalRow[]>(() => {
-    const callsByFund = new Map<number, CapitalCall[]>()
-    for (const call of capitalCalls) {
-      const fundCalls = callsByFund.get(call.fund_id) ?? []
-      fundCalls.push(call)
-      callsByFund.set(call.fund_id, fundCalls)
-    }
+  const updateCallDetailMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateCapitalCallDetail>[1] }) =>
+      updateCapitalCallDetail(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capitalCallDetails', selectedCapitalCallId] })
+      queryClient.invalidateQueries({ queryKey: ['capitalCallSummary', selectedFundId] })
+      addToast('success', '출자요청 상세를 업데이트했습니다.')
+    },
+  })
 
-    const distributionsByFund = new Map<number, Distribution[]>()
-    for (const row of distributions) {
-      const fundDistributions = distributionsByFund.get(row.fund_id) ?? []
-      fundDistributions.push(row)
-      distributionsByFund.set(row.fund_id, fundDistributions)
-    }
+  const generateDistributionDetailsMut = useMutation({
+    mutationFn: (replaceExisting: boolean) => generateDistributionDetails(selectedDistributionId as number, replaceExisting),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributionDetails', selectedDistributionId] })
+      addToast('success', '배분 LP 상세를 생성했습니다.')
+    },
+  })
 
-    return [...funds]
-      .map((fund) => {
-        const commitmentTotal = safeNumber(fund.commitment_total)
-        const fundCalls = callsByFund.get(fund.id) ?? []
-
-        let paidInFromCalls = 0
-        let outstandingUnpaid = 0
-
-        for (const call of fundCalls) {
-          const items = callItemsByCallId[call.id] ?? []
-          if (items.length === 0) {
-            outstandingUnpaid += safeNumber(call.total_amount)
-            continue
-          }
-
-          for (const item of items) {
-            const amount = safeNumber(item.amount)
-            if (item.paid) {
-              paidInFromCalls += amount
-            } else {
-              outstandingUnpaid += amount
-            }
-          }
-        }
-
-        const fallbackPaidIn = safeNumber(fund.paid_in_total)
-        const paidInTotal = paidInFromCalls > 0 ? paidInFromCalls : fallbackPaidIn
-
-        const distributedTotal = (distributionsByFund.get(fund.id) ?? []).reduce(
-          (sum, row) => sum + safeNumber(row.principal_total) + safeNumber(row.profit_total),
-          0,
-        )
-
-        const paidInRatio = commitmentTotal > 0 ? (paidInTotal / commitmentTotal) * 100 : 0
-        const distributedRatio = commitmentTotal > 0 ? (distributedTotal / commitmentTotal) * 100 : 0
-
-        return {
-          id: fund.id,
-          name: fund.name,
-          type: fund.type,
-          formationDate: fund.formation_date,
-          status: fund.status,
-          commitmentTotal,
-          paidInTotal,
-          paidInRatio,
-          outstandingUnpaid,
-          distributedTotal,
-          distributedRatio,
-        }
-      })
-      .sort((a, b) => {
-        const byFormationDate = (a.formationDate || '').localeCompare(b.formationDate || '')
-        if (byFormationDate !== 0) return byFormationDate
-        return a.name.localeCompare(b.name, 'ko')
-      })
-  }, [callItemsByCallId, capitalCalls, distributions, funds])
+  const updateDistributionDetailMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateDistributionDetail>[1] }) =>
+      updateDistributionDetail(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributionDetails', selectedDistributionId] })
+      addToast('success', '배분 상세를 업데이트했습니다.')
+    },
+  })
 
   const totals = useMemo(() => {
-    const commitmentTotal = rows.reduce((sum, row) => sum + row.commitmentTotal, 0)
-    const paidInTotal = rows.reduce((sum, row) => sum + row.paidInTotal, 0)
-    const outstandingUnpaid = rows.reduce((sum, row) => sum + row.outstandingUnpaid, 0)
-    const distributedTotal = rows.reduce((sum, row) => sum + row.distributedTotal, 0)
-
+    const commitment = Number(callSummary?.commitment_total || 0)
+    const paidIn = Number(callSummary?.total_paid_in || 0)
+    const unpaidLpCount = capitalCallDetails.filter((row) => Number(row.call_amount || 0) > Number(row.paid_amount || 0)).length
+    const unpaidAmount = capitalCallDetails.reduce((sum, row) => {
+      const diff = Number(row.call_amount || 0) - Number(row.paid_amount || 0)
+      return sum + Math.max(diff, 0)
+    }, 0)
     return {
-      commitmentTotal,
-      paidInTotal,
-      outstandingUnpaid,
-      distributedTotal,
-      paidInRatio: commitmentTotal > 0 ? (paidInTotal / commitmentTotal) * 100 : 0,
-      distributedRatio: commitmentTotal > 0 ? (distributedTotal / commitmentTotal) * 100 : 0,
+      commitment,
+      paidIn,
+      paidInRatio: commitment > 0 ? (paidIn / commitment) * 100 : 0,
+      unpaidLpCount,
+      unpaidAmount,
     }
-  }, [rows])
+  }, [callSummary, capitalCallDetails])
 
-  const isLoading = isFundsLoading || isCallsLoading || isDistributionsLoading || isCallItemsLoading
+  const isLoading = fundsLoading || callsLoading || distributionsLoading
 
   return (
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
           <h2 className="page-title">조합 운영</h2>
-          <p className="page-subtitle">운용 중인 전체 조합의 자본 상태를 한 화면에서 점검합니다.</p>
+          <p className="page-subtitle">LP별 출자요청/배분 계획을 자동 계산하고 납입 상태를 추적합니다.</p>
         </div>
       </div>
 
       {isLoading ? (
         <PageLoading />
-      ) : rows.length === 0 ? (
-        <EmptyState emoji="🏛️" message="등록된 조합이 없습니다." className="py-10" />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="card-base p-3">
-              <p className="text-xs text-gray-500">운용 조합 수</p>
-              <p className="mt-1 text-lg font-bold text-gray-800">{rows.length}개</p>
-            </div>
-            <div className="card-base p-3">
-              <p className="text-xs text-gray-500">총 약정액</p>
-              <p className="mt-1 text-lg font-bold text-gray-800">{formatKRW(totals.commitmentTotal)}</p>
-            </div>
-            <div className="card-base p-3">
-              <p className="text-xs text-gray-500">누적 납입액</p>
-              <p className="mt-1 text-lg font-bold text-gray-800">{formatKRW(totals.paidInTotal)}</p>
-              <p className="mt-0.5 text-[11px] text-gray-500">납입률 {toRatioLabel(totals.paidInRatio)}</p>
-            </div>
-            <div className="card-base p-3">
-              <p className="text-xs text-gray-500">미납 요청액</p>
-              <p className={`mt-1 text-lg font-bold ${totals.outstandingUnpaid > 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                {formatKRW(totals.outstandingUnpaid)}
-              </p>
-            </div>
-          </div>
-
-          <div className="card-base overflow-hidden">
-            <div className="overflow-auto">
-              <table className="min-w-[1240px] w-full text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
-                  <tr>
-                    <th className="px-3 py-2 text-left">조합명</th>
-                    <th className="px-3 py-2 text-left">구분</th>
-                    <th className="px-3 py-2 text-left">결성일</th>
-                    <th className="px-3 py-2 text-right">총 약정액</th>
-                    <th className="px-3 py-2 text-right">누적 출자액(납입률)</th>
-                    <th className="px-3 py-2 text-right">현재 미납 요청액</th>
-                    <th className="px-3 py-2 text-right">누적 배분액(배분률)</th>
-                    <th className="px-3 py-2 text-left">상태</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="cursor-pointer hover:bg-blue-50/40"
-                      onClick={() => navigate(`/funds/${row.id}`)}
-                    >
-                      <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          className="group inline-flex items-center gap-1 text-left"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            navigate(`/funds/${row.id}`)
-                          }}
-                        >
-                          <span className="font-medium text-gray-800 group-hover:text-blue-700">{row.name}</span>
-                          <ArrowUpRight size={14} className="text-gray-400 group-hover:text-blue-600" />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{row.type || '-'}</td>
-                      <td className="px-3 py-2 text-gray-600">{toDateLabel(row.formationDate)}</td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-800">{formatKRW(row.commitmentTotal)}</td>
-                      <td className="px-3 py-2 text-right text-gray-700">
-                        <div>{formatKRW(row.paidInTotal)}</div>
-                        <div className="text-[11px] text-gray-500">{toRatioLabel(row.paidInRatio)}</div>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <span className={row.outstandingUnpaid > 0 ? 'font-semibold text-red-600' : 'text-gray-700'}>
-                          {formatKRW(row.outstandingUnpaid)}
-                        </span>
-                        {row.outstandingUnpaid > 0 ? (
-                          <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">
-                            주의
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-700">
-                        <div>{formatKRW(row.distributedTotal)}</div>
-                        <div className="text-[11px] text-gray-500">{toRatioLabel(row.distributedRatio)}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                          {labelStatus(row.status)}
-                        </span>
-                      </td>
-                    </tr>
+          <div className="card-base">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+                <select
+                  value={selectedFundId || ''}
+                  onChange={(e) => {
+                    const next = Number(e.target.value) || null
+                    setSelectedFundId(next)
+                    setSelectedCapitalCallId(null)
+                    setSelectedDistributionId(null)
+                  }}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="">조합 선택</option>
+                  {funds.map((fund) => (
+                    <option key={fund.id} value={fund.id}>{fund.name}</option>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-semibold text-gray-800">
-                    <td className="px-3 py-2">우리 회사 총합</td>
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2">Total</td>
-                    <td className="px-3 py-2 text-right">{formatKRW(totals.commitmentTotal)}</td>
-                    <td className="px-3 py-2 text-right">
-                      {formatKRW(totals.paidInTotal)}
-                      <div className="text-[11px] font-normal text-gray-500">{toRatioLabel(totals.paidInRatio)}</div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className={totals.outstandingUnpaid > 0 ? 'text-red-600' : ''}>{formatKRW(totals.outstandingUnpaid)}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {formatKRW(totals.distributedTotal)}
-                      <div className="text-[11px] font-normal text-gray-500">{toRatioLabel(totals.distributedRatio)}</div>
-                    </td>
-                    <td className="px-3 py-2" />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {totals.outstandingUnpaid > 0 ? (
-              <div className="flex items-center gap-2 border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
-                <AlertTriangle size={14} />
-                <span>미납 요청액이 있는 조합이 있습니다. 해당 행을 눌러 상세 화면에서 조치해 주세요.</span>
+                </select>
               </div>
-            ) : null}
+              <div className="rounded bg-gray-50 p-2">
+                <p className="text-xs text-gray-500">총 약정액</p>
+                <p className="text-sm font-semibold text-gray-800">{formatKRW(totals.commitment)}</p>
+              </div>
+              <div className="rounded bg-gray-50 p-2">
+                <p className="text-xs text-gray-500">누적 납입액</p>
+                <p className="text-sm font-semibold text-gray-800">{formatKRW(totals.paidIn)}</p>
+                <p className="text-[11px] text-gray-500">납입률 {totals.paidInRatio.toFixed(1)}%</p>
+              </div>
+              <div className="rounded bg-red-50 p-2">
+                <p className="text-xs text-red-600">미납 LP / 미납액</p>
+                <p className="text-sm font-semibold text-red-700">{totals.unpaidLpCount}명 · {formatKRW(totals.unpaidAmount)}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="text-xs text-gray-500">
-            <div className="inline-flex items-center gap-1">
-              <Building2 size={12} />
-              조합명을 클릭하면 해당 조합 상세 페이지로 이동합니다.
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="card-base">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-gray-700">출자요청 LP 상세</h3>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => generateCallDetailsMut.mutate(true)}
+                    disabled={!selectedCapitalCallId || generateCallDetailsMut.isPending}
+                    className="secondary-btn"
+                  >
+                    자동생성
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">출자요청 선택</label>
+                <select
+                  value={selectedCapitalCallId || ''}
+                  onChange={(e) => setSelectedCapitalCallId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="">출자요청 선택</option>
+                  {capitalCalls.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      #{row.id} · {toDateLabel(row.call_date)} · {formatKRW(row.total_amount)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {callDetailsLoading ? (
+                <PageLoading />
+              ) : !selectedCapitalCallId ? (
+                <EmptyState emoji="📮" message="출자요청을 선택해 주세요." className="py-6" />
+              ) : !capitalCallDetails.length ? (
+                <EmptyState emoji="🧾" message="LP 상세가 없습니다. 자동생성 버튼으로 생성하세요." className="py-6" />
+              ) : (
+                <div className="space-y-2">
+                  {capitalCallDetails.map((row) => {
+                    const paidAmount = Number(row.paid_amount || 0)
+                    const callAmount = Number(row.call_amount || 0)
+                    const unpaid = Math.max(callAmount - paidAmount, 0)
+                    return (
+                      <div key={row.id} className="rounded-lg border border-gray-200 p-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{row.lp_name || `LP #${row.lp_id}`}</p>
+                            <p className="text-xs text-gray-500">
+                              호출액 {formatKRW(callAmount)} · 납입액 {formatKRW(paidAmount)} · 미납 {formatKRW(unpaid)}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className={`rounded px-2 py-0.5 text-xs font-medium ${unpaid > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                              {row.status}
+                            </span>
+                            <button
+                              onClick={() => updateCallDetailMut.mutate({ id: row.id, data: { paid_amount: 0, status: '미납', paid_date: null } })}
+                              className="secondary-btn"
+                            >
+                              미납
+                            </button>
+                            <button
+                              onClick={() => updateCallDetailMut.mutate({ id: row.id, data: { paid_amount: callAmount, status: '완납' } })}
+                              className="primary-btn"
+                            >
+                              완납
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="card-base">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-gray-700">배분 LP 상세</h3>
+                <button
+                  onClick={() => generateDistributionDetailsMut.mutate(true)}
+                  disabled={!selectedDistributionId || generateDistributionDetailsMut.isPending}
+                  className="secondary-btn"
+                >
+                  자동생성
+                </button>
+              </div>
+
+              <div className="mb-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">배분 선택</label>
+                <select
+                  value={selectedDistributionId || ''}
+                  onChange={(e) => setSelectedDistributionId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="">배분 선택</option>
+                  {distributions.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      #{row.id} · {toDateLabel(row.dist_date)} · {formatKRW(Number(row.principal_total || 0) + Number(row.profit_total || 0))}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {distributionDetailsLoading ? (
+                <PageLoading />
+              ) : !selectedDistributionId ? (
+                <EmptyState emoji="💸" message="배분을 선택해 주세요." className="py-6" />
+              ) : !distributionDetails.length ? (
+                <EmptyState emoji="📄" message="배분 상세가 없습니다. 자동생성 버튼으로 생성하세요." className="py-6" />
+              ) : (
+                <div className="space-y-2">
+                  {distributionDetails.map((row) => (
+                    <div key={row.id} className="rounded-lg border border-gray-200 p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{row.lp_name || `LP #${row.lp_id}`}</p>
+                          <p className="text-xs text-gray-500">
+                            배분액 {formatKRW(Number(row.distribution_amount || 0))} · 유형 {row.distribution_type}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`rounded px-2 py-0.5 text-xs font-medium ${row.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {row.paid ? '지급완료' : '지급대기'}
+                          </span>
+                          <button
+                            onClick={() => updateDistributionDetailMut.mutate({ id: row.id, data: { paid: !row.paid } })}
+                            className="primary-btn"
+                          >
+                            {row.paid ? '대기 전환' : '지급 완료'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>

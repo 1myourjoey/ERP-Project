@@ -58,6 +58,19 @@ function dueBadge(report: RegularReport): { text: string; className: string } | 
   return { text: `D-${report.days_remaining}`, className: 'tag tag-gray' }
 }
 
+function statusBadgeClass(status: string): string {
+  if (status === '완료' || status === '확인완료' || status === '제출완료' || status === '전송완료') {
+    return 'rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700'
+  }
+  if (status === '준비중' || status === '수집중' || status === '검수중') {
+    return 'rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700'
+  }
+  if (status === '요청' || status === '작성중' || status === '예정') {
+    return 'rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700'
+  }
+  return 'rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'
+}
+
 export default function ReportsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -112,6 +125,27 @@ export default function ReportsPage() {
       addToast('success', '보고 기록을 삭제했습니다.')
     },
   })
+
+  const matrixRows = useMemo(() => {
+    const targets = REPORT_TARGET_OPTIONS
+    return (funds || []).map((fund) => {
+      const byTarget: Record<string, RegularReport | null> = Object.fromEntries(
+        targets.map((target) => [target, null]),
+      )
+      for (const row of rows || []) {
+        if (row.fund_id !== fund.id) continue
+        const existing = byTarget[row.report_target]
+        if (!existing) {
+          byTarget[row.report_target] = row
+          continue
+        }
+        const existingDate = existing.due_date || existing.created_at || ''
+        const nextDate = row.due_date || row.created_at || ''
+        if (nextDate > existingDate) byTarget[row.report_target] = row
+      }
+      return { fund, byTarget }
+    })
+  }, [funds, rows])
 
   return (
     <div className="page-container space-y-4">
@@ -209,6 +243,40 @@ export default function ReportsPage() {
       )}
 
       <div className="space-y-3">
+        {!!matrixRows.length && (
+          <div className="card-base overflow-auto">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">조합별 보고 현황 매트릭스</h3>
+            <table className="min-w-[760px] w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-600">
+                <tr>
+                  <th className="px-2 py-2 text-left">조합</th>
+                  {REPORT_TARGET_OPTIONS.map((target) => (
+                    <th key={target} className="px-2 py-2 text-left">{target}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {matrixRows.map(({ fund, byTarget }) => (
+                  <tr key={fund.id} className="border-t">
+                    <td className="px-2 py-2 font-medium text-gray-800">{fund.name}</td>
+                    {REPORT_TARGET_OPTIONS.map((target) => {
+                      const cell = byTarget[target]
+                      return (
+                        <td key={`${fund.id}-${target}`} className="px-2 py-2">
+                          {cell ? (
+                            <span className={statusBadgeClass(cell.status)}>{labelStatus(cell.status)}</span>
+                          ) : (
+                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">미등록</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         {isLoading ? (
           <PageLoading />
         ) : !rows?.length ? (
@@ -243,7 +311,7 @@ export default function ReportsPage() {
                       <p className="text-sm font-semibold text-gray-800">{row.report_target} · {row.period}</p>
                       <div className="flex items-center gap-1">
                       {badge && <span className={badge.className}>{badge.text}</span>}
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{labelStatus(row.status)}</span>
+                        <span className={statusBadgeClass(row.status)}>{labelStatus(row.status)}</span>
                       </div>
                     </div>
                     <p className="text-xs text-gray-500">조합: {row.fund_name || '미지정'} | 마감일: {formatDate(row.due_date)} | 제출일: {formatDate(row.submitted_date)}</p>

@@ -8,15 +8,19 @@ import {
   deleteExitCommitteeFund,
   deleteExitTrade,
   fetchCompanies,
+  fetchExitDashboard,
   fetchExitCommitteeFunds,
   fetchExitCommittees,
   fetchExitTrades,
   fetchFunds,
   fetchInvestments,
+  generateExitDistribution,
+  settleExitTrade,
   updateExitCommittee,
   updateExitCommitteeFund,
   updateExitTrade,
   type Company,
+  type ExitDashboardResponse,
   type ExitCommittee,
   type ExitCommitteeFund,
   type ExitCommitteeFundInput,
@@ -96,6 +100,8 @@ interface TradeEditState {
 export default function ExitsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'committees' | 'trades'>('dashboard')
+  const [dashboardFundId, setDashboardFundId] = useState<number | null>(null)
 
   const [expandedCommitteeId, setExpandedCommitteeId] = useState<number | null>(null)
   const [editingCommitteeId, setEditingCommitteeId] = useState<number | null>(null)
@@ -139,6 +145,10 @@ export default function ExitsPage() {
   const { data: committees } = useQuery<ExitCommittee[]>({ queryKey: ['exitCommittees'], queryFn: () => fetchExitCommittees() })
   const { data: committeeFunds } = useQuery({ queryKey: ['exitCommitteeFunds', expandedCommitteeId], queryFn: () => fetchExitCommitteeFunds(expandedCommitteeId as number), enabled: !!expandedCommitteeId })
   const { data: trades } = useQuery<ExitTrade[]>({ queryKey: ['exitTrades'], queryFn: () => fetchExitTrades() })
+  const { data: exitDashboard } = useQuery<ExitDashboardResponse>({
+    queryKey: ['exitDashboard', dashboardFundId],
+    queryFn: () => fetchExitDashboard(dashboardFundId || undefined),
+  })
 
   const filteredInvestmentOptions = useMemo(
     () => (investments || []).filter((inv) => (!newTrade.fund_id || inv.fund_id === newTrade.fund_id) && (!newTrade.company_id || inv.company_id === newTrade.company_id)),
@@ -155,6 +165,25 @@ export default function ExitsPage() {
   const createTradeMut = useMutation({ mutationFn: (data: ExitTradeInput) => createExitTrade(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exitTrades'] }); queryClient.invalidateQueries({ queryKey: ['transactions'] }); addToast('success', '회수 거래를 등록했습니다.') } })
   const updateTradeMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<ExitTradeInput> }) => updateExitTrade(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exitTrades'] }); queryClient.invalidateQueries({ queryKey: ['transactions'] }); setEditingTradeId(null); setEditTrade(null); addToast('success', '회수 거래를 수정했습니다.') } })
   const deleteTradeMut = useMutation({ mutationFn: (id: number) => deleteExitTrade(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exitTrades'] }); queryClient.invalidateQueries({ queryKey: ['transactions'] }); addToast('success', '회수 거래를 삭제했습니다.') } })
+  const settleTradeMut = useMutation({
+    mutationFn: ({ id, settlement_amount, settlement_date, memo }: { id: number; settlement_amount: number; settlement_date: string; memo?: string | null }) =>
+      settleExitTrade(id, { settlement_amount, settlement_date, memo }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exitTrades'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['valuations'] })
+      queryClient.invalidateQueries({ queryKey: ['distributions'] })
+      queryClient.invalidateQueries({ queryKey: ['exitDashboard'] })
+      addToast('success', '회수 거래 정산을 완료했습니다.')
+    },
+  })
+  const generateDistributionMut = useMutation({
+    mutationFn: (tradeId: number) => generateExitDistribution(tradeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distributions'] })
+      addToast('success', '정산 기반 LP 배분을 생성했습니다.')
+    },
+  })
 
   const toggleCommitteeEdit = (committee: ExitCommittee) => {
     if (editingCommitteeId === committee.id) {
@@ -206,6 +235,27 @@ export default function ExitsPage() {
     })
   }
 
+  const handleSettleTrade = (trade: ExitTrade) => {
+    const defaultAmount = String(trade.net_amount ?? trade.amount ?? 0)
+    const amountInput = prompt('정산 금액을 입력하세요.', defaultAmount)
+    if (!amountInput) return
+    const settlementAmount = Number(amountInput)
+    if (!Number.isFinite(settlementAmount) || settlementAmount <= 0) {
+      addToast('warning', '정산 금액은 0보다 커야 합니다.')
+      return
+    }
+    const defaultDate = todayIso()
+    const dateInput = prompt('정산일(YYYY-MM-DD)을 입력하세요.', defaultDate)
+    if (!dateInput) return
+    const memo = prompt('정산 메모(선택)', trade.memo || '') || undefined
+    settleTradeMut.mutate({
+      id: trade.id,
+      settlement_amount: settlementAmount,
+      settlement_date: dateInput,
+      memo,
+    })
+  }
+
   return (
     <div className="page-container space-y-4">
       <div className="page-header">
@@ -215,6 +265,86 @@ export default function ExitsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          회수 대시보드
+        </button>
+        <button
+          onClick={() => setActiveTab('committees')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'committees' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          회수 위원회
+        </button>
+        <button
+          onClick={() => setActiveTab('trades')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'trades' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          회수 거래/정산
+        </button>
+      </div>
+
+      {activeTab === 'dashboard' && (
+        <div className="card-base space-y-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">조합 필터</label>
+              <select
+                value={dashboardFundId || ''}
+                onChange={(e) => setDashboardFundId(e.target.value ? Number(e.target.value) : null)}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                <option value="">전체 조합</option>
+                {funds?.map((fund) => (
+                  <option key={fund.id} value={fund.id}>{fund.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              총 투자 {formatKRW(exitDashboard?.total_invested || 0)}
+            </div>
+            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              총 회수 {formatKRW(exitDashboard?.total_recovered || 0)}
+            </div>
+            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              통합 MOIC {exitDashboard?.total_moic != null ? `${exitDashboard.total_moic.toFixed(2)}x` : '-'}
+            </div>
+          </div>
+
+          {!exitDashboard?.items?.length ? (
+            <EmptyState emoji="📉" message="회수 대시보드 데이터가 없습니다." className="py-8" />
+          ) : (
+            <div className="overflow-auto">
+              <table className="min-w-[760px] w-full text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2 text-left">투자건</th>
+                    <th className="px-3 py-2 text-right">투자원금</th>
+                    <th className="px-3 py-2 text-right">회수금액</th>
+                    <th className="px-3 py-2 text-right">MOIC</th>
+                    <th className="px-3 py-2 text-left">상태</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {exitDashboard.items.map((item) => (
+                    <tr key={item.investment_id}>
+                      <td className="px-3 py-2">{item.company_name}</td>
+                      <td className="px-3 py-2 text-right">{formatKRW(item.invested_amount)}</td>
+                      <td className="px-3 py-2 text-right">{formatKRW(item.recovered_amount)}</td>
+                      <td className="px-3 py-2 text-right">{item.moic != null ? `${item.moic.toFixed(2)}x` : '-'}</td>
+                      <td className="px-3 py-2">{item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'committees' && (
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 위원회 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
@@ -248,7 +378,9 @@ export default function ExitsPage() {
           </div>
         </div>
       </div>
+      )}
 
+      {activeTab === 'committees' && (
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">위원회</h3>
         <div className="space-y-2">
@@ -347,7 +479,9 @@ export default function ExitsPage() {
           {!committees?.length && <EmptyState emoji="🚪" message="위원회가 없어요" className="py-8" />}
         </div>
       </div>
+      )}
 
+      {activeTab === 'trades' && (
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 회수 거래 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
@@ -406,7 +540,9 @@ export default function ExitsPage() {
           </div>
         </div>
       </div>
+      )}
 
+      {activeTab === 'trades' && (
       <div className="card-base">
         <h3 className="mb-2 text-sm font-semibold text-gray-700">회수 거래</h3>
         <div className="space-y-1">
@@ -415,10 +551,19 @@ export default function ExitsPage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-700">{trade.fund_name || trade.fund_id} | {trade.company_name || trade.company_id} | {toDate(trade.trade_date)} | {labelExitType(trade.exit_type)} | 거래 금액 {formatKRW(trade.amount)} | 회수액 {formatKRW(trade.net_amount || 0)}</p>
                 <div className="flex gap-1">
-                  <button onClick={() => toggleTradeEdit(trade)} className="secondary-btn">수정</button>
+                          <button onClick={() => toggleTradeEdit(trade)} className="secondary-btn">수정</button>
+                  {trade.settlement_status !== '정산완료' && (
+                    <button onClick={() => handleSettleTrade(trade)} className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-100">정산처리</button>
+                  )}
+                  {trade.settlement_status === '정산완료' && (
+                    <button onClick={() => generateDistributionMut.mutate(trade.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">LP 배분생성</button>
+                  )}
                   <button onClick={() => deleteTradeMut.mutate(trade.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                정산상태: {trade.settlement_status || '-'} · 정산일: {toDate(trade.settlement_date)} · 정산금액: {formatKRW(trade.settlement_amount || 0)}
+              </p>
               {editingTradeId === trade.id && editTrade && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-6">
                   <div><label className="mb-1 block text-xs font-medium text-gray-600">위원회 ID</label><input type="number" value={editTrade.exit_committee_id ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, exit_committee_id: e.target.value ? Number(e.target.value) : null } : p))} className="w-full rounded border px-2 py-1 text-sm" placeholder="위원회 ID" /></div>
@@ -446,6 +591,7 @@ export default function ExitsPage() {
           {!trades?.length && <EmptyState emoji="🚪" message="회수 거래가 없어요" className="py-8" />}
         </div>
       </div>
+      )}
     </div>
   )
 }
