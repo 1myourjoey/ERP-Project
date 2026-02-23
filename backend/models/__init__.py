@@ -32,6 +32,8 @@ from .phase3 import (
 from .checklist import Checklist, ChecklistItem
 from .calendar_event import CalendarEvent
 from .task_category import TaskCategory
+from .periodic_schedule import PeriodicSchedule
+from .attachment import Attachment
 
 __all__ = [
     "Task",
@@ -56,4 +58,6 @@ __all__ = [
     "Checklist", "ChecklistItem",
     "CalendarEvent",
     "TaskCategory",
+    "PeriodicSchedule",
+    "Attachment",
 ]

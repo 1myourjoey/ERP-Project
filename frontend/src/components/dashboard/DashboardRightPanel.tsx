@@ -79,6 +79,11 @@ function DashboardRightPanel({
     return completedLastWeekTasks
   }, [completedFilter, completedLastWeekTasks, completedThisWeekTasks, completedTodayTasks])
 
+  const isPeriodicRow = (sourceLabel?: string | null, title?: string | null) => {
+    const normalized = `${sourceLabel || ''} ${title || ''}`.replace(/\s+/g, '').toLowerCase()
+    return normalized.includes('정기') || normalized.includes('분기') || normalized.includes('영업') || normalized.includes('총회')
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
@@ -156,6 +161,9 @@ function DashboardRightPanel({
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-gray-800">
                         {notice.fund_name} | {notice.notice_label}
+                        {isPeriodicRow(notice.source_label, notice.notice_label) && (
+                          <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
+                        )}
                       </p>
                       {badge && <span className={badge.className}>{badge.text}</span>}
                     </div>
@@ -202,6 +210,9 @@ function DashboardRightPanel({
                       <p className="feed-card-title">
                         {report.source_label ? `${report.source_label} ` : ''}
                         {report.report_target} | {report.period}
+                        {isPeriodicRow(report.source_label, report.report_target) && (
+                          <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
+                        )}
                       </p>
                       {badge && <span className={badge.className}>{badge.text}</span>}
                     </div>

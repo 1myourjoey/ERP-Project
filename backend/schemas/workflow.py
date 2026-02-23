@@ -11,6 +11,7 @@ class WorkflowStepDocumentInput(BaseModel):
     timing: Optional[str] = None
     notes: Optional[str] = None
     document_template_id: Optional[int] = None
+    attachment_ids: list[int] = Field(default_factory=list)
 
 
 class WorkflowStepCreate(BaseModel):
@@ -23,7 +24,7 @@ class WorkflowStepCreate(BaseModel):
     memo: Optional[str] = None
     is_notice: bool = False
     is_report: bool = False
-    step_documents: list[WorkflowStepDocumentInput] = []
+    step_documents: list[WorkflowStepDocumentInput] = Field(default_factory=list)
 
 
 class WorkflowDocumentCreate(BaseModel):
@@ -50,9 +51,9 @@ class WorkflowCreateRequest(BaseModel):
     trigger_description: Optional[str] = None
     category: Optional[str] = None
     total_duration: Optional[str] = None
-    steps: list[WorkflowStepCreate] = []
-    documents: list[WorkflowDocumentCreate] = []
-    warnings: list[WorkflowWarningCreate] = []
+    steps: list[WorkflowStepCreate] = Field(default_factory=list)
+    documents: list[WorkflowDocumentCreate] = Field(default_factory=list)
+    warnings: list[WorkflowWarningCreate] = Field(default_factory=list)
 
 
 class WorkflowUpdateRequest(BaseModel):
@@ -60,9 +61,9 @@ class WorkflowUpdateRequest(BaseModel):
     trigger_description: Optional[str] = None
     category: Optional[str] = None
     total_duration: Optional[str] = None
-    steps: list[WorkflowStepCreate] = []
-    documents: list[WorkflowDocumentCreate] = []
-    warnings: list[WorkflowWarningCreate] = []
+    steps: list[WorkflowStepCreate] = Field(default_factory=list)
+    documents: list[WorkflowDocumentCreate] = Field(default_factory=list)
+    warnings: list[WorkflowWarningCreate] = Field(default_factory=list)
 
 
 class WorkflowStepDocumentResponse(BaseModel):
@@ -75,6 +76,7 @@ class WorkflowStepDocumentResponse(BaseModel):
     notes: Optional[str] = None
     template_name: Optional[str] = None
     template_category: Optional[str] = None
+    attachment_ids: list[int] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -85,6 +87,7 @@ class WorkflowStepInstanceDocumentInput(BaseModel):
     notes: Optional[str] = None
     document_template_id: Optional[int] = None
     checked: bool = False
+    attachment_ids: list[int] = Field(default_factory=list)
 
 
 class WorkflowStepInstanceDocumentUpdate(BaseModel):
@@ -94,6 +97,7 @@ class WorkflowStepInstanceDocumentUpdate(BaseModel):
     notes: Optional[str] = None
     document_template_id: Optional[int] = None
     checked: Optional[bool] = None
+    attachment_ids: Optional[list[int]] = None
 
 
 class WorkflowStepInstanceDocumentCheckRequest(BaseModel):
@@ -112,6 +116,7 @@ class WorkflowStepInstanceDocumentResponse(BaseModel):
     checked: bool = False
     template_name: Optional[str] = None
     template_category: Optional[str] = None
+    attachment_ids: list[int] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -127,7 +132,7 @@ class WorkflowStepResponse(BaseModel):
     memo: Optional[str] = None
     is_notice: bool = False
     is_report: bool = False
-    step_documents: list[WorkflowStepDocumentResponse] = []
+    step_documents: list[WorkflowStepDocumentResponse] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -155,9 +160,9 @@ class WorkflowResponse(BaseModel):
     trigger_description: Optional[str] = None
     category: Optional[str] = None
     total_duration: Optional[str] = None
-    steps: list[WorkflowStepResponse] = []
-    documents: list[WorkflowDocumentResponse] = []
-    warnings: list[WorkflowWarningResponse] = []
+    steps: list[WorkflowStepResponse] = Field(default_factory=list)
+    documents: list[WorkflowDocumentResponse] = Field(default_factory=list)
+    warnings: list[WorkflowWarningResponse] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -207,7 +212,7 @@ class WorkflowStepInstanceResponse(BaseModel):
     task_id: Optional[int] = None
     estimated_time: Optional[str] = None
     memo: Optional[str] = None
-    step_documents: list[WorkflowStepInstanceDocumentResponse] = []
+    step_documents: list[WorkflowStepInstanceDocumentResponse] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
@@ -229,7 +234,7 @@ class WorkflowInstanceResponse(BaseModel):
     company_name: Optional[str] = None
     fund_name: Optional[str] = None
     gp_entity_name: Optional[str] = None
-    step_instances: list[WorkflowStepInstanceResponse] = []
+    step_instances: list[WorkflowStepInstanceResponse] = Field(default_factory=list)
     progress: str = ""  # e.g. "3/7"
     model_config = {"from_attributes": True}
 
@@ -242,4 +247,4 @@ class WorkflowStepLPPaidInInput(BaseModel):
 class WorkflowStepCompleteRequest(BaseModel):
     actual_time: Optional[str] = None
     notes: Optional[str] = None
-    lp_paid_in_updates: list[WorkflowStepLPPaidInInput] = []
+    lp_paid_in_updates: list[WorkflowStepLPPaidInInput] = Field(default_factory=list)

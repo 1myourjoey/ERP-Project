@@ -23,7 +23,7 @@ import {
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
-import { invalidateTaskRelated } from '../lib/queryInvalidation'
+import { invalidateChecklistRelated, invalidateTaskRelated, invalidateWorkflowRelated } from '../lib/queryInvalidation'
 
 const CHECKLIST_CATEGORY_OPTIONS = ['투자점검', '결성준비', '연말결산', '감사준비', '규약관리', '일반']
 
@@ -54,6 +54,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [convertedChecklistIds, setConvertedChecklistIds] = useState<Set<number>>(new Set())
+  const [showGuide, setShowGuide] = useState(false)
 
   const buildWorkflowTemplateFromChecklist = (row: Checklist): WorkflowTemplateInput => {
     const steps = [...(row.items ?? [])]
@@ -68,7 +69,16 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
         memo: item.notes || '',
         is_notice: false,
         is_report: false,
-        step_documents: [],
+        step_documents: [
+          {
+            name: item.name,
+            required: item.required,
+            timing: 'D-day',
+            notes: item.notes || null,
+            document_template_id: null,
+            attachment_ids: [],
+          },
+        ],
       }))
 
     return {
@@ -86,7 +96,16 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
         memo: '',
         is_notice: false,
         is_report: false,
-        step_documents: [],
+        step_documents: [
+          {
+            name: '기본 체크 항목',
+            required: true,
+            timing: 'D-day',
+            notes: null,
+            document_template_id: null,
+            attachment_ids: [],
+          },
+        ],
       }],
       documents: [],
       warnings: [],
@@ -133,7 +152,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const createMut = useMutation({
     mutationFn: createChecklist,
     onSuccess: (created: Checklist) => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      invalidateChecklistRelated(queryClient)
       setSelectedId(created.id)
       setShowCreate(false)
       addToast('success', '체크리스트가 생성되었습니다.')
@@ -143,8 +162,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ChecklistInput> }) => updateChecklist(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
-      queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
+      invalidateChecklistRelated(queryClient)
       setEditingChecklist(false)
       addToast('success', '체크리스트가 수정되었습니다.')
     },
@@ -153,7 +171,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const deleteMut = useMutation({
     mutationFn: deleteChecklist,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      invalidateChecklistRelated(queryClient)
       setSelectedId(null)
       addToast('success', '체크리스트가 삭제되었습니다.')
     },
@@ -162,8 +180,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const createItemMut = useMutation({
     mutationFn: ({ checklistId, data }: { checklistId: number; data: ChecklistItemInput }) => createChecklistItem(checklistId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      invalidateChecklistRelated(queryClient)
       setShowItemCreate(false)
       addToast('success', '체크리스트 항목이 추가되었습니다.')
     },
@@ -172,8 +189,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const updateItemMut = useMutation({
     mutationFn: ({ checklistId, itemId, data }: { checklistId: number; itemId: number; data: Partial<ChecklistItemInput> }) => updateChecklistItem(checklistId, itemId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      invalidateChecklistRelated(queryClient)
       setEditingItemId(null)
       addToast('success', '체크리스트 항목이 수정되었습니다.')
     },
@@ -182,8 +198,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const deleteItemMut = useMutation({
     mutationFn: ({ checklistId, itemId }: { checklistId: number; itemId: number }) => deleteChecklistItem(checklistId, itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklist', selectedId] })
-      queryClient.invalidateQueries({ queryKey: ['checklists'] })
+      invalidateChecklistRelated(queryClient)
       addToast('success', '체크리스트 항목이 삭제되었습니다.')
     },
   })
@@ -191,7 +206,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   const convertToWorkflowMut = useMutation({
     mutationFn: (row: Checklist) => createWorkflowTemplate(buildWorkflowTemplateFromChecklist(row)),
     onSuccess: (createdTemplate, sourceChecklist) => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      invalidateWorkflowRelated(queryClient)
       setConvertedChecklistIds((prev) => {
         const next = new Set(prev)
         next.add(sourceChecklist.id)
@@ -280,11 +295,28 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
           </button>
           <button
             className="secondary-btn"
-            onClick={() => navigate('/workflows?tab=checklists')}
+            onClick={() => setShowGuide((prev) => !prev)}
           >
-            자세히 보기
+            {showGuide ? '가이드 닫기' : '자세히 보기'}
           </button>
         </div>
+        {showGuide && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
+            <p className="text-sm font-medium text-amber-900">체크리스트 통합 가이드</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">
+              변환 시 각 항목이 워크플로 단계와 단계 서류(`step_documents`)로 함께 생성됩니다.
+              생성 후에는 워크플로 페이지에서 단계별 체크, 마감일, 리마인더를 통합 관리할 수 있습니다.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button className="secondary-btn" onClick={() => navigate('/workflows?tab=templates')}>
+                템플릿 목록 열기
+              </button>
+              <button className="secondary-btn" onClick={() => handleConvertChecklist(checklist)}>
+                현재 체크리스트 변환
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -359,8 +391,8 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
             />
           ) : (
             <div className="card-base">
-              <div className="flex items-center justify-between">
-                <div>
+                <div className="flex items-center justify-between">
+                  <div>
                   <h3 className="text-lg font-semibold text-gray-800">
                     {checklist.name}
                     {convertedChecklistIds.has(checklist.id) && (
@@ -371,7 +403,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                   </h3>
                   <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button className="secondary-btn" onClick={handleAddTaskFromChecklist}>업무에 추가</button>
                   <button
                     className="secondary-btn"
@@ -380,18 +412,25 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                   >
                     {convertToWorkflowMut.isPending ? '변환 중...' : '워크플로로 변환'}
                   </button>
-                  <button className="secondary-btn" onClick={() => navigate('/workflows?tab=checklists')}>
-                    워크플로우 →
-                  </button>
-                  <button className="secondary-btn" onClick={() => setEditingChecklist(true)}>수정</button>
-                  <button
-                    className="danger-btn"
-                    onClick={() => {
-                      if (confirm('이 체크리스트를 삭제하시겠습니까?')) deleteMut.mutate(selectedId)
-                    }}
-                  >
-                    삭제
-                  </button>
+                  <details className="relative">
+                    <summary className="secondary-btn cursor-pointer list-none">더보기</summary>
+                    <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
+                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-50" onClick={() => navigate('/workflows?tab=templates')}>
+                        워크플로우 이동
+                      </button>
+                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-50" onClick={() => setEditingChecklist(true)}>
+                        수정
+                      </button>
+                      <button
+                        className="w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          if (confirm('이 체크리스트를 삭제하시겠습니까?')) deleteMut.mutate(selectedId)
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -585,14 +624,54 @@ function ItemForm({
   const [form, setForm] = useState<ChecklistItemInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 bg-gray-50 border border-gray-200 rounded p-2">
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">순서</label><input type="number" value={form.order} onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="숫자 입력" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">항목 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="예: 실사 보고서 확인" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">비고</label><input value={form.notes || ''} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" placeholder="선택 입력" /></div>
-      <label className="text-sm flex items-center gap-2 px-2 py-1 border rounded bg-white"><input type="checkbox" checked={!!form.required} onChange={e => setForm(prev => ({ ...prev, required: e.target.checked }))} /> 필수</label>
-      <div className="flex gap-2">
-        <button className="primary-btn" onClick={() => form.name.trim() && onSubmit({ ...form, name: form.name.trim(), notes: form.notes?.trim() || null })}>저장</button>
-        <button className="secondary-btn" onClick={onCancel}>취소</button>
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">항목 이름</label>
+          <input
+            value={form.name}
+            onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+            className="w-full rounded border px-2 py-1 text-sm"
+            placeholder="예: 실사 보고서 확인"
+          />
+        </div>
+        <div className="grid grid-cols-[120px_1fr] items-end gap-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">순서</label>
+            <input
+              type="number"
+              value={form.order}
+              onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+              placeholder="숫자"
+            />
+          </div>
+          <label className="inline-flex h-9 items-center gap-2 rounded border bg-white px-3 text-sm">
+            <input
+              type="checkbox"
+              checked={!!form.required}
+              onChange={e => setForm(prev => ({ ...prev, required: e.target.checked }))}
+            />
+            필수
+          </label>
+        </div>
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+          <input
+            value={form.notes || ''}
+            onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+            className="w-full rounded border px-2 py-1 text-sm"
+            placeholder="선택 입력"
+          />
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button className="primary-btn" onClick={() => form.name.trim() && onSubmit({ ...form, name: form.name.trim(), notes: form.notes?.trim() || null })}>
+          저장
+        </button>
+        <button className="secondary-btn" onClick={onCancel}>
+          취소
+        </button>
       </div>
     </div>
   )

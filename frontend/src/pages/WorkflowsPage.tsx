@@ -8,9 +8,12 @@ import {
   checkWorkflowStepInstanceDocument,
   completeWorkflowStep,
   createWorkflowTemplate,
+  createPeriodicSchedule,
   deleteWorkflowStepInstanceDocument,
   deleteWorkflowInstance,
   deleteWorkflowTemplate,
+  deletePeriodicSchedule,
+  downloadAttachment,
   fetchCompanies,
   fetchDocumentTemplates,
   fetchFund,
@@ -18,23 +21,32 @@ import {
   fetchFunds,
   fetchGPEntities,
   fetchInvestments,
+  fetchAttachments,
+  fetchPeriodicSchedules,
   fetchTaskCategories,
   fetchWorkflow,
   fetchWorkflowInstances,
   fetchWorkflows,
+  generatePeriodicSchedulesForYear,
   generateDocument,
   instantiateWorkflow,
+  removeAttachment,
   swapWorkflowInstanceTemplate,
   undoWorkflowStep,
   updateWorkflowStepInstanceDocument,
   updateWorkflowInstance,
   updateWorkflowTemplate,
+  updatePeriodicSchedule,
+  uploadAttachment,
+  type Attachment,
   type Company,
   type DocumentTemplate,
   type Fund,
   type GPEntity,
   type NoticeDeadlineResult,
   type LP,
+  type PeriodicSchedule,
+  type PeriodicScheduleInput,
   type TaskCategory,
   type WorkflowInstance,
   type WorkflowListItem,
@@ -52,7 +64,7 @@ import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 import DrawerOverlay from '../components/common/DrawerOverlay'
-import { invalidateFundRelated } from '../lib/queryInvalidation'
+import { invalidateFundRelated, invalidateWorkflowRelated } from '../lib/queryInvalidation'
 import ChecklistsPage from './ChecklistsPage'
 
 type WorkflowLocationState = {
@@ -64,6 +76,7 @@ type StepDocumentDraft = {
   required: boolean
   timing: string
   notes: string
+  attachment_ids: number[]
 }
 
 const EMPTY_STEP_DOCUMENT_DRAFT: StepDocumentDraft = {
@@ -71,6 +84,7 @@ const EMPTY_STEP_DOCUMENT_DRAFT: StepDocumentDraft = {
   required: true,
   timing: '',
   notes: '',
+  attachment_ids: [],
 }
 
 interface InvestmentListItem {
@@ -79,6 +93,17 @@ interface InvestmentListItem {
   company_id: number
   fund_name: string
   company_name: string
+}
+
+function saveBlobAsFile(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 const DEFAULT_NOTICE_TYPES = [
@@ -203,22 +228,52 @@ function dueToneBadge(meta: { tone: InstanceDueTone; diffDays: number | null }):
   if (meta.tone === 'overdue') {
     return {
       label: '지연',
-      className: 'rounded-full border border-red-300 bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800',
+      className: 'rounded-full border border-red-300 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800',
     }
   }
   if (meta.tone === 'today') {
     return {
       label: '오늘',
-      className: 'rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800',
+      className: 'rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800',
     }
   }
   if (meta.tone === 'this_week') {
     return {
       label: meta.diffDays && meta.diffDays > 0 ? `D-${meta.diffDays}` : '이번주',
-      className: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800',
+      className: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800',
     }
   }
   return null
+}
+
+const PERIODIC_MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
+
+function periodicOccurrenceMonths(schedule: Pick<PeriodicSchedule, 'recurrence' | 'base_month'>): number[] {
+  const baseMonth = Math.max(1, Math.min(12, Number(schedule.base_month || 1)))
+  if (schedule.recurrence === 'quarterly') {
+    const months: number[] = []
+    for (let month = baseMonth; month <= 12; month += 3) months.push(month)
+    return months
+  }
+  if (schedule.recurrence === 'semi-annual') {
+    return [baseMonth, ...(baseMonth + 6 <= 12 ? [baseMonth + 6] : [])]
+  }
+  return [baseMonth]
+}
+
+function periodicRecurrenceLabel(value: string): string {
+  if (value === 'quarterly') return '분기'
+  if (value === 'semi-annual') return '반기'
+  if (value === 'annual') return '연간'
+  return value || '-'
+}
+
+function periodicCategoryClass(value: string): string {
+  const normalized = normalizeKeyword(value)
+  if (normalized.includes('분기')) return 'border-sky-200 bg-sky-100 text-sky-700'
+  if (normalized.includes('영업')) return 'border-emerald-200 bg-emerald-100 text-emerald-700'
+  if (normalized.includes('총회')) return 'border-indigo-200 bg-indigo-100 text-indigo-700'
+  return 'border-slate-200 bg-slate-100 text-slate-700'
 }
 
 function escapeHtml(value: string): string {
@@ -277,7 +332,7 @@ function printWorkflowInstanceChecklist(instance: WorkflowInstance, template?: W
       const stepDocuments = stepDocsByStepId.get(step.workflow_step_id) ?? []
       const stepDocumentsHtml = stepDocuments.length > 0
         ? `<div style="margin-top:4px; color:#6b7280; font-size:11px;">${stepDocuments
-          .map((doc) => `• ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
+          .map((doc) => `- ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
           .join('<br />')}</div>`
         : ''
       return `<tr>
@@ -329,7 +384,7 @@ function printWorkflowTemplateChecklist(template: WorkflowTemplate) {
         const stepDocuments = step.step_documents ?? []
         const stepDocumentsHtml = stepDocuments.length > 0
           ? `<div style="margin-top:4px; color:#6b7280; font-size:11px;">${stepDocuments
-            .map((doc) => `• ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
+            .map((doc) => `- ${escapeHtml(doc.name)}${doc.document_template_id ? ' [템플릿]' : ''}`)
             .join('<br />')}</div>`
           : ''
         return `<tr>
@@ -411,14 +466,15 @@ function normalizeTemplate(wf: WorkflowTemplate | null | undefined): WorkflowTem
       memo: s.memo ?? '',
       is_notice: s.is_notice ?? false,
       is_report: s.is_report ?? false,
-      step_documents: (s.step_documents ?? []).map((doc) => ({
-        name: doc.name,
-        required: doc.required,
-        timing: doc.timing ?? '',
-        notes: doc.notes ?? '',
-        document_template_id: doc.document_template_id ?? null,
+        step_documents: (s.step_documents ?? []).map((doc) => ({
+          name: doc.name,
+          required: doc.required,
+          timing: doc.timing ?? '',
+          notes: doc.notes ?? '',
+          document_template_id: doc.document_template_id ?? null,
+          attachment_ids: doc.attachment_ids ?? [],
+        })),
       })),
-    })),
     documents: (wf?.documents ?? []).map((d) => ({ name: d.name, required: d.required, timing: d.timing ?? '', notes: d.notes ?? '' })),
     warnings: (wf?.warnings ?? []).map((w) => ({ content: w.content, category: (w.category as 'warning' | 'lesson' | 'tip') || 'warning' })),
   }
@@ -461,13 +517,50 @@ function TemplateModal({
     timing: '',
     notes: '',
   })
+  const [warningDraft, setWarningDraft] = useState('')
   const [stepDocDrafts, setStepDocDrafts] = useState<Record<number, {
     name: string
     required: boolean
     timing: string
     notes: string
     documentTemplateId: string
+    attachmentIds: number[]
   }>>({})
+  const templateAttachmentIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const step of form.steps) {
+      for (const doc of step.step_documents ?? []) {
+        for (const id of doc.attachment_ids ?? []) {
+          if (Number.isInteger(id) && id > 0) ids.add(id)
+        }
+      }
+    }
+    for (const draft of Object.values(stepDocDrafts)) {
+      for (const id of draft.attachmentIds ?? []) {
+        if (Number.isInteger(id) && id > 0) ids.add(id)
+      }
+    }
+    return [...ids]
+  }, [form.steps, stepDocDrafts])
+  const { data: templateAttachments = [] } = useQuery<Attachment[]>({
+    queryKey: ['attachments', 'workflow-template-modal', templateAttachmentIds.join(',')],
+    queryFn: () => fetchAttachments(templateAttachmentIds),
+    enabled: templateAttachmentIds.length > 0,
+  })
+  const templateAttachmentById = useMemo(
+    () => new Map<number, Attachment>(templateAttachments.map((row) => [row.id, row])),
+    [templateAttachments],
+  )
+
+  const handleTemplateAttachmentDownload = async (attachmentId: number) => {
+    try {
+      const blob = await downloadAttachment(attachmentId)
+      const filename = templateAttachmentById.get(attachmentId)?.original_filename || `attachment-${attachmentId}`
+      saveBlobAsFile(blob, filename)
+    } catch {
+      // keep modal flow stable even if download fails
+    }
+  }
 
   useEffect(() => {
     setForm(initial)
@@ -477,6 +570,7 @@ function TemplateModal({
       timing: '',
       notes: '',
     })
+    setWarningDraft('')
     setStepDocDrafts({})
   }, [initial])
 
@@ -510,6 +604,23 @@ function TemplateModal({
     }))
   }
 
+  const addWarning = () => {
+    const content = warningDraft.trim()
+    if (!content) return
+    setForm((prev) => ({
+      ...prev,
+      warnings: [...prev.warnings, { content, category: 'warning' }],
+    }))
+    setWarningDraft('')
+  }
+
+  const removeWarning = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      warnings: prev.warnings.filter((_, warningIdx) => warningIdx !== index),
+    }))
+  }
+
   const ensureStepDocDraft = (stepIdx: number) => {
     const existing = stepDocDrafts[stepIdx]
     if (existing) return existing
@@ -519,6 +630,7 @@ function TemplateModal({
       timing: '',
       notes: '',
       documentTemplateId: '',
+      attachmentIds: [],
     }
   }
 
@@ -530,6 +642,7 @@ function TemplateModal({
       timing: string
       notes: string
       documentTemplateId: string
+      attachmentIds: number[]
     }>,
   ) => {
     setStepDocDrafts((prev) => {
@@ -539,6 +652,7 @@ function TemplateModal({
         timing: '',
         notes: '',
         documentTemplateId: '',
+        attachmentIds: [],
       }
       return {
         ...prev,
@@ -559,6 +673,7 @@ function TemplateModal({
         timing: '',
         notes: '',
         documentTemplateId: '',
+        attachmentIds: [],
       },
     }))
   }
@@ -576,6 +691,7 @@ function TemplateModal({
           timing: data.timing ?? null,
           notes: data.notes ?? null,
           document_template_id: data.document_template_id ?? null,
+          attachment_ids: data.attachment_ids ?? [],
         }]
         return { ...step, step_documents: nextDocs }
       }),
@@ -595,34 +711,52 @@ function TemplateModal({
     }))
   }
 
-  const addStepDocumentDirect = (stepIdx: number) => {
+  const addStepDocumentFromDraft = (stepIdx: number) => {
     const draft = ensureStepDocDraft(stepIdx)
-    const name = draft.name.trim()
+    const templateId = Number(draft.documentTemplateId || 0)
+    const template = templateId ? docTemplates.find((row) => row.id === templateId) : null
+    const name = (draft.name || template?.name || '').trim()
     if (!name) return
     addStepDocument(stepIdx, {
       name,
       required: draft.required,
       timing: draft.timing.trim() || null,
       notes: draft.notes.trim() || null,
-      document_template_id: null,
+      document_template_id: template?.id ?? null,
+      attachment_ids: draft.attachmentIds,
     })
     resetStepDocDraft(stepIdx)
   }
 
-  const addStepDocumentFromTemplate = (stepIdx: number) => {
-    const draft = ensureStepDocDraft(stepIdx)
-    const templateId = Number(draft.documentTemplateId || 0)
-    if (!templateId) return
-    const template = docTemplates.find((row) => row.id === templateId)
-    if (!template) return
-    addStepDocument(stepIdx, {
-      name: (draft.name || template.name).trim(),
-      required: draft.required,
-      timing: draft.timing.trim() || null,
-      notes: draft.notes.trim() || null,
-      document_template_id: template.id,
+  const moveStep = (fromIndex: number, direction: 'up' | 'down') => {
+    const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1
+    setForm((prev) => {
+      if (toIndex < 0 || toIndex >= prev.steps.length) return prev
+      const nextSteps = [...prev.steps]
+      const temp = nextSteps[fromIndex]
+      nextSteps[fromIndex] = nextSteps[toIndex]
+      nextSteps[toIndex] = temp
+      return {
+        ...prev,
+        steps: nextSteps.map((step, idx) => ({ ...step, order: idx + 1 })),
+      }
     })
-    resetStepDocDraft(stepIdx)
+  }
+
+  const uploadTemplateStepDraftAttachment = async (stepIdx: number, file: File) => {
+    const draft = ensureStepDocDraft(stepIdx)
+    const uploaded = await uploadAttachment(file)
+    setStepDocDraft(stepIdx, {
+      attachmentIds: [...new Set([...(draft.attachmentIds ?? []), uploaded.id])],
+    })
+  }
+
+  const removeTemplateStepDraftAttachment = async (stepIdx: number, attachmentId: number) => {
+    const draft = ensureStepDocDraft(stepIdx)
+    setStepDocDraft(stepIdx, {
+      attachmentIds: (draft.attachmentIds ?? []).filter((id) => id !== attachmentId),
+    })
+    await removeAttachment(attachmentId)
   }
 
   const submit = () => {
@@ -650,6 +784,7 @@ function TemplateModal({
               timing: doc.timing?.trim() || null,
               notes: doc.notes?.trim() || null,
               document_template_id: doc.document_template_id ?? null,
+              attachment_ids: doc.attachment_ids ?? [],
             }))
             .filter((doc) => doc.name),
         })),
@@ -675,7 +810,9 @@ function TemplateModal({
         <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600"><X size={18} /></button>
       </div>
       <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <details open className="rounded-lg border border-gray-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-800">기본 정보</summary>
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
           <div><label className="form-label">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
           <div>
             <label className="form-label">카테고리</label>
@@ -694,16 +831,19 @@ function TemplateModal({
           </div>
           <div><label className="form-label">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="form-input" /></div>
           <div><label className="form-label">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-        </div>
-        <div className="space-y-2">
+          </div>
+        </details>
+        <details open className="rounded-lg border border-gray-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-800">단계 ({form.steps.length})</summary>
+          <div className="mt-2 space-y-2">
           {form.steps.map((step, idx) => (
             <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
-              <div className="md:col-span-2"><label className="form-label text-[10px]">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="form-input" /></div>
-              <div><label className="form-label text-[10px]">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="form-input" /></div>
-              <div><label className="form-label text-[10px]">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="form-input" /></div>
-              <div><label className="form-label text-[10px]">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="form-input" /></div>
-              <div><label className="form-label text-[10px]">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="form-input" /></div>
-              <div className="md:col-span-2"><label className="form-label text-[10px]">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="form-input" /></div>
+              <div className="md:col-span-2"><label className="form-label text-xs">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="form-input" /></div>
+              <div><label className="form-label text-xs">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="form-input" /></div>
+              <div><label className="form-label text-xs">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="form-input" /></div>
+              <div><label className="form-label text-xs">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="form-input" /></div>
+              <div><label className="form-label text-xs">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="form-input" /></div>
+              <div className="md:col-span-2"><label className="form-label text-xs">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="form-input" /></div>
               <div className="md:col-span-2 flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-gray-600">
                   <input
@@ -723,22 +863,55 @@ function TemplateModal({
                   />
                   보고
                 </label>
+                <button
+                  type="button"
+                  onClick={() => moveStep(idx, 'up')}
+                  disabled={idx === 0}
+                  className="secondary-btn text-xs"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveStep(idx, 'down')}
+                  disabled={idx === form.steps.length - 1}
+                  className="secondary-btn text-xs"
+                >
+                  ↓
+                </button>
                 <button onClick={() => setForm(prev => ({ ...prev, steps: prev.steps.filter((_, itIdx) => itIdx !== idx) }))} className="text-xs text-red-600 hover:text-red-700 text-left">단계 삭제</button>
               </div>
-              <div className="md:col-span-4 space-y-2 rounded border border-dashed border-gray-300 bg-gray-50/60 p-2">
+                <div className="md:col-span-4 space-y-2 rounded border border-dashed border-gray-300 bg-gray-50/60 p-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-700">📄 단계 서류</p>
-                  <span className="text-[10px] text-gray-400">{step.step_documents?.length ?? 0}개</span>
+                  <p className="text-xs font-semibold text-gray-700">단계 서류</p>
+                  <span className="text-xs text-gray-400">{step.step_documents?.length ?? 0}개</span>
                 </div>
                 {(step.step_documents?.length ?? 0) === 0 ? (
-                  <p className="text-[11px] text-gray-400">연결된 서류가 없습니다.</p>
+                  <p className="text-xs text-gray-400">연결된 서류가 없습니다.</p>
                 ) : (
                   <div className="space-y-1">
                     {(step.step_documents ?? []).map((doc, docIdx) => (
                       <div key={`${doc.name}-${docIdx}`} className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-2 md:grid-cols-6">
                         <div className="md:col-span-2">
                           <p className="text-xs font-medium text-gray-700">{doc.name}</p>
-                          <p className="text-[11px] text-gray-500">{doc.notes || '-'}</p>
+                          <p className="text-xs text-gray-500">{doc.notes || '-'}</p>
+                          {(doc.attachment_ids?.length ?? 0) > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {(doc.attachment_ids ?? []).map((attachmentId) => {
+                                const meta = templateAttachmentById.get(attachmentId)
+                                return (
+                                  <button
+                                    key={attachmentId}
+                                    type="button"
+                                    onClick={() => handleTemplateAttachmentDownload(attachmentId)}
+                                    className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700"
+                                  >
+                                    {meta?.original_filename || `첨부 #${attachmentId}`}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                         <div className="text-xs text-gray-600">{doc.required ? '필수' : '선택'}</div>
                         <div className="text-xs text-gray-600">{doc.timing || '-'}</div>
@@ -757,7 +930,7 @@ function TemplateModal({
                 )}
                 <div className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-white p-2 md:grid-cols-6">
                   <div className="md:col-span-2">
-                    <label className="form-label text-[10px]">서류명</label>
+                    <label className="form-label text-xs">서류명</label>
                     <input
                       value={ensureStepDocDraft(idx).name}
                       onChange={e => setStepDocDraft(idx, { name: e.target.value })}
@@ -766,7 +939,7 @@ function TemplateModal({
                     />
                   </div>
                   <div>
-                    <label className="form-label text-[10px]">시점</label>
+                    <label className="form-label text-xs">시점</label>
                     <input
                       value={ensureStepDocDraft(idx).timing}
                       onChange={e => setStepDocDraft(idx, { timing: e.target.value })}
@@ -775,7 +948,7 @@ function TemplateModal({
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="form-label text-[10px]">메모</label>
+                    <label className="form-label text-xs">메모</label>
                     <input
                       value={ensureStepDocDraft(idx).notes}
                       onChange={e => setStepDocDraft(idx, { notes: e.target.value })}
@@ -783,8 +956,8 @@ function TemplateModal({
                       className="form-input text-xs"
                     />
                   </div>
-                  <div className="flex items-end justify-between gap-1">
-                    <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-600">
+                  <div className="flex items-end justify-start gap-1">
+                    <label className="mb-1 flex items-center gap-1 text-xs text-gray-600">
                       <input
                         type="checkbox"
                         checked={ensureStepDocDraft(idx).required}
@@ -793,12 +966,38 @@ function TemplateModal({
                       />
                       필수
                     </label>
-                    <button onClick={() => addStepDocumentDirect(idx)} className="secondary-btn text-xs">직접 추가</button>
                   </div>
                 </div>
+                {(ensureStepDocDraft(idx).attachmentIds?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {(ensureStepDocDraft(idx).attachmentIds ?? []).map((attachmentId) => {
+                      const meta = templateAttachmentById.get(attachmentId)
+                      return (
+                        <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs">
+                          <button type="button" onClick={() => handleTemplateAttachmentDownload(attachmentId)} className="text-blue-600 hover:text-blue-700">
+                            {meta?.original_filename || `첨부 #${attachmentId}`}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await removeTemplateStepDraftAttachment(idx, attachmentId)
+                              } catch {
+                                // noop
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            제거
+                          </button>
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
                 <div className="flex flex-col gap-2 md:flex-row md:items-end">
                   <div className="flex-1">
-                    <label className="form-label text-[10px]">템플릿에서 선택</label>
+                    <label className="form-label text-xs">템플릿에서 선택</label>
                     <select
                       value={ensureStepDocDraft(idx).documentTemplateId}
                       onChange={e => {
@@ -817,14 +1016,34 @@ function TemplateModal({
                       ))}
                     </select>
                   </div>
-                  <button onClick={() => addStepDocumentFromTemplate(idx)} className="secondary-btn text-xs">템플릿 추가</button>
+                  <label className="secondary-btn cursor-pointer text-xs">
+                    파일 업로드
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0]
+                        event.currentTarget.value = ''
+                        if (!file) return
+                        try {
+                          await uploadTemplateStepDraftAttachment(idx, file)
+                        } catch {
+                          // noop
+                        }
+                      }}
+                    />
+                  </label>
+                  <button onClick={() => addStepDocumentFromDraft(idx)} className="secondary-btn text-xs">서류 추가</button>
                 </div>
               </div>
             </div>
           ))}
           <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false, step_documents: [] }] }))} className="secondary-btn">+ 단계 추가</button>
-        </div>
-        <div className="space-y-2 rounded-lg border p-3">
+          </div>
+        </details>
+        <details open className="rounded-lg border border-gray-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-800">공통 서류</summary>
+          <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">서류</p>
             <span className="text-xs text-gray-400">{form.documents.length}개</span>
@@ -837,7 +1056,7 @@ function TemplateModal({
                 <div key={`${doc.name}-${idx}`} className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-gray-50 p-2 md:grid-cols-6">
                   <div className="md:col-span-2">
                     <p className="text-xs font-medium text-gray-700">{doc.name || '-'}</p>
-                    <p className="text-[11px] text-gray-500">{doc.notes || '-'}</p>
+                    <p className="text-xs text-gray-500">{doc.notes || '-'}</p>
                   </div>
                   <div className="text-xs text-gray-600">{doc.required ? '필수' : '선택'}</div>
                   <div className="text-xs text-gray-600">{doc.timing || '-'}</div>
@@ -850,7 +1069,7 @@ function TemplateModal({
           )}
           <div className="grid grid-cols-1 gap-2 rounded border border-dashed border-gray-300 p-2 md:grid-cols-6">
             <div className="md:col-span-2">
-              <label className="form-label text-[10px]">서류명</label>
+              <label className="form-label text-xs">서류명</label>
               <input
                 value={documentDraft.name}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, name: e.target.value }))}
@@ -859,7 +1078,7 @@ function TemplateModal({
               />
             </div>
             <div>
-              <label className="form-label text-[10px]">시점</label>
+              <label className="form-label text-xs">시점</label>
               <input
                 value={documentDraft.timing}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, timing: e.target.value }))}
@@ -868,7 +1087,7 @@ function TemplateModal({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="form-label text-[10px]">메모</label>
+              <label className="form-label text-xs">메모</label>
               <input
                 value={documentDraft.notes}
                 onChange={e => setDocumentDraft(prev => ({ ...prev, notes: e.target.value }))}
@@ -889,7 +1108,28 @@ function TemplateModal({
               <button onClick={addDocument} className="secondary-btn text-xs">추가</button>
             </div>
           </div>
-        </div>
+          </div>
+        </details>
+        <details className="rounded-lg border border-gray-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-800">주의사항</summary>
+          <div className="mt-2 space-y-2">
+            {(form.warnings ?? []).map((warning, idx) => (
+              <div key={`${warning.content}-${idx}`} className="flex items-center justify-between rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs">
+                <span>{warning.content}</span>
+                <button onClick={() => removeWarning(idx)} className="text-red-600 hover:text-red-700">삭제</button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input
+                value={warningDraft}
+                onChange={(event) => setWarningDraft(event.target.value)}
+                placeholder="주의사항 입력"
+                className="form-input"
+              />
+              <button onClick={addWarning} className="secondary-btn text-xs">추가</button>
+            </div>
+          </div>
+        </details>
       </div>
       <div className="mt-3 flex shrink-0 gap-2">
         <button onClick={submit} disabled={loading} className="primary-btn">{submitLabel}</button>
@@ -1010,7 +1250,7 @@ function WorkflowDetail({
               <div className="ml-8 mt-1 space-y-0.5">
                 {(s.step_documents ?? []).map((doc, docIdx) => (
                   <div key={`${s.id}-doc-${doc.id ?? docIdx}`} className="flex items-center gap-1 text-xs text-gray-500">
-                    <span>📄</span>
+                    <span>•</span>
                     <span>{doc.name}</span>
                     {doc.document_template_id ? <span className="text-blue-500">[템플릿]</span> : null}
                   </div>
@@ -1124,6 +1364,38 @@ function InstanceList({
     queryKey: ['documentTemplates'],
     queryFn: () => fetchDocumentTemplates(),
   })
+  const attachmentIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const instance of data ?? []) {
+      for (const step of instance.step_instances ?? []) {
+        for (const doc of step.step_documents ?? []) {
+          for (const id of doc.attachment_ids ?? []) {
+            if (Number.isInteger(id) && id > 0) ids.add(id)
+          }
+        }
+      }
+    }
+    return [...ids]
+  }, [data])
+  const { data: attachments = [] } = useQuery<Attachment[]>({
+    queryKey: ['attachments', 'workflow-instance', attachmentIds.join(',')],
+    queryFn: () => fetchAttachments(attachmentIds),
+    enabled: attachmentIds.length > 0,
+  })
+  const attachmentById = useMemo(
+    () => new Map<number, Attachment>(attachments.map((row) => [row.id, row])),
+    [attachments],
+  )
+
+  const handleDownloadAttachment = async (attachmentId: number) => {
+    try {
+      const blob = await downloadAttachment(attachmentId)
+      const filename = attachmentById.get(attachmentId)?.original_filename || `attachment-${attachmentId}`
+      saveBlobAsFile(blob, filename)
+    } catch {
+      addToast('error', '첨부 파일 다운로드에 실패했습니다.')
+    }
+  }
 
   const handleGenerateDocuments = async (
     templates: DocumentTemplate[],
@@ -1138,14 +1410,7 @@ function InstanceList({
     for (const template of templates) {
       try {
         const blob = await generateDocument(template.id, instance.fund_id, instance.trigger_date)
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${template.name}.docx`
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-        window.URL.revokeObjectURL(url)
+        saveBlobAsFile(blob, `${template.name}.docx`)
         successCount += 1
       } catch {
         addToast('error', `${template.name} 생성 실패`)
@@ -1198,6 +1463,7 @@ function InstanceList({
         required: document.required,
         timing: document.timing ?? '',
         notes: document.notes ?? '',
+        attachment_ids: [...(document.attachment_ids ?? [])],
       },
     })
   }
@@ -1339,6 +1605,7 @@ function InstanceList({
         required: data.required,
         timing: data.timing.trim() || null,
         notes: data.notes.trim() || null,
+        attachment_ids: data.attachment_ids,
       }),
     onSuccess: (_document, variables) => {
       invalidateCapitalLinkedQueries(variables.fundId)
@@ -1365,6 +1632,7 @@ function InstanceList({
         required: data.required,
         timing: data.timing.trim() || null,
         notes: data.notes.trim() || null,
+        attachment_ids: data.attachment_ids,
       }),
     onSuccess: (_document, variables) => {
       invalidateCapitalLinkedQueries(variables.fundId)
@@ -1372,6 +1640,55 @@ function InstanceList({
         setEditingStepDocument(null)
       }
       addToast('success', '단계 서류를 수정했습니다.')
+    },
+  })
+
+  const attachFileToStepDocumentMut = useMutation({
+    mutationFn: async ({
+      instanceId,
+      stepId,
+      document,
+      file,
+    }: {
+      instanceId: number
+      stepId: number
+      document: WorkflowStepInstanceDocument
+      file: File
+      fundId?: number | null
+    }) => {
+      const uploaded = await uploadAttachment(file, 'workflow_step_instance_document', document.id)
+      const nextAttachmentIds = [...new Set([...(document.attachment_ids ?? []), uploaded.id])]
+      return updateWorkflowStepInstanceDocument(instanceId, stepId, document.id, {
+        attachment_ids: nextAttachmentIds,
+      })
+    },
+    onSuccess: (_document, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      addToast('success', '첨부 파일을 추가했습니다.')
+    },
+  })
+
+  const removeFileFromStepDocumentMut = useMutation({
+    mutationFn: async ({
+      instanceId,
+      stepId,
+      document,
+      attachmentId,
+    }: {
+      instanceId: number
+      stepId: number
+      document: WorkflowStepInstanceDocument
+      attachmentId: number
+      fundId?: number | null
+    }) => {
+      const nextAttachmentIds = (document.attachment_ids ?? []).filter((id) => id !== attachmentId)
+      await updateWorkflowStepInstanceDocument(instanceId, stepId, document.id, {
+        attachment_ids: nextAttachmentIds,
+      })
+    },
+    onSuccess: (_document, variables) => {
+      invalidateCapitalLinkedQueries(variables.fundId)
+      addToast('success', '첨부 파일을 제거했습니다.')
     },
   })
 
@@ -1537,14 +1854,14 @@ function InstanceList({
 
   if (isLoading) return <PageLoading />
   if (!(instanceRows.length)) {
-    return <EmptyState emoji="🔄" message={status === 'active' ? '진행 중인 워크플로가 없어요' : '완료된 워크플로가 없어요'} className="py-10" />
+    return <EmptyState emoji="⚙️" message={status === 'active' ? '진행 중인 워크플로가 없어요' : '완료된 워크플로가 없어요'} className="py-10" />
   }
 
   return (
     <div className="space-y-2.5">
       {activeSummary && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900 sm:text-sm">
-          진행 중 {activeSummary.total}건 | 🔴 지연 {activeSummary.overdue}건 | 이번 주 마감 {activeSummary.weekDue}건
+          진행 중 {activeSummary.total}건 | 지연 {activeSummary.overdue}건 | 이번 주 마감 {activeSummary.weekDue}건
         </div>
       )}
 
@@ -1555,12 +1872,12 @@ function InstanceList({
           <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-gray-50">
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-gray-800">{inst.name}</p>
-              <p className="truncate text-[11px] text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
+              <p className="truncate text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="h-1.5 w-36 overflow-hidden rounded-full bg-gray-200">
                   <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
                 </div>
-                <span className="text-[10px] font-medium text-gray-600">{inst.progress}</span>
+                <span className="text-xs font-medium text-gray-600">{inst.progress}</span>
                 {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
               </div>
             </div>
@@ -1704,7 +2021,7 @@ function InstanceList({
                           {status === 'active' && (
                             <button
                               onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
-                              className="text-[10px] text-gray-400 hover:text-blue-600"
+                              className="text-xs text-gray-400 hover:text-blue-600"
                             >
                               되돌리기
                             </button>
@@ -1724,13 +2041,13 @@ function InstanceList({
                         <span className="w-4" />
                       )}
                       <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-gray-400' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{step.step_name}</span>
-                      <span className="text-[11px] text-gray-500">{labelStatus(step.status)}</span>
+                      <span className="text-xs text-gray-500">{labelStatus(step.status)}</span>
                       {isCurrentStep && (
                         <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
                           현재 단계
                         </span>
                       )}
-                      <span className="text-[11px] text-gray-500">{step.calculated_date}</span>
+                      <span className="text-xs text-gray-500">{step.calculated_date}</span>
                       {(() => {
                         const matchingDocs = docTemplates.filter(
                           (template) =>
@@ -1746,20 +2063,20 @@ function InstanceList({
                             }}
                             className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
                           >
-                            📄 문서 ({matchingDocs.length}종)
+                            문서 생성 ({matchingDocs.length}종)
                           </button>
                         )
                       })()}
-                      {step.completed_at && <span className="text-[10px] text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
+                      {step.completed_at && <span className="text-xs text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
                     </div>
 
                     <div className="ml-5 rounded border border-gray-200 bg-white px-2 py-2">
                       <div className="mb-1 flex items-center justify-between">
-                        <p className="text-[11px] font-semibold text-gray-700">📄 단계 서류 {stepDocuments.length}건</p>
+                        <p className="text-xs font-semibold text-gray-700">단계 서류 {stepDocuments.length}건</p>
                         {canMutateStepDocuments && (
                           <button
                             onClick={() => setNewStepDocDraft(step.id, {})}
-                            className="text-[11px] text-blue-600 hover:text-blue-700"
+                            className="text-xs text-blue-600 hover:text-blue-700"
                           >
                             + 서류 추가
                           </button>
@@ -1767,7 +2084,7 @@ function InstanceList({
                       </div>
 
                       {stepDocuments.length === 0 ? (
-                        <p className="text-[11px] text-gray-400">등록된 단계 서류가 없습니다.</p>
+                        <p className="text-xs text-gray-400">등록된 단계 서류가 없습니다.</p>
                       ) : (
                         <div className="space-y-1.5">
                           {stepDocuments.map((doc) => {
@@ -1812,7 +2129,7 @@ function InstanceList({
                                       />
                                     </div>
                                     <div className="flex items-center justify-between">
-                                      <label className="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                                      <label className="inline-flex items-center gap-1 text-xs text-gray-600">
                                         <input
                                           type="checkbox"
                                           checked={editingCurrentDocument.draft.required}
@@ -1870,24 +2187,78 @@ function InstanceList({
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-[12px] font-medium text-gray-800">
                                         {doc.name}
-                                        <span className={`ml-1 rounded px-1 py-0.5 text-[10px] ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'}`}>
+                                        <span className={`ml-1 rounded px-1 py-0.5 text-xs ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'}`}>
                                           {doc.required ? '필수' : '선택'}
                                         </span>
                                       </p>
-                                      <p className="text-[11px] text-gray-500">
+                                      <p className="text-xs text-gray-500">
                                         {doc.timing || '시점 미정'}
                                         {doc.notes ? ` | ${doc.notes}` : ''}
                                         {doc.template_name ? ` | 템플릿: ${doc.template_name}` : ''}
                                       </p>
+                                      {(doc.attachment_ids?.length ?? 0) > 0 && (
+                                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                          {(doc.attachment_ids ?? []).map((attachmentId) => {
+                                            const meta = attachmentById.get(attachmentId)
+                                            return (
+                                              <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleDownloadAttachment(attachmentId)}
+                                                  className="text-blue-600 hover:text-blue-700"
+                                                >
+                                                  {meta?.original_filename || `파일 #${attachmentId}`}
+                                                </button>
+                                                {canMutateStepDocuments && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => removeFileFromStepDocumentMut.mutate({
+                                                      instanceId: inst.id,
+                                                      stepId: step.id,
+                                                      document: doc,
+                                                      attachmentId,
+                                                      fundId: inst.fund_id,
+                                                    })}
+                                                    className="text-red-600 hover:text-red-700"
+                                                  >
+                                                    제거
+                                                  </button>
+                                                )}
+                                              </span>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
+                                      {canMutateStepDocuments && (
+                                        <label className="mt-1 inline-flex cursor-pointer rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                                          파일 첨부
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(event) => {
+                                              const file = event.target.files?.[0]
+                                              event.currentTarget.value = ''
+                                              if (!file) return
+                                              attachFileToStepDocumentMut.mutate({
+                                                instanceId: inst.id,
+                                                stepId: step.id,
+                                                document: doc,
+                                                file,
+                                                fundId: inst.fund_id,
+                                              })
+                                            }}
+                                          />
+                                        </label>
+                                      )}
                                     </div>
-                                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${doc.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    <span className={`rounded px-1.5 py-0.5 text-xs ${doc.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                       {doc.checked ? '확인 완료' : '미확인'}
                                     </span>
                                     {canMutateStepDocuments && (
                                       <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => startEditingStepDocument(step.id, doc)}
-                                          className="text-[10px] text-blue-600 hover:text-blue-700"
+                                          className="text-xs text-blue-600 hover:text-blue-700"
                                         >
                                           수정
                                         </button>
@@ -1901,7 +2272,7 @@ function InstanceList({
                                               fundId: inst.fund_id,
                                             })
                                           }}
-                                          className="text-[10px] text-red-600 hover:text-red-700"
+                                          className="text-xs text-red-600 hover:text-red-700"
                                         >
                                           삭제
                                         </button>
@@ -1937,8 +2308,35 @@ function InstanceList({
                               className="form-input"
                             />
                           </div>
+                          {(newDraft.attachment_ids?.length ?? 0) > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {(newDraft.attachment_ids ?? []).map((attachmentId) => {
+                                const meta = attachmentById.get(attachmentId)
+                                return (
+                                  <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadAttachment(attachmentId)}
+                                      className="text-blue-600 hover:text-blue-700"
+                                    >
+                                      {meta?.original_filename || `파일 #${attachmentId}`}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewStepDocDraft(step.id, {
+                                        attachment_ids: (newDraft.attachment_ids ?? []).filter((id) => id !== attachmentId),
+                                      })}
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      제거
+                                    </button>
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          )}
                           <div className="flex items-center justify-between">
-                            <label className="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                            <label className="inline-flex items-center gap-1 text-xs text-gray-600">
                               <input
                                 type="checkbox"
                                 checked={newDraft.required}
@@ -1947,6 +2345,26 @@ function InstanceList({
                               필수
                             </label>
                             <div className="flex items-center gap-2">
+                              <label className="inline-flex cursor-pointer rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700">
+                                파일 업로드
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={async (event) => {
+                                    const file = event.target.files?.[0]
+                                    event.currentTarget.value = ''
+                                    if (!file) return
+                                    try {
+                                      const uploaded = await uploadAttachment(file)
+                                      setNewStepDocDraft(step.id, {
+                                        attachment_ids: [...new Set([...(newDraft.attachment_ids ?? []), uploaded.id])],
+                                      })
+                                    } catch {
+                                      addToast('error', '파일 업로드에 실패했습니다.')
+                                    }
+                                  }}
+                                />
+                              </label>
                               <button
                                 onClick={() =>
                                   addStepDocumentMut.mutate({
@@ -1973,8 +2391,8 @@ function InstanceList({
                       )}
 
                       {requiredUncheckedCount > 0 && (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700">
-                          ⚠️ 필수 서류 {requiredUncheckedCount}건 미확인
+                        <p className="mt-1 text-xs font-medium text-amber-700">
+                          필수 서류 {requiredUncheckedCount}건 미확인
                         </p>
                       )}
                     </div>
@@ -2088,6 +2506,377 @@ function InstanceList({
   )
 }
 
+function PeriodicSchedulesPanel() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+  const [year, setYear] = useState<number>(new Date().getFullYear())
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [form, setForm] = useState<PeriodicScheduleInput>({
+    name: '',
+    category: '분기보고',
+    recurrence: 'quarterly',
+    base_month: 1,
+    base_day: 1,
+    workflow_template_id: null,
+    fund_type_filter: null,
+    is_active: true,
+    steps: [],
+    description: '',
+  })
+
+  const { data: schedules = [], isLoading } = useQuery<PeriodicSchedule[]>({
+    queryKey: ['periodic-schedules'],
+    queryFn: () => fetchPeriodicSchedules(false),
+  })
+  const { data: templates = [] } = useQuery<WorkflowListItem[]>({
+    queryKey: ['workflows'],
+    queryFn: fetchWorkflows,
+  })
+
+  const resetForm = () => {
+    setEditingId(null)
+    setForm({
+      name: '',
+      category: '분기보고',
+      recurrence: 'quarterly',
+      base_month: 1,
+      base_day: 1,
+      workflow_template_id: null,
+      fund_type_filter: null,
+      is_active: true,
+      steps: [],
+      description: '',
+    })
+  }
+
+  useEffect(() => {
+    if (!editingId) return
+    const target = schedules.find((row) => row.id === editingId)
+    if (!target) return
+    setForm({
+      name: target.name,
+      category: target.category,
+      recurrence: target.recurrence,
+      base_month: target.base_month,
+      base_day: target.base_day,
+      workflow_template_id: target.workflow_template_id,
+      fund_type_filter: target.fund_type_filter,
+      is_active: target.is_active,
+      steps: [...(target.steps ?? [])],
+      description: target.description ?? '',
+    })
+  }, [editingId, schedules])
+
+  const saveMut = useMutation({
+    mutationFn: () => {
+      if (editingId) return updatePeriodicSchedule(editingId, form)
+      return createPeriodicSchedule(form)
+    },
+    onSuccess: () => {
+      invalidateWorkflowRelated(queryClient)
+      addToast('success', editingId ? '정기 업무를 수정했습니다.' : '정기 업무를 추가했습니다.')
+      resetForm()
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (scheduleId: number) => deletePeriodicSchedule(scheduleId),
+    onSuccess: () => {
+      invalidateWorkflowRelated(queryClient)
+      addToast('success', '정기 업무를 삭제했습니다.')
+      if (editingId) resetForm()
+    },
+  })
+
+  const generateMut = useMutation({
+    mutationFn: (dryRun: boolean) => generatePeriodicSchedulesForYear(year, dryRun),
+    onSuccess: (result) => {
+      invalidateWorkflowRelated(queryClient)
+      addToast(
+        'success',
+        `${result.year}년 생성 완료: 인스턴스 ${result.created_instances}건, Task ${result.created_tasks}건`,
+      )
+    },
+  })
+
+  const timelineByMonth = useMemo(() => {
+    const byMonth = new Map<number, PeriodicSchedule[]>()
+    for (let month = 1; month <= 12; month += 1) byMonth.set(month, [])
+    for (const schedule of schedules) {
+      const months = periodicOccurrenceMonths(schedule)
+      for (const month of months) {
+        byMonth.get(month)?.push(schedule)
+      }
+    }
+    return byMonth
+  }, [schedules])
+
+  return (
+    <div className="space-y-4">
+      <div className="card-base flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-gray-800">정기 업무 캘린더</h3>
+          <p className="text-sm text-gray-500">분기/반기/연간 템플릿을 연간 단위로 일괄 생성합니다.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            min={2000}
+            max={2100}
+            value={year}
+            onChange={(event) => setYear(Number(event.target.value || new Date().getFullYear()))}
+            className="form-input w-28"
+          />
+          <button
+            onClick={() => generateMut.mutate(true)}
+            className="secondary-btn"
+            disabled={generateMut.isPending}
+          >
+            {generateMut.isPending ? '실행 중...' : '드라이런'}
+          </button>
+          <button
+            onClick={() => {
+              if (!confirm(`${year}년 정기 일정을 실제 생성하시겠습니까?`)) return
+              generateMut.mutate(false)
+            }}
+            className="primary-btn"
+            disabled={generateMut.isPending}
+          >
+            {generateMut.isPending ? '생성 중...' : `${year}년 일정 생성`}
+          </button>
+        </div>
+      </div>
+
+      <div className="card-base">
+        <div className="grid min-w-max grid-cols-12 gap-2">
+          {PERIODIC_MONTH_LABELS.map((label, monthIndex) => {
+            const month = monthIndex + 1
+            const rows = timelineByMonth.get(month) ?? []
+            return (
+              <div key={label} className="w-28 rounded-lg border border-gray-200 p-2">
+                <p className="mb-2 text-xs font-semibold text-gray-700">{label}</p>
+                <div className="space-y-1">
+                  {rows.length === 0 ? (
+                    <p className="text-xs text-gray-400">-</p>
+                  ) : (
+                    rows.map((schedule) => (
+                      <p
+                        key={`${month}-${schedule.id}`}
+                        className={`rounded border px-1.5 py-0.5 text-xs ${periodicCategoryClass(schedule.category)}`}
+                      >
+                        {schedule.name}
+                      </p>
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="card-base space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-700">정기 업무 목록</h4>
+            <span className="text-xs text-gray-400">{schedules.length}건</span>
+          </div>
+          {isLoading ? (
+            <PageLoading />
+          ) : schedules.length === 0 ? (
+            <EmptyState emoji="🗓️" message="등록된 정기 업무가 없습니다." className="py-8" />
+          ) : (
+            <div className="space-y-1.5">
+              {schedules.map((schedule) => (
+                <div key={schedule.id} className={`rounded-lg border p-2 ${editingId === schedule.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{schedule.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {schedule.category} | {periodicRecurrenceLabel(schedule.recurrence)} | {schedule.base_month}/{schedule.base_day}
+                        {schedule.fund_type_filter ? ` | 필터 ${schedule.fund_type_filter}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setEditingId(schedule.id)} className="secondary-btn text-xs">수정</button>
+                      <button
+                        onClick={() => {
+                          if (!confirm('이 정기 업무를 삭제하시겠습니까?')) return
+                          deleteMut.mutate(schedule.id)
+                        }}
+                        className="danger-btn text-xs"
+                        disabled={deleteMut.isPending}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card-base space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-700">{editingId ? '정기 업무 수정' : '정기 업무 추가'}</h4>
+            {editingId && <button onClick={resetForm} className="secondary-btn text-xs">새로 작성</button>}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div>
+              <label className="form-label">업무명</label>
+              <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} className="form-input" />
+            </div>
+            <div>
+              <label className="form-label">카테고리</label>
+              <input value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} className="form-input" />
+            </div>
+            <div>
+              <label className="form-label">주기</label>
+              <select value={form.recurrence} onChange={(event) => setForm((prev) => ({ ...prev, recurrence: event.target.value }))} className="form-input">
+                <option value="quarterly">분기</option>
+                <option value="semi-annual">반기</option>
+                <option value="annual">연간</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">워크플로 템플릿</label>
+              <select
+                value={form.workflow_template_id ?? ''}
+                onChange={(event) => setForm((prev) => ({ ...prev, workflow_template_id: event.target.value ? Number(event.target.value) : null }))}
+                className="form-input"
+              >
+                <option value="">선택 안 함</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>{template.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="form-label">기준 월</label>
+              <input type="number" min={1} max={12} value={form.base_month} onChange={(event) => setForm((prev) => ({ ...prev, base_month: Number(event.target.value || 1) }))} className="form-input" />
+            </div>
+            <div>
+              <label className="form-label">기준 일</label>
+              <input type="number" min={1} max={31} value={form.base_day} onChange={(event) => setForm((prev) => ({ ...prev, base_day: Number(event.target.value || 1) }))} className="form-input" />
+            </div>
+            <div>
+              <label className="form-label">조합 필터</label>
+              <input
+                value={form.fund_type_filter || ''}
+                onChange={(event) => setForm((prev) => ({ ...prev, fund_type_filter: event.target.value || null }))}
+                placeholder="예: LLC"
+                className="form-input"
+              />
+            </div>
+            <div className="flex items-end">
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={!!form.is_active} onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))} />
+                활성 상태
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-gray-200 p-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-700">단계 설정</p>
+              <button
+                onClick={() => setForm((prev) => ({
+                  ...prev,
+                  steps: [...prev.steps, { name: '', offset_days: 0, is_notice: false, is_report: false }],
+                }))}
+                className="secondary-btn text-xs"
+              >
+                + 단계
+              </button>
+            </div>
+            {(form.steps ?? []).map((step, stepIdx) => (
+              <div key={`${step.name}-${stepIdx}`} className="grid grid-cols-1 gap-2 rounded border border-gray-200 bg-gray-50 p-2 md:grid-cols-6">
+                <div className="md:col-span-2">
+                  <input
+                    value={step.name}
+                    onChange={(event) => setForm((prev) => ({
+                      ...prev,
+                      steps: prev.steps.map((row, idx) => (idx === stepIdx ? { ...row, name: event.target.value } : row)),
+                    }))}
+                    placeholder="단계명"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    value={step.offset_days}
+                    onChange={(event) => setForm((prev) => ({
+                      ...prev,
+                      steps: prev.steps.map((row, idx) => (idx === stepIdx ? { ...row, offset_days: Number(event.target.value || 0) } : row)),
+                    }))}
+                    className="form-input"
+                  />
+                </div>
+                <label className="inline-flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!step.is_notice}
+                    onChange={(event) => setForm((prev) => ({
+                      ...prev,
+                      steps: prev.steps.map((row, idx) => (idx === stepIdx ? { ...row, is_notice: event.target.checked } : row)),
+                    }))}
+                  />
+                  통지
+                </label>
+                <label className="inline-flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!step.is_report}
+                    onChange={(event) => setForm((prev) => ({
+                      ...prev,
+                      steps: prev.steps.map((row, idx) => (idx === stepIdx ? { ...row, is_report: event.target.checked } : row)),
+                    }))}
+                  />
+                  보고
+                </label>
+                <button
+                  onClick={() => setForm((prev) => ({
+                    ...prev,
+                    steps: prev.steps.filter((_, idx) => idx !== stepIdx),
+                  }))}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="form-label">설명</label>
+            <textarea value={form.description || ''} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} className="form-input min-h-[72px]" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (!form.name.trim() || !form.category.trim()) {
+                  addToast('error', '업무명/카테고리를 입력하세요.')
+                  return
+                }
+                saveMut.mutate()
+              }}
+              className="primary-btn"
+              disabled={saveMut.isPending}
+            >
+              {saveMut.isPending ? '저장 중...' : editingId ? '수정 저장' : '추가'}
+            </button>
+            <button onClick={resetForm} className="secondary-btn">초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function WorkflowsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -2096,9 +2885,9 @@ export default function WorkflowsPage() {
   const locationState = (location.state as WorkflowLocationState | null) ?? null
 
   const requestedTab = searchParams.get('tab')
-  const isSupportedTab = (value: string | null): value is 'templates' | 'active' | 'completed' | 'checklists' =>
-    value === 'templates' || value === 'active' || value === 'completed' || value === 'checklists'
-  const [tab, setTab] = useState<'templates' | 'active' | 'completed' | 'checklists'>(
+  const isSupportedTab = (value: string | null): value is 'templates' | 'active' | 'completed' | 'checklists' | 'periodic' =>
+    value === 'templates' || value === 'active' || value === 'completed' || value === 'checklists' || value === 'periodic'
+  const [tab, setTab] = useState<'templates' | 'active' | 'completed' | 'checklists' | 'periodic'>(
     isSupportedTab(requestedTab) ? requestedTab : 'active',
   )
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -2138,7 +2927,7 @@ export default function WorkflowsPage() {
     }
   }, [requestedTab, tab])
 
-  const changeTab = (nextTab: 'templates' | 'active' | 'completed' | 'checklists') => {
+  const changeTab = (nextTab: 'templates' | 'active' | 'completed' | 'checklists' | 'periodic') => {
     setTab(nextTab)
     const nextParams = new URLSearchParams(searchParams)
     if (nextTab === 'active') nextParams.delete('tab')
@@ -2160,7 +2949,7 @@ export default function WorkflowsPage() {
   const createMut = useMutation({
     mutationFn: createWorkflowTemplate,
     onSuccess: (row: WorkflowTemplate) => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      invalidateWorkflowRelated(queryClient)
       setSelectedId(row.id)
       setMode(null)
       addToast('success', '템플릿이 생성되었습니다.')
@@ -2170,8 +2959,7 @@ export default function WorkflowsPage() {
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: WorkflowTemplateInput }) => updateWorkflowTemplate(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
-      queryClient.invalidateQueries({ queryKey: ['workflow', selectedId] })
+      invalidateWorkflowRelated(queryClient)
       setMode(null)
       addToast('success', '템플릿이 수정되었습니다.')
     },
@@ -2180,7 +2968,7 @@ export default function WorkflowsPage() {
   const deleteMut = useMutation({
     mutationFn: deleteWorkflowTemplate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      invalidateWorkflowRelated(queryClient)
       if (selectedId) setSelectedId(null)
       addToast('success', '템플릿이 삭제되었습니다.')
     },
@@ -2233,6 +3021,7 @@ export default function WorkflowsPage() {
             { key: 'active' as const, label: '진행 중' },
             { key: 'completed' as const, label: '완료' },
             { key: 'templates' as const, label: '템플릿(관리자)' },
+            { key: 'periodic' as const, label: '정기 업무' },
             { key: 'checklists' as const, label: '체크리스트(레거시)' },
           ].map((t) => (
             <button key={t.key} onClick={() => changeTab(t.key)} className={`border-b-2 pb-2 text-sm ${tab === t.key ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t.label}</button>
@@ -2262,7 +3051,7 @@ export default function WorkflowsPage() {
                         />
                         <span className="text-xs font-semibold text-gray-600">{category}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">{items.length}개</span>
+                      <span className="text-xs text-gray-400">{items.length}개</span>
                     </button>
                     {!collapsedCategories.has(category) && (
                       <div className="space-y-2">
@@ -2331,6 +3120,7 @@ export default function WorkflowsPage() {
         />
       )}
       {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
+      {tab === 'periodic' && <PeriodicSchedulesPanel />}
       {tab === 'checklists' && (
         <ChecklistsPage embedded />
       )}
@@ -2359,6 +3149,8 @@ export default function WorkflowsPage() {
     </div>
   )
 }
+
+
 
 
 

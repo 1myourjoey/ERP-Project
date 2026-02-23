@@ -93,6 +93,30 @@ function DashboardDefaultView({
     const deadline = new Date(task.deadline)
     return !Number.isNaN(deadline.getTime()) && deadline.getTime() < Date.now()
   }).length
+  const periodicUrgentTask = [...todayTasks, ...tomorrowTasks, ...thisWeekTasks, ...upcomingTasks]
+    .filter((task, index, array) => array.findIndex((row) => row.id === task.id) === index)
+    .filter((task) => {
+      const category = (task.category || '').replace(/\s+/g, '').toLowerCase()
+      const title = (task.title || '').replace(/\s+/g, '').toLowerCase()
+      const isPeriodic =
+        title.includes('[정기]') ||
+        category.includes('분기') ||
+        category.includes('영업') ||
+        category.includes('총회')
+      if (!isPeriodic || !task.deadline || task.status === 'completed') return false
+      const deadline = new Date(task.deadline)
+      if (Number.isNaN(deadline.getTime())) return false
+      const diff = Math.floor((deadline.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+      return diff <= 7
+    })
+    .sort((a, b) => (new Date(a.deadline || '').getTime() - new Date(b.deadline || '').getTime()))[0]
+  const periodicUrgentBadge = (() => {
+    if (!periodicUrgentTask?.deadline) return null
+    const diff = Math.floor((new Date(periodicUrgentTask.deadline).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    if (diff < 0) return '지연'
+    if (diff === 0) return 'D-day'
+    return `D-${diff}`
+  })()
 
   return (
     <>
@@ -120,6 +144,18 @@ function DashboardDefaultView({
             className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:bg-amber-300"
           >
             {monthlyReminderPending ? '생성 중...' : '지금 생성'}
+          </button>
+        </div>
+      )}
+
+      {periodicUrgentTask && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="flex-1 text-sm text-red-900">
+            정기 업무 긴급: {periodicUrgentTask.title}
+            {periodicUrgentBadge ? ` (${periodicUrgentBadge})` : ''}
+          </p>
+          <button onClick={onOpenTaskBoard} className="secondary-btn text-xs">
+            업무보드 열기
           </button>
         </div>
       )}

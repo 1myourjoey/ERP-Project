@@ -24,6 +24,25 @@ export function invalidateTaskRelated(queryClient: QueryClient) {
   ])
 }
 
+export function invalidateWorkflowRelated(queryClient: QueryClient) {
+  invalidateMany(queryClient, [
+    ['workflows'],
+    ['workflow'],
+    ['workflowInstances'],
+    ['workflow-instances'],
+    ['periodic-schedules'],
+    ['periodic-schedule'],
+  ])
+  invalidateTaskRelated(queryClient)
+}
+
+export function invalidateChecklistRelated(queryClient: QueryClient) {
+  invalidateMany(queryClient, [
+    ['checklists'],
+    ['checklist'],
+  ])
+}
+
 export function invalidateFundRelated(queryClient: QueryClient, fundId?: number | null) {
   invalidateTaskRelated(queryClient)
   invalidateMany(queryClient, [

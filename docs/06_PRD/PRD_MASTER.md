@@ -1,122 +1,126 @@
-# V:ON ERP — PRD Master (허브 문서)
+# V:ON ERP ??PRD Master (?덈툕 臾몄꽌)
 
-> **문서 목적:** V:ON ERP 전체 제품의 방향, 대상 사용자, 기능 범위를 정의하는 최상위 기획 문서입니다.
-> 본 문서는 **허브(Hub)** 역할을 하며, 각 기능의 상세 스펙은 아래 Spoke 문서를 참조하세요.
+> **臾몄꽌 紐⑹쟻:** V:ON ERP ?꾩껜 ?쒗뭹??諛⑺뼢, ????ъ슜?? 湲곕뒫 踰붿쐞瑜??뺤쓽?섎뒗 理쒖긽??湲고쉷 臾몄꽌?낅땲??
+> 蹂?臾몄꽌??**?덈툕(Hub)** ??븷???섎ŉ, 媛?湲곕뒫???곸꽭 ?ㅽ럺? ?꾨옒 Spoke 臾몄꽌瑜?李몄“?섏꽭??
 >
-> **업데이트 규칙:** 기능 PRD 파일을 추가/삭제할 때마다 아래 `## 기능 인덱스` 섹션을 반드시 동시에 수정할 것.
+> **?낅뜲?댄듃 洹쒖튃:** 湲곕뒫 PRD ?뚯씪??異붽?/??젣???뚮쭏???꾨옒 `## 湲곕뒫 ?몃뜳?? ?뱀뀡??諛섎뱶???숈떆???섏젙??寃?
 
 ---
 
-## 제품 개요
+## ?쒗뭹 媛쒖슂
 
-| 항목 | 내용 |
+| ??ぉ | ?댁슜 |
 |---|---|
-| **제품명** | V:ON ERP |
-| **버전** | Phase 31_4 (완료) |
-| **최종 업데이트** | 2026-02-22 |
-| **담당자** | VC 관리팀 |
-| **상태** | 🟢 Phase 31_4 완료 |
+| **?쒗뭹紐?* | V:ON ERP |
+| **踰꾩쟾** | Phase 32 (?꾨즺) |
+| **理쒖쥌 ?낅뜲?댄듃** | 2026-02-23 |
+| **?대떦??* | VC 愿由ы? |
+| **?곹깭** | ?윟 Phase 32 ?꾨즺 |
 
-### 제품 목표
+### ?쒗뭹 紐⑺몴
 
-> **"1~2인 소수 정예 VC 관리팀이 수백억 원의 자금 흐름과 수천 장의 서류를 휴먼 에러 없이, 누락 없이 처리할 수 있도록 돕는 올인원 백오피스 ERP"**
+> **"1~2???뚯닔 ?뺤삁 VC 愿由ы????섎갚???먯쓽 ?먭툑 ?먮쫫怨??섏쿇 ?μ쓽 ?쒕쪟瑜??대㉫ ?먮윭 ?놁씠, ?꾨씫 ?놁씠 泥섎━?????덈룄濡??뺣뒗 ?ъ씤??諛깆삤?쇱뒪 ERP"**
 
-### 대상 사용자 (Target User)
+### ????ъ슜??(Target User)
 
-| 사용자 유형 | 설명 |
+| ?ъ슜???좏삎 | ?ㅻ챸 |
 |---|---|
-| **VC 관리팀 실무자** | 캐피탈콜, 분배, 서류 처리 등 일상 운영 업무 담당 |
-| **VC 경영진/파트너** | 대시보드를 통한 포트폴리오 현황 파악 |
+| **VC 愿由ы? ?ㅻТ??* | 罹먰뵾?덉퐳, 遺꾨같, ?쒕쪟 泥섎━ ???쇱긽 ?댁쁺 ?낅Т ?대떦 |
+| **VC 寃쎌쁺吏??뚰듃??* | ??쒕낫?쒕? ?듯븳 ?ы듃?대━???꾪솴 ?뚯븙 |
 
-### 핵심 설계 철학
+### ?듭떖 ?ㅺ퀎 泥좏븰
 
-1. **에러-프루프(Error-Proof):** 필수 서류/금액 미기입 시 완료 처리 불가 (강제 Lock)
-2. **단일 진실 공급원(SSOT):** 납입액, 분배액 등 재무 수치는 단 하나의 원천에서 자동 계산
-3. **한글 금액 보조:** 조 단위 금액 입력 시 "O억 O천만 원" 실시간 파싱으로 오입력 방지
-4. **D-Day 강제:** 업무는 마감일 기준 자동 분류, 실무자가 기한을 놓칠 수 없는 구조
-
----
-
-## 범위 정의 (Scope)
-
-### ✅ 범위 안 (In Scope)
-
-- 조합(Fund) 생성 및 생애주기 관리 (결성 → 운용 → 청산)
-- LP 명부 및 출자/분배 관리
-- 업무 보드(Task) 및 워크플로(SOP) 관리
-- 투자 포트폴리오 관리 (가치평가, Exit)
-- 자금 거래 및 회계 원장 관리
-- 규제 기관/LP 대상 보고서 및 문서 자동 생성
-- 체크리스트 기반 서류 검수
-
-### ❌ 범위 밖 (Out of Scope)
-
-- 외부 은행 자동이체 시스템 연동
-- 세금계산서 자동 발행
-- 타 ERP (SAP, Oracle) 통합
-- 모바일 앱 (현재는 Web only)
-- AI 기반 투자 의사결정 지원
+1. **?먮윭-?꾨（??Error-Proof):** ?꾩닔 ?쒕쪟/湲덉븸 誘멸린?????꾨즺 泥섎━ 遺덇? (媛뺤젣 Lock)
+2. **?⑥씪 吏꾩떎 怨듦툒??SSOT):** ?⑹엯?? 遺꾨같?????щТ ?섏튂?????섎굹???먯쿇?먯꽌 ?먮룞 怨꾩궛
+3. **?쒓? 湲덉븸 蹂댁“:** 議??⑥쐞 湲덉븸 ?낅젰 ??"O??O泥쒕쭔 ?? ?ㅼ떆媛??뚯떛?쇰줈 ?ㅼ엯??諛⑹?
+4. **D-Day 媛뺤젣:** ?낅Т??留덇컧??湲곗? ?먮룞 遺꾨쪟, ?ㅻТ?먭? 湲고븳???볦튌 ???녿뒗 援ъ“
 
 ---
 
-## MVP 정의
+## 踰붿쐞 ?뺤쓽 (Scope)
 
-1차 MVP: **조합 관리 + 캐피탈콜 + 업무 보드**
-- LP 명부 등록 및 캐피탈콜 발행/납입 확인
-- 마감일 기반 Task 보드
-- 기본 워크플로 템플릿 (결성/청산)
+### ??踰붿쐞 ??(In Scope)
+
+- 議고빀(Fund) ?앹꽦 諛??앹븷二쇨린 愿由?(寃곗꽦 ???댁슜 ??泥?궛)
+- LP 紐낅? 諛?異쒖옄/遺꾨같 愿由?
+- ?낅Т 蹂대뱶(Task) 諛??뚰겕?뚮줈(SOP) 愿由?
+- ?ъ옄 ?ы듃?대━??愿由?(媛移섑룊媛, Exit)
+- ?먭툑 嫄곕옒 諛??뚭퀎 ?먯옣 愿由?
+- 洹쒖젣 湲곌?/LP ???蹂닿퀬??諛?臾몄꽌 ?먮룞 ?앹꽦
+- 泥댄겕由ъ뒪??湲곕컲 ?쒕쪟 寃??
+
+### ??踰붿쐞 諛?(Out of Scope)
+
+- ?몃? ????먮룞?댁껜 ?쒖뒪???곕룞
+- ?멸툑怨꾩궛???먮룞 諛쒗뻾
+- ? ERP (SAP, Oracle) ?듯빀
+- 紐⑤컮????(?꾩옱??Web only)
+- AI 湲곕컲 ?ъ옄 ?섏궗寃곗젙 吏??
 
 ---
 
-## 기능 인덱스 (Spoke 문서 목록)
+## MVP ?뺤쓽
 
-> 기능 추가 시 이 목록에 행을 추가하고, 삭제 시 행을 제거할 것.
+1李?MVP: **議고빀 愿由?+ 罹먰뵾?덉퐳 + ?낅Т 蹂대뱶**
+- LP 紐낅? ?깅줉 諛?罹먰뵾?덉퐳 諛쒗뻾/?⑹엯 ?뺤씤
+- 留덇컧??湲곕컲 Task 蹂대뱶
+- 湲곕낯 ?뚰겕?뚮줈 ?쒗뵆由?(寃곗꽦/泥?궛)
 
-| # | 기능 영역 | 관련 페이지 | 상태 | PRD 문서 |
+---
+
+## 湲곕뒫 ?몃뜳??(Spoke 臾몄꽌 紐⑸줉)
+
+> 湲곕뒫 異붽? ????紐⑸줉???됱쓣 異붽??섍퀬, ??젣 ???됱쓣 ?쒓굅??寃?
+
+| # | 湲곕뒫 ?곸뿭 | 愿???섏씠吏 | ?곹깭 | PRD 臾몄꽌 |
 |---|---|---|---|---|
-| 01 | 게이트웨이 대시보드 | `/dashboard` | 🟡 개발 중 | [PRD_01_Dashboard.md](./PRD_01_Dashboard.md) |
-| 02 | 업무 보드 | `/tasks`, `/worklogs` | 🟡 개발 중 | [PRD_02_TaskBoard.md](./PRD_02_TaskBoard.md) |
-| 03 | 워크플로 관리 | `/workflows` | 🟡 개발 중 | [PRD_03_Workflows.md](./PRD_03_Workflows.md) |
-| 04 | 조합(Fund) 관리 | `/funds`, `/fund-overview`, `/funds/:id`, `/fund-operations` | 🟡 개발 중 | [PRD_04_Funds.md](./PRD_04_Funds.md) |
-| 05 | LP 관리 | `/lp-management` | 🟡 개발 중 | [PRD_05_LP_Management.md](./PRD_05_LP_Management.md) |
-| 06 | 투자/포트폴리오 | `/investments`, `/investments/:id`, `/valuations`, `/exits` | 🟡 개발 중 | [PRD_06_Investments.md](./PRD_06_Investments.md) |
-| 07 | 자금 및 회계 | `/transactions`, `/accounting` | 🟡 개발 중 | [PRD_07_Capital_Accounting.md](./PRD_07_Capital_Accounting.md) |
-| 08 | 보고서 및 문서 | `/biz-reports`, `/reports`, `/checklists`, `/documents`, `/templates` | 🟡 개발 중 | [PRD_08_Reports_Documents.md](./PRD_08_Reports_Documents.md) |
+| 01 | 寃뚯씠?몄썾????쒕낫??| `/dashboard` | ?윞 媛쒕컻 以?| [PRD_01_Dashboard.md](./PRD_01_Dashboard.md) |
+| 02 | ?낅Т 蹂대뱶 | `/tasks`, `/worklogs` | ?윞 媛쒕컻 以?| [PRD_02_TaskBoard.md](./PRD_02_TaskBoard.md) |
+| 03 | ?뚰겕?뚮줈 愿由?| `/workflows` | ?윞 媛쒕컻 以?| [PRD_03_Workflows.md](./PRD_03_Workflows.md) |
+| 04 | 議고빀(Fund) 愿由?| `/funds`, `/fund-overview`, `/funds/:id`, `/fund-operations` | ?윞 媛쒕컻 以?| [PRD_04_Funds.md](./PRD_04_Funds.md) |
+| 05 | LP 愿由?| `/lp-management` | ?윞 媛쒕컻 以?| [PRD_05_LP_Management.md](./PRD_05_LP_Management.md) |
+| 06 | ?ъ옄/?ы듃?대━??| `/investments`, `/investments/:id`, `/valuations`, `/exits` | ?윞 媛쒕컻 以?| [PRD_06_Investments.md](./PRD_06_Investments.md) |
+| 07 | ?먭툑 諛??뚭퀎 | `/transactions`, `/accounting` | ?윞 媛쒕컻 以?| [PRD_07_Capital_Accounting.md](./PRD_07_Capital_Accounting.md) |
+| 08 | 蹂닿퀬??諛?臾몄꽌 | `/biz-reports`, `/reports`, `/checklists`, `/documents`, `/templates` | ?윞 媛쒕컻 以?| [PRD_08_Reports_Documents.md](./PRD_08_Reports_Documents.md) |
 
 ---
 
-## 시스템 아키텍처 참조
+## ?쒖뒪???꾪궎?띿쿂 李몄“
 
-| 문서 | 경로 |
+| 臾몄꽌 | 寃쎈줈 |
 |---|---|
-| ERD (데이터베이스 구조) | [v_on_erp_erd.md](../02_Architecture/ERD/v_on_erp_erd.md) |
-| 전체 시스템 플로우차트 | [v_on_erp_comprehensive_flow.md](./Flowchart/v_on_erp_comprehensive_flow.md) |
-| 이벤트 트래킹 정의서 | [EVENT_TRACKING_SPEC.md](./EVENT_TRACKING_SPEC.md) |
-| **Codex 작업 전역 규칙** | [CODEX_RULES.md](../CODEX_RULES.md) |
+| ERD (?곗씠?곕쿋?댁뒪 援ъ“) | [v_on_erp_erd.md](../02_Architecture/ERD/v_on_erp_erd.md) |
+| ?꾩껜 ?쒖뒪???뚮줈?곗감??| [v_on_erp_comprehensive_flow.md](./Flowchart/v_on_erp_comprehensive_flow.md) |
+| ?대깽???몃옒???뺤쓽??| [EVENT_TRACKING_SPEC.md](./EVENT_TRACKING_SPEC.md) |
+| **Codex ?묒뾽 ?꾩뿭 洹쒖튃** | [CODEX_RULES.md](../CODEX_RULES.md) |
 
 ---
 
-## Phase 매핑
+## Phase ??
 
-| Phase | 관련 PRD | 상태 | 완료일 |
+| Phase | ?? PRD | ?? | ??? |
 |---|---|---|---|
-| Phase 31 | PRD_01_Dashboard, PRD_02_TaskBoard | ✅ 완료 | 2026-02-22 |
-| Phase 31_1 | PRD_01_Dashboard, PRD_02_TaskBoard | ✅ 완료 | 2026-02-22 |
-| Phase 31_2 | PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ✅ 완료 | 2026-02-22 |
-| Phase 31_3 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ✅ 완료 | 2026-02-22 |
-| Phase 31_4 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ✅ 완료 | 2026-02-22 |
+| Phase 31 | PRD_01_Dashboard, PRD_02_TaskBoard | ? ?? | 2026-02-22 |
+| Phase 31_1 | PRD_01_Dashboard, PRD_02_TaskBoard | ? ?? | 2026-02-22 |
+| Phase 31_2 | PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ? ?? | 2026-02-22 |
+| Phase 31_3 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ? ?? | 2026-02-22 |
+| Phase 31_4 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_04_Funds | ? ?? | 2026-02-22 |
+| Phase 32 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_08_Reports_Documents | ? ?? | 2026-02-23 |
+| Phase 32_HF1 | PRD_03_Workflows, PRD_08_Reports_Documents | ? ?? | 2026-02-23 |
 
 ---
 
-## 변경 이력
+## ?? ??
 
-| 날짜 | 버전 | 변경 내용 |
+| ?? | ?? | ?? ?? |
 |---|---|---|
-| 2026-02-22 | v0.1 | 최초 작성 |
-| 2026-02-22 | v0.2 | Phase 31 완료 반영 (대시보드/업무보드 에러-프루프 및 Bulk 고도화) |
-| 2026-02-22 | v0.3 | 업무보드 D-Day 카드 시인성 강화(카드 배경 대비 및 상태 배지 명확화) |
-| 2026-02-22 | v0.4 | Phase 31_1 완료 반영 (업무보드 보조뷰 3탭·캘린더 Quick Complete·대시보드 파이프라인 단순화) |
-| 2026-02-22 | v0.5 | Phase 31_2 완료 반영 (카테고리 관리/교훈 리마인드, 워크플로 인스턴스 UX, 펀드 템플릿/통지 UI 정비) |
-| 2026-02-22 | v0.6 | Phase 31_2 후속 조정: 워크플로 인스턴스 카드/스텝 컴팩트 레이아웃 튜닝 |
-| 2026-02-22 | v0.7 | Phase 31_3 완료 반영 (워크플로 단계서류/WorkLog 자동기록, 체크리스트 통합, 대시보드 통지·보고 출처 통합, 펀드 마이그레이션 템플릿 확장) |
-| 2026-02-22 | v0.8 | Phase 31_4 완료 반영 (카테고리 순환 자동등록/전파, 트랜잭션 rollback 보강, 인덱스·유니크 제약·N+1 최적화, 에러 토스트 분기) |
+| 2026-02-22 | v0.1 | ?? ?? |
+| 2026-02-22 | v0.2 | Phase 31 ?? ?? (????/???? ??-??? ? Bulk ?? ???) |
+| 2026-02-22 | v0.3 | ???? D-Day ??? ?? (?? ?? ?? ? ?? ?? ???) |
+| 2026-02-22 | v0.4 | Phase 31_1 ?? ?? (???? ???, ???? ????? ???) |
+| 2026-02-22 | v0.5 | Phase 31_2 ?? ?? (???? ??/????, ????? ???? UX, ??? ?? UI ??) |
+| 2026-02-22 | v0.6 | Phase 31_2 ?? ?? (????? ???? ??/?? ????) |
+| 2026-02-22 | v0.7 | Phase 31_3 ?? ?? (?? ??/WorkLog ????, ????? ??, ???? ?? ??) |
+| 2026-02-22 | v0.8 | Phase 31_4 ?? ?? (???? ?? ???, ???? rollback ??, ???/?? ???) |
+| 2026-02-23 | v0.9 | Phase 32 ?? ?? (???? ??? ?? ????, ?? ?? ?? ??, ????? ?? ???) |
+| 2026-02-23 | v1.0 | Phase 32 Hotfix ?? (periodic_schedules ??? ??? ?? ???? workflows/periodic-schedules API 500 ??) |

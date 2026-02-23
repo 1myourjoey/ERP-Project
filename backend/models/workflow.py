@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
@@ -53,6 +55,7 @@ class WorkflowStepDocument(Base):
     required = Column(Boolean, default=True)
     timing = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
+    attachment_ids_raw = Column("attachment_ids", Text, nullable=False, default="[]")
 
     step = relationship("WorkflowStep", back_populates="step_documents")
     document_template = relationship("DocumentTemplate", lazy="joined")
@@ -68,6 +71,38 @@ class WorkflowStepDocument(Base):
         if not self.document_template:
             return None
         return self.document_template.category
+
+    @property
+    def attachment_ids(self) -> list[int]:
+        if not self.attachment_ids_raw:
+            return []
+        try:
+            decoded = json.loads(self.attachment_ids_raw)
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(decoded, list):
+            return []
+        result: list[int] = []
+        for item in decoded:
+            try:
+                parsed = int(item)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                result.append(parsed)
+        return result
+
+    @attachment_ids.setter
+    def attachment_ids(self, value: list[int] | None) -> None:
+        normalized: list[int] = []
+        for item in value or []:
+            try:
+                parsed = int(item)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0 and parsed not in normalized:
+                normalized.append(parsed)
+        self.attachment_ids_raw = json.dumps(normalized, ensure_ascii=False)
 
 
 class WorkflowDocument(Base):

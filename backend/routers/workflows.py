@@ -52,6 +52,7 @@ from services.workflow_service import (
     instantiate_workflow,
     reconcile_workflow_instance_state,
 )
+from services.phase32_defaults import ensure_phase32_defaults
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
 from services.fund_integrity import (
     recalculate_fund_stats,
@@ -400,6 +401,7 @@ def _append_step_documents(
                 required=bool(doc.required),
                 timing=doc.timing,
                 notes=doc.notes,
+                attachment_ids=doc.attachment_ids,
             )
         )
 
@@ -419,6 +421,7 @@ def _clone_step_documents_to_instance_step(
                 timing=doc.timing,
                 notes=doc.notes,
                 checked=False,
+                attachment_ids=doc.attachment_ids,
             )
         )
 
@@ -551,6 +554,7 @@ def _rollback_capital_call_items_paid(db: Session, capital_call_id: int) -> None
 @router.get("/api/workflows", response_model=list[WorkflowListItem])
 
 def list_workflows(db: Session = Depends(get_db)):
+    ensure_phase32_defaults(db, auto_commit=True)
 
     workflows = db.query(Workflow).order_by(Workflow.id.desc()).all()
 
@@ -681,6 +685,7 @@ def add_step_document(
         required=bool(data.required),
         timing=data.timing,
         notes=data.notes,
+        attachment_ids=data.attachment_ids,
     )
     db.add(document)
     try:
@@ -1223,6 +1228,7 @@ def add_step_instance_document(
         timing=data.timing,
         notes=data.notes,
         document_template_id=data.document_template_id,
+        attachment_ids=data.attachment_ids,
     )
     template_id, name = _resolve_step_document_payload(db, document_payload)
 
@@ -1235,6 +1241,7 @@ def add_step_instance_document(
         timing=data.timing,
         notes=data.notes,
         checked=bool(data.checked),
+        attachment_ids=data.attachment_ids,
     )
     db.add(document)
     try:
@@ -1275,6 +1282,7 @@ def update_step_instance_document(
             timing=payload.get("timing", document.timing),
             notes=payload.get("notes", document.notes),
             document_template_id=payload.get("document_template_id", document.document_template_id),
+            attachment_ids=payload.get("attachment_ids", document.attachment_ids),
         )
         template_id, name = _resolve_step_document_payload(db, document_payload)
         document.document_template_id = template_id
@@ -1288,6 +1296,8 @@ def update_step_instance_document(
         document.notes = payload["notes"]
     if "checked" in payload:
         document.checked = bool(payload["checked"])
+    if "attachment_ids" in payload:
+        document.attachment_ids = payload["attachment_ids"]
 
     try:
         db.commit()
@@ -1709,6 +1719,7 @@ def _build_instance_response(
                     checked=document.checked,
                     template_name=document.template_name,
                     template_category=document.template_category,
+                    attachment_ids=document.attachment_ids,
                 )
                 for document in documents
             ],

@@ -157,6 +157,51 @@ export const checkWorkflowStepInstanceDocument = (
 ): Promise<WorkflowStepInstanceDocument> =>
   api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/documents/${documentId}/check`, { checked }).then(r => r.data)
 
+// -- Periodic Schedules --
+export const fetchPeriodicSchedules = (activeOnly = false): Promise<PeriodicSchedule[]> =>
+  api.get('/periodic-schedules', { params: { active_only: activeOnly } }).then(r => r.data)
+export const fetchPeriodicSchedule = (id: number): Promise<PeriodicSchedule> =>
+  api.get(`/periodic-schedules/${id}`).then(r => r.data)
+export const createPeriodicSchedule = (data: PeriodicScheduleInput): Promise<PeriodicSchedule> =>
+  api.post('/periodic-schedules', data).then(r => r.data)
+export const updatePeriodicSchedule = (id: number, data: PeriodicScheduleUpdateInput): Promise<PeriodicSchedule> =>
+  api.put(`/periodic-schedules/${id}`, data).then(r => r.data)
+export const deletePeriodicSchedule = (id: number): Promise<void> =>
+  api.delete(`/periodic-schedules/${id}`).then(() => undefined)
+export const generatePeriodicSchedulesForYear = (
+  year: number,
+  dryRun = false,
+): Promise<PeriodicScheduleGenerateResult> =>
+  api.post('/periodic-schedules/generate-year', null, { params: { year, dry_run: dryRun } }).then(r => r.data)
+
+// -- Attachments --
+export const uploadAttachment = (
+  file: File,
+  entityType?: string | null,
+  entityId?: number | null,
+): Promise<Attachment> => {
+  const params: Record<string, string | number> = {}
+  if (entityType) params.entity_type = entityType
+  if (entityId !== undefined && entityId !== null) params.entity_id = entityId
+  return api.post('/attachments', file, {
+    params,
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'X-File-Name': encodeURIComponent(file.name),
+    },
+  }).then(r => r.data)
+}
+export const fetchAttachments = (ids?: number[]): Promise<Attachment[]> =>
+  api.get('/attachments', { params: { ids: ids?.join(',') } }).then(r => r.data)
+export const downloadAttachment = (attachmentId: number): Promise<Blob> =>
+  api.get(`/attachments/${attachmentId}`, { responseType: 'blob' }).then(r => r.data)
+export const linkAttachment = (
+  attachmentId: number,
+  data: AttachmentLinkInput,
+): Promise<Attachment> => api.patch(`/attachments/${attachmentId}/link`, data).then(r => r.data)
+export const removeAttachment = (attachmentId: number): Promise<void> =>
+  api.delete(`/attachments/${attachmentId}`).then(() => undefined)
+
 // -- Document Templates --
 export const fetchDocumentTemplates = (category?: string): Promise<DocumentTemplate[]> =>
   api.get('/document-templates', { params: { category } }).then(r => r.data)
@@ -614,6 +659,7 @@ export interface WorkflowStepDocument {
   required: boolean
   timing: string | null
   notes: string | null
+  attachment_ids?: number[]
   template_name?: string | null
   template_category?: string | null
 }
@@ -669,6 +715,7 @@ export interface WorkflowStepInstanceDocument {
   timing?: string | null
   notes?: string | null
   checked: boolean
+  attachment_ids?: number[]
   template_name?: string | null
   template_category?: string | null
 }
@@ -750,6 +797,7 @@ export interface WorkflowStepInstanceDocumentInput {
   notes?: string | null
   document_template_id?: number | null
   checked?: boolean
+  attachment_ids?: number[]
 }
 
 export interface WorkflowStepInstanceDocumentUpdate {
@@ -759,6 +807,7 @@ export interface WorkflowStepInstanceDocumentUpdate {
   notes?: string | null
   document_template_id?: number | null
   checked?: boolean
+  attachment_ids?: number[]
 }
 
 export interface WorkflowStepInput {
@@ -780,6 +829,7 @@ export interface WorkflowStepDocumentInput {
   timing?: string | null
   notes?: string | null
   document_template_id?: number | null
+  attachment_ids?: number[]
 }
 
 export interface WorkflowDocumentInput {
@@ -802,6 +852,80 @@ export interface WorkflowTemplateInput {
   steps: WorkflowStepInput[]
   documents: WorkflowDocumentInput[]
   warnings: WorkflowWarningInput[]
+}
+
+export interface PeriodicStepConfig {
+  name: string
+  offset_days: number
+  is_notice?: boolean
+  is_report?: boolean
+}
+
+export interface PeriodicSchedule {
+  id: number
+  name: string
+  category: string
+  recurrence: 'quarterly' | 'semi-annual' | 'annual' | string
+  base_month: number
+  base_day: number
+  workflow_template_id: number | null
+  fund_type_filter: string | null
+  is_active: boolean
+  steps: PeriodicStepConfig[]
+  description: string | null
+}
+
+export interface PeriodicScheduleInput {
+  name: string
+  category: string
+  recurrence: 'quarterly' | 'semi-annual' | 'annual' | string
+  base_month: number
+  base_day: number
+  workflow_template_id?: number | null
+  fund_type_filter?: string | null
+  is_active?: boolean
+  steps: PeriodicStepConfig[]
+  description?: string | null
+}
+
+export interface PeriodicScheduleUpdateInput {
+  name?: string
+  category?: string
+  recurrence?: 'quarterly' | 'semi-annual' | 'annual' | string
+  base_month?: number
+  base_day?: number
+  workflow_template_id?: number | null
+  fund_type_filter?: string | null
+  is_active?: boolean
+  steps?: PeriodicStepConfig[]
+  description?: string | null
+}
+
+export interface PeriodicScheduleGenerateResult {
+  year: number
+  dry_run: boolean
+  created_instances: number
+  skipped_instances: number
+  created_tasks: number
+  linked_reports: number
+  details: string[]
+}
+
+export interface Attachment {
+  id: number
+  filename: string
+  original_filename: string
+  file_size?: number | null
+  mime_type?: string | null
+  entity_type?: string | null
+  entity_id?: number | null
+  created_at?: string | null
+  url: string
+}
+
+export interface AttachmentLinkInput {
+  entity_type?: string | null
+  entity_id?: number | null
 }
 
 export interface Fund {

@@ -218,6 +218,7 @@ def instantiate_workflow(
                     timing=step_doc.timing,
                     notes=step_doc.notes,
                     checked=False,
+                    attachment_ids=step_doc.attachment_ids,
                 )
             )
         db.add(step_instance)

@@ -41,6 +41,8 @@ from routers import (
     gp_entities,
     lp_address_books,
     admin,
+    attachments,
+    periodic_schedules,
 )
 
 def ensure_sqlite_compat_columns():
@@ -89,6 +91,60 @@ def ensure_sqlite_compat_columns():
         if has_table("document_templates") and not has_column("document_templates", "custom_data"):
             conn.exec_driver_sql("ALTER TABLE document_templates ADD COLUMN custom_data TEXT DEFAULT '{}'")
             conn.exec_driver_sql("UPDATE document_templates SET custom_data = '{}' WHERE custom_data IS NULL")
+
+        if has_table("workflow_step_documents") and not has_column("workflow_step_documents", "attachment_ids"):
+            conn.exec_driver_sql("ALTER TABLE workflow_step_documents ADD COLUMN attachment_ids TEXT DEFAULT '[]'")
+            conn.exec_driver_sql(
+                "UPDATE workflow_step_documents SET attachment_ids = '[]' "
+                "WHERE attachment_ids IS NULL OR TRIM(attachment_ids) = ''"
+            )
+
+        if has_table("workflow_step_instance_documents") and not has_column("workflow_step_instance_documents", "attachment_ids"):
+            conn.exec_driver_sql("ALTER TABLE workflow_step_instance_documents ADD COLUMN attachment_ids TEXT DEFAULT '[]'")
+            conn.exec_driver_sql(
+                "UPDATE workflow_step_instance_documents SET attachment_ids = '[]' "
+                "WHERE attachment_ids IS NULL OR TRIM(attachment_ids) = ''"
+            )
+
+        # Phase 32 compatibility: older local DBs may already have periodic_schedules
+        # without the full schema (e.g., missing steps_json/description).
+        if has_table("periodic_schedules"):
+            if not has_column("periodic_schedules", "workflow_template_id"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN workflow_template_id INTEGER")
+            if not has_column("periodic_schedules", "fund_type_filter"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN fund_type_filter TEXT")
+            if not has_column("periodic_schedules", "reminder_offsets"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN reminder_offsets TEXT DEFAULT '[]'")
+            if not has_column("periodic_schedules", "is_active"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN is_active INTEGER DEFAULT 1")
+            if not has_column("periodic_schedules", "created_at"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN created_at DATETIME")
+            if not has_column("periodic_schedules", "updated_at"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN updated_at DATETIME")
+            if not has_column("periodic_schedules", "steps_json"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN steps_json TEXT DEFAULT '[]'")
+            if not has_column("periodic_schedules", "description"):
+                conn.exec_driver_sql("ALTER TABLE periodic_schedules ADD COLUMN description TEXT")
+            if has_column("periodic_schedules", "reminder_offsets"):
+                conn.exec_driver_sql(
+                    "UPDATE periodic_schedules SET reminder_offsets = '[]' "
+                    "WHERE reminder_offsets IS NULL OR TRIM(reminder_offsets) = ''"
+                )
+            if has_column("periodic_schedules", "created_at"):
+                conn.exec_driver_sql(
+                    "UPDATE periodic_schedules SET created_at = CURRENT_TIMESTAMP "
+                    "WHERE created_at IS NULL OR TRIM(CAST(created_at AS TEXT)) = ''"
+                )
+            if has_column("periodic_schedules", "updated_at"):
+                conn.exec_driver_sql(
+                    "UPDATE periodic_schedules SET updated_at = CURRENT_TIMESTAMP "
+                    "WHERE updated_at IS NULL OR TRIM(CAST(updated_at AS TEXT)) = ''"
+                )
+            if has_column("periodic_schedules", "steps_json"):
+                conn.exec_driver_sql(
+                    "UPDATE periodic_schedules SET steps_json = '[]' "
+                    "WHERE steps_json IS NULL OR TRIM(steps_json) = ''"
+                )
 
         for table, column, sql_type in [
             ("funds", "maturity_date", "DATE"),
@@ -204,6 +260,8 @@ app.include_router(lp_transfers.router)
 app.include_router(gp_entities.router)
 app.include_router(lp_address_books.router)
 app.include_router(admin.router)
+app.include_router(attachments.router)
+app.include_router(periodic_schedules.router)
 
 
 @app.exception_handler(RequestValidationError)
