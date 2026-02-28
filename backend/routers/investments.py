@@ -1,4 +1,6 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿import logging
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -16,8 +18,10 @@ from schemas.investment import (
     InvestmentDocumentUpdate,
     InvestmentDocumentResponse,
 )
+from services.compliance_engine import ComplianceEngine
 
 router = APIRouter(tags=["investments"])
+logger = logging.getLogger(__name__)
 
 
 # -- Portfolio Companies --
@@ -123,6 +127,18 @@ def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
     db.add(investment)
     db.commit()
     db.refresh(investment)
+
+    try:
+        ComplianceEngine(db).on_investment_created(investment.id, investment.fund_id)
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on create_investment: investment_id=%s fund_id=%s error=%s",
+            investment.id,
+            investment.fund_id,
+            exc,
+        )
+
     return investment
 
 
@@ -200,5 +216,6 @@ def delete_investment_document(investment_id: int, document_id: int, db: Session
 
     db.delete(doc)
     db.commit()
+
 
 

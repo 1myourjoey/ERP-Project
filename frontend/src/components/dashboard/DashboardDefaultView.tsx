@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 
 import type {
   ActiveWorkflow,
+  DashboardComplianceWidget,
+  DashboardDocCollectionWidget,
+  DashboardPrioritizedTask,
+  DashboardUrgentAlert,
   FundSummary,
   MissingDocument,
   Task,
@@ -24,6 +28,7 @@ interface DashboardDefaultViewProps {
   thisWeekTasks: Task[]
   upcomingTasks: Task[]
   noDeadlineTasks: Task[]
+  prioritizedTasks: DashboardPrioritizedTask[]
   completedForTaskPanel: Task[]
   todayTotalEstimatedTime: string
   tomorrowTotalEstimatedTime: string
@@ -42,6 +47,9 @@ interface DashboardDefaultViewProps {
   unpaidLpCount: number
   pendingFeeCount: number
   bizReportInProgressCount: number
+  complianceSummary?: DashboardComplianceWidget
+  docCollectionSummary?: DashboardDocCollectionWidget
+  urgentAlerts?: DashboardUrgentAlert[]
   sidebarLoading: boolean
   completedLoading: boolean
   completingTaskId: number | null
@@ -62,13 +70,9 @@ function DashboardDefaultView({
   monthlyReminder,
   monthlyReminderPending,
   todayTasks,
-  tomorrowTasks,
   thisWeekTasks,
-  upcomingTasks,
-  noDeadlineTasks,
+  prioritizedTasks,
   completedForTaskPanel,
-  todayTotalEstimatedTime,
-  tomorrowTotalEstimatedTime,
   activeWorkflows,
   workflowsLoading,
   fundSummary,
@@ -82,8 +86,8 @@ function DashboardDefaultView({
   investmentReviewActiveCount,
   totalNav,
   unpaidLpCount,
-  pendingFeeCount,
-  bizReportInProgressCount,
+  complianceSummary,
+  urgentAlerts = [],
   sidebarLoading,
   completedLoading,
   completingTaskId,
@@ -91,7 +95,6 @@ function DashboardDefaultView({
   onGenerateMonthlyReminder,
   onOpenTask,
   onQuickComplete,
-  onOpenQuickAdd,
   onOpenWorkflow,
   onOpenTaskBoard,
   onOpenPipeline,
@@ -103,53 +106,55 @@ function DashboardDefaultView({
     const deadline = new Date(task.deadline)
     return !Number.isNaN(deadline.getTime()) && deadline.getTime() < Date.now()
   }).length
-  const periodicUrgentTask = [...todayTasks, ...tomorrowTasks, ...thisWeekTasks, ...upcomingTasks]
-    .filter((task, index, array) => array.findIndex((row) => row.id === task.id) === index)
-    .filter((task) => {
-      const category = (task.category || '').replace(/\s+/g, '').toLowerCase()
-      const title = (task.title || '').replace(/\s+/g, '').toLowerCase()
-      const isPeriodic =
-        title.includes('[정기]') ||
-        category.includes('분기') ||
-        category.includes('영업') ||
-        category.includes('총회')
-      if (!isPeriodic || !task.deadline || task.status === 'completed') return false
-      const deadline = new Date(task.deadline)
-      if (Number.isNaN(deadline.getTime())) return false
-      const diff = Math.floor((deadline.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-      return diff <= 7
-    })
-    .sort((a, b) => (new Date(a.deadline || '').getTime() - new Date(b.deadline || '').getTime()))[0]
-  const periodicUrgentBadge = (() => {
-    if (!periodicUrgentTask?.deadline) return null
-    const diff = Math.floor((new Date(periodicUrgentTask.deadline).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-    if (diff < 0) return '지연'
-    if (diff === 0) return 'D-day'
-    return `D-${diff}`
-  })()
+  const priorityHotCount = prioritizedTasks.filter(
+    (item) => item.urgency === 'overdue' || item.urgency === 'today',
+  ).length
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <DashboardStatCard
-          label="📋 오늘 업무"
-          value={todayTasks.length}
-          onClick={() => onOpenPopup('today')}
-          variant={overdueTodayCount > 0 ? 'danger' : 'default'}
-          valueSuffix={overdueTodayCount > 0 ? `(+${overdueTodayCount} 지연)` : null}
-        />
-        <DashboardStatCard label={`📅 이번 주 (${thisWeekRangeLabel})`} value={thisWeekTasks.length} onClick={() => onOpenPopup('this_week')} />
-        <DashboardStatCard label="🔄 진행 워크플로" value={activeWorkflows.length} onClick={() => onOpenPopup('workflows')} />
-        <DashboardStatCard label="📁 미수집 서류" value={missingDocuments.length} onClick={() => onOpenPopup('documents')} />
-        <DashboardStatCard label="📊 보고 마감" value={upcomingReports.length} onClick={() => onOpenPopup('reports')} />
-        <DashboardStatCard label="✅ 오늘 완료" value={completedTodayCount} onClick={() => onOpenPopup('completed')} variant="emerald" />
-      </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-        <DashboardStatCard label="🧾 진행 심의" value={investmentReviewActiveCount} onClick={() => navigate('/investment-reviews')} />
-        <DashboardStatCard label="💎 운용 NAV" value={Math.round(totalNav || 0)} valueSuffix="원" onClick={() => navigate('/valuations')} />
-        <DashboardStatCard label="⚠️ 미납 LP" value={unpaidLpCount} onClick={() => navigate('/fund-operations')} variant={unpaidLpCount > 0 ? 'danger' : 'default'} />
-        <DashboardStatCard label="💼 미수령 보수" value={pendingFeeCount} onClick={() => navigate('/fee-management')} />
-        <DashboardStatCard label="📝 진행 보고" value={bizReportInProgressCount} onClick={() => navigate('/biz-reports')} />
+        <DashboardStatCard
+          label="오늘 우선업무"
+          value={priorityHotCount}
+          onClick={onOpenTaskBoard}
+          variant={priorityHotCount > 0 ? 'danger' : 'default'}
+          valueSuffix={priorityHotCount > 0 ? '즉시 확인' : null}
+        />
+        <DashboardStatCard
+          label={`이번주 마감 (${thisWeekRangeLabel})`}
+          value={thisWeekTasks.length}
+          onClick={() => onOpenPopup('this_week')}
+        />
+        <DashboardStatCard
+          label="진행 워크플로"
+          value={activeWorkflows.length}
+          onClick={() => onOpenPopup('workflows')}
+        />
+        <DashboardStatCard
+          label="미수 서류"
+          value={missingDocuments.length}
+          onClick={() => onOpenPopup('documents')}
+          variant={missingDocuments.length > 0 ? 'danger' : 'default'}
+        />
+        <DashboardStatCard
+          label="오늘 완료"
+          value={completedTodayCount}
+          onClick={() => onOpenPopup('completed')}
+          variant="emerald"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <DashboardStatCard label="심의 진행" value={investmentReviewActiveCount} onClick={() => navigate('/investment-reviews')} />
+        <DashboardStatCard label="운용 NAV" value={Math.round(totalNav || 0)} valueSuffix="원" onClick={() => navigate('/valuations')} />
+        <DashboardStatCard label="미납 LP" value={unpaidLpCount} onClick={() => navigate('/fund-operations')} variant={unpaidLpCount > 0 ? 'danger' : 'default'} />
+        <DashboardStatCard
+          label="컴플라이언스"
+          value={complianceSummary?.overdue_count || 0}
+          valueSuffix={`주간 ${complianceSummary?.due_this_week || 0}`}
+          onClick={() => navigate('/compliance')}
+          variant={(complianceSummary?.overdue_count || 0) > 0 ? 'danger' : 'default'}
+        />
       </div>
 
       {monthlyReminder && (
@@ -165,15 +170,19 @@ function DashboardDefaultView({
         </div>
       )}
 
-      {periodicUrgentTask && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-          <p className="flex-1 text-sm text-red-900">
-            정기 업무 긴급: {periodicUrgentTask.title}
-            {periodicUrgentBadge ? ` (${periodicUrgentBadge})` : ''}
-          </p>
-          <button onClick={onOpenTaskBoard} className="secondary-btn text-xs">
-            업무보드 열기
-          </button>
+      {(urgentAlerts.length > 0 || overdueTodayCount > 0) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="mb-2 text-sm font-semibold text-amber-900">긴급 알림</p>
+          <div className="space-y-1">
+            {overdueTodayCount > 0 && (
+              <p className="text-sm text-amber-900">• 오늘 기준 지연 업무 {overdueTodayCount}건</p>
+            )}
+            {urgentAlerts.map((alert, index) => (
+              <p key={`${alert.type}-${alert.due_date}-${index}`} className="text-sm text-amber-900">
+                • {alert.message}
+              </p>
+            ))}
+          </div>
         </div>
       )}
 
@@ -189,20 +198,12 @@ function DashboardDefaultView({
             onOpenWorkflowPage={() => navigate('/workflows')}
           />
           <DashboardTaskPanels
-            todayTasks={todayTasks}
-            tomorrowTasks={tomorrowTasks}
+            prioritizedTasks={prioritizedTasks}
             thisWeekTasks={thisWeekTasks}
-            upcomingTasks={upcomingTasks}
-            noDeadlineTasks={noDeadlineTasks}
             completedTasks={completedForTaskPanel}
-            todayTotalEstimatedTime={todayTotalEstimatedTime}
-            tomorrowTotalEstimatedTime={tomorrowTotalEstimatedTime}
-            thisWeekRangeLabel={thisWeekRangeLabel}
             completingTaskId={completingTaskId}
             onOpenTask={onOpenTask}
             onQuickComplete={onQuickComplete}
-            onOpenPopup={onOpenPopup}
-            onOpenQuickAdd={onOpenQuickAdd}
             onOpenTaskBoard={onOpenTaskBoard}
           />
         </div>

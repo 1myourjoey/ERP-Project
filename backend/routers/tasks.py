@@ -1,20 +1,30 @@
 import re
 from datetime import date, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
 from database import get_db
+from dependencies.auth import get_current_user
+from models.attachment import Attachment
 from models.calendar_event import CalendarEvent
 from models.fund import Fund
 from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
 from models.task import Task
 from models.task_category import TaskCategory
+from models.user import User
 from models.workflow import Workflow, WorkflowStep
-from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
+from models.workflow_instance import (
+    WorkflowInstance,
+    WorkflowStepInstance,
+    WorkflowStepInstanceDocument,
+)
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
+from schemas.attachment import AttachmentResponse
 from schemas.task import (
     TaskBoardResponse,
     TaskComplete,
@@ -32,8 +42,27 @@ MONTHLY_REMINDER_TITLES = (
 )
 
 
+class TaskAttachmentLinkRequest(BaseModel):
+    attachment_id: int
+    workflow_doc_id: int | None = None
+
+
 def _normalize_category_name(value: str | None) -> str:
     return (value or '').strip()
+
+
+def _attachment_to_response(row: Attachment) -> AttachmentResponse:
+    return AttachmentResponse(
+        id=row.id,
+        filename=row.filename,
+        original_filename=row.original_filename,
+        file_size=row.file_size,
+        mime_type=row.mime_type,
+        entity_type=row.entity_type,
+        entity_id=row.entity_id,
+        created_at=row.created_at,
+        url=f'/api/attachments/{row.id}',
+    )
 
 
 def _ensure_task_category_exists(db: Session, category_name: str | None) -> str | None:
@@ -91,6 +120,7 @@ def _resolve_task_links(
 
 
 def _build_task_lookup_context(db: Session, tasks: list[Task]) -> dict[str, dict[int, object]]:
+    task_ids = {row.id for row in tasks if row.id is not None}
     investment_ids = {row.investment_id for row in tasks if row.investment_id is not None}
     workflow_instance_ids = {row.workflow_instance_id for row in tasks if row.workflow_instance_id is not None}
     fund_ids = {row.fund_id for row in tasks if row.fund_id is not None}
@@ -122,12 +152,30 @@ def _build_task_lookup_context(db: Session, tasks: list[Task]) -> dict[str, dict
     if company_ids:
         companies = db.query(PortfolioCompany).filter(PortfolioCompany.id.in_(company_ids)).all()
 
+    attachment_counts: dict[int, int] = {}
+    if task_ids:
+        attachment_rows = (
+            db.query(Attachment.entity_id, func.count(Attachment.id))
+            .filter(
+                Attachment.entity_type == 'task',
+                Attachment.entity_id.in_(task_ids),
+            )
+            .group_by(Attachment.entity_id)
+            .all()
+        )
+        attachment_counts = {
+            int(task_id): int(count)
+            for task_id, count in attachment_rows
+            if task_id is not None
+        }
+
     return {
         'investments': {row.id: row for row in investments},
         'instances': {row.id: row for row in instances},
         'funds': {row.id: row for row in funds},
         'gp_entities': {row.id: row for row in gp_entities},
         'companies': {row.id: row for row in companies},
+        'attachment_counts': attachment_counts,
     }
 
 
@@ -142,6 +190,7 @@ def _to_task_response(
     fund_by_id: dict[int, Fund] = context.get('funds', {})  # type: ignore[assignment]
     gp_entity_by_id: dict[int, GPEntity] = context.get('gp_entities', {})  # type: ignore[assignment]
     company_by_id: dict[int, PortfolioCompany] = context.get('companies', {})  # type: ignore[assignment]
+    attachment_count_by_task: dict[int, int] = context.get('attachment_counts', {})  # type: ignore[assignment]
 
     payload = TaskResponse.model_validate(task).model_dump()
 
@@ -198,6 +247,19 @@ def _to_task_response(
     payload['fund_name'] = fund_name or gp_entity_name
     payload['gp_entity_name'] = gp_entity_name
     payload['company_name'] = company_name
+    payload['attachment_count'] = int(
+        attachment_count_by_task.get(task.id)
+        if task.id in attachment_count_by_task
+        else (
+            db.query(func.count(Attachment.id))
+            .filter(
+                Attachment.entity_type == 'task',
+                Attachment.entity_id == task.id,
+            )
+            .scalar()
+            or 0
+        )
+    )
     return TaskResponse(**payload)
 
 
@@ -385,8 +447,165 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     return _to_task_response(db, task)
 
 
+@router.get('/{task_id}/attachments', response_model=list[AttachmentResponse])
+def get_task_attachments(task_id: int, db: Session = Depends(get_db)):
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
+
+    rows = (
+        db.query(Attachment)
+        .filter(
+            Attachment.entity_type == 'task',
+            Attachment.entity_id == task.id,
+        )
+        .order_by(Attachment.id.desc())
+        .all()
+    )
+    return [_attachment_to_response(row) for row in rows]
+
+
+@router.post('/{task_id}/link-attachment')
+def link_attachment_to_task(
+    task_id: int,
+    body: TaskAttachmentLinkRequest,
+    db: Session = Depends(get_db),
+):
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
+
+    attachment = db.get(Attachment, body.attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail='첨부 파일을 찾을 수 없습니다')
+
+    if body.workflow_doc_id is not None and not task.workflow_instance_id:
+        raise HTTPException(
+            status_code=400,
+            detail='워크플로 업무가 아니어서 workflow_doc_id를 사용할 수 없습니다',
+        )
+
+    attachment.entity_type = 'task'
+    attachment.entity_id = task.id
+
+    linked_workflow_doc: dict[str, object] | None = None
+    linked_document_row: WorkflowStepInstanceDocument | None = None
+
+    if task.workflow_instance_id:
+        step_instance = _find_workflow_step_instance_for_task(db, task)
+        if body.workflow_doc_id is not None and not step_instance:
+            raise HTTPException(status_code=404, detail='워크플로 단계 인스턴스를 찾을 수 없습니다')
+        if step_instance:
+            step_documents = (
+                db.query(WorkflowStepInstanceDocument)
+                .filter(WorkflowStepInstanceDocument.step_instance_id == step_instance.id)
+                .order_by(
+                    WorkflowStepInstanceDocument.required.desc(),
+                    WorkflowStepInstanceDocument.id.asc(),
+                )
+                .all()
+            )
+            target_document: WorkflowStepInstanceDocument | None = None
+            if body.workflow_doc_id is not None:
+                target_document = next(
+                    (row for row in step_documents if row.id == body.workflow_doc_id),
+                    None,
+                )
+                if not target_document:
+                    raise HTTPException(status_code=404, detail='워크플로 서류를 찾을 수 없습니다')
+            else:
+                target_document = next(
+                    (
+                        row
+                        for row in step_documents
+                        if row.required and len(row.attachment_ids or []) == 0
+                    ),
+                    None,
+                )
+                if not target_document:
+                    target_document = next(
+                        (row for row in step_documents if row.required and not row.checked),
+                        None,
+                    )
+
+            if target_document:
+                attachment_ids = list(target_document.attachment_ids or [])
+                if attachment.id not in attachment_ids:
+                    attachment_ids.append(attachment.id)
+                target_document.attachment_ids = attachment_ids
+                target_document.checked = True
+                linked_document_row = target_document
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(attachment)
+    if linked_document_row is not None:
+        db.refresh(linked_document_row)
+        linked_workflow_doc = {
+            'id': linked_document_row.id,
+            'name': linked_document_row.name,
+            'required': bool(linked_document_row.required),
+            'checked': bool(linked_document_row.checked),
+            'attachment_ids': linked_document_row.attachment_ids or [],
+        }
+
+    return {
+        'attachment': _attachment_to_response(attachment),
+        'linked_workflow_doc': linked_workflow_doc,
+    }
+
+
+@router.delete('/{task_id}/unlink-attachment/{attachment_id}', status_code=204)
+def unlink_attachment_from_task(task_id: int, attachment_id: int, db: Session = Depends(get_db)):
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
+
+    attachment = db.get(Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail='첨부 파일을 찾을 수 없습니다')
+    if attachment.entity_type != 'task' or attachment.entity_id != task.id:
+        raise HTTPException(status_code=404, detail='해당 업무에 연결된 첨부 파일이 아닙니다')
+
+    if task.workflow_instance_id:
+        step_instance = _find_workflow_step_instance_for_task(db, task)
+        if step_instance:
+            step_documents = (
+                db.query(WorkflowStepInstanceDocument)
+                .filter(WorkflowStepInstanceDocument.step_instance_id == step_instance.id)
+                .all()
+            )
+            for document in step_documents:
+                attachment_ids = list(document.attachment_ids or [])
+                if attachment_id not in attachment_ids:
+                    continue
+                next_ids = [row for row in attachment_ids if row != attachment_id]
+                document.attachment_ids = next_ids
+                if len(next_ids) == 0:
+                    document.checked = False
+
+    file_path = Path(attachment.file_path)
+    db.delete(attachment)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    if file_path.exists():
+        file_path.unlink(missing_ok=True)
+
+
 @router.post('/generate-monthly-reminders')
-def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
+def generate_monthly_reminders(
+    year_month: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     if not re.fullmatch(r'\d{4}-\d{2}', year_month):
         raise HTTPException(status_code=400, detail='year_month는 YYYY-MM 형식이어야 합니다')
 
@@ -411,6 +630,7 @@ def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
             estimated_time='2h',
             quadrant='Q1',
             status='pending',
+            created_by=current_user.id,
             category='보고',
         )
         _ensure_task_category_exists(db, task.category)
@@ -436,7 +656,11 @@ def generate_monthly_reminders(year_month: str, db: Session = Depends(get_db)):
 
 
 @router.post('', response_model=TaskResponse, status_code=201)
-def create_task(data: TaskCreate, db: Session = Depends(get_db)):
+def create_task(
+    data: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     payload = data.model_dump()
     resolved_fund_id, resolved_investment_id, resolved_gp_entity_id = _resolve_task_links(
         db,
@@ -447,6 +671,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db)):
     payload['fund_id'] = resolved_fund_id
     payload['investment_id'] = resolved_investment_id
     payload['gp_entity_id'] = resolved_gp_entity_id
+    payload['created_by'] = current_user.id
 
     _ensure_task_category_exists(db, payload.get('category'))
     task = Task(**payload)

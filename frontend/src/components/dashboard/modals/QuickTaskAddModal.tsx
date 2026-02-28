@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 
-import type { FundSummary, GPEntity, TaskCreate } from '../../../lib/api'
+import { linkAttachment, linkAttachmentToTask, type FundSummary, type GPEntity, type Task, type TaskCreate } from '../../../lib/api'
+import TaskAttachmentSection from '../../common/TaskAttachmentSection'
 import TimeSelect from '../../TimeSelect'
 import { detectNoticeReport } from '../../../lib/taskFlags'
 import { TASK_CATEGORY_OPTIONS } from '../dashboardUtils'
@@ -11,7 +12,7 @@ interface QuickTaskAddModalProps {
   funds: FundSummary[]
   gpEntities: GPEntity[]
   defaultFundId?: number | null
-  onAdd: (data: TaskCreate) => void
+  onAdd: (data: TaskCreate) => Promise<Task>
   onCancel: () => void
 }
 
@@ -30,6 +31,9 @@ function QuickTaskAddModal({
   const [relatedTarget, setRelatedTarget] = useState<string>(defaultFundId ? `fund:${defaultFundId}` : '')
   const [isNotice, setIsNotice] = useState(false)
   const [isReport, setIsReport] = useState(false)
+  const [draftAttachmentIds, setDraftAttachmentIds] = useState<number[]>([])
+  const [draftAttachmentCount, setDraftAttachmentCount] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   return (
     <>
@@ -130,6 +134,12 @@ function QuickTaskAddModal({
                 </select>
               </div>
             </div>
+
+            <TaskAttachmentSection
+              taskId={null}
+              onAttachmentsChange={setDraftAttachmentCount}
+              onDraftAttachmentIdsChange={setDraftAttachmentIds}
+            />
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
@@ -137,25 +147,41 @@ function QuickTaskAddModal({
               취소
             </button>
             <button
-              onClick={() => {
+              disabled={isSubmitting}
+              onClick={async () => {
                 if (!title.trim()) return
                 const selectedFundId = relatedTarget.startsWith('fund:') ? Number(relatedTarget.slice(5)) : null
                 const selectedGpEntityId = relatedTarget.startsWith('gp:') ? Number(relatedTarget.slice(3)) : null
-                onAdd({
-                  title: title.trim(),
-                  quadrant: 'Q1',
-                  deadline: defaultDate,
-                  estimated_time: estimatedTime || null,
-                  category: category || null,
-                  fund_id: selectedFundId || null,
-                  gp_entity_id: selectedGpEntityId || null,
-                  is_notice: isNotice,
-                  is_report: isReport,
-                })
+                setIsSubmitting(true)
+                try {
+                  const newTask = await onAdd({
+                    title: title.trim(),
+                    quadrant: 'Q1',
+                    deadline: defaultDate,
+                    estimated_time: estimatedTime || null,
+                    category: category || null,
+                    fund_id: selectedFundId || null,
+                    gp_entity_id: selectedGpEntityId || null,
+                    is_notice: isNotice,
+                    is_report: isReport,
+                  })
+
+                  for (const attachmentId of draftAttachmentIds) {
+                    await linkAttachment(attachmentId, {
+                      entity_type: 'task',
+                      entity_id: newTask.id,
+                    })
+                    await linkAttachmentToTask(newTask.id, { attachment_id: attachmentId })
+                  }
+                } catch {
+                  // Axios interceptor already shows toast.
+                } finally {
+                  setIsSubmitting(false)
+                }
               }}
-              className="primary-btn"
+              className="primary-btn disabled:opacity-60"
             >
-              추가
+              {isSubmitting ? '처리중...' : `추가${draftAttachmentCount > 0 ? ` (첨부 ${draftAttachmentCount})` : ''}`}
             </button>
           </div>
         </div>

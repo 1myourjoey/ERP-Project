@@ -1,32 +1,42 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.document_template import DocumentTemplate
 from models.investment import Investment
 from models.phase3 import CapitalCall
 from models.task import Task
-from models.workflow import WorkflowStep, WorkflowStepDocument
-from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
+from models.workflow import WorkflowStep
+from models.workflow_instance import (
+    WorkflowInstance,
+    WorkflowStepInstance,
+    WorkflowStepInstanceDocument,
+)
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 CAPITAL_CALL_KEYWORDS = ("캐피탈콜", "출자", "납입")
 CAPITAL_CALL_WARNING_MESSAGE = (
-    "⚠️ 연결된 캐피탈콜의 청구 금액 또는 납입 기일이 비어있습니다. 펀드 상세에서 확인해주세요."
+    "해당 완료는 캐피탈콜 청구 금액 또는 납입 기일이 비어있습니다. 자본 탭에서 확인해주세요."
 )
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+class TaskCompletionDocumentItem(BaseModel):
+    id: int
+    name: str
+    required: bool
+    checked: bool
+    has_attachment: bool
+    attachment_ids: list[int] = Field(default_factory=list)
 
 
 class TaskCompletionCheckResponse(BaseModel):
     can_complete: bool
-    missing_documents: list[str]
-    warnings: list[str]
+    documents: list[TaskCompletionDocumentItem] = Field(default_factory=list)
+    missing_documents: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 def _find_workflow_step_instance_for_task(db: Session, task: Task) -> WorkflowStepInstance | None:
@@ -59,93 +69,23 @@ def _find_workflow_step_instance_for_task(db: Session, task: Task) -> WorkflowSt
     )
 
 
-def _resolve_step_for_task(db: Session, task: Task) -> WorkflowStep | None:
+def _collect_step_instance_documents(db: Session, task: Task) -> list[WorkflowStepInstanceDocument]:
     step_instance = _find_workflow_step_instance_for_task(db, task)
-    if step_instance and step_instance.workflow_step_id:
-        return db.get(WorkflowStep, step_instance.workflow_step_id)
-
-    if not task.workflow_instance_id or task.workflow_step_order is None:
-        return None
-
-    return (
-        db.query(WorkflowStep)
-        .join(WorkflowStepInstance, WorkflowStep.id == WorkflowStepInstance.workflow_step_id)
-        .filter(
-            WorkflowStepInstance.instance_id == task.workflow_instance_id,
-            WorkflowStep.order == task.workflow_step_order,
-        )
-        .order_by(WorkflowStep.id.asc())
-        .first()
-    )
-
-
-def _template_exists_on_disk(template: DocumentTemplate | None) -> bool:
-    if template is None:
-        return False
-
-    if (template.builder_name or "").strip():
-        return True
-
-    file_path = (template.file_path or "").strip()
-    if not file_path:
-        return False
-
-    candidate = Path(file_path)
-    if not candidate.is_absolute():
-        candidate = BACKEND_ROOT / candidate
-    return candidate.exists()
-
-
-def _resolve_template_for_required_doc(
-    db: Session,
-    *,
-    doc: WorkflowStepDocument,
-) -> DocumentTemplate | None:
-    if doc.document_template_id:
-        return db.get(DocumentTemplate, doc.document_template_id)
-
-    doc_name = (doc.name or "").strip()
-    if doc_name:
-        exact = (
-            db.query(DocumentTemplate)
-            .filter(DocumentTemplate.name == doc_name)
-            .order_by(DocumentTemplate.id.asc())
-            .first()
-        )
-        if exact:
-            return exact
-
-    return None
-
-
-def _collect_missing_required_documents(db: Session, task: Task) -> list[str]:
-    step = _resolve_step_for_task(db, task)
-    if not step:
+    if step_instance is None:
         return []
-
-    required_docs = (
-        db.query(WorkflowStepDocument)
-        .filter(
-            WorkflowStepDocument.workflow_step_id == step.id,
-            WorkflowStepDocument.required.is_(True),
+    return (
+        db.query(WorkflowStepInstanceDocument)
+        .filter(WorkflowStepInstanceDocument.step_instance_id == step_instance.id)
+        .order_by(
+            WorkflowStepInstanceDocument.required.desc(),
+            WorkflowStepInstanceDocument.id.asc(),
         )
-        .order_by(WorkflowStepDocument.id.asc())
         .all()
     )
 
-    missing: list[str] = []
-    for doc in required_docs:
-        template = _resolve_template_for_required_doc(db, doc=doc)
-        if _template_exists_on_disk(template):
-            continue
-        if doc.name not in missing:
-            missing.append(doc.name)
-
-    return missing
-
 
 def _is_capital_call_related_task(task: Task) -> bool:
-    if (task.category or "").strip() == "투자실행":
+    if (task.category or "").strip() == "투자집행":
         return True
     title = task.title or ""
     return any(keyword in title for keyword in CAPITAL_CALL_KEYWORDS)
@@ -199,11 +139,28 @@ def get_task_completion_check(task_id: int, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
 
-    missing_documents = _collect_missing_required_documents(db, task)
+    documents = _collect_step_instance_documents(db, task)
+    document_items = [
+        TaskCompletionDocumentItem(
+            id=row.id,
+            name=row.name,
+            required=bool(row.required),
+            checked=bool(row.checked),
+            has_attachment=len(row.attachment_ids or []) > 0,
+            attachment_ids=row.attachment_ids or [],
+        )
+        for row in documents
+    ]
+    missing_documents = [
+        row.name
+        for row in document_items
+        if row.required and not row.checked
+    ]
     warnings = _collect_completion_warnings(db, task)
 
     return TaskCompletionCheckResponse(
         can_complete=len(missing_documents) == 0,
+        documents=document_items,
         missing_documents=missing_documents,
         warnings=warnings,
     )

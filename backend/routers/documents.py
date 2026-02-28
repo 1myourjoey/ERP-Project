@@ -1,18 +1,25 @@
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.attachment import Attachment
 from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
 from schemas.document_template import DocumentTemplateResponse
 from services.document_service import build_variables_for_fund, generate_document_for_template
+from services.generated_document_service import (
+    BUILDER_LABELS,
+    generate_and_store_document,
+    list_generated_documents,
+)
 
 router = APIRouter(tags=["documents"])
 
@@ -23,6 +30,26 @@ class TemplateCustomDataUpdate(BaseModel):
 
 class TemplatePreviewRequest(BaseModel):
     custom_data: dict[str, Any] | None = None
+
+
+class DocumentGenerateRequest(BaseModel):
+    builder: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentGenerateResponse(BaseModel):
+    document_id: int
+    filename: str
+    download_url: str
+
+
+class GeneratedDocumentItem(BaseModel):
+    id: int
+    builder: str
+    builder_label: str
+    filename: str
+    created_at: str | None = None
+    download_url: str
 
 
 def _load_custom_data_from_template(template: DocumentTemplate) -> dict[str, Any] | None:
@@ -47,6 +74,48 @@ def _sample_variables() -> dict[str, str]:
         "lp_count": "5",
         "total_commitment_amount": "10,000,000,000",
     }
+
+
+@router.post("/api/documents/generate", response_model=DocumentGenerateResponse)
+def generate_document_with_builder(body: DocumentGenerateRequest, db: Session = Depends(get_db)):
+    if body.builder not in BUILDER_LABELS:
+        raise HTTPException(status_code=400, detail="지원하지 않는 문서 빌더입니다.")
+    try:
+        return generate_and_store_document(body.builder, body.params or {}, db)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/api/documents", response_model=list[GeneratedDocumentItem])
+def list_documents(
+    builder: str | None = Query(default=None, description="빌더명 필터"),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    if builder and builder not in BUILDER_LABELS:
+        raise HTTPException(status_code=400, detail="지원하지 않는 문서 빌더입니다.")
+    return list_generated_documents(db, builder=builder, limit=limit)
+
+
+@router.get("/api/documents/{document_id}/download", response_class=FileResponse)
+def download_document(document_id: int, db: Session = Depends(get_db)):
+    row = db.get(Attachment, document_id)
+    if not row or not (row.entity_type or "").startswith("generated_document:"):
+        raise HTTPException(status_code=404, detail="생성 문서를 찾을 수 없습니다.")
+
+    path = Path(row.file_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="생성 문서 파일을 찾을 수 없습니다.")
+
+    return FileResponse(
+        path=str(path),
+        media_type=row.mime_type or "application/octet-stream",
+        filename=row.original_filename,
+    )
 
 
 @router.get("/api/document-templates", response_model=list[DocumentTemplateResponse])

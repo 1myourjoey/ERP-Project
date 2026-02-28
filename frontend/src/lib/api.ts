@@ -2,36 +2,139 @@ import axios, { AxiosError } from 'axios'
 import { pushToast } from './toastBridge'
 
 const api = axios.create({ baseURL: '/api' })
+const ACCESS_TOKEN_KEY = 'von_access_token'
+const REFRESH_TOKEN_KEY = 'von_refresh_token'
+const AUTH_DISABLED =
+  String(import.meta.env.VITE_AUTH_DISABLED ?? '').trim().toLowerCase() === 'true'
+
+type RetriableRequestConfig = {
+  _retry?: boolean
+  url?: string
+  headers?: unknown
+}
+
+let refreshPromise: Promise<LoginResponse | null> | null = null
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY)
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export function setAuthTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+}
+
+export function clearAuthTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+async function requestTokenRefresh(): Promise<LoginResponse | null> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return null
+  try {
+    const response = await axios.post<LoginResponse>('/api/auth/refresh', { refresh_token: refreshToken })
+    const payload = response.data
+    setAuthTokens(payload.access_token, payload.refresh_token)
+    return payload
+  } catch {
+    clearAuthTokens()
+    return null
+  }
+}
+
+async function tryRefreshToken(): Promise<LoginResponse | null> {
+  if (!refreshPromise) {
+    refreshPromise = requestTokenRefresh().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
+
+export async function refreshAuthToken(): Promise<LoginResponse | null> {
+  if (AUTH_DISABLED) return null
+  return tryRefreshToken()
+}
+
+api.interceptors.request.use((config) => {
+  const token = getAccessToken()
+  if (token) {
+    const headers = (config.headers ?? {}) as Record<string, string>
+    if (!headers.Authorization) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    config.headers = headers as any
+  }
+  return config
+})
 
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ detail?: string }>) => {
+  async (error: AxiosError<{ detail?: string }>) => {
     const status = error.response?.status ?? null
     const detail = (error.response?.data?.detail || '').trim()
+    const original = (error.config ?? {}) as RetriableRequestConfig
+    const requestUrl = String(original.url || '')
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/google') ||
+      requestUrl.includes('/auth/refresh') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/register-with-invite') ||
+      requestUrl.includes('/auth/check-username') ||
+      requestUrl.includes('/auth/check-email') ||
+      requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/reset-password')
+
+    if (status === 401 && AUTH_DISABLED) {
+      const message = detail || '인증 비활성화 모드에서 인증 오류가 발생했습니다.'
+      pushToast('warning', message)
+      return Promise.reject(new Error(message))
+    }
+
+    if (status === 401 && !isAuthEndpoint && !original._retry) {
+      original._retry = true
+      const refreshed = await tryRefreshToken()
+      if (refreshed) {
+        const headers = (original.headers ?? {}) as Record<string, string>
+        headers.Authorization = `Bearer ${refreshed.access_token}`
+        original.headers = headers
+        return api(original as any)
+      }
+      clearAuthTokens()
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+      return Promise.reject(new Error('인증이 만료되었습니다.'))
+    }
 
     let toastType: 'error' | 'warning' | 'info' = 'error'
     let message = detail || '오류가 발생했습니다.'
 
     if (!error.response) {
-      message = '네트워크 연결을 확인해주세요.'
+      message = '네트워크 연결을 확인해 주세요.'
     } else if (status === 409) {
       toastType = 'warning'
       message = detail || '이미 존재하는 데이터입니다.'
     } else if (status === 422) {
       toastType = 'info'
-      message = detail || '입력값을 확인해주세요.'
+      message = detail || '입력값을 확인해 주세요.'
     } else if (status !== null && status >= 500) {
-      message = detail || '서버 오류가 발생했습니다. 다시 시도해주세요.'
+      message = detail || '서버 오류가 발생했습니다. 다시 시도해 주세요.'
     } else if (status === 400) {
       toastType = 'info'
-      message = detail || '요청 값을 확인해주세요.'
+      message = detail || '요청 값을 확인해 주세요.'
     }
 
     pushToast(toastType, message)
     return Promise.reject(new Error(message))
   },
 )
-
 // -- Tasks --
 export const fetchTaskBoard = (status = 'pending', year?: number, month?: number) =>
   api.get('/tasks/board', { params: { status, year, month } }).then(r => r.data)
@@ -39,8 +142,16 @@ export const fetchTasks = (
   params?: { quadrant?: string; status?: string; fund_id?: number; gp_entity_id?: number; category?: string },
 ) => api.get('/tasks', { params }).then(r => r.data)
 export const fetchTask = (id: number): Promise<Task> => api.get(`/tasks/${id}`).then(r => r.data)
+export const fetchTaskAttachments = (id: number): Promise<Attachment[]> =>
+  api.get(`/tasks/${id}/attachments`).then(r => r.data)
 export const fetchTaskCompletionCheck = (id: number): Promise<TaskCompletionCheckResult> =>
   api.get(`/tasks/${id}/completion-check`).then(r => r.data)
+export const linkAttachmentToTask = (
+  taskId: number,
+  data: TaskAttachmentLinkInput,
+): Promise<TaskAttachmentLinkResult> => api.post(`/tasks/${taskId}/link-attachment`, data).then(r => r.data)
+export const unlinkAttachmentFromTask = (taskId: number, attachmentId: number): Promise<void> =>
+  api.delete(`/tasks/${taskId}/unlink-attachment/${attachmentId}`).then(() => undefined)
 export const fetchTaskCategories = (): Promise<TaskCategory[]> => api.get('/task-categories').then(r => r.data)
 export const createTaskCategory = (name: string): Promise<TaskCategory> =>
   api.post('/task-categories', { name }).then(r => r.data)
@@ -75,6 +186,90 @@ export const fetchDashboardSidebar = (): Promise<DashboardSidebarResponse> => ap
 export const fetchDashboardCompleted = (): Promise<DashboardCompletedResponse> => api.get('/dashboard/completed').then(r => r.data)
 export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
   api.get('/dashboard/upcoming-notices', { params: { days } }).then(r => r.data)
+export const fetchComplianceRules = (params?: { category?: string; active_only?: boolean }): Promise<ComplianceRule[]> =>
+  api.get('/compliance/rules', { params }).then(r => r.data)
+export const fetchComplianceRule = (ruleCode: string): Promise<ComplianceRule> =>
+  api.get(`/compliance/rules/${ruleCode}`).then(r => r.data)
+export const fetchComplianceObligations = (
+  params?: { fund_id?: number; status?: string; period?: string; category?: string },
+): Promise<ComplianceObligation[]> =>
+  api.get('/compliance/obligations', { params }).then(r => r.data)
+export const completeComplianceObligation = (
+  obligationId: number,
+  data: { completed_by: string; evidence_note?: string | null },
+): Promise<ComplianceObligation> =>
+  api.post(`/compliance/obligations/${obligationId}/complete`, data).then(r => r.data)
+export const waiveComplianceObligation = (
+  obligationId: number,
+  data: { reason?: string | null },
+): Promise<ComplianceObligation> =>
+  api.post(`/compliance/obligations/${obligationId}/waive`, data).then(r => r.data)
+export const fetchComplianceDashboard = (): Promise<ComplianceDashboardSummary> =>
+  api.get('/compliance/dashboard').then(r => r.data)
+export const generateCompliancePeriodic = (data: { year: number; month: number }): Promise<{ year: number; month: number; generated: number; skipped: number }> =>
+  api.post('/compliance/generate-periodic', data).then(r => r.data)
+export const checkInvestmentLimits = (
+  data: ComplianceLimitCheckRequest,
+): Promise<ComplianceLimitCheckResponse> => api.post('/compliance/check-investment-limits', data).then(r => r.data)
+export const updateComplianceOverdue = (): Promise<{ updated: number }> =>
+  api.post('/compliance/update-overdue').then(r => r.data)
+
+// -- VICS Reports --
+export const fetchVicsReports = (
+  params?: { fund_id?: number; year?: number; month?: number },
+): Promise<VicsMonthlyReport[]> => api.get('/vics/reports', { params }).then(r => r.data)
+export const fetchVicsReport = (id: number): Promise<VicsMonthlyReport> =>
+  api.get(`/vics/reports/${id}`).then(r => r.data)
+export const generateVicsReport = (data: VicsGenerateInput): Promise<VicsMonthlyReport> =>
+  api.post('/vics/reports/generate', data).then(r => r.data)
+export const confirmVicsReport = (id: number): Promise<VicsMonthlyReport> =>
+  api.post(`/vics/reports/${id}/confirm`).then(r => r.data)
+export const submitVicsReport = (id: number): Promise<VicsMonthlyReport> =>
+  api.post(`/vics/reports/${id}/submit`).then(r => r.data)
+export const patchVicsReport = (id: number, data: { discrepancy_notes?: string | null; status?: string | null }): Promise<VicsMonthlyReport> =>
+  api.patch(`/vics/reports/${id}`, data).then(r => r.data)
+export const exportVicsReportXlsx = (id: number): Promise<Blob> =>
+  api.get(`/vics/reports/${id}/export-xlsx`, { responseType: 'blob' }).then(r => r.data)
+
+// -- Internal Reviews --
+export const fetchInternalReviews = (
+  params?: { fund_id?: number; year?: number; quarter?: number },
+): Promise<InternalReview[]> => api.get('/internal-reviews', { params }).then(r => r.data)
+export const createInternalReview = (data: InternalReviewCreateInput): Promise<InternalReview> =>
+  api.post('/internal-reviews', data).then(r => r.data)
+export const fetchInternalReview = (id: number): Promise<InternalReview> =>
+  api.get(`/internal-reviews/${id}`).then(r => r.data)
+export const updateInternalReview = (
+  id: number,
+  data: InternalReviewPatchInput,
+): Promise<InternalReview> => api.patch(`/internal-reviews/${id}`, data).then(r => r.data)
+export const deleteInternalReview = (id: number): Promise<{ ok: boolean }> =>
+  api.delete(`/internal-reviews/${id}`).then(r => r.data)
+export const fetchInternalReviewCompanyReviews = (id: number): Promise<CompanyReview[]> =>
+  api.get(`/internal-reviews/${id}/company-reviews`).then(r => r.data)
+export const updateInternalReviewCompanyReview = (
+  reviewId: number,
+  companyReviewId: number,
+  data: CompanyReviewPatchInput,
+): Promise<CompanyReview> =>
+  api.patch(`/internal-reviews/${reviewId}/company-reviews/${companyReviewId}`, data).then(r => r.data)
+export const autoEvaluateInternalReview = (
+  id: number,
+): Promise<{ evaluated: number; results: InternalReviewAutoEvaluateResult[] }> =>
+  api.post(`/internal-reviews/${id}/auto-evaluate`).then(r => r.data)
+export const completeInternalReview = (
+  id: number,
+  data?: { completed_by?: string | null; evidence_note?: string | null },
+): Promise<InternalReview> => api.post(`/internal-reviews/${id}/complete`, data ?? {}).then(r => r.data)
+export const generateInternalReviewReportDocument = (
+  id: number,
+): Promise<GeneratedDocumentGenerateResponse> =>
+  api.post(`/internal-reviews/${id}/generate-report`).then(r => r.data)
+export const generateInternalReviewCompanyReportDocument = (
+  reviewId: number,
+  companyReviewId: number,
+): Promise<GeneratedDocumentGenerateResponse> =>
+  api.post(`/internal-reviews/${reviewId}/company-reviews/${companyReviewId}/generate-report`).then(r => r.data)
 
 // -- Workflows --
 export const fetchWorkflows = (): Promise<WorkflowListItem[]> => api.get('/workflows').then(r => r.data)
@@ -156,6 +351,24 @@ export const checkWorkflowStepInstanceDocument = (
   checked: boolean,
 ): Promise<WorkflowStepInstanceDocument> =>
   api.patch(`/workflow-instances/${instanceId}/steps/${stepId}/documents/${documentId}/check`, { checked }).then(r => r.data)
+export const checkWorkflowStepInstanceDocumentById = (
+  documentId: number,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.patch(`/workflow-step-instance-documents/${documentId}/check`).then(r => r.data)
+export const uncheckWorkflowStepInstanceDocumentById = (
+  documentId: number,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.patch(`/workflow-step-instance-documents/${documentId}/uncheck`).then(r => r.data)
+export const attachWorkflowStepInstanceDocumentById = (
+  documentId: number,
+  file: File,
+): Promise<WorkflowStepInstanceDocument> =>
+  api.post(`/workflow-step-instance-documents/${documentId}/attach`, file, {
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'X-File-Name': encodeURIComponent(file.name),
+    },
+  }).then(r => r.data)
 
 // -- Periodic Schedules --
 export const fetchPeriodicSchedules = (activeOnly = false): Promise<PeriodicSchedule[]> =>
@@ -238,6 +451,49 @@ export const generateDocument = (
     },
     responseType: 'blob',
   }).then(r => r.data)
+export const generateDocumentByBuilder = (
+  data: { builder: string; params: Record<string, unknown> },
+): Promise<GeneratedDocumentGenerateResponse> => api.post('/documents/generate', data).then(r => r.data)
+export const fetchGeneratedDocuments = (
+  params?: { builder?: string; limit?: number },
+): Promise<GeneratedDocumentItem[]> => api.get('/documents', { params }).then(r => r.data)
+export const downloadGeneratedDocument = (documentId: number): Promise<Blob> =>
+  api.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then(r => r.data)
+
+// -- Fund Document Generation --
+export const fetchTemplateStructure = (): Promise<TemplateStructure> =>
+  api.get('/document-generation/templates').then(r => r.data)
+export const fetchTemplateFilesByStage = (stage: number): Promise<TemplateFileInfo[]> =>
+  api.get(`/document-generation/templates/${stage}`).then(r => r.data)
+export const fetchMarkers = (): Promise<MarkerInfo[]> =>
+  api.get('/document-generation/markers').then(r => r.data)
+export const generateDocuments = (data: DocumentGenerateRequest): Promise<DocumentGenerateResponse> =>
+  api.post('/document-generation/generate', data).then(r => r.data)
+export const fetchGenerationStatus = (id: number): Promise<DocumentGenerationStatus> =>
+  api.get(`/document-generation/${id}/status`).then(r => r.data)
+export const fetchGenerationHistory = (fundId: number): Promise<DocumentGenerationHistoryItem[]> =>
+  api.get('/document-generation/history', { params: { fund_id: fundId } }).then(r => r.data)
+export const fetchGenerationHistoryDetail = (id: number): Promise<DocumentGenerationHistoryItem> =>
+  api.get(`/document-generation/history/${id}`).then(r => r.data)
+export const downloadGeneratedDocuments = (id: number): Promise<Blob> =>
+  api.get(`/document-generation/${id}/download`, { responseType: 'blob' }).then(r => r.data)
+export const deleteGeneration = (id: number): Promise<{ ok: boolean }> =>
+  api.delete(`/document-generation/history/${id}`).then(r => r.data)
+export const fetchDocumentVariables = (fundId: number): Promise<DocumentVariable[]> =>
+  api.get('/document-variables', { params: { fund_id: fundId } }).then(r => r.data)
+export const fetchDocumentVariable = (id: number): Promise<DocumentVariable> =>
+  api.get(`/document-variables/${id}`).then(r => r.data)
+export const createDocumentVariable = (
+  data: { fund_id: number; name: string; variables: Record<string, string>; is_default?: boolean },
+): Promise<DocumentVariable> => api.post('/document-variables', data).then(r => r.data)
+export const updateDocumentVariable = (
+  id: number,
+  data: Partial<{ name: string; variables: Record<string, string>; is_default: boolean }>,
+): Promise<DocumentVariable> => api.put(`/document-variables/${id}`, data).then(r => r.data)
+export const deleteDocumentVariable = (id: number): Promise<{ ok: boolean }> =>
+  api.delete(`/document-variables/${id}`).then(r => r.data)
+export const fetchAutoFillVariables = (fundId: number): Promise<AutoFillVariablesResponse> =>
+  api.get(`/document-generation/auto-fill/${fundId}`).then(r => r.data)
 
 // -- Search --
 export const searchGlobal = (q: string): Promise<SearchResult[]> =>
@@ -557,10 +813,23 @@ export const fetchBizReportRequests = (reportId: number): Promise<BizReportReque
   api.get(`/biz-reports/${reportId}/requests`).then(r => r.data)
 export const generateBizReportRequests = (reportId: number): Promise<BizReportRequestResponse[]> =>
   api.post(`/biz-reports/${reportId}/requests/generate`).then(r => r.data)
+export const fetchBizReportDocCollectionMatrix = (
+  params?: { report_id?: number; fund_id?: number; year?: number; quarter?: number },
+): Promise<BizReportDocCollectionMatrix> =>
+  api.get('/biz-reports/doc-collection-matrix', { params }).then(r => r.data)
 export const updateBizReportRequest = (
   requestId: number,
   data: BizReportRequestUpdateInput,
 ): Promise<BizReportRequestResponse> => api.patch(`/biz-report-requests/${requestId}`, data).then(r => r.data)
+export const updateBizReportRequestDocStatus = (
+  requestId: number,
+  data: BizReportRequestDocStatusInput,
+): Promise<BizReportRequestResponse> => api.patch(`/biz-report-requests/${requestId}/doc-status`, data).then(r => r.data)
+export const sendBizReportDocRequests = (
+  reportId: number,
+  data?: { quarter?: number; deadline_days?: number },
+): Promise<BizReportSendDocRequestsResponse> =>
+  api.post(`/biz-reports/${reportId}/send-doc-requests`, data ?? {}).then(r => r.data)
 export const detectBizReportAnomalies = (requestId: number): Promise<BizReportAnomalyResponse[]> =>
   api.post(`/biz-report-requests/${requestId}/detect-anomalies`).then(r => r.data)
 export const fetchBizReportAnomalies = (requestId: number): Promise<BizReportAnomalyResponse[]> =>
@@ -572,14 +841,66 @@ export const generateBizReportExcel = (reportId: number): Promise<BizReportGener
 export const generateBizReportDocx = (reportId: number): Promise<BizReportGenerationResponse> =>
   api.post(`/biz-reports/${reportId}/generate-docx`).then(r => r.data)
 
+export const authLogin = (data: LoginRequestInput): Promise<LoginResponse> =>
+  api.post('/auth/login', data).then((r) => r.data)
+export const authGoogleLogin = (data: GoogleLoginRequestInput): Promise<LoginResponse> =>
+  api.post('/auth/google', data).then((r) => r.data)
+export const fetchAuthMe = (): Promise<UserResponse> =>
+  api.get('/auth/me').then((r) => r.data)
+export const changePassword = (data: ChangePasswordRequestInput): Promise<{ ok: boolean }> =>
+  api.post('/auth/change-password', data).then((r) => r.data)
+export const registerUser = (data: RegisterRequestInput): Promise<RegisterResponse> =>
+  api.post('/auth/register', data).then((r) => r.data)
+export const registerWithInvite = (data: RegisterWithInviteRequestInput): Promise<LoginResponse> =>
+  api.post('/auth/register-with-invite', data).then((r) => r.data)
+export const checkUsernameAvailability = (username: string): Promise<AvailabilityResponse> =>
+  api.get('/auth/check-username', { params: { username } }).then((r) => r.data)
+export const checkEmailAvailability = (email: string): Promise<AvailabilityResponse> =>
+  api.get('/auth/check-email', { params: { email } }).then((r) => r.data)
+export const forgotPassword = (data: ForgotPasswordRequestInput): Promise<{ message: string }> =>
+  api.post('/auth/forgot-password', data).then((r) => r.data)
+export const resetPassword = (data: ResetPasswordRequestInput): Promise<{ ok: boolean }> =>
+  api.post('/auth/reset-password', data).then((r) => r.data)
+export const updateMyProfile = (data: ProfileUpdateRequestInput): Promise<UserResponse> =>
+  api.patch('/auth/profile', data).then((r) => r.data)
+export const linkGoogle = (data: GoogleLoginRequestInput): Promise<UserResponse> =>
+  api.post('/auth/link-google', data).then((r) => r.data)
+export const unlinkGoogle = (): Promise<UserResponse> =>
+  api.post('/auth/unlink-google').then((r) => r.data)
+export const logoutAllDevices = (): Promise<{ ok: boolean }> =>
+  api.post('/auth/logout-all').then((r) => r.data)
+
 export const fetchUsers = (activeOnly = false): Promise<UserResponse[]> =>
   api.get('/users', { params: { active_only: activeOnly } }).then(r => r.data)
+export const fetchPendingUsers = (): Promise<UserResponse[]> =>
+  api.get('/users/pending').then((r) => r.data)
 export const createUser = (data: UserCreateInput): Promise<UserResponse> =>
   api.post('/users', data).then(r => r.data)
 export const updateUser = (id: number, data: UserUpdateInput): Promise<UserResponse> =>
   api.put(`/users/${id}`, data).then(r => r.data)
 export const deactivateUser = (id: number): Promise<UserResponse> =>
   api.patch(`/users/${id}/deactivate`).then(r => r.data)
+export const approveUser = (id: number, data?: UserApproveInput): Promise<UserResponse> =>
+  api.patch(`/users/${id}/approve`, data ?? {}).then((r) => r.data)
+export const rejectUser = (id: number): Promise<{ ok: boolean }> =>
+  api.patch(`/users/${id}/reject`).then((r) => r.data)
+export const adminResetUserPassword = (
+  id: number,
+  data: AdminResetPasswordRequestInput,
+): Promise<{ ok: boolean }> => api.post(`/users/${id}/reset-password`, data).then((r) => r.data)
+export const generateUserResetToken = (id: number): Promise<ResetPasswordTokenResponse> =>
+  api.post(`/users/${id}/generate-reset-token`).then((r) => r.data)
+export const unlockUser = (id: number): Promise<UserResponse> =>
+  api.post(`/users/${id}/unlock`).then((r) => r.data)
+
+export const fetchInvitations = (): Promise<InvitationResponse[]> =>
+  api.get('/invitations').then((r) => r.data)
+export const createInvitation = (data: InvitationCreateInput): Promise<InvitationResponse> =>
+  api.post('/invitations', data).then((r) => r.data)
+export const cancelInvitation = (id: number): Promise<{ ok: boolean }> =>
+  api.delete(`/invitations/${id}`).then((r) => r.data)
+export const verifyInvitation = (token: string): Promise<InvitationVerifyResponse> =>
+  api.get('/invitations/verify', { params: { token } }).then((r) => r.data)
 
 // -- Checklist --
 export const fetchChecklists = (params?: { investment_id?: number }): Promise<ChecklistListItem[]> =>
@@ -630,6 +951,10 @@ export interface DashboardBaseResponse {
   this_week: Task[]
   upcoming: Task[]
   no_deadline: Task[]
+  prioritized_tasks: DashboardPrioritizedTask[]
+  compliance: DashboardComplianceWidget
+  doc_collection: DashboardDocCollectionWidget
+  urgent_alerts: DashboardUrgentAlert[]
 }
 
 export interface DashboardWorkflowsResponse {
@@ -654,6 +979,229 @@ export interface DashboardResponse extends DashboardBaseResponse, DashboardWorkf
   upcoming_notices?: UpcomingNotice[]
 }
 
+export interface DashboardComplianceWidget {
+  overdue_count: number
+  due_this_week: number
+  due_this_month: number
+}
+
+export interface DashboardDocCollectionWidget {
+  current_quarter: string
+  completion_pct: number
+  pending_companies: number
+}
+
+export interface DashboardUrgentAlert {
+  type: string
+  message: string
+  due_date: string | null
+}
+
+export interface DashboardPrioritizedTaskWorkflowInfo {
+  name: string
+  step: string
+  step_name: string
+}
+
+export interface DashboardPrioritizedTask {
+  task: Task
+  urgency: 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'upcoming'
+  d_day: number | null
+  workflow_info: DashboardPrioritizedTaskWorkflowInfo | null
+  source: 'manual' | 'workflow' | 'compliance'
+}
+
+export interface ComplianceRule {
+  id: number
+  category: string
+  subcategory: string
+  rule_code: string
+  title: string
+  description: string | null
+  trigger_event: string | null
+  frequency: string | null
+  deadline_rule: string | null
+  target_system: string | null
+  guideline_ref: string | null
+  is_active: boolean
+  fund_type_filter: string | null
+}
+
+export interface ComplianceObligation {
+  id: number
+  rule_id: number
+  rule_code: string | null
+  rule_title: string | null
+  category: string | null
+  subcategory: string | null
+  fund_id: number
+  fund_name: string | null
+  period_type: string | null
+  due_date: string | null
+  d_day: number | null
+  status: string
+  completed_date: string | null
+  completed_by: string | null
+  evidence_note: string | null
+  investment_id: number | null
+  task_id: number | null
+  target_system: string | null
+  guideline_ref: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface ComplianceDashboardByFundItem {
+  fund_id: number
+  fund_name: string
+  overdue: number
+  pending: number
+  completed: number
+}
+
+export interface ComplianceDashboardSummary {
+  overdue_count: number
+  due_this_week: number
+  due_this_month: number
+  completed_count: number
+  by_fund: ComplianceDashboardByFundItem[]
+}
+
+export interface ComplianceLimitCheckItem {
+  rule_code: string
+  result: 'pass' | 'warning' | 'block' | string
+  current_pct?: number | null
+  limit_pct?: number | null
+  detail?: string | null
+}
+
+export interface ComplianceLimitCheckRequest {
+  fund_id: number
+  company_name: string
+  amount: number
+  is_overseas?: boolean
+  is_affiliate?: boolean
+}
+
+export interface ComplianceLimitCheckResponse {
+  checks: ComplianceLimitCheckItem[]
+  overall: 'pass' | 'warning' | 'block' | string
+}
+
+export interface VicsGenerateInput {
+  fund_id: number
+  year: number
+  month: number
+  report_code: '1308' | '1309' | '1329' | string
+}
+
+export interface VicsMonthlyReport {
+  id: number
+  fund_id: number
+  year: number
+  month: number
+  report_code: string
+  data_json: Record<string, unknown>
+  status: string
+  confirmed_at: string | null
+  submitted_at: string | null
+  discrepancy_notes: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface InternalReviewCreateInput {
+  fund_id: number
+  year: number
+  quarter: number
+}
+
+export interface InternalReviewPatchInput {
+  review_date?: string | null
+  status?: string | null
+  attendees?: Array<Record<string, unknown>>
+  compliance_opinion?: string | null
+  compliance_officer?: string | null
+  minutes_document_id?: number | null
+}
+
+export interface CompanyReviewPatchInput {
+  quarterly_revenue?: number | null
+  quarterly_operating_income?: number | null
+  quarterly_net_income?: number | null
+  total_assets?: number | null
+  total_liabilities?: number | null
+  total_equity?: number | null
+  cash_and_equivalents?: number | null
+  paid_in_capital?: number | null
+  employee_count?: number | null
+  employee_change?: number | null
+  asset_rating?: string | null
+  rating_reason?: string | null
+  impairment_type?: string | null
+  impairment_amount?: number | null
+  key_issues?: string | null
+  follow_up_actions?: string | null
+  board_attendance?: string | null
+  investment_opinion?: string | null
+}
+
+export interface CompanyReview {
+  id: number
+  review_id: number
+  investment_id: number
+  company_id: number | null
+  company_name: string
+  quarterly_revenue: number | null
+  quarterly_operating_income: number | null
+  quarterly_net_income: number | null
+  total_assets: number | null
+  total_liabilities: number | null
+  total_equity: number | null
+  cash_and_equivalents: number | null
+  paid_in_capital: number | null
+  employee_count: number | null
+  employee_change: number | null
+  asset_rating: string | null
+  rating_reason: string | null
+  impairment_type: string | null
+  impairment_amount: number | null
+  impairment_flags: string[]
+  key_issues: string | null
+  follow_up_actions: string | null
+  board_attendance: string | null
+  investment_opinion: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface InternalReview {
+  id: number
+  fund_id: number
+  fund_name: string
+  year: number
+  quarter: number
+  reference_date: string | null
+  review_date: string | null
+  status: string
+  attendees: Array<Record<string, unknown>>
+  compliance_opinion: string | null
+  compliance_officer: string | null
+  minutes_document_id: number | null
+  obligation_id: number | null
+  created_at: string | null
+  updated_at: string | null
+  company_reviews?: CompanyReview[]
+}
+
+export interface InternalReviewAutoEvaluateResult {
+  company_review_id: number
+  company_name: string
+  rating: string
+  impairment_type: string
+  flags: string[]
+}
+
 export interface ActiveWorkflow {
   id: number
   name: string
@@ -674,6 +1222,8 @@ export interface FundSummary {
   aum: number | null
   lp_count: number
   investment_count: number
+  compliance_overdue: number
+  doc_collection_progress: string | null
 }
 
 export interface FundOverviewItem {
@@ -696,6 +1246,8 @@ export interface FundOverviewItem {
   uninvested: number | null
   investment_assets: number | null
   company_count: number
+  active_workflow_count: number
+  pending_task_count: number
   hurdle_rate: number | null
   remaining_period: string | null
 }
@@ -709,6 +1261,8 @@ export interface FundOverviewTotals {
   uninvested: number
   investment_assets: number
   company_count: number
+  active_workflow_count: number
+  pending_task_count: number
 }
 
 export interface FundOverviewResponse {
@@ -767,12 +1321,23 @@ export interface Task {
   fund_name: string | null
   gp_entity_name: string | null
   company_name: string | null
+  attachment_count?: number
 }
 
 export interface TaskCompletionCheckResult {
   can_complete: boolean
+  documents: TaskCompletionCheckDocument[]
   missing_documents: string[]
   warnings: string[]
+}
+
+export interface TaskCompletionCheckDocument {
+  id: number
+  name: string
+  required: boolean
+  checked: boolean
+  has_attachment: boolean
+  attachment_ids: number[]
 }
 
 export interface TaskBoard {
@@ -1086,6 +1651,16 @@ export interface Attachment {
 export interface AttachmentLinkInput {
   entity_type?: string | null
   entity_id?: number | null
+}
+
+export interface TaskAttachmentLinkInput {
+  attachment_id: number
+  workflow_doc_id?: number | null
+}
+
+export interface TaskAttachmentLinkResult {
+  attachment: Attachment
+  linked_workflow_doc: WorkflowStepInstanceDocument | null
 }
 
 export interface Fund {
@@ -2108,6 +2683,114 @@ export interface DocumentStatusItem {
   fund_name: string
 }
 
+export interface GeneratedDocumentGenerateResponse {
+  document_id: number
+  filename: string
+  download_url: string
+}
+
+export interface GeneratedDocumentItem {
+  id: number
+  builder: string
+  builder_label: string
+  filename: string
+  created_at: string | null
+  download_url: string
+}
+
+export interface MarkerInfo {
+  key: string
+  label: string
+  description: string
+  section: string
+  required: boolean
+  default_value: string
+}
+
+export interface DocumentVariable {
+  id: number
+  fund_id: number
+  name: string
+  variables: Record<string, string>
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TemplateFileInfo {
+  stage: number
+  stage_name: string
+  file_name: string
+  file_type: 'hwp' | 'docx' | 'pdf' | 'other' | string
+  relative_path: string
+}
+
+export interface TemplateStageInfo {
+  stage: number
+  stage_name: string
+  files: TemplateFileInfo[]
+}
+
+export interface TemplateStructure {
+  stages: TemplateStageInfo[]
+  total_templates: number
+  markers: string[]
+}
+
+export interface DocumentGenerateRequest {
+  fund_id: number
+  variables: Record<string, string>
+  stages?: number[]
+  save_preset?: boolean
+  preset_name?: string | null
+}
+
+export interface DocumentGenerateResponse {
+  generation_id: number
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  total_files: number
+  success_count: number
+  failed_count: number
+  warnings: string[]
+  download_url: string | null
+}
+
+export interface DocumentGenerationStatus {
+  id: number
+  fund_id: number
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  total_files: number
+  success_count: number
+  failed_count: number
+  warnings: string[]
+  error_message: string | null
+  download_url: string | null
+  progress_current: number | null
+  progress_total: number | null
+  progress_message: string | null
+}
+
+export interface DocumentGenerationHistoryItem {
+  id: number
+  fund_id: number
+  created_by: number
+  created_at: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  stages: number[] | null
+  total_files: number
+  success_count: number
+  failed_count: number
+  warnings: string[]
+  error_message: string | null
+  download_url: string | null
+}
+
+export interface AutoFillVariablesResponse {
+  fund_id: number
+  variables: Record<string, string>
+  mapped_keys: string[]
+}
+
 export interface SearchResult {
   type: 'task' | 'fund' | 'company' | 'investment' | 'workflow' | 'biz_report' | 'report' | 'worklog' | string
   id: number
@@ -2493,9 +3176,31 @@ export interface BizReportRequestUpdateInput {
   prev_revenue?: number | null
   prev_operating_income?: number | null
   prev_net_income?: number | null
+  doc_financial_statement?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_biz_registration?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_shareholder_list?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_corp_registry?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_insurance_cert?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_credit_report?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  doc_other_changes?: 'not_requested' | 'requested' | 'received' | 'verified' | null
+  request_sent_date?: string | null
+  request_deadline?: string | null
+  all_docs_received_date?: string | null
   comment?: string | null
   reviewer_comment?: string | null
   risk_flag?: string | null
+}
+
+export interface BizReportRequestDocStatusInput {
+  doc_type:
+    | 'financial_statement'
+    | 'biz_registration'
+    | 'shareholder_list'
+    | 'corp_registry'
+    | 'insurance_cert'
+    | 'credit_report'
+    | 'other_changes'
+  status: 'not_requested' | 'requested' | 'received' | 'verified'
 }
 
 export interface BizReportRequestResponse {
@@ -2516,11 +3221,65 @@ export interface BizReportRequestResponse {
   prev_revenue: number | null
   prev_operating_income: number | null
   prev_net_income: number | null
+  doc_financial_statement: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_biz_registration: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_shareholder_list: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_corp_registry: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_insurance_cert: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_credit_report: 'not_requested' | 'requested' | 'received' | 'verified'
+  doc_other_changes: 'not_requested' | 'requested' | 'received' | 'verified'
+  request_sent_date: string | null
+  request_deadline: string | null
+  all_docs_received_date: string | null
   comment: string | null
   reviewer_comment: string | null
   risk_flag: string | null
   created_at: string
   updated_at: string
+}
+
+export interface BizReportDocCollectionCompanyRow {
+  company_name: string
+  request_id: number
+  docs: Record<
+    | 'financial_statement'
+    | 'biz_registration'
+    | 'shareholder_list'
+    | 'corp_registry'
+    | 'insurance_cert'
+    | 'credit_report'
+    | 'other_changes',
+    'not_requested' | 'requested' | 'received' | 'verified'
+  >
+  received_count: number
+  status: string
+}
+
+export interface BizReportDocCollectionMatrix {
+  report_id: number
+  fund_id: number
+  fund_name: string
+  quarter: string
+  total_companies: number
+  completed_companies: number
+  completion_pct: number
+  companies: BizReportDocCollectionCompanyRow[]
+}
+
+export interface BizReportSendDocRequestItem {
+  request_id: number
+  investment_id: number
+  document_id?: number
+  filename?: string
+  download_url?: string
+  reason?: string
+}
+
+export interface BizReportSendDocRequestsResponse {
+  report_id: number
+  updated_requests: number
+  generated_documents: BizReportSendDocRequestItem[]
+  failed_documents: BizReportSendDocRequestItem[]
 }
 
 export interface BizReportAnomalyResponse {
@@ -2561,32 +3320,159 @@ export interface BizReportGenerationResponse {
   base64_data: string
 }
 
+export type UserRole = 'master' | 'admin' | 'manager' | 'viewer'
+
 export interface UserCreateInput {
-  email: string
+  username: string
+  email?: string | null
   name: string
-  role?: string
+  password: string
+  role?: UserRole
   department?: string | null
   is_active?: boolean
+  allowed_routes?: string[] | null
+  google_id?: string | null
 }
 
 export interface UserUpdateInput {
+  username?: string | null
   email?: string | null
   name?: string | null
-  role?: string | null
+  password?: string | null
+  role?: UserRole | null
   department?: string | null
   is_active?: boolean
+  allowed_routes?: string[] | null
+  google_id?: string | null
 }
 
 export interface UserResponse {
   id: number
-  email: string
+  username: string
+  email: string | null
   name: string
-  role: string
+  role: UserRole
   department: string | null
   is_active: boolean
+  google_id?: string | null
+  avatar_url?: string | null
+  allowed_routes?: string[] | null
   last_login_at: string | null
+  password_reset_requested_at?: string | null
   created_at: string
 }
 
+export interface LoginRequestInput {
+  login_id: string
+  password: string
+}
 
+export interface GoogleLoginRequestInput {
+  credential: string
+}
 
+export interface ChangePasswordRequestInput {
+  current_password: string
+  new_password: string
+}
+
+export interface LoginResponse {
+  access_token: string
+  refresh_token: string
+  token_type: 'bearer'
+  expires_in: number
+  user: UserResponse
+}
+
+export interface RegisterRequestInput {
+  username: string
+  name: string
+  email?: string | null
+  password: string
+  department?: string | null
+}
+
+export interface RegisterWithInviteRequestInput {
+  token: string
+  username: string
+  password: string
+  name?: string | null
+}
+
+export interface RegisterResponse {
+  message: string
+  user: {
+    id: number
+    username: string
+    name: string
+    is_active: boolean
+  }
+}
+
+export interface AvailabilityResponse {
+  available: boolean
+  message?: string | null
+}
+
+export interface ForgotPasswordRequestInput {
+  login_id: string
+}
+
+export interface ResetPasswordRequestInput {
+  token: string
+  new_password: string
+}
+
+export interface ProfileUpdateRequestInput {
+  name?: string | null
+  email?: string | null
+  department?: string | null
+  avatar_url?: string | null
+}
+
+export interface UserApproveInput {
+  role?: UserRole
+  allowed_routes?: string[] | null
+}
+
+export interface AdminResetPasswordRequestInput {
+  new_password: string
+}
+
+export interface ResetPasswordTokenResponse {
+  reset_token: string
+  reset_url: string
+  expires_in_minutes: number
+}
+
+export interface InvitationCreateInput {
+  email?: string | null
+  name?: string | null
+  role?: UserRole
+  department?: string | null
+  allowed_routes?: string[] | null
+  expires_in_days?: number
+}
+
+export interface InvitationResponse {
+  id: number
+  token: string
+  email?: string | null
+  name?: string | null
+  role: UserRole
+  department?: string | null
+  allowed_routes?: string[] | null
+  created_by: number
+  used_by?: number | null
+  used_at?: string | null
+  expires_at: string
+  created_at: string
+  status: 'pending' | 'used' | 'expired' | string
+  invite_url: string
+}
+
+export interface InvitationVerifyResponse {
+  valid: boolean
+  message?: string | null
+  invitation?: InvitationResponse | null
+}

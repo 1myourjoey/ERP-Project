@@ -269,6 +269,8 @@ class FundOverviewItem(BaseModel):
     uninvested: Optional[float] = None
     investment_assets: Optional[float] = Field(default=None, ge=0)
     company_count: int = 0
+    active_workflow_count: int = 0
+    pending_task_count: int = 0
     hurdle_rate: Optional[float] = None
     remaining_period: Optional[str] = None
 
@@ -281,6 +283,8 @@ class FundOverviewTotals(BaseModel):
     uninvested: float = 0
     investment_assets: float = 0
     company_count: int = 0
+    active_workflow_count: int = 0
+    pending_task_count: int = 0
 
 
 class FundOverviewResponse(BaseModel):

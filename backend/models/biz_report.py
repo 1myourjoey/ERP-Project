@@ -68,6 +68,18 @@ class BizReportRequest(Base):
     prev_operating_income = Column(Numeric, nullable=True)
     prev_net_income = Column(Numeric, nullable=True)
 
+    doc_financial_statement = Column(String, nullable=False, default="not_requested")
+    doc_biz_registration = Column(String, nullable=False, default="not_requested")
+    doc_shareholder_list = Column(String, nullable=False, default="not_requested")
+    doc_corp_registry = Column(String, nullable=False, default="not_requested")
+    doc_insurance_cert = Column(String, nullable=False, default="not_requested")
+    doc_credit_report = Column(String, nullable=False, default="not_requested")
+    doc_other_changes = Column(String, nullable=False, default="not_requested")
+
+    request_sent_date = Column(Date, nullable=True)
+    request_deadline = Column(Date, nullable=True)
+    all_docs_received_date = Column(Date, nullable=True)
+
     comment = Column(Text, nullable=True)
     reviewer_comment = Column(Text, nullable=True)
     risk_flag = Column(String, nullable=True)

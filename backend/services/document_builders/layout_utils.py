@@ -134,3 +134,48 @@ def set_table_borders(table, size: int = 4, color: str = "000000"):
         f"</w:tblBorders>"
     )
     table._tbl.tblPr.append(borders)
+
+
+def to_korean_currency(amount: int | float | None) -> str:
+    """Convert number to Korean currency text like '금 일억오천만원정'."""
+    if amount is None:
+        return "금 영원정"
+
+    try:
+        numeric = int(round(float(amount)))
+    except (TypeError, ValueError):
+        return "금 영원정"
+
+    if numeric == 0:
+        return "금 영원정"
+
+    negative = numeric < 0
+    value = abs(numeric)
+
+    digits = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"]
+    small_units = ["", "십", "백", "천"]
+    large_units = ["", "만", "억", "조", "경"]
+
+    def _chunk_to_korean(chunk_value: int) -> str:
+        text = ""
+        for index, raw_digit in enumerate(str(chunk_value)[::-1]):
+            digit = int(raw_digit)
+            if digit == 0:
+                continue
+            prefix = "" if digit == 1 and index > 0 else digits[digit]
+            text = f"{prefix}{small_units[index]}{text}"
+        return text
+
+    chunks: list[str] = []
+    unit_index = 0
+    while value > 0:
+        chunk = value % 10000
+        if chunk:
+            chunks.append(f"{_chunk_to_korean(chunk)}{large_units[unit_index]}")
+        value //= 10000
+        unit_index += 1
+
+    currency_text = "".join(reversed(chunks)) if chunks else "영"
+    if negative:
+        currency_text = f"마이너스 {currency_text}"
+    return f"금 {currency_text}원정"

@@ -76,6 +76,8 @@ export default function FundOverviewPage() {
             : '-',
       },
       { label: '운용 NAV', value: `${formatMillion(totals?.investment_assets)} 백만원` },
+      { label: '진행 워크플로', value: `${totals?.active_workflow_count ?? 0}건` },
+      { label: '미완료 업무', value: `${totals?.pending_task_count ?? 0}건` },
     ],
     [totals],
   )
@@ -108,7 +110,7 @@ export default function FundOverviewPage() {
         <p className="info-banner-text">조합을 클릭하여 상세 정보를 확인하세요.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {kpiCards.map((card) => (
           <div key={card.label} className="card-base p-4">
             <p className="text-xs text-gray-500">{card.label}</p>
@@ -149,6 +151,8 @@ export default function FundOverviewPage() {
                   <th className="table-head-cell text-right">미투자액</th>
                   <th className="table-head-cell text-right">투자자산</th>
                   <th className="table-head-cell text-right">투자업체수</th>
+                  <th className="table-head-cell text-right">진행 워크플로</th>
+                  <th className="table-head-cell text-right">미완료 업무</th>
                   <th className="table-head-cell text-right">기준수익률(규약)</th>
                   <th className="table-head-cell">잔존기간</th>
                 </tr>
@@ -191,6 +195,8 @@ export default function FundOverviewPage() {
                     <td className="table-body-cell text-right">{formatMillion(fund.uninvested)}</td>
                     <td className="table-body-cell text-right">{formatMillion(fund.investment_assets)}</td>
                     <td className="table-body-cell text-right">{formatNumber(fund.company_count)}</td>
+                    <td className="table-body-cell text-right">{formatNumber(fund.active_workflow_count)}</td>
+                    <td className="table-body-cell text-right">{formatNumber(fund.pending_task_count)}</td>
                     <td className="table-body-cell text-right">{formatPercent(fund.hurdle_rate)}</td>
                     <td className="table-body-cell text-gray-700">{fund.remaining_period || '-'}</td>
                   </tr>
@@ -207,6 +213,8 @@ export default function FundOverviewPage() {
                   <td className="px-3 py-3 text-right">{formatMillion(totals?.uninvested)}</td>
                   <td className="px-3 py-3 text-right">{formatMillion(totals?.investment_assets)}</td>
                   <td className="px-3 py-3 text-right">{formatNumber(totals?.company_count)}</td>
+                  <td className="px-3 py-3 text-right">{formatNumber(totals?.active_workflow_count)}</td>
+                  <td className="px-3 py-3 text-right">{formatNumber(totals?.pending_task_count)}</td>
                   <td className="px-3 py-3 text-right">-</td>
                   <td className="px-3 py-3 text-right">-</td>
                 </tr>

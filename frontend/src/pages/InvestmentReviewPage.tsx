@@ -7,10 +7,12 @@ import {
   createReviewComment,
   deleteInvestmentReview,
   deleteReviewComment,
+  downloadGeneratedDocument,
   fetchFunds,
   fetchInvestmentReview,
   fetchInvestmentReviews,
   fetchInvestmentReviewWeeklySummary,
+  generateDocumentByBuilder,
   updateInvestmentReview,
   updateInvestmentReviewStatus,
   type Fund,
@@ -58,6 +60,17 @@ function parseNumber(value: string): number | null {
   if (!value.trim()) return null
   const n = Number(value)
   return Number.isFinite(n) ? n : null
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 function ReviewForm({
@@ -308,6 +321,21 @@ export default function InvestmentReviewPage() {
       queryClient.invalidateQueries({ queryKey: ['investmentReview', result.review_id] })
       queryClient.invalidateQueries({ queryKey: ['investments'] })
       addToast('success', `투자 전환 완료 (#${result.investment_id})`)
+    },
+  })
+  const generateMinutesMut = useMutation({
+    mutationFn: async (reviewId: number) => {
+      const generated = await generateDocumentByBuilder({
+        builder: 'irc_minutes',
+        params: { investment_review_id: reviewId },
+      })
+      const blob = await downloadGeneratedDocument(generated.document_id)
+      return { generated, blob }
+    },
+    onSuccess: ({ generated, blob }) => {
+      downloadBlob(blob, generated.filename)
+      queryClient.invalidateQueries({ queryKey: ['generatedDocuments'] })
+      addToast('success', '투심위 의사록을 생성했습니다.')
     },
   })
 
@@ -582,6 +610,13 @@ export default function InvestmentReviewPage() {
                     onClick={() => convertMut.mutate(detail.id)}
                   >
                     투자 전환
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    disabled={generateMinutesMut.isPending}
+                    onClick={() => generateMinutesMut.mutate(detail.id)}
+                  >
+                    투심위 의사록 생성
                   </button>
                 </div>
 

@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 import os
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from database import engine, Base, SessionLocal
+from dependencies.auth import get_current_user
 from models import *  # noqa: F401,F403 - import all models so tables are created
 from seed.seed_accounts import seed_accounts
 from scripts.seed_data import seed_all
@@ -44,8 +45,14 @@ from routers import (
     gp_entities,
     lp_address_books,
     admin,
+    compliance,
+    vics_reports,
+    internal_reviews,
     attachments,
     periodic_schedules,
+    auth,
+    invitations,
+    document_generation,
 )
 
 def ensure_sqlite_compat_columns():
@@ -178,11 +185,27 @@ def ensure_sqlite_compat_columns():
             ("transactions", "settlement_date", "DATE"),
             ("exit_committees", "performance_fee", "REAL"),
             ("biz_reports", "fund_id", "INTEGER"),
+            ("biz_report_requests", "doc_financial_statement", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_biz_registration", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_shareholder_list", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_corp_registry", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_insurance_cert", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_credit_report", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "doc_other_changes", "TEXT DEFAULT 'not_requested'"),
+            ("biz_report_requests", "request_sent_date", "DATE"),
+            ("biz_report_requests", "request_deadline", "DATE"),
+            ("biz_report_requests", "all_docs_received_date", "DATE"),
             ("checklists", "investment_id", "INTEGER"),
             ("tasks", "category", "TEXT"),
             ("tasks", "fund_id", "INTEGER"),
             ("tasks", "investment_id", "INTEGER"),
             ("tasks", "gp_entity_id", "INTEGER"),
+            ("tasks", "created_by", "INTEGER"),
+            ("tasks", "obligation_id", "INTEGER"),
+            ("tasks", "auto_generated", "INTEGER DEFAULT 0"),
+            ("tasks", "source", "TEXT"),
+            ("attachments", "uploaded_by", "INTEGER"),
+            ("workflow_instances", "created_by", "INTEGER"),
             ("capital_calls", "request_percent", "REAL"),
             ("capital_calls", "linked_workflow_instance_id", "INTEGER"),
             ("capital_call_items", "memo", "TEXT"),
@@ -419,18 +442,147 @@ def ensure_sqlite_compat_columns():
                 """
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT NOT NULL UNIQUE,
+                    username TEXT NOT NULL,
+                    email TEXT UNIQUE,
                     name TEXT NOT NULL,
                     password_hash TEXT,
                     role TEXT NOT NULL DEFAULT 'viewer',
                     department TEXT,
                     is_active INTEGER NOT NULL DEFAULT 1,
+                    is_pending_approval INTEGER NOT NULL DEFAULT 0,
                     last_login_at DATETIME,
+                    allowed_routes TEXT,
+                    google_id TEXT UNIQUE,
+                    avatar_url TEXT,
+                    login_fail_count INTEGER NOT NULL DEFAULT 0,
+                    locked_until DATETIME,
+                    password_changed_at DATETIME,
                     created_at DATETIME
                 )
                 """
             )
-            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users(username)")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users(email)")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users(google_id)")
+
+        if has_table("users"):
+            if not has_column("users", "username"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN username TEXT")
+            if not has_column("users", "allowed_routes"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN allowed_routes TEXT")
+            if not has_column("users", "google_id"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN google_id TEXT")
+            if not has_column("users", "avatar_url"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+            if not has_column("users", "login_fail_count"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN login_fail_count INTEGER DEFAULT 0")
+            if not has_column("users", "locked_until"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN locked_until DATETIME")
+            if not has_column("users", "password_changed_at"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_changed_at DATETIME")
+            if not has_column("users", "is_pending_approval"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_pending_approval INTEGER DEFAULT 0")
+            if not has_column("users", "token_invalidated_at"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN token_invalidated_at DATETIME")
+            if not has_column("users", "password_reset_requested_at"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_reset_requested_at DATETIME")
+
+            if has_column("users", "is_pending_approval"):
+                conn.exec_driver_sql(
+                    "UPDATE users SET is_pending_approval = 0 "
+                    "WHERE is_pending_approval IS NULL"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE users SET is_pending_approval = 1 "
+                    "WHERE is_active = 0 AND IFNULL(last_login_at, '') = '' "
+                    "AND IFNULL(role, 'viewer') = 'viewer' "
+                    "AND IFNULL(is_pending_approval, 0) = 0"
+                )
+
+            rows = conn.exec_driver_sql("SELECT id, email, username FROM users ORDER BY id ASC").fetchall()
+            used_usernames: set[str] = set()
+            for user_id, email, username in rows:
+                base = (username or "").strip().lower()
+                if not base:
+                    email_value = (email or "").strip().lower()
+                    if "@" in email_value:
+                        base = email_value.split("@", 1)[0]
+                    elif email_value:
+                        base = email_value
+                    else:
+                        base = f"user{user_id}"
+                if not base:
+                    base = f"user{user_id}"
+                candidate = base
+                suffix = 1
+                while candidate in used_usernames:
+                    suffix += 1
+                    candidate = f"{base}{suffix}"
+                used_usernames.add(candidate)
+                if candidate != (username or "").strip().lower():
+                    conn.exec_driver_sql(
+                        "UPDATE users SET username = ? WHERE id = ?",
+                        (candidate, user_id),
+                    )
+
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users(username)")
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users(google_id)")
+
+        if not has_table("invitations"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE invitations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token TEXT NOT NULL UNIQUE,
+                    email TEXT,
+                    name TEXT,
+                    role TEXT NOT NULL DEFAULT 'viewer',
+                    department TEXT,
+                    allowed_routes TEXT,
+                    created_by INTEGER NOT NULL,
+                    used_by INTEGER,
+                    used_at DATETIME,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME
+                )
+                """
+            )
+            conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_invitations_token ON invitations(token)")
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_invitations_email ON invitations(email)")
+
+        if not has_table("audit_logs"):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    target_type TEXT,
+                    target_id INTEGER,
+                    detail TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    created_at DATETIME
+                )
+                """
+            )
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs(user_id)")
+
+        if has_table("biz_report_requests"):
+            for col in [
+                "doc_financial_statement",
+                "doc_biz_registration",
+                "doc_shareholder_list",
+                "doc_corp_registry",
+                "doc_insurance_cert",
+                "doc_credit_report",
+                "doc_other_changes",
+            ]:
+                if has_column("biz_report_requests", col):
+                    conn.exec_driver_sql(
+                        f"UPDATE biz_report_requests SET {col} = 'not_requested' "
+                        f"WHERE {col} IS NULL OR TRIM({col}) = ''"
+                    )
 
         if has_table("fund_notice_periods") and has_column("fund_notice_periods", "day_basis"):
             conn.exec_driver_sql(
@@ -459,49 +611,81 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="VC ERP API", version="0.2.0", lifespan=lifespan)
 
+origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(tasks.router)
-app.include_router(task_categories.router)
-app.include_router(task_completion.router)
-app.include_router(task_bulk.router)
-app.include_router(workflows.router)
-app.include_router(worklog_lessons.router)
-app.include_router(worklogs.router)
-app.include_router(dashboard.router)
-app.include_router(funds.router)
-app.include_router(investments.router)
-app.include_router(investment_reviews.router)
-app.include_router(checklists.router)
-app.include_router(calendar_events.router)
-app.include_router(document_status.router)
-app.include_router(search.router)
-app.include_router(transactions.router)
-app.include_router(valuations.router)
-app.include_router(capital_calls.router)
-app.include_router(distributions.router)
-app.include_router(assemblies.router)
-app.include_router(exits.router)
-app.include_router(fees.router)
-app.include_router(users.router)
-app.include_router(performance.router)
-app.include_router(biz_reports.router)
-app.include_router(regular_reports.router)
-app.include_router(accounting.router)
-app.include_router(vote_records.router)
-app.include_router(documents.router)
-app.include_router(lp_transfers.router)
-app.include_router(gp_entities.router)
-app.include_router(lp_address_books.router)
-app.include_router(admin.router)
-app.include_router(attachments.router)
-app.include_router(periodic_schedules.router)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
+
+def _auth_disabled() -> bool:
+    return os.environ.get("VON_AUTH_DISABLED", "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def include_protected_router(router):
+    if _auth_disabled():
+        app.include_router(router)
+        return
+    app.include_router(router, dependencies=[Depends(get_current_user)])
+
+
+app.include_router(auth.router)
+app.include_router(invitations.router)
+include_protected_router(tasks.router)
+include_protected_router(task_categories.router)
+include_protected_router(task_completion.router)
+include_protected_router(task_bulk.router)
+include_protected_router(workflows.router)
+include_protected_router(worklog_lessons.router)
+include_protected_router(worklogs.router)
+include_protected_router(dashboard.router)
+include_protected_router(funds.router)
+include_protected_router(investments.router)
+include_protected_router(investment_reviews.router)
+include_protected_router(checklists.router)
+include_protected_router(calendar_events.router)
+include_protected_router(document_status.router)
+include_protected_router(search.router)
+include_protected_router(transactions.router)
+include_protected_router(valuations.router)
+include_protected_router(capital_calls.router)
+include_protected_router(distributions.router)
+include_protected_router(assemblies.router)
+include_protected_router(exits.router)
+include_protected_router(fees.router)
+include_protected_router(users.router)
+include_protected_router(performance.router)
+include_protected_router(biz_reports.router)
+include_protected_router(regular_reports.router)
+include_protected_router(accounting.router)
+include_protected_router(vote_records.router)
+include_protected_router(documents.router)
+include_protected_router(lp_transfers.router)
+include_protected_router(gp_entities.router)
+include_protected_router(lp_address_books.router)
+include_protected_router(admin.router)
+include_protected_router(compliance.router)
+include_protected_router(vics_reports.router)
+include_protected_router(internal_reviews.router)
+include_protected_router(attachments.router)
+include_protected_router(periodic_schedules.router)
+include_protected_router(document_generation.router)
 
 
 @app.exception_handler(RequestValidationError)

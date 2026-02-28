@@ -169,6 +169,7 @@ export default function DashboardPage() {
   const thisWeekTasks = Array.isArray(baseData.this_week) ? baseData.this_week : []
   const upcomingTasks = Array.isArray(baseData.upcoming) ? baseData.upcoming : []
   const noDeadlineTasks = Array.isArray(baseData.no_deadline) ? baseData.no_deadline : []
+  const prioritizedTasks = Array.isArray(baseData.prioritized_tasks) ? baseData.prioritized_tasks : []
 
   const activeWorkflows = workflowsData?.active_workflows ?? []
   const fundSummary = sidebarData?.fund_summary ?? []
@@ -204,6 +205,7 @@ export default function DashboardPage() {
         thisWeekTasks={thisWeekTasks}
         upcomingTasks={upcomingTasks}
         noDeadlineTasks={noDeadlineTasks}
+        prioritizedTasks={prioritizedTasks}
         completedForTaskPanel={completedTodayTasks}
         todayTotalEstimatedTime={baseData.today.total_estimated_time || '0m'}
         tomorrowTotalEstimatedTime={baseData.tomorrow.total_estimated_time || '0m'}
@@ -222,6 +224,9 @@ export default function DashboardPage() {
         unpaidLpCount={baseData.unpaid_lp_count || 0}
         pendingFeeCount={baseData.pending_fee_count || 0}
         bizReportInProgressCount={baseData.biz_report_in_progress_count || 0}
+        complianceSummary={baseData.compliance}
+        docCollectionSummary={baseData.doc_collection}
+        urgentAlerts={baseData.urgent_alerts}
         sidebarLoading={sidebarLoading}
         completedLoading={completedLoading}
         completingTaskId={completeTaskMut.variables?.id ?? null}
@@ -257,7 +262,7 @@ export default function DashboardPage() {
         selectedWorkflowLoading={selectedWorkflowLoading}
         selectedTask={selectedTask}
         selectedTaskEditable={selectedTaskEditable}
-        onCreateTask={(task) => createTaskMut.mutate(task)}
+        onCreateTask={(task) => createTaskMut.mutateAsync(task)}
         onCloseQuickAddModal={() => setShowQuickAddModal(false)}
         onClosePopup={() => setPopupSection(null)}
         onOpenTask={openTaskDetail}

@@ -84,11 +84,15 @@ class TaskResponse(BaseModel):
     fund_id: Optional[int] = None
     investment_id: Optional[int] = None
     gp_entity_id: Optional[int] = None
+    obligation_id: Optional[int] = None
+    auto_generated: bool = False
+    source: Optional[str] = None
     is_notice: bool = False
     is_report: bool = False
     fund_name: Optional[str] = None
     gp_entity_name: Optional[str] = None
     company_name: Optional[str] = None
+    attachment_count: int = 0
 
     model_config = {"from_attributes": True}
 

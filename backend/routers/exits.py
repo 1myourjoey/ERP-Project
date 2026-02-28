@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -26,8 +27,10 @@ from schemas.phase3 import (
     ExitTradeResponse,
     ExitTradeUpdate,
 )
+from services.compliance_engine import ComplianceEngine
 
 router = APIRouter(tags=["exits"])
+logger = logging.getLogger(__name__)
 
 
 def _ensure_company(db: Session, company_id: int) -> PortfolioCompany:
@@ -581,6 +584,19 @@ def settle_exit_trade(
         db.rollback()
         raise
     db.refresh(row)
+
+    try:
+        ComplianceEngine(db).on_investment_exited(row.investment_id, row.fund_id)
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on settle_exit_trade: trade_id=%s fund_id=%s investment_id=%s error=%s",
+            trade_id,
+            row.fund_id,
+            row.investment_id,
+            exc,
+        )
+
     return row
 
 

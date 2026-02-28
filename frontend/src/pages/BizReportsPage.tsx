@@ -6,6 +6,7 @@ import {
   createBizReportTemplate,
   deleteBizReport,
   detectBizReportAnomalies,
+  fetchBizReportDocCollectionMatrix,
   fetchBizReportAnomalies,
   fetchBizReportCommentDiff,
   fetchBizReportMatrix,
@@ -16,15 +17,20 @@ import {
   generateBizReportDocx,
   generateBizReportExcel,
   generateBizReportRequests,
+  sendBizReportDocRequests,
   updateBizReport,
   updateBizReportRequest,
+  updateBizReportRequestDocStatus,
   type BizReport,
   type BizReportAnomalyResponse,
   type BizReportCommentDiffResponse,
+  type BizReportDocCollectionMatrix,
   type BizReportGenerationResponse,
   type BizReportInput,
   type BizReportMatrixResponse,
+  type BizReportRequestDocStatusInput,
   type BizReportRequestResponse,
+  type BizReportSendDocRequestsResponse,
   type BizReportTemplateInput,
   type BizReportTemplateResponse,
   type Fund,
@@ -34,7 +40,36 @@ import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import { formatKRW } from '../lib/labels'
 
-type TabKey = 'matrix' | 'detail' | 'generate'
+type TabKey = 'matrix' | 'detail' | 'doc_collection' | 'generate'
+
+const DOC_COLUMNS: Array<{
+  key: BizReportRequestDocStatusInput['doc_type']
+  label: string
+}> = [
+  { key: 'financial_statement', label: '재무' },
+  { key: 'biz_registration', label: '사업자' },
+  { key: 'shareholder_list', label: '주주' },
+  { key: 'corp_registry', label: '등기' },
+  { key: 'insurance_cert', label: '보험' },
+  { key: 'credit_report', label: '신용' },
+  { key: 'other_changes', label: '기타' },
+]
+
+function nextDocStatus(
+  status: BizReportRequestDocStatusInput['status'],
+): BizReportRequestDocStatusInput['status'] {
+  if (status === 'not_requested') return 'requested'
+  if (status === 'requested') return 'received'
+  if (status === 'received') return 'verified'
+  return 'not_requested'
+}
+
+function statusCellLabel(status: BizReportRequestDocStatusInput['status']): string {
+  if (status === 'verified') return '✅'
+  if (status === 'received') return '📥'
+  if (status === 'requested') return '📨'
+  return '⬜'
+}
 
 const DEFAULT_REPORT_INPUT: BizReportInput = {
   fund_id: 0,
@@ -142,6 +177,11 @@ export default function BizReportsPage() {
     queryFn: () => fetchBizReportCommentDiff(selectedRequestId as number),
     enabled: selectedRequestId !== null,
   })
+  const { data: docCollection, isLoading: docCollectionLoading } = useQuery<BizReportDocCollectionMatrix>({
+    queryKey: ['bizReports', 'docCollection', selectedReportId],
+    queryFn: () => fetchBizReportDocCollectionMatrix({ report_id: selectedReportId as number }),
+    enabled: selectedReportId !== null,
+  })
 
   const reportMap = useMemo(() => new Map(reports.map((row) => [row.id, row])), [reports])
 
@@ -199,6 +239,49 @@ export default function BizReportsPage() {
       addToast('success', '요청 데이터를 저장했습니다.')
     },
   })
+  const updateDocStatusMut = useMutation({
+    mutationFn: ({ requestId, docType, status }: { requestId: number; docType: BizReportRequestDocStatusInput['doc_type']; status: BizReportRequestDocStatusInput['status'] }) =>
+      updateBizReportRequestDocStatus(requestId, { doc_type: docType, status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'docCollection', selectedReportId] })
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+    },
+  })
+  const sendDocRequestsMut = useMutation({
+    mutationFn: (reportId: number) => sendBizReportDocRequests(reportId),
+    onSuccess: (result: BizReportSendDocRequestsResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'docCollection', selectedReportId] })
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+      queryClient.invalidateQueries({ queryKey: ['generatedDocuments'] })
+      addToast(
+        'success',
+        `서류요청 처리 ${result.updated_requests}건 완료 (공문 ${result.generated_documents.length}건 생성)`,
+      )
+    },
+  })
+  const completeAllDocsMut = useMutation({
+    mutationFn: async () => {
+      if (!docCollection) return { updated: 0 }
+      let updated = 0
+      for (const company of docCollection.companies) {
+        for (const col of DOC_COLUMNS) {
+          const current = company.docs[col.key]
+          if (current === 'verified') continue
+          await updateBizReportRequestDocStatus(company.request_id, {
+            doc_type: col.key,
+            status: 'verified',
+          })
+          updated += 1
+        }
+      }
+      return { updated }
+    },
+    onSuccess: ({ updated }) => {
+      queryClient.invalidateQueries({ queryKey: ['bizReports', 'docCollection', selectedReportId] })
+      queryClient.invalidateQueries({ queryKey: ['bizReportRequests', selectedReportId] })
+      addToast('success', `서류 상태 ${updated}건을 확인 완료로 반영했습니다.`)
+    },
+  })
 
   const detectAnomalyMut = useMutation({
     mutationFn: (requestId: number) => detectBizReportAnomalies(requestId),
@@ -247,6 +330,12 @@ export default function BizReportsPage() {
           className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'detail' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
         >
           보고 상세/검토
+        </button>
+        <button
+          onClick={() => setActiveTab('doc_collection')}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'doc_collection' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+        >
+          서류 수집
         </button>
         <button
           onClick={() => setActiveTab('generate')}
@@ -592,6 +681,107 @@ export default function BizReportsPage() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'doc_collection' && (
+        <div className="card-base">
+          {!selectedReportId ? (
+            <EmptyState emoji="📌" message="상단에서 보고를 선택해 주세요." className="py-8" />
+          ) : docCollectionLoading ? (
+            <PageLoading />
+          ) : !docCollection ? (
+            <EmptyState emoji="📄" message="서류 수집 데이터가 없습니다." className="py-8" />
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-semibold text-gray-800">
+                  {docCollection.fund_name} · {docCollection.quarter} 서류 수집 현황
+                </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  진행률 {docCollection.completed_companies}/{docCollection.total_companies} 기업 완료 ({docCollection.completion_pct}%)
+                </p>
+                <div className="mt-2 h-2 overflow-hidden rounded bg-gray-200">
+                  <div
+                    className="h-2 rounded bg-blue-500"
+                    style={{ width: `${Math.max(0, Math.min(100, docCollection.completion_pct || 0))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-auto rounded border border-gray-200">
+                <table className="min-w-[980px] w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">기업명</th>
+                      {DOC_COLUMNS.map((col) => (
+                        <th key={col.key} className="px-3 py-2 text-center">{col.label}</th>
+                      ))}
+                      <th className="px-3 py-2 text-left">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {docCollection.companies.map((row) => (
+                      <tr key={row.request_id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 font-medium text-gray-800">{row.company_name}</td>
+                        {DOC_COLUMNS.map((col) => {
+                          const value = row.docs[col.key]
+                          const isUpdating =
+                            updateDocStatusMut.isPending
+                            && updateDocStatusMut.variables?.requestId === row.request_id
+                            && updateDocStatusMut.variables?.docType === col.key
+                          return (
+                            <td key={`${row.request_id}-${col.key}`} className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                className="rounded px-2 py-1 text-base hover:bg-gray-100 disabled:opacity-50"
+                                disabled={isUpdating}
+                                title={`${col.label}: ${value}`}
+                                onClick={() =>
+                                  updateDocStatusMut.mutate({
+                                    requestId: row.request_id,
+                                    docType: col.key,
+                                    status: nextDocStatus(value),
+                                  })
+                                }
+                              >
+                                {statusCellLabel(value)}
+                              </button>
+                            </td>
+                          )
+                        })}
+                        <td className="px-3 py-2 text-sm text-gray-700">{row.status}</td>
+                      </tr>
+                    ))}
+                    {docCollection.companies.length === 0 && (
+                      <tr>
+                        <td className="px-3 py-8 text-center text-sm text-gray-400" colSpan={DOC_COLUMNS.length + 2}>
+                          투자사 요청 데이터가 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="primary-btn"
+                  disabled={sendDocRequestsMut.isPending}
+                  onClick={() => sendDocRequestsMut.mutate(selectedReportId)}
+                >
+                  미수집 기업 일괄 서류요청 공문 생성
+                </button>
+                <button
+                  className="secondary-btn"
+                  disabled={completeAllDocsMut.isPending}
+                  onClick={() => completeAllDocsMut.mutate()}
+                >
+                  전체 확인 완료
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

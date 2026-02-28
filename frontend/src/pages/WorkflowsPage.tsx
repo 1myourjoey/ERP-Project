@@ -64,6 +64,7 @@ import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 import DrawerOverlay from '../components/common/DrawerOverlay'
+import FileAttachmentPanel from '../components/common/FileAttachmentPanel'
 import { invalidateFundRelated, invalidateWorkflowRelated } from '../lib/queryInvalidation'
 import ChecklistsPage from './ChecklistsPage'
 
@@ -480,8 +481,25 @@ function normalizeTemplate(wf: WorkflowTemplate | null | undefined): WorkflowTem
   }
 }
 
+function cloneTemplateInput(input: WorkflowTemplateInput): WorkflowTemplateInput {
+  return {
+    ...input,
+    steps: (input.steps ?? []).map((step, idx) => ({
+      ...step,
+      order: step.order ?? idx + 1,
+      step_documents: (step.step_documents ?? []).map((doc) => ({
+        ...doc,
+        attachment_ids: [...(doc.attachment_ids ?? [])],
+      })),
+    })),
+    documents: (input.documents ?? []).map((doc) => ({ ...doc })),
+    warnings: (input.warnings ?? []).map((warning) => ({ ...warning })),
+  }
+}
+
 function TemplateModal({
   initial,
+  resetKey,
   title,
   submitLabel,
   loading,
@@ -489,13 +507,14 @@ function TemplateModal({
   onClose,
 }: {
   initial: WorkflowTemplateInput
+  resetKey: string | number
   title: string
   submitLabel: string
   loading: boolean
   onSubmit: (data: WorkflowTemplateInput) => void
   onClose: () => void
 }) {
-  const [form, setForm] = useState<WorkflowTemplateInput>(initial)
+  const [form, setForm] = useState<WorkflowTemplateInput>(() => cloneTemplateInput(initial))
   const { data: docTemplates = [] } = useQuery<DocumentTemplate[]>({
     queryKey: ['documentTemplates'],
     queryFn: () => fetchDocumentTemplates(),
@@ -518,6 +537,7 @@ function TemplateModal({
     notes: '',
   })
   const [warningDraft, setWarningDraft] = useState('')
+  const [isAttachmentProcessing, setIsAttachmentProcessing] = useState(false)
   const [stepDocDrafts, setStepDocDrafts] = useState<Record<number, {
     name: string
     required: boolean
@@ -526,44 +546,9 @@ function TemplateModal({
     documentTemplateId: string
     attachmentIds: number[]
   }>>({})
-  const templateAttachmentIds = useMemo(() => {
-    const ids = new Set<number>()
-    for (const step of form.steps) {
-      for (const doc of step.step_documents ?? []) {
-        for (const id of doc.attachment_ids ?? []) {
-          if (Number.isInteger(id) && id > 0) ids.add(id)
-        }
-      }
-    }
-    for (const draft of Object.values(stepDocDrafts)) {
-      for (const id of draft.attachmentIds ?? []) {
-        if (Number.isInteger(id) && id > 0) ids.add(id)
-      }
-    }
-    return [...ids]
-  }, [form.steps, stepDocDrafts])
-  const { data: templateAttachments = [] } = useQuery<Attachment[]>({
-    queryKey: ['attachments', 'workflow-template-modal', templateAttachmentIds.join(',')],
-    queryFn: () => fetchAttachments(templateAttachmentIds),
-    enabled: templateAttachmentIds.length > 0,
-  })
-  const templateAttachmentById = useMemo(
-    () => new Map<number, Attachment>(templateAttachments.map((row) => [row.id, row])),
-    [templateAttachments],
-  )
-
-  const handleTemplateAttachmentDownload = async (attachmentId: number) => {
-    try {
-      const blob = await downloadAttachment(attachmentId)
-      const filename = templateAttachmentById.get(attachmentId)?.original_filename || `attachment-${attachmentId}`
-      saveBlobAsFile(blob, filename)
-    } catch {
-      // keep modal flow stable even if download fails
-    }
-  }
 
   useEffect(() => {
-    setForm(initial)
+    setForm(cloneTemplateInput(initial))
     setDocumentDraft({
       name: '',
       required: true,
@@ -572,7 +557,8 @@ function TemplateModal({
     })
     setWarningDraft('')
     setStepDocDrafts({})
-  }, [initial])
+    setIsAttachmentProcessing(false)
+  }, [resetKey])
 
   const addDocument = () => {
     const name = documentDraft.name.trim()
@@ -678,6 +664,46 @@ function TemplateModal({
     }))
   }
 
+  const appendStepDocDraftAttachment = (stepIdx: number, attachmentId: number) => {
+    setStepDocDrafts((prev) => {
+      const draft = prev[stepIdx] ?? {
+        name: '',
+        required: true,
+        timing: '',
+        notes: '',
+        documentTemplateId: '',
+        attachmentIds: [],
+      }
+      return {
+        ...prev,
+        [stepIdx]: {
+          ...draft,
+          attachmentIds: [...new Set([...(draft.attachmentIds ?? []), attachmentId])],
+        },
+      }
+    })
+  }
+
+  const removeStepDocDraftAttachment = (stepIdx: number, attachmentId: number) => {
+    setStepDocDrafts((prev) => {
+      const draft = prev[stepIdx] ?? {
+        name: '',
+        required: true,
+        timing: '',
+        notes: '',
+        documentTemplateId: '',
+        attachmentIds: [],
+      }
+      return {
+        ...prev,
+        [stepIdx]: {
+          ...draft,
+          attachmentIds: (draft.attachmentIds ?? []).filter((id) => id !== attachmentId),
+        },
+      }
+    })
+  }
+
   const addStepDocument = (stepIdx: number, data: WorkflowStepDocumentInput) => {
     const trimmedName = (data.name || '').trim()
     if (!trimmedName) return
@@ -706,6 +732,44 @@ function TemplateModal({
         return {
           ...step,
           step_documents: (step.step_documents ?? []).filter((_, index) => index !== docIdx),
+        }
+      }),
+    }))
+  }
+
+  const appendStepDocumentAttachment = (stepIdx: number, docIdx: number, attachmentId: number) => {
+    setForm((prev) => ({
+      ...prev,
+      steps: prev.steps.map((step, idx) => {
+        if (idx !== stepIdx) return step
+        return {
+          ...step,
+          step_documents: (step.step_documents ?? []).map((doc, targetIdx) => {
+            if (targetIdx !== docIdx) return doc
+            return {
+              ...doc,
+              attachment_ids: [...new Set([...(doc.attachment_ids ?? []), attachmentId])],
+            }
+          }),
+        }
+      }),
+    }))
+  }
+
+  const removeStepDocumentAttachment = (stepIdx: number, docIdx: number, attachmentId: number) => {
+    setForm((prev) => ({
+      ...prev,
+      steps: prev.steps.map((step, idx) => {
+        if (idx !== stepIdx) return step
+        return {
+          ...step,
+          step_documents: (step.step_documents ?? []).map((doc, targetIdx) => {
+            if (targetIdx !== docIdx) return doc
+            return {
+              ...doc,
+              attachment_ids: (doc.attachment_ids ?? []).filter((id) => id !== attachmentId),
+            }
+          }),
         }
       }),
     }))
@@ -743,29 +807,63 @@ function TemplateModal({
     })
   }
 
-  const uploadTemplateStepDraftAttachment = async (stepIdx: number, file: File) => {
-    const draft = ensureStepDocDraft(stepIdx)
-    const uploaded = await uploadAttachment(file)
-    setStepDocDraft(stepIdx, {
-      attachmentIds: [...new Set([...(draft.attachmentIds ?? []), uploaded.id])],
-    })
-  }
-
-  const removeTemplateStepDraftAttachment = async (stepIdx: number, attachmentId: number) => {
-    const draft = ensureStepDocDraft(stepIdx)
-    setStepDocDraft(stepIdx, {
-      attachmentIds: (draft.attachmentIds ?? []).filter((id) => id !== attachmentId),
-    })
-    await removeAttachment(attachmentId)
-  }
-
   const submit = () => {
+    if (isAttachmentProcessing) return
+    const hasInvalidDraftAttachment = Object.values(stepDocDrafts).some((draft) => {
+      const templateId = Number(draft.documentTemplateId || 0)
+      const name = (draft.name || '').trim()
+      const attachmentIds = draft.attachmentIds ?? []
+      return attachmentIds.length > 0 && !name && templateId <= 0
+    })
+    if (hasInvalidDraftAttachment) {
+      window.alert('드래프트 서류에 첨부가 있으면 서류명을 입력하거나 템플릿을 선택해 주세요.')
+      return
+    }
+
+    const mergedSteps = form.steps.map((step, stepIdx) => {
+      const draft = stepDocDrafts[stepIdx]
+      if (!draft) return step
+
+      const templateId = Number(draft.documentTemplateId || 0)
+      const template = templateId ? docTemplates.find((row) => row.id === templateId) : null
+      const name = (draft.name || template?.name || '').trim()
+      const attachmentIds = [...new Set((draft.attachmentIds ?? []).filter((id) => Number.isInteger(id) && id > 0))]
+      const hasDraftContent =
+        name.length > 0 ||
+        Boolean(draft.timing.trim()) ||
+        Boolean(draft.notes.trim()) ||
+        templateId > 0 ||
+        attachmentIds.length > 0
+
+      if (!hasDraftContent) return step
+      if (!name) return step
+
+      return {
+        ...step,
+        step_documents: [
+          ...(step.step_documents ?? []),
+          {
+            name,
+            required: draft.required,
+            timing: draft.timing.trim() || null,
+            notes: draft.notes.trim() || null,
+            document_template_id: template?.id ?? null,
+            attachment_ids: attachmentIds,
+          },
+        ],
+      }
+    })
+
+    if (mergedSteps.some((step) => (step.step_documents ?? []).some((doc) => !String(doc.name || '').trim()))) {
+      return
+    }
+
     const payload: WorkflowTemplateInput = {
       name: form.name.trim(),
       trigger_description: form.trigger_description?.trim() || null,
       category: form.category?.trim() || null,
       total_duration: form.total_duration?.trim() || null,
-      steps: form.steps
+      steps: mergedSteps
         .map((s, idx) => ({ ...s, order: idx + 1 }))
         .filter((s) => s.name.trim())
         .map((s) => ({
@@ -895,23 +993,32 @@ function TemplateModal({
                         <div className="md:col-span-2">
                           <p className="text-xs font-medium text-gray-700">{doc.name}</p>
                           <p className="text-xs text-gray-500">{doc.notes || '-'}</p>
-                          {(doc.attachment_ids?.length ?? 0) > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {(doc.attachment_ids ?? []).map((attachmentId) => {
-                                const meta = templateAttachmentById.get(attachmentId)
-                                return (
-                                  <button
-                                    key={attachmentId}
-                                    type="button"
-                                    onClick={() => handleTemplateAttachmentDownload(attachmentId)}
-                                    className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700"
-                                  >
-                                    {meta?.original_filename || `첨부 #${attachmentId}`}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
+                          <div className="mt-1">
+                            <FileAttachmentPanel
+                              attachmentIds={doc.attachment_ids ?? []}
+                              onUpload={async (file) => {
+                                setIsAttachmentProcessing(true)
+                                try {
+                                  const uploaded = await uploadAttachment(file)
+                                  appendStepDocumentAttachment(idx, docIdx, uploaded.id)
+                                  return uploaded.id
+                                } finally {
+                                  setIsAttachmentProcessing(false)
+                                }
+                              }}
+                              onRemove={async (attachmentId) => {
+                                setIsAttachmentProcessing(true)
+                                try {
+                                  await removeAttachment(attachmentId)
+                                  removeStepDocumentAttachment(idx, docIdx, attachmentId)
+                                } finally {
+                                  setIsAttachmentProcessing(false)
+                                }
+                              }}
+                              compact
+                              label="서류 파일"
+                            />
+                          </div>
                         </div>
                         <div className="text-xs text-gray-600">{doc.required ? '필수' : '선택'}</div>
                         <div className="text-xs text-gray-600">{doc.timing || '-'}</div>
@@ -968,33 +1075,30 @@ function TemplateModal({
                     </label>
                   </div>
                 </div>
-                {(ensureStepDocDraft(idx).attachmentIds?.length ?? 0) > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {(ensureStepDocDraft(idx).attachmentIds ?? []).map((attachmentId) => {
-                      const meta = templateAttachmentById.get(attachmentId)
-                      return (
-                        <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs">
-                          <button type="button" onClick={() => handleTemplateAttachmentDownload(attachmentId)} className="text-blue-600 hover:text-blue-700">
-                            {meta?.original_filename || `첨부 #${attachmentId}`}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await removeTemplateStepDraftAttachment(idx, attachmentId)
-                              } catch {
-                                // noop
-                              }
-                            }}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            제거
-                          </button>
-                        </span>
-                      )
-                    })}
-                  </div>
-                )}
+                <FileAttachmentPanel
+                  attachmentIds={ensureStepDocDraft(idx).attachmentIds ?? []}
+                  onUpload={async (file) => {
+                    setIsAttachmentProcessing(true)
+                    try {
+                      const uploaded = await uploadAttachment(file)
+                      appendStepDocDraftAttachment(idx, uploaded.id)
+                      return uploaded.id
+                    } finally {
+                      setIsAttachmentProcessing(false)
+                    }
+                  }}
+                  onRemove={async (attachmentId) => {
+                    setIsAttachmentProcessing(true)
+                    try {
+                      await removeAttachment(attachmentId)
+                      removeStepDocDraftAttachment(idx, attachmentId)
+                    } finally {
+                      setIsAttachmentProcessing(false)
+                    }
+                  }}
+                  compact
+                  label="서류 파일"
+                />
                 <div className="flex flex-col gap-2 md:flex-row md:items-end">
                   <div className="flex-1">
                     <label className="form-label text-xs">템플릿에서 선택</label>
@@ -1016,23 +1120,6 @@ function TemplateModal({
                       ))}
                     </select>
                   </div>
-                  <label className="secondary-btn cursor-pointer text-xs">
-                    파일 업로드
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0]
-                        event.currentTarget.value = ''
-                        if (!file) return
-                        try {
-                          await uploadTemplateStepDraftAttachment(idx, file)
-                        } catch {
-                          // noop
-                        }
-                      }}
-                    />
-                  </label>
                   <button onClick={() => addStepDocumentFromDraft(idx)} className="secondary-btn text-xs">서류 추가</button>
                 </div>
               </div>
@@ -1132,7 +1219,9 @@ function TemplateModal({
         </details>
       </div>
       <div className="mt-3 flex shrink-0 gap-2">
-        <button onClick={submit} disabled={loading} className="primary-btn">{submitLabel}</button>
+        <button onClick={submit} disabled={loading || isAttachmentProcessing} className="primary-btn disabled:opacity-60">
+          {isAttachmentProcessing ? '첨부 처리 중...' : submitLabel}
+        </button>
         <button onClick={onClose} className="secondary-btn">취소</button>
       </div>
     </div>
@@ -2958,7 +3047,8 @@ export default function WorkflowsPage() {
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: WorkflowTemplateInput }) => updateWorkflowTemplate(id, data),
-    onSuccess: () => {
+    onSuccess: (updated, variables) => {
+      queryClient.setQueryData(['workflow', variables.id], updated)
       invalidateWorkflowRelated(queryClient)
       setMode(null)
       addToast('success', '템플릿이 수정되었습니다.')
@@ -2999,6 +3089,20 @@ export default function WorkflowsPage() {
       printWorkflowInstanceChecklist(instance, template)
     } catch {
       printWorkflowInstanceChecklist(instance)
+    }
+  }
+
+  const openEditModal = async (workflowId: number) => {
+    setSelectedId(workflowId)
+    try {
+      await queryClient.fetchQuery({
+        queryKey: ['workflow', workflowId],
+        queryFn: () => fetchWorkflow(workflowId),
+        staleTime: 0,
+      })
+      setMode('edit')
+    } catch {
+      addToast('error', '템플릿 최신 정보를 불러오지 못했습니다.')
     }
   }
 
@@ -3084,7 +3188,7 @@ export default function WorkflowsPage() {
                               >
                                 <Printer size={14} /> 인쇄
                               </button>
-                              <button onClick={() => { setSelectedId(row.id); setMode('edit') }} className="secondary-btn">수정</button>
+                              <button onClick={() => { void openEditModal(row.id) }} className="secondary-btn">수정</button>
                               <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
                             </div>
                           </div>
@@ -3102,7 +3206,7 @@ export default function WorkflowsPage() {
               <WorkflowDetail
                 workflowId={selectedId}
                 onClose={() => setSelectedId(null)}
-                onEdit={() => setMode('edit')}
+                onEdit={() => { void openEditModal(selectedId) }}
                 onPrint={handlePrintTemplate}
               />
             ) : (
@@ -3132,7 +3236,15 @@ export default function WorkflowsPage() {
           title="템플릿 생성"
           widthClassName="w-full max-w-6xl"
         >
-          <TemplateModal initial={EMPTY_TEMPLATE} title="템플릿 생성" submitLabel="생성" loading={createMut.isPending} onSubmit={(data) => createMut.mutate(data)} onClose={() => setMode(null)} />
+          <TemplateModal
+            initial={EMPTY_TEMPLATE}
+            resetKey="create"
+            title="템플릿 생성"
+            submitLabel="생성"
+            loading={createMut.isPending}
+            onSubmit={(data) => createMut.mutate(data)}
+            onClose={() => setMode(null)}
+          />
         </DrawerOverlay>
       )}
 
@@ -3143,7 +3255,15 @@ export default function WorkflowsPage() {
           title="템플릿 수정"
           widthClassName="w-full max-w-6xl"
         >
-          <TemplateModal initial={normalizeTemplate(selected)} title="템플릿 수정" submitLabel="저장" loading={updateMut.isPending} onSubmit={(data) => updateMut.mutate({ id: selectedId, data })} onClose={() => setMode(null)} />
+          <TemplateModal
+            initial={normalizeTemplate(selected)}
+            resetKey={`edit-${selectedId}`}
+            title="템플릿 수정"
+            submitLabel="저장"
+            loading={updateMut.isPending}
+            onSubmit={(data) => updateMut.mutate({ id: selectedId, data })}
+            onClose={() => setMode(null)}
+          />
         </DrawerOverlay>
       )}
     </div>

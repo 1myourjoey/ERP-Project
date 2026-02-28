@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +30,8 @@ class FundSummaryItem(BaseModel):
     aum: Optional[float] = None
     lp_count: int
     investment_count: int
+    compliance_overdue: int = 0
+    doc_collection_progress: Optional[str] = None
 
 
 class MissingDocumentItem(BaseModel):
@@ -57,6 +59,38 @@ class UpcomingReportItem(BaseModel):
     source_label: Optional[str] = None
 
 
+class DashboardComplianceWidget(BaseModel):
+    overdue_count: int = 0
+    due_this_week: int = 0
+    due_this_month: int = 0
+
+
+class DashboardDocCollectionWidget(BaseModel):
+    current_quarter: str
+    completion_pct: float = 0.0
+    pending_companies: int = 0
+
+
+class DashboardUrgentAlertItem(BaseModel):
+    type: str
+    message: str
+    due_date: Optional[str] = None
+
+
+class PrioritizedTaskWorkflowInfo(BaseModel):
+    name: str
+    step: str
+    step_name: str
+
+
+class PrioritizedTaskItem(BaseModel):
+    task: TaskResponse
+    urgency: Literal["overdue", "today", "tomorrow", "this_week", "upcoming"]
+    d_day: Optional[int] = None
+    workflow_info: Optional[PrioritizedTaskWorkflowInfo] = None
+    source: Literal["manual", "workflow", "compliance"] = "manual"
+
+
 class DashboardBaseResponse(BaseModel):
     date: str
     day_of_week: str
@@ -71,6 +105,12 @@ class DashboardBaseResponse(BaseModel):
     this_week: list[TaskResponse] = Field(default_factory=list)
     upcoming: list[TaskResponse] = Field(default_factory=list)
     no_deadline: list[TaskResponse] = Field(default_factory=list)
+    prioritized_tasks: list[PrioritizedTaskItem] = Field(default_factory=list)
+    compliance: DashboardComplianceWidget = Field(default_factory=DashboardComplianceWidget)
+    doc_collection: DashboardDocCollectionWidget = Field(
+        default_factory=lambda: DashboardDocCollectionWidget(current_quarter="-", completion_pct=0.0, pending_companies=0)
+    )
+    urgent_alerts: list[DashboardUrgentAlertItem] = Field(default_factory=list)
 
 
 class DashboardWorkflowsResponse(BaseModel):
@@ -105,6 +145,7 @@ class DashboardTodayResponse(BaseModel):
     this_week: list[TaskResponse] = Field(default_factory=list)
     upcoming: list[TaskResponse] = Field(default_factory=list)
     no_deadline: list[TaskResponse] = Field(default_factory=list)
+    prioritized_tasks: list[PrioritizedTaskItem] = Field(default_factory=list)
     active_workflows: list[ActiveWorkflowItem] = Field(default_factory=list)
     fund_summary: list[FundSummaryItem] = Field(default_factory=list)
     missing_documents: list[MissingDocumentItem] = Field(default_factory=list)
@@ -114,6 +155,11 @@ class DashboardTodayResponse(BaseModel):
     completed_last_week: list[TaskResponse] = Field(default_factory=list)
     completed_today_count: int
     completed_this_week_count: int
+    compliance: DashboardComplianceWidget = Field(default_factory=DashboardComplianceWidget)
+    doc_collection: DashboardDocCollectionWidget = Field(
+        default_factory=lambda: DashboardDocCollectionWidget(current_quarter="-", completion_pct=0.0, pending_companies=0)
+    )
+    urgent_alerts: list[DashboardUrgentAlertItem] = Field(default_factory=list)
 
 
 class UpcomingNoticeItem(BaseModel):

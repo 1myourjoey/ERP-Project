@@ -1,13 +1,16 @@
 ﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  downloadGeneratedDocument,
   fetchDocumentStatus,
+  fetchGeneratedDocuments,
   fetchFunds,
   fetchCompanies,
   updateInvestmentDocument,
   type DocumentStatusItem,
   type Fund,
   type Company,
+  type GeneratedDocumentItem,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
@@ -36,6 +39,22 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   )
 }
 
+function toDateTime(value: string | null | undefined) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('ko-KR')
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function DocumentsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -53,6 +72,10 @@ export default function DocumentsPage() {
       fund_id: fundId === '' ? undefined : fundId,
       company_id: companyId === '' ? undefined : companyId,
     }),
+  })
+  const { data: generatedDocs = [], isLoading: generatedLoading } = useQuery<GeneratedDocumentItem[]>({
+    queryKey: ['generatedDocuments'],
+    queryFn: () => fetchGeneratedDocuments({ limit: 200 }),
   })
 
   const updateStatusMut = useMutation({
@@ -175,6 +198,54 @@ export default function DocumentsPage() {
               )}
             </tbody>
           </table>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-gray-700">자동 생성 문서 이력</h3>
+          <span className="text-xs text-gray-500">{generatedDocs.length}건</span>
+        </div>
+        {generatedLoading ? (
+          <PageLoading />
+        ) : !generatedDocs.length ? (
+          <EmptyState emoji="🧾" message="자동 생성 문서가 없습니다." className="py-8" />
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-xs">
+                <tr>
+                  <th className="px-3 py-2 text-left">생성일</th>
+                  <th className="px-3 py-2 text-left">문서명</th>
+                  <th className="px-3 py-2 text-left">유형</th>
+                  <th className="px-3 py-2 text-left">다운로드</th>
+                </tr>
+              </thead>
+              <tbody>
+                {generatedDocs.map((doc) => (
+                  <tr key={doc.id} className="border-t border-gray-100">
+                    <td className="px-3 py-2">{toDateTime(doc.created_at)}</td>
+                    <td className="px-3 py-2">{doc.filename}</td>
+                    <td className="px-3 py-2">
+                      <span className="tag tag-gray">{doc.builder_label || doc.builder}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        className="secondary-btn btn-sm"
+                        onClick={async () => {
+                          const blob = await downloadGeneratedDocument(doc.id)
+                          downloadBlob(blob, doc.filename)
+                          addToast('success', '문서를 다운로드했습니다.')
+                        }}
+                      >
+                        다운로드
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

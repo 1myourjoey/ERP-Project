@@ -31,6 +31,7 @@ class WorkflowInstance(Base):
     company_id = Column(Integer, ForeignKey("portfolio_companies.id"), nullable=True)
     fund_id = Column(Integer, ForeignKey("funds.id", ondelete="SET NULL"), nullable=True)
     gp_entity_id = Column(Integer, ForeignKey("gp_entities.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
     workflow = relationship("Workflow")
     investment = relationship("Investment")

@@ -14,8 +14,8 @@ import { useToast } from '../contexts/ToastContext'
 const LP_TYPE_OPTIONS = ['institutional', 'individual', 'GP']
 const LP_TYPE_LABEL: Record<string, string> = {
   institutional: '기관투자자',
-  individual: '개인',
-  GP: '법인',
+  individual: '개인투자자',
+  GP: 'GP',
   corporate: '법인',
   government: '정부기관',
 }
@@ -54,7 +54,7 @@ export default function LPManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lpAddressBooks'] })
       setForm(EMPTY_FORM)
-      addToast('success', 'Address book entry created.')
+      addToast('success', '주소록 항목을 등록했습니다.')
     },
   })
 
@@ -65,7 +65,7 @@ export default function LPManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['lpAddressBooks'] })
       setEditing(null)
       setForm(EMPTY_FORM)
-      addToast('success', 'Address book entry updated.')
+      addToast('success', '주소록 항목을 수정했습니다.')
     },
   })
 
@@ -73,7 +73,7 @@ export default function LPManagementPage() {
     mutationFn: deactivateLPAddressBook,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lpAddressBooks'] })
-      addToast('success', 'Address book entry deactivated.')
+      addToast('success', '주소록 항목을 비활성화했습니다.')
     },
   })
 
@@ -91,7 +91,7 @@ export default function LPManagementPage() {
     }
 
     if (!payload.name || !payload.type) {
-      addToast('error', 'Name and type are required.')
+      addToast('error', '이름과 유형은 필수입니다.')
       return
     }
 
@@ -114,14 +114,14 @@ export default function LPManagementPage() {
       <div className="page-header">
         <div>
           <h2 className="page-title">LP 관리</h2>
-          <p className="page-subtitle">유형별 LP 현황과 출자 진행률을 함께 관리합니다.</p>
+          <p className="page-subtitle">LP 주소록과 출자 현황을 통합 관리합니다.</p>
         </div>
       </div>
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">
-            {editing ? 'Edit Address Book Entry' : 'Create Address Book Entry'}
+            {editing ? '주소록 항목 수정' : '주소록 항목 등록'}
           </h3>
           {editing ? (
             <button
@@ -131,63 +131,63 @@ export default function LPManagementPage() {
               }}
               className="secondary-btn"
             >
-              Cancel Edit
+              수정 취소
             </button>
           ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Name</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
             <input
               value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Type</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">유형</label>
             <select
               value={form.type}
-              onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             >
               {LP_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {LP_TYPE_LABEL[type] || type}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Business Number</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label>
             <input
               value={form.business_number || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, business_number: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, business_number: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Contact</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
             <input
               value={form.contact || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, contact: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Address</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
             <input
               value={form.address || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Memo</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
             <input
               value={form.memo || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, memo: event.target.value }))}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
@@ -195,24 +195,24 @@ export default function LPManagementPage() {
 
         <div className="flex gap-2">
           <button onClick={submit} disabled={createMut.isPending || updateMut.isPending} className="primary-btn">
-            {editing ? 'Save' : 'Create'}
+            {editing ? '저장' : '등록'}
           </button>
         </div>
       </div>
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-700">Address Book Entries</h3>
+          <h3 className="text-sm font-semibold text-gray-700">LP 주소록 목록</h3>
           <div className="flex items-center gap-2">
             <input
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(event) => setKeyword(event.target.value)}
               placeholder="이름/유형/사업자번호 검색"
               className="rounded-lg border px-3 py-2 text-sm"
             />
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(event) => setTypeFilter(event.target.value)}
               className="rounded-lg border px-3 py-2 text-sm"
             >
               <option value="">전체 유형</option>
@@ -223,16 +223,16 @@ export default function LPManagementPage() {
               ))}
             </select>
             <label className="inline-flex items-center gap-1 text-xs text-gray-600">
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-              Include inactive
+              <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+              비활성 포함
             </label>
           </div>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-500">불러오는 중...</p>
         ) : !visibleBooks.length ? (
-          <p className="text-sm text-gray-400">No entries found.</p>
+          <p className="text-sm text-gray-400">표시할 항목이 없습니다.</p>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -246,7 +246,7 @@ export default function LPManagementPage() {
                   <th className="px-2 py-2 text-right">납입액</th>
                   <th className="px-2 py-2 text-left">납입 진행률</th>
                   <th className="px-2 py-2 text-right">출자 잔액</th>
-                  <th className="px-2 py-2 text-left">연관 조합</th>
+                  <th className="px-2 py-2 text-left">연계 조합</th>
                   <th className="px-2 py-2 text-left">상태</th>
                   <th className="px-2 py-2 text-left">작업</th>
                 </tr>
@@ -279,7 +279,7 @@ export default function LPManagementPage() {
                     <td className="px-2 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                          {book.related_funds_count ?? 0} funds
+                          {book.related_funds_count ?? 0}개 조합
                         </span>
                         {(book.related_funds || []).slice(0, 3).map((fund) => (
                           <span
@@ -291,7 +291,7 @@ export default function LPManagementPage() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-2 py-2">{book.is_active ? 'active' : 'inactive'}</td>
+                    <td className="px-2 py-2">{book.is_active ? '활성' : '비활성'}</td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1">
                         <button
@@ -310,21 +310,21 @@ export default function LPManagementPage() {
                           }}
                           className="secondary-btn"
                         >
-                          Edit
+                          수정
                         </button>
                         {book.is_active ? (
                           <button
                             onClick={() => deactivateMut.mutate(book.id)}
                             className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
                           >
-                            Deactivate
+                            비활성
                           </button>
                         ) : (
                           <button
                             onClick={() => updateMut.mutate({ id: book.id, data: { is_active: 1 } })}
                             className="rounded-lg border border-emerald-200 px-3 py-1 text-xs text-emerald-600 hover:bg-emerald-50"
                           >
-                            Reactivate
+                            재활성
                           </button>
                         )}
                       </div>

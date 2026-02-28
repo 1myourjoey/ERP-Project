@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Clock, GitBranch, HelpCircle, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -7,6 +7,7 @@ import CompleteModal from '../components/CompleteModal'
 import EmptyState from '../components/EmptyState'
 import MiniCalendar from '../components/MiniCalendar'
 import TaskPipelineView from '../components/TaskPipelineView'
+import TaskAttachmentSection from '../components/common/TaskAttachmentSection'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
 import PageLoading from '../components/PageLoading'
@@ -76,6 +77,10 @@ interface WorkflowGroup {
   workflowInstanceId: number
   tasks: Task[]
   currentStep: Task | null
+  nextStep: Task | null
+  completedSteps: number
+  totalSteps: number
+  progressPercent: number
   progress: string
 }
 
@@ -169,11 +174,24 @@ function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: W
   for (const [workflowInstanceId, wfTasks] of wfMap.entries()) {
     const sorted = [...wfTasks].sort((a, b) => (a.workflow_step_order || 0) - (b.workflow_step_order || 0))
     const currentStep = sorted.find((task) => task.status !== 'completed') || sorted[0] || null
+    const nextStep = currentStep
+      ? sorted.find(
+        (task) =>
+          task.id !== currentStep.id &&
+          task.status !== 'completed' &&
+          (task.workflow_step_order || 0) > (currentStep.workflow_step_order || 0),
+      ) || null
+      : null
     const completedCount = sorted.filter((task) => task.status === 'completed').length
+    const totalSteps = sorted.length
     workflows.push({
       workflowInstanceId,
       tasks: sorted,
       currentStep,
+      nextStep,
+      completedSteps: completedCount,
+      totalSteps,
+      progressPercent: totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0,
       progress: `${completedCount}/${sorted.length}`,
     })
   }
@@ -249,6 +267,9 @@ const TaskItem = memo(function TaskItem({
               {task.category}
             </span>
           )}
+          {!!task.attachment_count && task.attachment_count > 0 && (
+            <span className="tag tag-gray">📎 {task.attachment_count}</span>
+          )}
           {task.fund_name && (
             <span className="tag tag-blue">{task.fund_name}</span>
           )}
@@ -317,6 +338,16 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-indigo-800">{group.currentStep?.fund_name || '워크플로'}</p>
           <p className="truncate text-xs text-indigo-600">현재: {group.currentStep?.title || '-'}</p>
+          <div className="mt-1 h-1.5 w-full rounded-full bg-indigo-200/80">
+            <div
+              className="h-1.5 rounded-full bg-indigo-500 transition-all"
+              style={{ width: `${group.progressPercent}%` }}
+            />
+          </div>
+          <p className="mt-1 truncate text-[11px] text-indigo-700">
+            진행률 {group.completedSteps}/{group.totalSteps} ({group.progressPercent}%)
+            {group.nextStep ? ` | 다음: ${group.nextStep.title}` : ''}
+          </p>
         </div>
         <span className="tag tag-indigo shrink-0">
           {group.progress}
@@ -326,18 +357,22 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
 
       {expanded && (
         <div className="space-y-1 border-t border-indigo-200 px-2 py-1.5">
-          {group.tasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onComplete={onComplete}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              selected={selectedTaskIds.has(task.id)}
-              onToggleSelect={onToggleSelect}
-              isBlinking={blinkingId === task.id}
-            />
-          ))}
+          {group.tasks.map((task) => {
+            const isCurrent = group.currentStep?.id === task.id
+            return (
+              <div key={task.id} className={isCurrent ? 'rounded-md ring-2 ring-indigo-300' : ''}>
+                <TaskItem
+                  task={task}
+                  onComplete={onComplete}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  selected={selectedTaskIds.has(task.id)}
+                  onToggleSelect={onToggleSelect}
+                  isBlinking={blinkingId === task.id}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -776,6 +811,11 @@ function EditTaskModal({
                 )}
               </div>
             )}
+            <TaskAttachmentSection
+              taskId={task.id}
+              workflowInstanceId={task.workflow_instance_id}
+              workflowStepOrder={task.workflow_step_order}
+            />
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
@@ -876,6 +916,13 @@ function TaskDetailModal({
               )}
             </div>
           )}
+          <TaskAttachmentSection
+            taskId={task.id}
+            workflowInstanceId={task.workflow_instance_id}
+            workflowStepOrder={task.workflow_step_order}
+            readOnly
+            compact
+          />
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
@@ -1057,6 +1104,7 @@ export default function TaskBoardPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [statusFilter, setStatusFilter] = useState<'pending' | 'all' | 'completed'>('pending')
   const [fundFilter, setFundFilter] = useState('')
+  const [quickDueFilter, setQuickDueFilter] = useState<'all' | 'today' | 'this_week' | 'overdue'>('all')
   const [completedYear, setCompletedYear] = useState(currentYear)
   const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
   const [mobileFilterHintStatus, setMobileFilterHintStatus] = useState<'pending' | 'all' | 'completed'>('pending')
@@ -1208,6 +1256,41 @@ export default function TaskBoardPage() {
     }
 
     return true
+  }
+
+  const filterByQuickDue = (tasks: Task[]) => {
+    if (quickDueFilter === 'all') return tasks
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const endOfToday = startOfToday + 24 * 60 * 60 * 1000
+    const endOfWeek = startOfToday + 7 * 24 * 60 * 60 * 1000
+
+    return tasks.filter((task) => {
+      if (task.status === 'completed') return false
+      if (!task.deadline) return false
+      const deadlineMs = new Date(task.deadline).getTime()
+      if (Number.isNaN(deadlineMs)) return false
+      if (quickDueFilter === 'overdue') {
+        return deadlineMs < startOfToday
+      }
+      if (quickDueFilter === 'today') {
+        return deadlineMs >= startOfToday && deadlineMs < endOfToday
+      }
+      if (quickDueFilter === 'this_week') {
+        return deadlineMs >= startOfToday && deadlineMs < endOfWeek
+      }
+      return true
+    })
+  }
+
+  const sortTasksForQuadrant = (tasks: Task[], quadrantKey: string): Task[] => {
+    if (quadrantKey !== 'Q1') return tasks
+    return [...tasks].sort((a, b) => {
+      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY
+      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY
+      if (aDeadline !== bDeadline) return aDeadline - bDeadline
+      return a.id - b.id
+    })
   }
 
   const updateMutation = useMutation({
@@ -1365,8 +1448,13 @@ export default function TaskBoardPage() {
   }, [addToast, findTaskById])
 
   const allVisibleTasks = useMemo(
-    () => QUADRANTS.flatMap((quadrant) => filterByFund(board?.[quadrant.key] || [])),
-    [board, fundFilter],
+    () =>
+      QUADRANTS.flatMap((quadrant) =>
+        filterByQuickDue(
+          filterByFund(board?.[quadrant.key] || []),
+        ),
+      ),
+    [board, fundFilter, quickDueFilter],
   )
   const selectedVisibleTasks = useMemo(
     () => allVisibleTasks.filter((task) => selectedTaskIds.has(task.id)),
@@ -1494,6 +1582,7 @@ export default function TaskBoardPage() {
   const handleOverdueConfirm = useCallback(() => {
     setStatusFilter('pending')
     setFundFilter('')
+    setQuickDueFilter('overdue')
     setBoardView('board')
 
     const firstOverdueTask = overdueTasks[0]
@@ -1509,6 +1598,7 @@ export default function TaskBoardPage() {
   const handleUrgentConfirm = useCallback(() => {
     setStatusFilter('pending')
     setFundFilter('')
+    setQuickDueFilter('today')
     setBoardView('board')
 
     const firstUrgentTask = urgentTasks[0]
@@ -1582,6 +1672,27 @@ export default function TaskBoardPage() {
             <p className="mt-1 px-1 text-[11px] text-gray-500 md:hidden">
               {STATUS_FILTER_META[mobileFilterHintStatus]}
             </p>
+          </div>
+
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
+            {([
+              { key: 'all', label: '모든 업무' },
+              { key: 'today', label: '오늘 마감' },
+              { key: 'this_week', label: '이번주' },
+              { key: 'overdue', label: '기한초과' },
+            ] as const).map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setQuickDueFilter(item.key)}
+                className={`rounded-md px-2 py-1 text-xs transition-colors ${
+                  quickDueFilter === item.key
+                    ? 'bg-white font-medium text-gray-800 shadow'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
           {statusFilter === 'completed' && (
@@ -1726,7 +1837,10 @@ export default function TaskBoardPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {QUADRANTS.map((quadrant) => {
-            const allTasks = filterByFund(board?.[quadrant.key] || [])
+            const allTasks = sortTasksForQuadrant(
+              filterByQuickDue(filterByFund(board?.[quadrant.key] || [])),
+              quadrant.key,
+            )
             const { standalone, workflows } = groupTasksByWorkflow(allTasks)
 
             return (

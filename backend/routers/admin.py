@@ -9,6 +9,7 @@ from database import get_db
 from models.fund import Fund, LP
 from models.phase3 import CapitalCall, CapitalCallItem
 from models.workflow_instance import WorkflowInstance
+from seed.compliance_rules_seed import seed_compliance_rules
 
 router = APIRouter(tags=["admin"])
 
@@ -185,3 +186,9 @@ def run_integrity_check(db: Session = Depends(get_db)):
             "orphan_workflow_count": len(orphan_workflows),
         },
     }
+
+
+@router.post("/api/admin/seed-compliance-rules")
+def run_seed_compliance_rules(db: Session = Depends(get_db)):
+    seeded, skipped = seed_compliance_rules(db)
+    return {"seeded": seeded, "skipped": skipped}

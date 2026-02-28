@@ -1,4 +1,8 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿from pathlib import Path
+from urllib.parse import unquote
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 
 import json
 
@@ -9,10 +13,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
+from dependencies.auth import get_current_user
 from models.fund import Fund, LP, LPTransfer
 from models.gp_entity import GPEntity
 from models.investment import Investment, PortfolioCompany
 from models.document_template import DocumentTemplate
+from models.attachment import Attachment
 from models.phase3 import CapitalCall, CapitalCallItem
 from models.workflow import (
     Workflow,
@@ -25,6 +31,7 @@ from models.workflow_instance import WorkflowInstance, WorkflowStepInstance
 from models.workflow_instance import WorkflowStepInstanceDocument
 from models.task import Task
 from models.task_category import TaskCategory
+from models.user import User
 from models.worklog import WorkLog
 from schemas.workflow import (
     WorkflowResponse,
@@ -61,6 +68,8 @@ from services.fund_integrity import (
 )
 
 router = APIRouter(tags=["workflows"])
+_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
+_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 CAPITAL_CALL_ID_PATTERNS = [
     re.compile(r"\[linked\s*capitalcall\s*:\s*#?(\d+)\]", re.IGNORECASE),
@@ -421,7 +430,7 @@ def _clone_step_documents_to_instance_step(
                 timing=doc.timing,
                 notes=doc.notes,
                 checked=False,
-                attachment_ids=doc.attachment_ids,
+                attachment_ids=list(doc.attachment_ids or []),
             )
         )
 
@@ -458,6 +467,27 @@ def _resolve_step_instance_document(
     )
     if not document:
         raise HTTPException(status_code=404, detail="단계 서류를 찾을 수 없습니다")
+    return document
+
+
+def _resolve_step_instance_document_by_id(
+    db: Session,
+    *,
+    document_id: int,
+    require_active: bool = True,
+) -> WorkflowStepInstanceDocument:
+    document = db.get(WorkflowStepInstanceDocument, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="단계 서류를 찾을 수 없습니다")
+    step_instance = db.get(WorkflowStepInstance, document.step_instance_id)
+    if not step_instance:
+        raise HTTPException(status_code=404, detail="단계 인스턴스를 찾을 수 없습니다")
+    if require_active:
+        instance = db.get(WorkflowInstance, step_instance.instance_id)
+        if not instance:
+            raise HTTPException(status_code=404, detail="인스턴스를 찾을 수 없습니다")
+        if instance.status != "active":
+            raise HTTPException(status_code=400, detail="진행 중 인스턴스만 서류를 수정할 수 있습니다")
     return document
 
 def _create_worklog_for_completed_step(
@@ -887,8 +917,12 @@ def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 @router.post("/api/workflows/{workflow_id}/instantiate", response_model=WorkflowInstanceResponse)
-
-def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session = Depends(get_db)):
+def instantiate(
+    workflow_id: int,
+    data: WorkflowInstantiateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     wf = db.get(Workflow, workflow_id)
 
     if not wf:
@@ -939,6 +973,7 @@ def instantiate(workflow_id: int, data: WorkflowInstantiateRequest, db: Session 
             company_id=company_id,
             fund_id=fund_id,
             gp_entity_id=gp_entity_id,
+            created_by=current_user.id,
             auto_commit=False,
         )
         db.commit()
@@ -1358,6 +1393,118 @@ def check_step_instance_document(
         db.commit()
     except Exception:
         db.rollback()
+        raise
+    db.refresh(document)
+    return document
+
+
+@router.patch(
+    "/api/workflow-step-instance-documents/{document_id}/check",
+    response_model=WorkflowStepInstanceDocumentResponse,
+)
+def check_step_instance_document_by_id(
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    document = _resolve_step_instance_document_by_id(
+        db,
+        document_id=document_id,
+    )
+    document.checked = True
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(document)
+    return document
+
+
+@router.patch(
+    "/api/workflow-step-instance-documents/{document_id}/uncheck",
+    response_model=WorkflowStepInstanceDocumentResponse,
+)
+def uncheck_step_instance_document_by_id(
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    document = _resolve_step_instance_document_by_id(
+        db,
+        document_id=document_id,
+    )
+    document.checked = False
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(document)
+    return document
+
+
+@router.post(
+    "/api/workflow-step-instance-documents/{document_id}/attach",
+    response_model=WorkflowStepInstanceDocumentResponse,
+)
+async def attach_step_instance_document_by_id(
+    document_id: int,
+    request: Request,
+    x_file_name: str | None = Header(default=None, alias="X-File-Name"),
+    attachment_id: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+):
+    document = _resolve_step_instance_document_by_id(
+        db,
+        document_id=document_id,
+    )
+
+    uploaded_path: Path | None = None
+    resolved_attachment_id: int | None = None
+    if attachment_id is not None:
+        attachment = db.get(Attachment, attachment_id)
+        if not attachment:
+            raise HTTPException(status_code=404, detail="첨부 파일을 찾을 수 없습니다")
+        attachment.entity_type = "workflow_step_instance_document"
+        attachment.entity_id = document.id
+        resolved_attachment_id = attachment.id
+    else:
+        original_name = unquote((x_file_name or "").strip())
+        if not original_name:
+            raise HTTPException(status_code=400, detail="파일명이 비어 있습니다")
+        payload = await request.body()
+        if not payload:
+            raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다")
+
+        suffix = Path(original_name).suffix.lower()
+        stored_name = f"{uuid4().hex}{suffix}"
+        uploaded_path = _UPLOAD_DIR / stored_name
+        with uploaded_path.open("wb") as stream:
+            stream.write(payload)
+
+        attachment = Attachment(
+            filename=stored_name,
+            original_filename=original_name,
+            file_path=str(uploaded_path),
+            file_size=len(payload),
+            mime_type=request.headers.get("content-type"),
+            entity_type="workflow_step_instance_document",
+            entity_id=document.id,
+        )
+        db.add(attachment)
+        db.flush()
+        resolved_attachment_id = attachment.id
+
+    attachment_ids = document.attachment_ids or []
+    if resolved_attachment_id is not None and resolved_attachment_id not in attachment_ids:
+        attachment_ids.append(resolved_attachment_id)
+    document.attachment_ids = attachment_ids
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        if uploaded_path is not None and uploaded_path.exists():
+            uploaded_path.unlink(missing_ok=True)
         raise
     db.refresh(document)
     return document
@@ -1802,4 +1949,5 @@ def _build_instance_response(
         step_instances=step_responses,
         progress=f"{completed}/{total}",
     )
+
 

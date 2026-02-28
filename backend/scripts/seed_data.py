@@ -1525,6 +1525,23 @@ def seed_all(db: Session) -> None:
     reset_seed_data_if_requested(db)
     seed_accounts(db)
 
+    # When funds already exist (e.g., migration/import completed), running the
+    # full demo seed can fail because downstream demo fixtures expect specific
+    # fund names. Skip demo dataset seeding in that case.
+    allow_seed_on_existing_funds = os.getenv("SEED_ON_EXISTING_FUNDS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "y",
+    }
+    has_existing_funds = db.query(Fund.id).first() is not None
+    if has_existing_funds and not allow_seed_on_existing_funds:
+        print("[seed] existing funds detected: skip demo seed dataset (set SEED_ON_EXISTING_FUNDS=1 to force)")
+        # Keep lightweight metadata seeds idempotent.
+        seed_workflow_templates(db)
+        seed_document_templates(db)
+        return
+
     funds = seed_funds(db)
     lps = seed_lps(db, funds)
     seed_capital_calls(db, funds, lps)

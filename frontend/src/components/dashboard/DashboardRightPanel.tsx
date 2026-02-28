@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Clock, FileWarning, Send } from 'lucide-react'
+import { Building2, ChevronDown, Clock, FileWarning, Send } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import EmptyState from '../EmptyState'
@@ -55,6 +55,7 @@ function DashboardRightPanel({
 }: DashboardRightPanelProps) {
   const navigate = useNavigate()
   const [rightTab, setRightTab] = useState<RightTab>('funds')
+  const [quickCollapsed, setQuickCollapsed] = useState(false)
   const [completedFilter, setCompletedFilter] = useState<'today' | 'this_week' | 'last_week'>('today')
   const { data: upcomingNotices = [], isLoading: noticesLoading } = useQuery<UpcomingNotice[]>({
     queryKey: ['dashboard-upcoming-notices', 30],
@@ -86,6 +87,27 @@ function DashboardRightPanel({
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">운영진 Quick View</h3>
+        <button
+          type="button"
+          onClick={() => setQuickCollapsed((prev) => !prev)}
+          className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+        >
+          {quickCollapsed ? '펼치기' : '접기'}
+          <ChevronDown size={12} className={`transition-transform ${quickCollapsed ? '-rotate-90' : ''}`} />
+        </button>
+      </div>
+
+      {quickCollapsed ? (
+        <div className="card-base dashboard-card grid grid-cols-1 gap-2 text-xs text-gray-600">
+          <p>조합 {funds.length}건</p>
+          <p>보고 마감 {reports.length}건</p>
+          <p>미수 서류 {missingDocuments.length}건</p>
+          <p>통지/노티스 {upcomingNotices.length}건</p>
+        </div>
+      ) : (
+        <>
       <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
         {RIGHT_TABS.map((tab) => {
           const count = tabCount[tab.key]
@@ -124,6 +146,10 @@ function DashboardRightPanel({
                   <p className="text-sm font-medium text-gray-800">{fund.name}</p>
                   <p className="text-xs text-gray-500">
                     LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    컴플라이언스 {fund.compliance_overdue}건 지연
+                    {' '}| 서류 {fund.doc_collection_progress || '-'}
                   </p>
                 </button>
               ))}
@@ -255,6 +281,8 @@ function DashboardRightPanel({
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       <div className="card-base dashboard-card">

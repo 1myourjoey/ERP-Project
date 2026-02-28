@@ -4,10 +4,12 @@ import base64
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
+from typing import Literal
 
 from docx import Document
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from openpyxl import Workbook
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,7 @@ from schemas.biz_report import (
     BizReportTemplateResponse,
     BizReportUpdate,
 )
+from services.generated_document_service import generate_and_store_document
 from services.biz_report_anomaly import detect_biz_report_anomalies
 
 router = APIRouter(tags=["biz-reports"])
@@ -49,6 +52,35 @@ NUMERIC_FIELDS = [
     "dpi",
 ]
 DATE_FIELDS = ["submission_date", "created_at"]
+DOC_STATUS_MAP = {
+    "financial_statement": "doc_financial_statement",
+    "biz_registration": "doc_biz_registration",
+    "shareholder_list": "doc_shareholder_list",
+    "corp_registry": "doc_corp_registry",
+    "insurance_cert": "doc_insurance_cert",
+    "credit_report": "doc_credit_report",
+    "other_changes": "doc_other_changes",
+}
+DOC_STATUS_ALLOWED = {"not_requested", "requested", "received", "verified"}
+DOC_RECEIVED_STATES = {"received", "verified"}
+
+
+class BizReportRequestDocStatusPatch(BaseModel):
+    doc_type: Literal[
+        "financial_statement",
+        "biz_registration",
+        "shareholder_list",
+        "corp_registry",
+        "insurance_cert",
+        "credit_report",
+        "other_changes",
+    ]
+    status: Literal["not_requested", "requested", "received", "verified"]
+
+
+class BizReportSendDocRequestsBody(BaseModel):
+    quarter: int | None = Field(default=None, ge=1, le=4)
+    deadline_days: int = Field(default=14, ge=1, le=90)
 
 
 def _to_primitive(value):
@@ -102,6 +134,16 @@ def _serialize_request(db: Session, row: BizReportRequest) -> BizReportRequestRe
         prev_revenue=float(row.prev_revenue) if row.prev_revenue is not None else None,
         prev_operating_income=float(row.prev_operating_income) if row.prev_operating_income is not None else None,
         prev_net_income=float(row.prev_net_income) if row.prev_net_income is not None else None,
+        doc_financial_statement=row.doc_financial_statement or "not_requested",
+        doc_biz_registration=row.doc_biz_registration or "not_requested",
+        doc_shareholder_list=row.doc_shareholder_list or "not_requested",
+        doc_corp_registry=row.doc_corp_registry or "not_requested",
+        doc_insurance_cert=row.doc_insurance_cert or "not_requested",
+        doc_credit_report=row.doc_credit_report or "not_requested",
+        doc_other_changes=row.doc_other_changes or "not_requested",
+        request_sent_date=row.request_sent_date,
+        request_deadline=row.request_deadline,
+        all_docs_received_date=row.all_docs_received_date,
         comment=row.comment,
         reviewer_comment=row.reviewer_comment,
         risk_flag=row.risk_flag,
@@ -120,6 +162,32 @@ def _serialize_anomaly(row: BizReportAnomaly) -> BizReportAnomalyResponse:
         acknowledged=bool(row.acknowledged),
         created_at=row.created_at,
     )
+
+
+def _doc_status_payload(row: BizReportRequest) -> dict[str, str]:
+    return {
+        "financial_statement": row.doc_financial_statement or "not_requested",
+        "biz_registration": row.doc_biz_registration or "not_requested",
+        "shareholder_list": row.doc_shareholder_list or "not_requested",
+        "corp_registry": row.doc_corp_registry or "not_requested",
+        "insurance_cert": row.doc_insurance_cert or "not_requested",
+        "credit_report": row.doc_credit_report or "not_requested",
+        "other_changes": row.doc_other_changes or "not_requested",
+    }
+
+
+def _received_doc_count(row: BizReportRequest) -> int:
+    payload = _doc_status_payload(row)
+    return sum(1 for value in payload.values() if value in DOC_RECEIVED_STATES)
+
+
+def _is_all_docs_received(row: BizReportRequest) -> bool:
+    return _received_doc_count(row) >= len(DOC_STATUS_MAP)
+
+
+def _report_quarter(report: BizReport) -> int:
+    base = report.created_at.date() if report.created_at else date.today()
+    return ((base.month - 1) // 3) + 1
 
 
 def _latest_nav(db: Session, fund_id: int) -> float:
@@ -283,6 +351,211 @@ def list_biz_report_requests(report_id: int, db: Session = Depends(get_db)):
     return [_serialize_request(db, row) for row in rows]
 
 
+@router.get("/api/biz-reports/doc-collection-matrix")
+def get_doc_collection_matrix(
+    report_id: int | None = None,
+    fund_id: int | None = None,
+    year: int | None = None,
+    quarter: int | None = None,
+    db: Session = Depends(get_db),
+):
+    report: BizReport | None = None
+    if report_id is not None:
+        report = db.get(BizReport, report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="영업보고를 찾을 수 없습니다")
+    else:
+        query = db.query(BizReport)
+        if fund_id is not None:
+            query = query.filter(BizReport.fund_id == fund_id)
+        if year is not None:
+            query = query.filter(BizReport.report_year == year)
+        candidates = query.order_by(BizReport.created_at.desc(), BizReport.id.desc()).all()
+        if quarter is not None:
+            candidates = [row for row in candidates if _report_quarter(row) == quarter]
+        report = candidates[0] if candidates else None
+
+    if not report:
+        raise HTTPException(status_code=404, detail="조회 가능한 영업보고가 없습니다")
+
+    requests = (
+        db.query(BizReportRequest)
+        .filter(BizReportRequest.biz_report_id == report.id)
+        .order_by(BizReportRequest.id.asc())
+        .all()
+    )
+    fund = db.get(Fund, report.fund_id)
+
+    companies: list[dict] = []
+    completed_companies = 0
+    for req in requests:
+        investment = db.get(Investment, req.investment_id)
+        company = db.get(PortfolioCompany, investment.company_id) if investment else None
+        docs = _doc_status_payload(req)
+        received_count = _received_doc_count(req)
+        completed = received_count >= len(DOC_STATUS_MAP)
+        if completed:
+            completed_companies += 1
+
+        if completed:
+            status_label = "완료"
+        elif received_count > 0:
+            status_label = f"{received_count}/{len(DOC_STATUS_MAP)}"
+        elif any(value == "requested" for value in docs.values()):
+            status_label = "요청중"
+        else:
+            status_label = "미요청"
+
+        companies.append(
+            {
+                "company_name": company.name if company else f"Investment #{req.investment_id}",
+                "request_id": req.id,
+                "docs": docs,
+                "received_count": received_count,
+                "status": status_label,
+            }
+        )
+
+    total_companies = len(companies)
+    completion_pct = round((completed_companies / total_companies * 100), 1) if total_companies else 0.0
+    current_quarter = f"{report.report_year}-Q{_report_quarter(report)}"
+    return {
+        "report_id": report.id,
+        "fund_id": report.fund_id,
+        "fund_name": fund.name if fund else f"Fund #{report.fund_id}",
+        "quarter": current_quarter,
+        "total_companies": total_companies,
+        "completed_companies": completed_companies,
+        "completion_pct": completion_pct,
+        "companies": companies,
+    }
+
+
+@router.patch("/api/biz-report-requests/{request_id}/doc-status", response_model=BizReportRequestResponse)
+def patch_biz_report_request_doc_status(
+    request_id: int,
+    data: BizReportRequestDocStatusPatch,
+    db: Session = Depends(get_db),
+):
+    row = db.get(BizReportRequest, request_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="요청 건을 찾을 수 없습니다")
+
+    if data.status not in DOC_STATUS_ALLOWED:
+        raise HTTPException(status_code=400, detail="지원하지 않는 서류 상태입니다")
+    column_name = DOC_STATUS_MAP.get(data.doc_type)
+    if not column_name:
+        raise HTTPException(status_code=400, detail="지원하지 않는 서류 유형입니다")
+
+    setattr(row, column_name, data.status)
+    if data.status != "not_requested" and row.request_sent_date is None:
+        row.request_sent_date = date.today()
+    if row.request_deadline is None and row.request_sent_date is not None:
+        row.request_deadline = row.request_sent_date + timedelta(days=14)
+
+    if _is_all_docs_received(row):
+        if row.all_docs_received_date is None:
+            row.all_docs_received_date = date.today()
+        row.status = "완료"
+    else:
+        row.all_docs_received_date = None
+        statuses = list(_doc_status_payload(row).values())
+        if any(value in DOC_RECEIVED_STATES for value in statuses):
+            row.status = "검토중"
+        elif any(value == "requested" for value in statuses):
+            row.status = "요청"
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(row)
+    return _serialize_request(db, row)
+
+
+@router.post("/api/biz-reports/{report_id}/send-doc-requests")
+def send_doc_requests(
+    report_id: int,
+    body: BizReportSendDocRequestsBody | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    report = db.get(BizReport, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="영업보고를 찾을 수 없습니다")
+
+    payload = body or BizReportSendDocRequestsBody()
+    target_quarter = payload.quarter or _report_quarter(report)
+    today = date.today()
+    deadline = today + timedelta(days=payload.deadline_days)
+
+    rows = (
+        db.query(BizReportRequest)
+        .filter(BizReportRequest.biz_report_id == report_id)
+        .order_by(BizReportRequest.id.asc())
+        .all()
+    )
+    if not rows:
+        raise HTTPException(status_code=400, detail="요청 데이터가 없습니다")
+
+    pending_rows: list[BizReportRequest] = []
+    for row in rows:
+        if _is_all_docs_received(row):
+            continue
+        for column_name in DOC_STATUS_MAP.values():
+            current = getattr(row, column_name, None)
+            if current in (None, "", "not_requested"):
+                setattr(row, column_name, "requested")
+        row.request_sent_date = today
+        row.request_deadline = deadline
+        row.all_docs_received_date = None
+        row.status = "요청"
+        pending_rows.append(row)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    generated_documents: list[dict] = []
+    failures: list[dict] = []
+    for row in pending_rows:
+        try:
+            generated = generate_and_store_document(
+                "doc_request_letter",
+                {
+                    "fund_id": report.fund_id,
+                    "investment_id": row.investment_id,
+                    "year": report.report_year,
+                    "quarter": target_quarter,
+                },
+                db,
+            )
+            generated_documents.append(
+                {
+                    "request_id": row.id,
+                    "investment_id": row.investment_id,
+                    **generated,
+                }
+            )
+        except Exception as exc:
+            failures.append(
+                {
+                    "request_id": row.id,
+                    "investment_id": row.investment_id,
+                    "reason": str(exc),
+                }
+            )
+
+    return {
+        "report_id": report_id,
+        "updated_requests": len(pending_rows),
+        "generated_documents": generated_documents,
+        "failed_documents": failures,
+    }
+
+
 @router.post("/api/biz-reports/{report_id}/requests/generate", response_model=list[BizReportRequestResponse])
 def generate_biz_report_requests(report_id: int, db: Session = Depends(get_db)):
     report = db.get(BizReport, report_id)
@@ -312,6 +585,8 @@ def generate_biz_report_requests(report_id: int, db: Session = Depends(get_db)):
                 request_date=date.today(),
                 deadline=date.today() + timedelta(days=14),
                 status="요청",
+                request_sent_date=date.today(),
+                request_deadline=date.today() + timedelta(days=14),
             )
             db.add(row)
             generated.append(row)

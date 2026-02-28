@@ -2,15 +2,17 @@ import re
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.biz_report import BizReport
+from models.biz_report import BizReport, BizReportRequest
+from models.compliance import ComplianceObligation, ComplianceRule
 from models.fee import ManagementFee
 from models.fund import Fund, FundNoticePeriod
 from models.gp_entity import GPEntity
 from models.investment import Investment, InvestmentDocument, PortfolioCompany
+from models.internal_review import InternalReview
 from models.investment_review import InvestmentReview
 from models.phase3 import CapitalCallDetail, CapitalCallItem
 from models.regular_report import RegularReport
@@ -35,6 +37,52 @@ MONTHLY_REMINDER_TITLES = (
     "?띻툑???붾낫怨?({year_month})",
     "踰ㅼ쿂?묓쉶 VICS ?붾낫怨?({year_month})",
 )
+DOC_STATUS_COLUMNS = [
+    "doc_financial_statement",
+    "doc_biz_registration",
+    "doc_shareholder_list",
+    "doc_corp_registry",
+    "doc_insurance_cert",
+    "doc_credit_report",
+    "doc_other_changes",
+]
+PRIORITY_URGENCY_RANK = {
+    "overdue": 0,
+    "today": 1,
+    "tomorrow": 2,
+    "this_week": 3,
+    "upcoming": 4,
+}
+
+
+def _quarter_label(target: date) -> str:
+    quarter = ((target.month - 1) // 3) + 1
+    return f"{target.year}-Q{quarter}"
+
+
+def _report_quarter(report: BizReport) -> int:
+    base = report.created_at.date() if report.created_at else date.today()
+    return ((base.month - 1) // 3) + 1
+
+
+def _request_received_count(row: BizReportRequest) -> int:
+    received = 0
+    for column in DOC_STATUS_COLUMNS:
+        status = getattr(row, column, None)
+        if status in {"received", "verified"}:
+            received += 1
+    return received
+
+
+def _internal_review_due_date(review: InternalReview) -> date:
+    quarter_end_map = {
+        1: date(review.year, 3, 31),
+        2: date(review.year, 6, 30),
+        3: date(review.year, 9, 30),
+    }
+    quarter_end = quarter_end_map.get(review.quarter, date(review.year, 12, 31))
+    # Quarter-end review is due by the end of the following month.
+    return quarter_end + timedelta(days=31)
 
 
 def _parse_memo_dates(memo: str | None, year: int) -> list[date]:
@@ -68,6 +116,135 @@ def _dashboard_week_bounds(target: date) -> tuple[date, date]:
     week_start = target - timedelta(days=target.weekday())
     week_end = week_start + timedelta(days=6)
     return week_start, week_end
+
+
+def _task_deadline_value(task: Task) -> date | None:
+    if task.deadline is None:
+        return None
+    if isinstance(task.deadline, datetime):
+        return task.deadline.date()
+    return task.deadline
+
+
+def _classify_task_urgency(
+    deadline: date | None,
+    *,
+    today: date,
+    tomorrow: date,
+    week_end: date,
+) -> tuple[str, int | None]:
+    if deadline is None:
+        return ("upcoming", None)
+    if deadline < today:
+        return ("overdue", (deadline - today).days)
+    if deadline == today:
+        return ("today", 0)
+    if deadline == tomorrow:
+        return ("tomorrow", 1)
+    if deadline <= week_end:
+        return ("this_week", (deadline - today).days)
+    return ("upcoming", (deadline - today).days)
+
+
+def _normalize_task_source(task: Task) -> str:
+    source = (task.source or "").strip().lower()
+    if source in {"workflow", "compliance", "manual"}:
+        return source
+    if task.obligation_id is not None:
+        return "compliance"
+    if task.workflow_instance_id is not None:
+        return "workflow"
+    return "manual"
+
+
+def _build_workflow_priority_info(
+    db: Session,
+    task: Task,
+    lookup_context: dict[str, dict[int, object]],
+) -> dict | None:
+    if task.workflow_instance_id is None:
+        return None
+
+    instance_map = lookup_context.get("instances", {})
+    instance = instance_map.get(task.workflow_instance_id) if instance_map else None
+    if instance is None:
+        instance = db.get(WorkflowInstance, task.workflow_instance_id)
+    if instance is None:
+        return None
+
+    ordered_steps = sorted(instance.step_instances, key=_step_instance_order_key)
+    if not ordered_steps:
+        return {
+            "name": instance.name,
+            "step": "0/0",
+            "step_name": "-",
+        }
+
+    current_step = next(
+        (row for row in ordered_steps if row.status in ("in_progress", "pending")),
+        ordered_steps[-1],
+    )
+    total_steps = len(ordered_steps)
+    step_order = 1
+    if current_step and current_step.step and current_step.step.order is not None:
+        step_order = int(current_step.step.order)
+    step_order = max(1, min(step_order, total_steps))
+    step_name = current_step.step.name if current_step and current_step.step else "-"
+
+    return {
+        "name": instance.name,
+        "step": f"{step_order}/{total_steps}",
+        "step_name": step_name,
+    }
+
+
+def _build_prioritized_tasks(
+    db: Session,
+    *,
+    today: date,
+    tomorrow: date,
+    week_end: date,
+    tasks: list[Task],
+    lookup_context: dict[str, dict[int, object]],
+) -> list[dict]:
+    sorted_payload: list[tuple[tuple, dict]] = []
+    source_rank = {"workflow": 0, "compliance": 1, "manual": 2}
+
+    for task in tasks:
+        task_resp = _task_response(db, task, lookup_context)
+        deadline = _task_deadline_value(task)
+        urgency, d_day = _classify_task_urgency(
+            deadline,
+            today=today,
+            tomorrow=tomorrow,
+            week_end=week_end,
+        )
+        workflow_info = _build_workflow_priority_info(db, task, lookup_context)
+        source = _normalize_task_source(task)
+        deadline_order = d_day if d_day is not None else 10**6
+        sort_key = (
+            PRIORITY_URGENCY_RANK.get(urgency, 99),
+            deadline_order,
+            source_rank.get(source, 9),
+            0 if workflow_info else 1,
+            (task.deadline.isoformat() if task.deadline else "9999-12-31"),
+            task.id,
+        )
+        sorted_payload.append(
+            (
+                sort_key,
+                {
+                    "task": task_resp,
+                    "urgency": urgency,
+                    "d_day": d_day,
+                    "workflow_info": workflow_info,
+                    "source": source,
+                },
+            )
+        )
+
+    sorted_payload.sort(key=lambda row: row[0])
+    return [row[1] for row in sorted_payload]
 
 
 def _step_instance_order_key(step_instance) -> tuple[int, int]:
@@ -340,6 +517,163 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
                     week_tasks.append(task_resp)
                     break
 
+    prioritized_tasks = _build_prioritized_tasks(
+        db,
+        today=today,
+        tomorrow=tomorrow,
+        week_end=week_end,
+        tasks=pending_tasks,
+        lookup_context=pending_task_context,
+    )
+
+    compliance_summary = {
+        "overdue_count": 0,
+        "due_this_week": 0,
+        "due_this_month": 0,
+    }
+    try:
+        if today.month == 12:
+            month_end = date(today.year, 12, 31)
+        else:
+            month_end = date(today.year, today.month + 1, 1) - timedelta(days=1)
+
+        active_obligation_query = db.query(ComplianceObligation).filter(
+            ComplianceObligation.status.notin_(["completed", "waived"])
+        )
+        compliance_summary["overdue_count"] = int(
+            active_obligation_query
+            .filter(ComplianceObligation.due_date < today)
+            .count()
+        )
+        compliance_summary["due_this_week"] = int(
+            active_obligation_query
+            .filter(ComplianceObligation.due_date >= today, ComplianceObligation.due_date <= week_end)
+            .count()
+        )
+        compliance_summary["due_this_month"] = int(
+            active_obligation_query
+            .filter(ComplianceObligation.due_date >= today, ComplianceObligation.due_date <= month_end)
+            .count()
+        )
+    except Exception:
+        compliance_summary = {"overdue_count": 0, "due_this_week": 0, "due_this_month": 0}
+
+    current_quarter_num = ((today.month - 1) // 3) + 1
+    doc_collection_summary = {
+        "current_quarter": _quarter_label(today),
+        "completion_pct": 0.0,
+        "pending_companies": 0,
+    }
+    try:
+        quarter_reports = [
+            row
+            for row in db.query(BizReport)
+            .filter(BizReport.report_year == today.year)
+            .order_by(BizReport.created_at.desc(), BizReport.id.desc())
+            .all()
+            if _report_quarter(row) == current_quarter_num
+        ]
+        report_ids = [row.id for row in quarter_reports]
+        if report_ids:
+            request_rows = (
+                db.query(BizReportRequest)
+                .filter(BizReportRequest.biz_report_id.in_(report_ids))
+                .all()
+            )
+            total_companies = len(request_rows)
+            completed_companies = sum(1 for row in request_rows if _request_received_count(row) >= len(DOC_STATUS_COLUMNS))
+            pending_companies = max(0, total_companies - completed_companies)
+            completion_pct = round((completed_companies / total_companies * 100), 1) if total_companies else 0.0
+            doc_collection_summary = {
+                "current_quarter": _quarter_label(today),
+                "completion_pct": completion_pct,
+                "pending_companies": pending_companies,
+            }
+    except Exception:
+        doc_collection_summary = {
+            "current_quarter": _quarter_label(today),
+            "completion_pct": 0.0,
+            "pending_companies": 0,
+        }
+
+    urgent_alerts: list[dict] = []
+    try:
+        overdue_rows = (
+            db.query(ComplianceObligation)
+            .filter(
+                ComplianceObligation.status.notin_(["completed", "waived"]),
+                ComplianceObligation.due_date < today,
+            )
+            .order_by(ComplianceObligation.due_date.asc(), ComplianceObligation.id.asc())
+            .limit(5)
+            .all()
+        )
+        for row in overdue_rows:
+            rule = db.get(ComplianceRule, row.rule_id)
+            fund = db.get(Fund, row.fund_id)
+            overdue_days = (today - row.due_date).days if row.due_date else 0
+            urgent_alerts.append(
+                {
+                    "type": "overdue",
+                    "message": f"{(rule.rule_code if rule else '의무')} ({fund.name if fund else f'Fund #{row.fund_id}'}) D+{overdue_days} 기한 초과",
+                    "due_date": row.due_date.isoformat() if row.due_date else None,
+                }
+            )
+    except Exception:
+        pass
+
+    try:
+        adhoc_tasks = (
+            db.query(Task)
+            .filter(
+                Task.status.in_(["pending", "in_progress"]),
+                Task.deadline.isnot(None),
+                or_(Task.title.like("%수시%"), Task.category.like("%수시%")),
+            )
+            .order_by(Task.deadline.asc(), Task.id.asc())
+            .limit(5)
+            .all()
+        )
+        for task in adhoc_tasks:
+            deadline = task.deadline.date() if isinstance(task.deadline, datetime) else task.deadline
+            if deadline is None:
+                continue
+            urgent_alerts.append(
+                {
+                    "type": "adhoc",
+                    "message": f"수시보고: {task.title} 마감 {deadline.strftime('%m/%d')}",
+                    "due_date": deadline.isoformat(),
+                }
+            )
+    except Exception:
+        pass
+
+    try:
+        overdue_reviews = (
+            db.query(InternalReview)
+            .filter(InternalReview.status != "completed")
+            .order_by(InternalReview.year.asc(), InternalReview.quarter.asc(), InternalReview.id.asc())
+            .all()
+        )
+        for review in overdue_reviews:
+            due_date = _internal_review_due_date(review)
+            if due_date >= today:
+                continue
+            fund = db.get(Fund, review.fund_id)
+            overdue_days = (today - due_date).days
+            quarter_label = f"{review.quarter}Q{str(review.year)[-2:]}"
+            urgent_alerts.append(
+                {
+                    "type": "internal_review",
+                    "message": f"내부보고회 ({fund.name if fund else f'Fund #{review.fund_id}'}) {quarter_label} 미완료 D+{overdue_days}",
+                    "due_date": due_date.isoformat(),
+                }
+            )
+            if len(urgent_alerts) >= 12:
+                break
+    except Exception:
+        pass
+
     return {
         "monthly_reminder": monthly_reminder,
         "investment_review_active_count": investment_review_active_count,
@@ -352,6 +686,10 @@ def _dashboard_base_payload(db: Session, today: date) -> dict:
         "this_week": week_tasks,
         "upcoming": upcoming_tasks,
         "no_deadline": no_deadline_tasks,
+        "prioritized_tasks": prioritized_tasks,
+        "compliance": compliance_summary,
+        "doc_collection": doc_collection_summary,
+        "urgent_alerts": urgent_alerts[:12],
     }
 
 
@@ -428,6 +766,38 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
     funds = db.query(Fund).order_by(Fund.id.desc()).all()
     for fund in funds:
         investment_count = db.query(Investment).filter(Investment.fund_id == fund.id).count()
+        compliance_overdue = int(
+            db.query(func.count(ComplianceObligation.id))
+            .filter(
+                ComplianceObligation.fund_id == fund.id,
+                ComplianceObligation.status.notin_(["completed", "waived"]),
+                ComplianceObligation.due_date < today,
+            )
+            .scalar()
+            or 0
+        )
+
+        latest_report = (
+            db.query(BizReport)
+            .filter(BizReport.fund_id == fund.id)
+            .order_by(BizReport.created_at.desc(), BizReport.id.desc())
+            .first()
+        )
+        doc_collection_progress = None
+        if latest_report:
+            report_requests = (
+                db.query(BizReportRequest)
+                .filter(BizReportRequest.biz_report_id == latest_report.id)
+                .all()
+            )
+            if report_requests:
+                completed = sum(
+                    1 for row in report_requests if _request_received_count(row) >= len(DOC_STATUS_COLUMNS)
+                )
+                doc_collection_progress = f"{completed}/{len(report_requests)}"
+            else:
+                doc_collection_progress = "0/0"
+
         fund_summary.append(
             {
                 "id": fund.id,
@@ -438,6 +808,8 @@ def _dashboard_sidebar_payload(db: Session, today: date) -> dict:
                 "aum": fund.aum,
                 "lp_count": len(fund.lps),
                 "investment_count": investment_count,
+                "compliance_overdue": compliance_overdue,
+                "doc_collection_progress": doc_collection_progress,
             }
         )
 

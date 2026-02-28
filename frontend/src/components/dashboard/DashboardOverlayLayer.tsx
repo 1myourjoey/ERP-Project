@@ -39,7 +39,7 @@ interface DashboardOverlayLayerProps {
   selectedWorkflowLoading: boolean
   selectedTask: Task | null
   selectedTaskEditable: boolean
-  onCreateTask: (task: TaskCreate) => void
+  onCreateTask: (task: TaskCreate) => Promise<Task>
   onCloseQuickAddModal: () => void
   onClosePopup: () => void
   onOpenTask: (task: Task, editable?: boolean) => void

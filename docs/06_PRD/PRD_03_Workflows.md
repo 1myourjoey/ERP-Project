@@ -2,7 +2,7 @@
 
 > **상위 문서:** [PRD_MASTER.md](./PRD_MASTER.md)
 > **관련 페이지:** `/workflows`
-> **상태:** 🟡 개발 중 | **최종 업데이트:** 2026-02-23
+> **상태:** 🟡 개발 중 | **최종 업데이트:** 2026-02-24
 
 ---
 
@@ -34,6 +34,31 @@
 | US-11 | ?? ?? ??? ?? | ???? ????? ???? `?? ??` ??? ???? ?? CRUD ? ?? ?? ??(dry-run/??)? ??? ? ??. ??? DB ???(`steps_json`, `reminder_offsets`, `created_at`, `updated_at`)??? `/api/workflows`, `/api/periodic-schedules`? 500 ?? ???? ??. | ?? | ?? ??? |
 | US-12 | 템플릿 단계 서류 파일 첨부 | 관리자는 템플릿 단계 서류에 파일을 첨부할 수 있고, 해당 첨부는 인스턴스 생성 시 단계 서류로 복제되어 다운로드할 수 있다. | 필수 | ✅ 완료 |
 | US-13 | 단계 순서 조정 | 관리자는 TemplateModal에서 단계별 `↑/↓` 버튼으로 순서를 재배치할 수 있다. | 필수 | ✅ 완료 |
+| US-14 | Task 첨부-단계서류 자동 동기화 | 관리자는 업무보드(Task)에서 파일을 첨부/해제할 때 연결된 워크플로 단계 서류의 `attachment_ids`와 `checked` 상태가 자동으로 동기화되는 흐름을 사용할 수 있다. | 필수 | ✅ 완료 |
+| US-15 | 템플릿 단계서류 첨부 UI 통합 | 관리자는 TemplateModal 단계 서류 첨부를 공용 첨부 패널(FileAttachmentPanel)로 동일 UX로 사용하며, 기존/드래프트 서류 모두 업로드·다운로드·삭제를 일관되게 처리할 수 있다. | 필수 | ✅ 완료 |
+
+### Phase 42 상태 업데이트
+
+| 대상 | 상태 | 변경 내용 |
+|---|---|---|
+| US-04 | 🔄 변경됨 | Task 완료 전 필수 서류 체크 상태를 API 응답(`documents`)으로 구조화하고, 체크/해제 결과가 즉시 반영되도록 연동 |
+| US-05 | 🔄 변경됨 | 단계 서류 인스턴스 단위의 check/uncheck/attach API(`workflow-step-instance-documents`)를 추가해 완료 잠금 해소 경로를 명확화 |
+
+### Phase 42_1 상태 업데이트
+
+| 대상 | 상태 | 변경 내용 |
+|---|---|---|
+| US-04 | 🔄 변경됨 | Task 첨부 파일 연동 시 단계 서류의 `checked`가 자동 True/False로 전환되도록 동기화 규칙을 확장 |
+| US-05 | 🔄 변경됨 | Task 첨부 링크 API(`POST /api/tasks/{id}/link-attachment`)를 통해 단계 서류 `attachment_ids` 자동 추가를 지원 |
+| US-14 | ✅ 완료 | Task 첨부 해제 API(`DELETE /api/tasks/{id}/unlink-attachment/{attachment_id}`)에서 단계 서류 attachment_ids 제거 및 빈 서류 `checked=False` 복원을 구현 |
+
+### Phase 42_2 상태 업데이트
+
+| 대상 | 상태 | 변경 내용 |
+|---|---|---|
+| US-02 | 🔄 변경됨 | TemplateModal 단계 서류 편집에서 기존 인라인 파일첨부(input/file list) 구현을 공용 FileAttachmentPanel 기반으로 치환 |
+| US-12 | 🔄 변경됨 | 템플릿 단계 서류의 기존 첨부/드래프트 첨부 모두 공용 패널에서 조회·다운로드·삭제되도록 통합 |
+| US-15 | ✅ 완료 | FileAttachmentPanel 신규 추가 + TaskAttachmentSection 리팩토링으로 템플릿/업무 첨부 UX를 단일 컴포넌트 계열로 통합 |
 
 ---
 
@@ -60,4 +85,7 @@
 | 2026-02-22 | Phase 31_4 반영: 템플릿 카테고리 자동등록 및 인스턴스 Task 카테고리/notice·report 플래그 전파, 단계 완료 WorkLog 카테고리 보강, 인스턴스 조회 eager loading과 lookup-context로 N+1 완화 |
 | 2026-02-23 | Phase 32 ??: ?? ?? ???/?? ?? API, ?? ?? ?? ???????, ????? ?? ? step_documents ?? ?? |
 | 2026-02-23 | Phase 32 Hotfix ??: periodic_schedules ??? ??? ??(steps_json/reminder_offsets/created_at/updated_at) ?? ? ?? ??? ???? /api/workflows, /api/periodic-schedules 500 ?? ?? |
+| 2026-02-24 | Phase 42 반영: 단계 서류 check/uncheck/attach 전용 API와 completion-check 구조화 응답(documents)을 추가 |
+| 2026-02-24 | Phase 42_1 반영: Task 첨부 링크/해제 API로 단계 서류 attachment_ids·checked 자동 동기화 흐름을 추가 |
+| 2026-02-24 | Phase 42_2 반영: TemplateModal 단계 서류 첨부를 FileAttachmentPanel로 통합하고, 템플릿→인스턴스 attachment_ids 복사 경로를 보강 |
 

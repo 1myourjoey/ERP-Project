@@ -1,8 +1,15 @@
 ﻿import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Check, ChevronDown, Lightbulb, X } from 'lucide-react'
 
-import { fetchTaskCompletionCheck, fetchWorkLogLessonsByCategory } from '../lib/api'
+import {
+  attachWorkflowStepInstanceDocumentById,
+  checkWorkflowStepInstanceDocumentById,
+  fetchTaskCompletionCheck,
+  fetchWorkLogLessonsByCategory,
+  uncheckWorkflowStepInstanceDocumentById,
+} from '../lib/api'
+import TaskAttachmentSection from './common/TaskAttachmentSection'
 import TimeSelect from './TimeSelect'
 
 interface CompleteTaskLike {
@@ -12,6 +19,8 @@ interface CompleteTaskLike {
   fund_name?: string | null
   category?: string | null
   fund_id?: number | null
+  workflow_instance_id?: number | null
+  workflow_step_order?: number | null
 }
 
 interface CompleteModalProps {
@@ -27,6 +36,7 @@ export default function CompleteModal({
   onCancel,
   storageKey = 'autoWorklog',
 }: CompleteModalProps) {
+  const queryClient = useQueryClient()
   const [actualTime, setActualTime] = useState(task.estimated_time || '')
   const [memo, setMemo] = useState('')
   const [showLessons, setShowLessons] = useState(true)
@@ -40,6 +50,23 @@ export default function CompleteModal({
     queryFn: () => fetchTaskCompletionCheck(task.id),
     enabled: Number.isFinite(task.id) && task.id > 0,
     staleTime: 0,
+  })
+  const completionCheckQueryKey = ['task-completion-check', task.id] as const
+  const toggleDocumentCheckMut = useMutation({
+    mutationFn: ({ documentId, checked }: { documentId: number; checked: boolean }) =>
+      checked
+        ? uncheckWorkflowStepInstanceDocumentById(documentId)
+        : checkWorkflowStepInstanceDocumentById(documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: completionCheckQueryKey })
+    },
+  })
+  const attachDocumentMut = useMutation({
+    mutationFn: ({ documentId, file }: { documentId: number; file: File }) =>
+      attachWorkflowStepInstanceDocumentById(documentId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: completionCheckQueryKey })
+    },
   })
 
   const normalizedCategory = (task.category || '').trim()
@@ -55,6 +82,7 @@ export default function CompleteModal({
     staleTime: 30_000,
   })
 
+  const documents = completionCheck.data?.documents ?? []
   const missingDocuments = completionCheck.data?.missing_documents ?? []
   const warnings = completionCheck.data?.warnings ?? []
   const canComplete = completionCheck.data?.can_complete ?? true
@@ -128,17 +156,83 @@ export default function CompleteModal({
             </div>
           )}
 
-          {missingDocuments.length > 0 && (
+          {documents.length > 0 && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               <div className="mb-1 flex items-center gap-1 font-semibold">
                 <AlertTriangle size={14} />
-                필수 서류 미첨부
+                완료 전 필수 서류 확인
               </div>
-              <ul className="space-y-0.5">
-                {missingDocuments.map((documentName) => (
-                  <li key={documentName}>• {documentName}</li>
-                ))}
-              </ul>
+              <div className="space-y-2">
+                {documents.map((document) => {
+                  const checkPending =
+                    toggleDocumentCheckMut.isPending &&
+                    toggleDocumentCheckMut.variables?.documentId === document.id
+                  const attachPending =
+                    attachDocumentMut.isPending &&
+                    attachDocumentMut.variables?.documentId === document.id
+                  return (
+                    <div key={document.id} className="rounded border border-red-200 bg-white px-2 py-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-800">
+                          {document.name}
+                          {document.required ? ' (필수)' : ''}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] ${
+                              document.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {document.checked ? '확인됨' : '미확인'}
+                          </span>
+                          {document.has_attachment && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] text-blue-700">첨부됨</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <label
+                          htmlFor={`complete-modal-attach-${document.id}`}
+                          className={`cursor-pointer rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50 ${
+                            attachPending ? 'pointer-events-none opacity-60' : ''
+                          }`}
+                        >
+                          {attachPending ? '첨부 중...' : '첨부'}
+                        </label>
+                        <input
+                          id={`complete-modal-attach-${document.id}`}
+                          type="file"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            if (!file) return
+                            attachDocumentMut.mutate({ documentId: document.id, file })
+                            event.currentTarget.value = ''
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={checkPending}
+                          onClick={() =>
+                            toggleDocumentCheckMut.mutate({
+                              documentId: document.id,
+                              checked: document.checked,
+                            })
+                          }
+                          className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        >
+                          {checkPending ? '처리 중...' : document.checked ? '확인 해제' : '확인 완료'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {!canComplete && missingDocuments.length > 0 && (
+                <p className="mt-2 text-[11px] text-red-700">
+                  미확인 필수서류: {missingDocuments.join(', ')}
+                </p>
+              )}
             </div>
           )}
 
@@ -155,6 +249,16 @@ export default function CompleteModal({
               </ul>
             </div>
           )}
+
+          <div className="mb-3">
+            <TaskAttachmentSection
+              taskId={task.id}
+              workflowInstanceId={task.workflow_instance_id}
+              workflowStepOrder={task.workflow_step_order}
+              readOnly
+              compact
+            />
+          </div>
 
           <label className="mb-1 block text-xs text-gray-500">실제 소요 시간</label>
           <TimeSelect value={actualTime} onChange={setActualTime} />

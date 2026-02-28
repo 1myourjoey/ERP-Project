@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+import logging
 import io
 from urllib.parse import quote
 
@@ -42,8 +43,10 @@ from schemas.fund import (
 from services.workflow_service import calculate_business_days_before
 from services.workflow_service import instantiate_workflow
 from services.fund_integrity import validate_lp_paid_in_pair
+from services.compliance_engine import ComplianceEngine
 
 router = APIRouter(tags=["funds"])
+logger = logging.getLogger(__name__)
 OVERVIEW_UNIT = 1_000_000
 
 MIGRATION_FUND_HEADERS = [
@@ -782,6 +785,40 @@ def build_fund_overview(
         }
         for row in investment_rows
     }
+    fund_ids = [fund.id for fund in funds]
+    active_workflow_by_fund: dict[int, int] = {}
+    pending_task_by_fund: dict[int, int] = {}
+    if fund_ids:
+        active_workflow_by_fund = {
+            int(row.fund_id): int(row.count or 0)
+            for row in (
+                db.query(
+                    WorkflowInstance.fund_id.label("fund_id"),
+                    func.count(WorkflowInstance.id).label("count"),
+                )
+                .filter(
+                    WorkflowInstance.fund_id.in_(fund_ids),
+                    WorkflowInstance.status == "active",
+                )
+                .group_by(WorkflowInstance.fund_id)
+                .all()
+            )
+        }
+        pending_task_by_fund = {
+            int(row.fund_id): int(row.count or 0)
+            for row in (
+                db.query(
+                    Task.fund_id.label("fund_id"),
+                    func.count(Task.id).label("count"),
+                )
+                .filter(
+                    Task.fund_id.in_(fund_ids),
+                    Task.status.in_(["pending", "in_progress"]),
+                )
+                .group_by(Task.fund_id)
+                .all()
+            )
+        }
 
     totals = {
         "commitment_total": 0.0,
@@ -791,6 +828,8 @@ def build_fund_overview(
         "uninvested": 0.0,
         "investment_assets": 0.0,
         "company_count": 0,
+        "active_workflow_count": 0,
+        "pending_task_count": 0,
     }
 
     items: list[FundOverviewItem] = []
@@ -848,6 +887,8 @@ def build_fund_overview(
             uninvested=to_overview_unit(uninvested),
             investment_assets=to_overview_unit(investment_assets),
             company_count=company_count,
+            active_workflow_count=active_workflow_by_fund.get(fund.id, 0),
+            pending_task_count=pending_task_by_fund.get(fund.id, 0),
             hurdle_rate=fund.hurdle_rate,
             remaining_period=remaining,
         )
@@ -859,8 +900,8 @@ def build_fund_overview(
         totals["total_invested"] += float(total_invested or 0)
         totals["uninvested"] += float(uninvested or 0)
         totals["investment_assets"] += float(investment_assets or 0)
-
-    fund_ids = [fund.id for fund in funds]
+        totals["active_workflow_count"] += int(active_workflow_by_fund.get(fund.id, 0))
+        totals["pending_task_count"] += int(pending_task_by_fund.get(fund.id, 0))
     if fund_ids:
         totals["company_count"] = int(
             db.query(func.count(func.distinct(Investment.company_id)))
@@ -883,6 +924,8 @@ def build_fund_overview(
             uninvested=to_overview_unit(totals["uninvested"]) or 0,
             investment_assets=to_overview_unit(totals["investment_assets"]) or 0,
             company_count=totals["company_count"],
+            active_workflow_count=totals["active_workflow_count"],
+            pending_task_count=totals["pending_task_count"],
         ),
     )
 
@@ -1830,6 +1873,17 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=409, detail="Duplicate LP in the same fund is not allowed") from exc
     db.refresh(lp)
+
+    try:
+        ComplianceEngine(db).on_lp_changed(fund_id, "joined")
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on create_lp: fund_id=%s lp_id=%s error=%s",
+            fund_id,
+            lp.id,
+            exc,
+        )
     return lp
 
 
@@ -1908,6 +1962,17 @@ def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
 
     db.delete(lp)
     db.commit()
+
+    try:
+        ComplianceEngine(db).on_lp_changed(fund_id, "withdrawn")
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on delete_lp: fund_id=%s lp_id=%s error=%s",
+            fund_id,
+            lp_id,
+            exc,
+        )
 
 
 @router.put("/api/funds/{fund_id}/notice-periods", response_model=list[FundNoticePeriodResponse])

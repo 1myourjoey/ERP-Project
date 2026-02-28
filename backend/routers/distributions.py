@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -16,8 +18,10 @@ from schemas.phase3 import (
     DistributionResponse,
     DistributionUpdate,
 )
+from services.compliance_engine import ComplianceEngine
 
 router = APIRouter(tags=["distributions"])
+logger = logging.getLogger(__name__)
 
 
 def _ensure_fund(db: Session, fund_id: int) -> None:
@@ -89,6 +93,18 @@ def create_distribution(data: DistributionCreate, db: Session = Depends(get_db))
         db.rollback()
         raise
     db.refresh(row)
+
+    try:
+        ComplianceEngine(db).on_distribution_executed(row.fund_id)
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on create_distribution: distribution_id=%s fund_id=%s error=%s",
+            row.id,
+            row.fund_id,
+            exc,
+        )
+
     return row
 
 

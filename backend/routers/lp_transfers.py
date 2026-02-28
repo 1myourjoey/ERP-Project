@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -15,8 +16,10 @@ from schemas.lp_transfer import (
 )
 from services.lp_transfer_service import apply_lp_transfer_completion
 from services.workflow_service import instantiate_workflow
+from services.compliance_engine import ComplianceEngine
 
 router = APIRouter(tags=["lp_transfers"])
+logger = logging.getLogger(__name__)
 
 LP_TRANSFER_WORKFLOW_NAME = "LP 양수양도"
 LP_TRANSFER_WORKFLOW_CATEGORY = "LP교체"
@@ -275,4 +278,16 @@ def complete_lp_transfer(
         db.rollback()
         raise
     db.refresh(transfer)
+
+    try:
+        ComplianceEngine(db).on_lp_changed(fund_id, "transferred")
+    except Exception as exc:  # noqa: BLE001 - hook failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance hook failed on complete_lp_transfer: fund_id=%s transfer_id=%s error=%s",
+            fund_id,
+            transfer_id,
+            exc,
+        )
+
     return _build_transfer_response(db, transfer)

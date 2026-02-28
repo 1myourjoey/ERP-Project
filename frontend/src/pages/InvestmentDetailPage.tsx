@@ -395,20 +395,73 @@ export default function InvestmentDetailPage() {
             {!linkedWorkflows?.length ? (
               <p className="text-sm text-gray-400">연결된 워크플로우 인스턴스가 없습니다.</p>
             ) : (
-              <div className="space-y-2">
-                {linkedWorkflows.map((instance) => (
-                  <button
-                    key={instance.id}
-                    onClick={() => navigate('/workflows', { state: { expandInstanceId: instance.id } })}
-                    className="w-full text-left border border-indigo-200 bg-indigo-50 rounded-lg p-2 hover:bg-indigo-100"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-900">{instance.name}</p>
-                <span className="tag tag-indigo">{instance.progress}</span>
+              <div className="space-y-3">
+                {linkedWorkflows.map((instance) => {
+                  const sortedSteps = [...(instance.step_instances || [])].sort(
+                    (a, b) => new Date(a.calculated_date).getTime() - new Date(b.calculated_date).getTime(),
+                  )
+                  const totalSteps = sortedSteps.length
+                  const completedSteps = sortedSteps.filter((step) => step.status === 'completed' || step.status === 'skipped').length
+                  const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
+                  const currentStep = sortedSteps.find((step) => step.status === 'in_progress' || step.status === 'pending') || sortedSteps[totalSteps - 1]
+                  const missingRequiredDocs = (currentStep?.step_documents || []).filter((doc) => doc.required && !doc.checked)
+
+                  return (
+                    <div key={instance.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                      <button
+                        onClick={() => navigate('/workflows', { state: { expandInstanceId: instance.id } })}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-indigo-900">
+                            {instance.name}
+                          </p>
+                          <span className="tag tag-indigo">{instance.progress}</span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-indigo-700">
+                          {instance.workflow_name} | {labelStatus(instance.status)} | 시작일 {formatDate(instance.trigger_date)}
+                        </p>
+                        <div className="mt-2 h-2 w-full rounded-full bg-indigo-200">
+                          <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${progressPct}%` }} />
+                        </div>
+                        <p className="mt-1 text-xs text-indigo-700">진행률 {completedSteps}/{totalSteps} ({progressPct}%)</p>
+                      </button>
+
+                      <div className="mt-3 space-y-1">
+                        {sortedSteps.map((step, index) => {
+                          const isCurrent = currentStep?.id === step.id
+                          const isDone = step.status === 'completed' || step.status === 'skipped'
+                          return (
+                            <div
+                              key={step.id}
+                              className={`rounded border px-2 py-1.5 text-xs ${
+                                isCurrent
+                                  ? 'border-blue-300 bg-blue-50 text-blue-800'
+                                  : isDone
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                    : 'border-gray-200 bg-white text-gray-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="truncate">{index + 1}. {step.step_name || '단계'}</p>
+                                <span>{labelStatus(step.status)}</span>
+                              </div>
+                              <p className="mt-0.5 text-[11px] opacity-80">
+                                일정 {formatDate(step.calculated_date)}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {missingRequiredDocs.length > 0 && (
+                        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                          필수 서류 미확인: {missingRequiredDocs.map((doc) => doc.name).join(', ')}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-indigo-700 mt-0.5">{instance.workflow_name} | {labelStatus(instance.status)} | 시작일 {formatDate(instance.trigger_date)}</p>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             )}
               </div>

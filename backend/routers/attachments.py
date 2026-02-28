@@ -9,7 +9,9 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
+from dependencies.auth import get_current_user
 from models.attachment import Attachment
+from models.user import User
 from schemas.attachment import AttachmentLinkUpdate, AttachmentResponse
 
 router = APIRouter(tags=["attachments"])
@@ -39,6 +41,7 @@ async def upload_attachment(
     entity_type: str | None = Query(default=None),
     entity_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     original_name = unquote((x_file_name or "").strip())
     if not original_name:
@@ -63,6 +66,7 @@ async def upload_attachment(
         mime_type=request.headers.get("content-type"),
         entity_type=entity_type,
         entity_id=entity_id,
+        uploaded_by=current_user.id,
     )
     db.add(row)
     try:

@@ -11,6 +11,7 @@ import {
   createDistributionItem,
   createFundLP,
   createLPTransfer,
+  downloadGeneratedDocument,
   deleteAssembly,
   deleteDistribution,
   deleteDistributionItem,
@@ -25,12 +26,14 @@ import {
   fetchFeeConfig,
   fetchFund,
   fetchInvestments,
+  fetchTasks,
   fetchManagementFeesByFund,
   fetchLPTransfers,
   fetchLPAddressBooks,
   fetchValuations,
   fetchWorkflows,
   fetchWorkflowInstances,
+  generateDocumentByBuilder,
   updateAssembly,
   updateDistribution,
   updateDistributionItem,
@@ -60,6 +63,7 @@ import {
   type LPTransferInput,
   type ManagementFeeResponse,
   type NoticeDeadlineResult,
+  type Task,
   type Valuation,
   type WorkflowInstance,
   type WorkflowListItem,
@@ -69,6 +73,7 @@ import { useToast } from '../contexts/ToastContext'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
+import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface FundInvestmentListItem {
@@ -143,13 +148,14 @@ const FUND_STATUS_OPTIONS = [
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
 const FUND_DETAIL_TABS = [
-  { id: 'overview', label: '대시보드' },
+  { id: 'overview', label: '조합 요약' },
   { id: 'info', label: '기본정보' },
   { id: 'capital', label: '자본 및 LP 현황' },
   { id: 'portfolio', label: '투자 포트폴리오' },
   { id: 'nav', label: 'NAV 추이' },
   { id: 'fees', label: '보수' },
   { id: 'terms', label: '규약 및 컴플라이언스' },
+  { id: 'documents', label: '📄 서류 생성' },
 ] as const
 
 type FundDetailTab = typeof FUND_DETAIL_TABS[number]['id']
@@ -307,6 +313,17 @@ function toDate(value: string | null | undefined): string {
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 function normalizeCallType(value: string | null | undefined): string {
@@ -1182,6 +1199,19 @@ export default function FundDetailPage() {
     queryFn: () => fetchDocumentStatus({ fund_id: fundId, status: 'pending' }),
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
+  const { data: pendingTasks = [] } = useQuery<Task[]>({
+    queryKey: ['tasks', { fund_id: fundId, status: 'pending-and-progress' }],
+    queryFn: async () => {
+      const [pending, inProgress] = await Promise.all([
+        fetchTasks({ fund_id: fundId, status: 'pending' }),
+        fetchTasks({ fund_id: fundId, status: 'in_progress' }),
+      ])
+      const merged = [...pending, ...inProgress]
+      const byId = new Map(merged.map((row) => [row.id, row]))
+      return Array.from(byId.values())
+    },
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
 
   const { data: capitalCalls = [] } = useQuery<CapitalCall[]>({
     queryKey: ['capitalCalls', { fund_id: fundId }],
@@ -1550,6 +1580,21 @@ export default function FundDetailPage() {
     onSuccess: () => {
       invalidateFundLinked()
       addToast('success', 'LP가 삭제되었습니다.')
+    },
+  })
+  const generateContributionCertMut = useMutation({
+    mutationFn: async ({ lpId }: { lpId: number }) => {
+      const generated = await generateDocumentByBuilder({
+        builder: 'contribution_cert',
+        params: { fund_id: fundId, lp_id: lpId },
+      })
+      const blob = await downloadGeneratedDocument(generated.document_id)
+      return { generated, blob }
+    },
+    onSuccess: ({ generated, blob }) => {
+      downloadBlob(blob, generated.filename)
+      queryClient.invalidateQueries({ queryKey: ['generatedDocuments'] })
+      addToast('success', '출자증서를 생성했습니다.')
     },
   })
 
@@ -1940,28 +1985,86 @@ export default function FundDetailPage() {
             </div>
           )}
           {activeTab === 'overview' && (
-            <div className="card-base">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">미수 서류</h3>
-              {!missingDocs?.length ? (
-                <p className="text-sm text-gray-400">미수 서류가 없습니다.</p>
-              ) : (
-                <div className="space-y-2">
-                  {missingDocs.map((doc) => (
-                    <div key={doc.id} className="border border-gray-100 rounded p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
-                        {dueText(doc) && (
-                          <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
-                            {dueText(doc)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
-                    </div>
-                  ))}
+            <>
+              <div className="card-base space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700">조합 요약</h3>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    약정/납입
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {formatKRW(capitalCommitmentBase)} / {formatKRW(lpPaidInTotal)}
+                    </p>
+                  </div>
+                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    투자 포트폴리오
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {(investments?.length ?? 0)}건 / {formatKRW(totalInvestmentAmount)}
+                    </p>
+                  </div>
+                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    진행 워크플로
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {fundWorkflowInstances.filter((row) => row.status === 'active').length}건
+                    </p>
+                  </div>
+                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    미완료 업무
+                    <p className="mt-1 font-semibold text-gray-900">{pendingTasks.length}건</p>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-gray-600">최근 LP 변경</p>
+                    {lpTransfers.length === 0 ? (
+                      <p className="mt-1 text-xs text-gray-400">최근 변경 이력이 없습니다.</p>
+                    ) : (
+                      <div className="mt-1 space-y-1">
+                        {[...lpTransfers]
+                          .sort((a, b) => (b.id - a.id))
+                          .slice(0, 5)
+                          .map((row) => (
+                            <p key={row.id} className="text-xs text-gray-700">
+                              {toDate(row.transfer_date)} | {row.from_lp_name} → {row.to_lp_name || '신규 LP'} | {labelStatus(row.status)}
+                            </p>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-gray-600">보고/문서 현황</p>
+                    <div className="mt-1 space-y-1 text-xs text-gray-700">
+                      <p>미수 서류: {missingDocs?.length ?? 0}건</p>
+                      <p>미수령 보수: {feePendingCount}건</p>
+                      <p>대기/진행 양수양도: {lpTransfers.filter((row) => row.status !== 'completed' && row.status !== 'cancelled').length}건</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-base">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">미수 서류</h3>
+                {!missingDocs?.length ? (
+                  <p className="text-sm text-gray-400">미수 서류가 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {missingDocs.map((doc) => (
+                      <div key={doc.id} className="border border-gray-100 rounded p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
+                          {dueText(doc) && (
+                            <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
+                              {dueText(doc)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {formationTemplateModal && (
@@ -2089,6 +2192,13 @@ export default function FundDetailPage() {
                                 <span className="text-xs text-gray-500">{lp.note}</span>
                                 <div className="flex gap-1">
                                   <button onClick={() => setEditingLPId(lp.id)} className="secondary-btn">수정</button>
+                                  <button
+                                    onClick={() => generateContributionCertMut.mutate({ lpId: lp.id })}
+                                    disabled={generateContributionCertMut.isPending && generateContributionCertMut.variables?.lpId === lp.id}
+                                    className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                                  >
+                                    출자증서
+                                  </button>
                                   <button onClick={() => setTransferSourceLp(lp)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">양수양도</button>
                                   <button onClick={() => { if (confirm('이 LP를 삭제하시겠습니까?')) deleteLPMut.mutate(lp.id) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100">삭제</button>
                                 </div>
@@ -3209,6 +3319,10 @@ export default function FundDetailPage() {
                 </table>
               </div>
             </div>
+          )}
+
+          {activeTab === 'documents' && (
+            <FundDocumentGenerator fundId={fundId} fundName={fundDetail.name} />
           )}
 
           {transferSourceLp && (

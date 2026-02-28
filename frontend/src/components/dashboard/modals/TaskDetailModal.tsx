@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchWorkflow, fetchWorkflowInstance, type Task } from '../../../lib/api'
+import TaskAttachmentSection from '../../common/TaskAttachmentSection'
 
 interface TaskDetailModalProps {
   task: Task
@@ -111,6 +112,13 @@ function TaskDetailModal({
               )}
             </div>
           )}
+          <TaskAttachmentSection
+            taskId={task.id}
+            workflowInstanceId={task.workflow_instance_id}
+            workflowStepOrder={task.workflow_step_order}
+            readOnly
+            compact
+          />
         </div>
         {!editable && (
           <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">

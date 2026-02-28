@@ -1,5 +1,5 @@
 ﻿import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   KanbanSquare,
@@ -18,6 +18,8 @@ import {
   Landmark,
   Files,
   FileCode2,
+  FileSpreadsheet,
+  ShieldAlert,
   Users,
   Menu,
   Search,
@@ -26,6 +28,7 @@ import {
 
 import SearchModal from './SearchModal'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuth } from '../contexts/AuthContext'
 
 type NavItem = {
   to: string
@@ -83,7 +86,10 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
     items: [
       { to: '/lp-management', label: 'LP 관리', icon: Building2 },
       { to: '/users', label: '사용자 관리', icon: Users },
+      { to: '/compliance', label: '컴플라이언스', icon: ShieldAlert },
       { to: '/biz-reports', label: '영업보고', icon: FileText },
+      { to: '/vics', label: 'VICS 월보고', icon: FileSpreadsheet },
+      { to: '/internal-reviews', label: '내부보고회', icon: ClipboardCheck },
       { to: '/reports', label: '보고공시', icon: Send },
       { to: '/fund-operations', label: '조합 운영', icon: Landmark },
       { to: '/documents', label: '서류 현황', icon: Files },
@@ -92,38 +98,63 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
   },
 ]
 
-const MOBILE_GROUPS: Array<{ label: string; items: Array<{ to: string; label: string }> }> = [
-  {
-    label: '대시보드',
-    items: [{ to: DASHBOARD_GROUP.to, label: DASHBOARD_GROUP.label }],
-  },
-  ...DROPDOWN_GROUPS.map((group) => ({
-    label: group.label,
-    items: group.items.map((item) => ({ to: item.to, label: item.label })),
-  })),
-]
-
 const ShaderBackground = lazy(() => import('./ShaderBackground'))
 
 function isPathActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
+function userInitials(name: string | null | undefined): string {
+  const normalized = (name || '').trim()
+  if (!normalized) return 'U'
+  const parts = normalized.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
+  return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase()
+}
+
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const navRef = useRef<HTMLDivElement | null>(null)
   const { theme, setTheme, themes } = useTheme()
+  const { user, hasAccess, logout } = useAuth()
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  const visibleDropdownGroups = useMemo(
+    () =>
+      DROPDOWN_GROUPS
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => hasAccess(item.to)),
+        }))
+        .filter((group) => group.items.length > 0),
+    [hasAccess],
+  )
+
+  const mobileGroups = useMemo(
+    () => [
+      {
+        label: '대시보드',
+        items: [{ to: DASHBOARD_GROUP.to, label: DASHBOARD_GROUP.label }],
+      },
+      ...visibleDropdownGroups.map((group) => ({
+        label: group.label,
+        items: group.items.map((item) => ({ to: item.to, label: item.label })),
+      })),
+    ],
+    [visibleDropdownGroups],
+  )
 
   const activeDropdownGroup = useMemo(
     () =>
-      DROPDOWN_GROUPS.find((group) =>
+      visibleDropdownGroups.find((group) =>
         group.items.some((item) => isPathActive(location.pathname, item.to)),
       )?.label ?? null,
-    [location.pathname],
+    [location.pathname, visibleDropdownGroups],
   )
 
   const currentThemeIndex = useMemo(
@@ -145,6 +176,7 @@ export default function Layout() {
         setSearchOpen(false)
         setOpenDropdown(null)
         setMobileMenuOpen(false)
+        setUserMenuOpen(false)
       }
     }
 
@@ -156,21 +188,28 @@ export default function Layout() {
     const frame = window.requestAnimationFrame(() => {
       setOpenDropdown(null)
       setMobileMenuOpen(false)
+      setUserMenuOpen(false)
     })
     return () => window.cancelAnimationFrame(frame)
   }, [location.pathname])
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!openDropdown) return
+      if (!openDropdown && !userMenuOpen) return
       if (navRef.current && event.target instanceof Node && !navRef.current.contains(event.target)) {
         setOpenDropdown(null)
+        setUserMenuOpen(false)
       }
     }
 
     document.addEventListener('mousedown', onPointerDown)
     return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [openDropdown])
+  }, [openDropdown, userMenuOpen])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="relative flex h-screen flex-col">
@@ -205,14 +244,17 @@ export default function Layout() {
               {DASHBOARD_GROUP.label}
             </NavLink>
 
-            {DROPDOWN_GROUPS.map((group) => {
+            {visibleDropdownGroups.map((group) => {
               const isOpen = openDropdown === group.label
               const isActive = activeDropdownGroup === group.label
 
               return (
                 <div key={group.label} className="relative">
                   <button
-                    onClick={() => setOpenDropdown((prev) => (prev === group.label ? null : group.label))}
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      setOpenDropdown((prev) => (prev === group.label ? null : group.label))
+                    }}
                     className={`rounded-xl px-3 py-2 text-sm transition-colors ${
                       isActive ? 'font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                     }`}
@@ -266,6 +308,51 @@ export default function Layout() {
               <span className="hidden sm:inline">Search</span>
               <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
             </button>
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setOpenDropdown(null)
+                  setUserMenuOpen((prev) => !prev)
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              >
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
+                ) : (
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[11px] font-semibold text-blue-700">
+                    {userInitials(user?.name)}
+                  </span>
+                )}
+                <span className="hidden sm:inline">{user?.name || '사용자'}</span>
+              </button>
+              <div
+                className={`absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/30 bg-white/90 p-1.5 shadow-lg backdrop-blur-xl transition-all duration-150 ${
+                  userMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
+                }`}
+              >
+                <div className="mb-1 rounded-lg bg-gray-50 px-2.5 py-2">
+                  <p className="text-xs font-semibold text-gray-800">{user?.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {user?.username} · {user?.role}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false)
+                    navigate('/profile')
+                  }}
+                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
+                >
+                  내 프로필
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-red-700 hover:bg-red-50"
+                >
+                  로그아웃
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </nav>
@@ -286,7 +373,7 @@ export default function Layout() {
             </div>
 
             <div className="space-y-5">
-              {MOBILE_GROUPS.map((group) => (
+              {mobileGroups.map((group) => (
                 <div key={group.label}>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{group.label}</p>
                   <div className="space-y-1">
@@ -327,6 +414,28 @@ export default function Layout() {
                     <span>{item.label}</span>
                   </button>
                 ))}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-semibold text-gray-700">{user?.name}</p>
+                <p className="text-[11px] text-gray-500">{user?.username}</p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      navigate('/profile')
+                    }}
+                    className="secondary-btn text-xs"
+                  >
+                    내 프로필
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700"
+                  >
+                    로그아웃
+                  </button>
+                </div>
               </div>
             </div>
           </div>

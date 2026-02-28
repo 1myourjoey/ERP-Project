@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
 
 from database import Base
 
@@ -14,4 +14,5 @@ class Attachment(Base):
     mime_type = Column(String, nullable=True)
     entity_type = Column(String, nullable=True)
     entity_id = Column(Integer, nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())

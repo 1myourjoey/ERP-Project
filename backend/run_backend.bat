@@ -16,4 +16,5 @@ if not exist "%PYTHON_EXE%" (
   )
 )
 
+set "VON_AUTH_DISABLED=1"
 "%PYTHON_EXE%" -m uvicorn main:app --host 127.0.0.1 --port 8000

@@ -12,5 +12,5 @@ if not exist "node_modules" (
   )
 )
 
+set "VITE_AUTH_DISABLED=true"
 npm run dev -- --host 127.0.0.1 --port 5173
-

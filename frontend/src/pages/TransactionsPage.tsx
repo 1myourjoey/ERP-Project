@@ -4,12 +4,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createTransaction,
   deleteTransaction,
+  downloadGeneratedDocument,
   fetchCompanies,
   fetchFunds,
   fetchInvestments,
   fetchTransactionLedger,
   fetchTransactionSummary,
   fetchTransactions,
+  generateDocumentByBuilder,
   updateTransaction,
   type Company,
   type Fund,
@@ -47,6 +49,17 @@ function todayIso(): string {
 function toDate(value: string | null | undefined): string {
   if (!value) return '-'
   return new Date(value).toLocaleDateString('ko-KR')
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -436,6 +449,21 @@ export default function TransactionsPage() {
       addToast('success', '거래를 삭제했습니다.')
     },
   })
+  const generateInstructionMut = useMutation({
+    mutationFn: async ({ transactionId }: { transactionId: number }) => {
+      const generated = await generateDocumentByBuilder({
+        builder: 'operation_instruction',
+        params: { transaction_id: transactionId },
+      })
+      const blob = await downloadGeneratedDocument(generated.document_id)
+      return { generated, blob }
+    },
+    onSuccess: ({ generated, blob }) => {
+      downloadBlob(blob, generated.filename)
+      queryClient.invalidateQueries({ queryKey: ['generatedDocuments'] })
+      addToast('success', '운용지시서를 생성했습니다.')
+    },
+  })
 
   const fundNameMap = useMemo(() => new Map(funds.map((fund) => [fund.id, fund.name])), [funds])
   const companyNameMap = useMemo(() => new Map(companies.map((company) => [company.id, company.name])), [companies])
@@ -687,6 +715,13 @@ export default function TransactionsPage() {
                       </p>
                     </div>
                     <div className="flex gap-1">
+                      <button
+                        className="secondary-btn"
+                        disabled={generateInstructionMut.isPending && generateInstructionMut.variables?.transactionId === row.id}
+                        onClick={() => generateInstructionMut.mutate({ transactionId: row.id })}
+                      >
+                        운용지시서 생성
+                      </button>
                       <button className="secondary-btn" onClick={() => setEditingId(row.id)}>
                         수정
                       </button>

@@ -147,6 +147,7 @@ def instantiate_workflow(
     company_id: int | None = None,
     fund_id: int | None = None,
     gp_entity_id: int | None = None,
+    created_by: int | None = None,
     notice_overrides: dict[str, int] | None = None,
     auto_commit: bool = True,
 ) -> WorkflowInstance:
@@ -160,6 +161,7 @@ def instantiate_workflow(
         company_id=company_id,
         fund_id=fund_id,
         gp_entity_id=gp_entity_id,
+        created_by=created_by,
     )
     db.add(instance)
     db.flush()  # Get instance.id.
@@ -198,6 +200,7 @@ def instantiate_workflow(
             gp_entity_id=gp_entity_id,
             is_notice=step.is_notice,
             is_report=step.is_report,
+            created_by=created_by,
         )
         db.add(task)
         db.flush()

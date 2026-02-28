@@ -9,6 +9,8 @@ import {
   deleteCompany,
   fetchInvestments,
   createInvestment,
+  checkInvestmentLimits,
+  type ComplianceLimitCheckResponse,
   type Company,
   type CompanyInput,
   type Fund,
@@ -530,13 +532,33 @@ function InvestmentForm({
   ) => Promise<void> | void
   onCancel: () => void
 }) {
+  const { addToast } = useToast()
   const [form, setForm] = useState<InvestmentInput>(initial)
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newCompanyBizNum, setNewCompanyBizNum] = useState('')
   const [newCompanyCeo, setNewCompanyCeo] = useState('')
+  const [limitResult, setLimitResult] = useState<ComplianceLimitCheckResponse | null>(null)
   const [instrumentEntries, setInstrumentEntries] = useState<Array<{ instrument: string; amount: number | '' }>>([
     { instrument: '', amount: '' },
   ])
+  const checkLimitMut = useMutation({
+    mutationFn: checkInvestmentLimits,
+    onSuccess: (result) => {
+      setLimitResult(result)
+    },
+  })
+
+  const totalAmount = instrumentEntries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+  const selectedCompanyName =
+    form.company_id === -1
+      ? newCompanyName.trim()
+      : companies.find((company) => company.id === form.company_id)?.name || ''
+  const overallBadgeClass =
+    limitResult?.overall === 'block'
+      ? 'tag tag-red'
+      : limitResult?.overall === 'warning'
+      ? 'tag tag-amber'
+      : 'tag tag-green'
 
   return (
     <div className="grid grid-cols-1 gap-2 rounded border bg-gray-50 p-2 md:grid-cols-3">
@@ -641,11 +663,61 @@ function InvestmentForm({
         </button>
       </div>
 
+      <div className="rounded border border-gray-200 bg-white p-2 md:col-span-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="secondary-btn"
+            disabled={checkLimitMut.isPending}
+            onClick={() => {
+              if (!form.fund_id) {
+                addToast('warning', '조합을 먼저 선택해 주세요.')
+                return
+              }
+              if (!selectedCompanyName) {
+                addToast('warning', '기업명을 먼저 선택/입력해 주세요.')
+                return
+              }
+              if (totalAmount <= 0) {
+                addToast('warning', '투자금액을 먼저 입력해 주세요.')
+                return
+              }
+              checkLimitMut.mutate({
+                fund_id: form.fund_id,
+                company_name: selectedCompanyName,
+                amount: totalAmount,
+                is_overseas: instrumentEntries.some((entry) => entry.instrument.includes('해외')),
+              })
+            }}
+          >
+            {checkLimitMut.isPending ? '제한 체크 중...' : '제한 체크'}
+          </button>
+          {limitResult && (
+            <span className={overallBadgeClass}>결과: {limitResult.overall}</span>
+          )}
+        </div>
+        {limitResult && (
+          <div className="mt-2 space-y-1 text-xs">
+            {limitResult.checks.map((item, idx) => (
+              <div key={`${item.rule_code}-${idx}`} className="rounded border border-gray-100 bg-gray-50 px-2 py-1 text-gray-700">
+                <span className="font-medium">{item.rule_code}</span>
+                {' · '}
+                <span>{item.result}</span>
+                {item.detail ? ` · ${item.detail}` : ''}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-2 md:col-span-3">
         <button
           className="primary-btn"
           disabled={submitting}
           onClick={() => {
+            if (limitResult?.overall === 'block') {
+              addToast('error', '투자 제한 체크 결과가 block 입니다. 등록할 수 없습니다.')
+              return
+            }
             if (!form.fund_id || !form.company_id) return
             if (form.company_id === -1 && !newCompanyName.trim()) return
             const entries = instrumentEntries

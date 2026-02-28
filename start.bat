@@ -5,12 +5,12 @@ echo ========================================
 echo.
 
 echo [1/2] Starting Backend (port 8000)...
-start "VC-ERP Backend" cmd /k "cd /d %~dp0backend && python -m uvicorn main:app --port 8000 --reload"
+start "VC-ERP Backend" cmd /k "cd /d %~dp0backend && set VON_AUTH_DISABLED=1 && python -m uvicorn main:app --port 8000 --reload"
 
 timeout /t 3 /nobreak >nul
 
 echo [2/2] Starting Frontend (port 5173)...
-start "VC-ERP Frontend" cmd /k "cd /d %~dp0frontend && npm run dev"
+start "VC-ERP Frontend" cmd /k "cd /d %~dp0frontend && set VITE_AUTH_DISABLED=true && npm run dev"
 
 echo.
 echo ========================================
