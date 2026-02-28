@@ -515,6 +515,28 @@ export const fetchFundLPs = (fundId: number): Promise<LP[]> => api.get(`/funds/$
 export const createFundLP = (fundId: number, data: LPInput) => api.post(`/funds/${fundId}/lps`, data).then(r => r.data)
 export const updateFundLP = (fundId: number, lpId: number, data: Partial<LPInput>) => api.put(`/funds/${fundId}/lps/${lpId}`, data).then(r => r.data)
 export const deleteFundLP = (fundId: number, lpId: number) => api.delete(`/funds/${fundId}/lps/${lpId}`)
+export const fetchLPContributions = (fundId: number, lpId: number): Promise<LPContribution[]> =>
+  api.get(`/funds/${fundId}/lps/${lpId}/contributions`).then(r => r.data)
+export const fetchLPContributionSummary = (fundId: number, lpId: number): Promise<LPContributionSummary> =>
+  api.get(`/funds/${fundId}/lps/${lpId}/contributions/summary`).then(r => r.data)
+export const createLPContribution = (
+  fundId: number,
+  lpId: number,
+  data: LPContributionInput,
+): Promise<LPContribution> => api.post(`/funds/${fundId}/lps/${lpId}/contributions`, data).then(r => r.data)
+export const createLPContributionBulk = (
+  fundId: number,
+  lpId: number,
+  data: LPContributionBulkInput,
+): Promise<LPContribution[]> => api.post(`/funds/${fundId}/lps/${lpId}/contributions/bulk`, data).then(r => r.data)
+export const updateLPContribution = (
+  contributionId: number,
+  data: Partial<LPContributionInput>,
+): Promise<LPContribution> => api.put(`/lp-contributions/${contributionId}`, data).then(r => r.data)
+export const deleteLPContribution = (contributionId: number): Promise<void> =>
+  api.delete(`/lp-contributions/${contributionId}`).then(() => undefined)
+export const fetchFundContributionOverview = (fundId: number): Promise<FundContributionOverview> =>
+  api.get(`/funds/${fundId}/contribution-overview`).then(r => r.data)
 export const fetchLPTransfers = (fundId: number): Promise<LPTransfer[]> => api.get(`/funds/${fundId}/lp-transfers`).then(r => r.data)
 export const createLPTransfer = (fundId: number, data: LPTransferInput): Promise<LPTransfer> =>
   api.post(`/funds/${fundId}/lp-transfers`, data).then(r => r.data)
@@ -1758,6 +1780,57 @@ export interface LP {
   contact: string | null
   business_number: string | null
   address: string | null
+}
+
+export interface LPContributionInput {
+  fund_id?: number
+  lp_id?: number
+  due_date: string
+  amount: number
+  round_no?: number | null
+  actual_paid_date?: string | null
+  memo?: string | null
+  source?: 'manual' | 'capital_call' | 'migration' | string
+}
+
+export interface LPContributionBulkInput {
+  fund_id: number
+  contributions: LPContributionInput[]
+}
+
+export interface LPContribution {
+  id: number
+  fund_id: number
+  lp_id: number
+  due_date: string
+  amount: number
+  commitment_ratio: number | null
+  round_no: number | null
+  actual_paid_date: string | null
+  memo: string | null
+  capital_call_id: number | null
+  source: string
+  created_at: string
+  lp_name?: string
+  cumulative_amount?: number
+}
+
+export interface LPContributionSummary {
+  lp_id: number
+  lp_name: string
+  commitment: number
+  total_paid_in: number
+  paid_ratio: number
+  contribution_count: number
+  contribution_type: string | null
+  contributions: LPContribution[]
+}
+
+export interface FundContributionOverview {
+  fund_id: number
+  contribution_type: string | null
+  generated_at?: string
+  lp_summaries: LPContributionSummary[]
 }
 
 export interface MigrationErrorItem {

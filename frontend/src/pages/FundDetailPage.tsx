@@ -74,6 +74,7 @@ import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
+import LPContributionPanel from '../components/fund/LPContributionPanel'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface FundInvestmentListItem {
@@ -1106,6 +1107,7 @@ export default function FundDetailPage() {
   const [editingFund, setEditingFund] = useState(false)
   const [showCreateLP, setShowCreateLP] = useState(false)
   const [editingLPId, setEditingLPId] = useState<number | null>(null)
+  const [expandedLPId, setExpandedLPId] = useState<number | null>(null)
   const [editingNotices, setEditingNotices] = useState(false)
   const [editingKeyTerms, setEditingKeyTerms] = useState(false)
   const [showCapCallWizard, setShowCapCallWizard] = useState(false)
@@ -1272,6 +1274,7 @@ export default function FundDetailPage() {
     setEditingDistId(null)
     setEditingDistItemId(null)
     setEditingAssemblyId(null)
+    setExpandedLPId(null)
     setEditDistribution(null)
     setEditDistributionItem(null)
     setEditAssembly(null)
@@ -2182,7 +2185,16 @@ export default function FundDetailPage() {
                       capitalGridRows.flatMap((lp) => {
                         const rows = [
                           <tr key={`row-${lp.id}`}>
-                            <td className="sticky left-0 z-[1] bg-white px-3 py-2 font-medium text-gray-800">{lp.name}</td>
+                            <td
+                              className="sticky left-0 z-[1] cursor-pointer bg-white px-3 py-2 font-medium text-gray-800 hover:text-blue-700"
+                              onClick={() => setExpandedLPId((prev) => (prev === lp.id ? null : lp.id))}
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                {expandedLPId === lp.id ? '▼' : '▶'}
+                                {' '}
+                                {lp.name}
+                              </span>
+                            </td>
                             <td className="px-3 py-2 text-gray-700">{lp.type || '-'}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.commitment)}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.paidIn)}</td>
@@ -2216,6 +2228,21 @@ export default function FundDetailPage() {
                                   loading={updateLPMut.isPending}
                                   onSubmit={data => updateLPMut.mutate({ lpId: lp.id, data })}
                                   onCancel={() => setEditingLPId(null)}
+                                />
+                              </td>
+                            </tr>,
+                          )
+                        }
+                        if (expandedLPId === lp.id) {
+                          rows.push(
+                            <tr key={`contrib-${lp.id}`} className="bg-blue-50/20">
+                              <td colSpan={6} className="px-0 py-0">
+                                <LPContributionPanel
+                                  fundId={fundId}
+                                  lpId={lp.id}
+                                  lpName={lp.name}
+                                  commitment={Number(lp.commitment ?? 0)}
+                                  contributionType={fundDetail?.contribution_type || null}
                                 />
                               </td>
                             </tr>,

@@ -45,6 +45,7 @@ from .task_category import TaskCategory
 from .periodic_schedule import PeriodicSchedule
 from .attachment import Attachment
 from .document_generation import DocumentGeneration, DocumentVariable
+from .lp_contribution import LPContribution
 
 __all__ = [
     "Task",
@@ -80,4 +81,5 @@ __all__ = [
     "PeriodicSchedule",
     "Attachment",
     "DocumentGeneration", "DocumentVariable",
+    "LPContribution",
 ]

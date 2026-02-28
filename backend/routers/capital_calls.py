@@ -3,11 +3,12 @@ import re
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.fund import Fund, LP
+from models.lp_contribution import LPContribution
 from models.phase3 import CapitalCall, CapitalCallDetail, CapitalCallItem
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
@@ -459,7 +460,7 @@ def list_capital_calls(
 def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depends(get_db)):
     fund = _ensure_fund(db, data.fund_id)
     try:
-        item_payloads: list[tuple[CapitalCallItemCreate, int]] = []
+        item_payloads: list[tuple[CapitalCallItemCreate, int, LP]] = []
         lp_paid_deltas: dict[int, int] = defaultdict(int)
 
         for item_data in data.items:
@@ -471,7 +472,7 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
                 raise HTTPException(status_code=409, detail="LP must belong to the same fund")
             if item_data.paid:
                 lp_paid_deltas[item_data.lp_id] += amount
-            item_payloads.append((item_data, amount))
+            item_payloads.append((item_data, amount, lp))
 
         validate_paid_in_deltas(db, data.fund_id, dict(lp_paid_deltas))
 
@@ -486,7 +487,8 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
         db.add(call)
         db.flush()
 
-        for item_data, amount in item_payloads:
+        next_round_map: dict[int, int] = {}
+        for item_data, amount, lp in item_payloads:
             row = CapitalCallItem(
                 capital_call_id=call.id,
                 lp_id=item_data.lp_id,
@@ -496,6 +498,34 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
                 memo=item_data.memo,
             )
             db.add(row)
+
+            if lp.id not in next_round_map:
+                max_round = (
+                    db.query(func.coalesce(func.max(LPContribution.round_no), 0))
+                    .filter(
+                        LPContribution.fund_id == data.fund_id,
+                        LPContribution.lp_id == lp.id,
+                    )
+                    .scalar()
+                )
+                next_round_map[lp.id] = int(max_round or 0)
+            next_round_map[lp.id] += 1
+
+            commitment = float(lp.commitment or 0)
+            ratio = round((float(amount) / commitment) * 100, 4) if commitment > 0 else None
+            contribution = LPContribution(
+                fund_id=data.fund_id,
+                lp_id=lp.id,
+                due_date=data.call_date,
+                amount=float(amount),
+                commitment_ratio=ratio,
+                round_no=next_round_map[lp.id],
+                actual_paid_date=item_data.paid_date or (date.today() if item_data.paid else None),
+                memo=item_data.memo,
+                capital_call_id=call.id,
+                source="capital_call",
+            )
+            db.add(contribution)
 
         if data.create_workflow:
             _create_linked_workflow_instance(db, call, fund, data.memo)

@@ -122,6 +122,7 @@
 | Phase 42_3 | PRD_01_Dashboard, PRD_02_TaskBoard, PRD_03_Workflows, PRD_08_Reports_Documents | ???꾨즺 | 2026-02-24 |
 | Phase 42_4 | PRD_08_Reports_Documents | ???꾨즺 | 2026-02-25 |
 | Phase 43 | PRD_04_Funds, PRD_08_Reports_Documents | 완료 | 2026-02-25 |
+| Phase 44 | PRD_04_Funds, PRD_05_LP_Management | 완료 | 2026-02-28 |
 
 ---
 
@@ -154,5 +155,6 @@
 | 2026-02-24 | v2.3 | Phase 42_3 ?꾨즺 (?몄쬆/JWT/由ы봽?덉떆/Google 濡쒓렇?? RBAC RouteGuard, /users 留덉뒪??愿由?媛먯궗濡쒓렇, Task/Attachment/Workflow created_by ?곌껐, 蹂댁븞 ?ㅻ뜑/CORS ?섍꼍蹂??移쒕솚) |
 | 2026-02-25 | v2.4 | Phase 42_4 완료 (회원가입 승인대기, 비밀번호 찾기/재설정, 내 프로필, 초대 링크 가입, 모든 기기 로그아웃 세션 무효화) |
 | 2026-02-25 | v2.5 | Phase 43 완료 (조합 서류 자동 생성: 5단계 템플릿 치환, 자동채움/프리셋, 생성 이력/ZIP 다운로드) |
+| 2026-02-28 | v2.6 | Phase 44 완료 (LP 납입 이력 관리 모델/API, LP 행 확장형 납입 패널, 캐피탈콜 생성 시 납입 이력 자동 연동) |
 
 

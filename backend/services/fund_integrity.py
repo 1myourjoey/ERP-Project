@@ -3,6 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models.fund import Fund, LP
+from models.lp_contribution import LPContribution
 from models.phase3 import CapitalCall, CapitalCallItem
 
 PAID_IN_EXCEEDS_COMMITMENT_ERROR = "납입 총액이 약정 총액을 초과할 수 없습니다."
@@ -109,12 +110,35 @@ def validate_paid_in_deltas(
 
 
 def recalculate_fund_stats(db: Session, fund_id: int) -> dict[str, int]:
-    """Rebuild LP paid-in values from paid capital-call items."""
+    """Rebuild LP paid-in values.
+
+    Priority:
+    1) LPContribution 이력이 1건 이상인 LP는 contribution 합계로 동기화
+    2) 이력이 없는 LP는 기존 paid_in 값을 유지(레거시 데이터 보호)
+    """
     lps = db.query(LP).filter(LP.fund_id == fund_id).all()
-    paid_by_lp = _paid_in_by_lp(db, fund_id)
+    contribution_rows = (
+        db.query(
+            LPContribution.lp_id.label("lp_id"),
+            func.count(LPContribution.id).label("row_count"),
+            func.coalesce(func.sum(LPContribution.amount), 0).label("paid_total"),
+        )
+        .filter(LPContribution.fund_id == fund_id)
+        .group_by(LPContribution.lp_id)
+        .all()
+    )
+    contribution_map = {
+        int(row.lp_id): {
+            "row_count": int(row.row_count or 0),
+            "paid_total": int(row.paid_total or 0),
+        }
+        for row in contribution_rows
+    }
 
     for lp in lps:
-        lp.paid_in = int(paid_by_lp.get(lp.id, 0))
+        contribution_info = contribution_map.get(lp.id)
+        if contribution_info and contribution_info["row_count"] > 0:
+            lp.paid_in = contribution_info["paid_total"]
 
     lp_paid_total = sum(int(lp.paid_in or 0) for lp in lps)
     paid_item_total = _fund_paid_total(db, fund_id)

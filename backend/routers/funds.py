@@ -14,6 +14,7 @@ from database import get_db
 from models.fund import Fund, LP, FundNoticePeriod, FundKeyTerm
 from models.gp_entity import GPEntity
 from models.lp_address_book import LPAddressBook
+from models.lp_contribution import LPContribution
 from models.investment import Investment
 from models.phase3 import CapitalCall, CapitalCallItem
 from models.task import Task
@@ -531,25 +532,22 @@ def calculate_paid_in_as_of(
 
 
 def calculate_lp_paid_in_from_calls(db: Session, fund_id: int, lp_id: int) -> tuple[bool, int]:
-    base_query = (
-        db.query(CapitalCallItem.id)
-        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+    contribution_count = (
+        db.query(func.count(LPContribution.id))
         .filter(
-            CapitalCall.fund_id == fund_id,
-            CapitalCallItem.lp_id == lp_id,
+            LPContribution.fund_id == fund_id,
+            LPContribution.lp_id == lp_id,
         )
+        .scalar()
     )
-    has_call_items = base_query.first() is not None
-    if not has_call_items:
+    if int(contribution_count or 0) <= 0:
         return False, 0
 
     paid_in_total = (
-        db.query(func.coalesce(func.sum(CapitalCallItem.amount), 0))
-        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        db.query(func.coalesce(func.sum(LPContribution.amount), 0))
         .filter(
-            CapitalCall.fund_id == fund_id,
-            CapitalCallItem.lp_id == lp_id,
-            CapitalCallItem.paid == 1,
+            LPContribution.fund_id == fund_id,
+            LPContribution.lp_id == lp_id,
         )
         .scalar()
     )

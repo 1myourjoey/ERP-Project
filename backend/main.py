@@ -53,6 +53,7 @@ from routers import (
     auth,
     invitations,
     document_generation,
+    lp_contributions,
 )
 
 def ensure_sqlite_compat_columns():
@@ -686,6 +687,7 @@ include_protected_router(internal_reviews.router)
 include_protected_router(attachments.router)
 include_protected_router(periodic_schedules.router)
 include_protected_router(document_generation.router)
+include_protected_router(lp_contributions.router)
 
 
 @app.exception_handler(RequestValidationError)

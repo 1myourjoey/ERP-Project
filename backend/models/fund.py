@@ -70,6 +70,12 @@ class LP(Base):
     address = Column(String, nullable=True)
 
     fund = relationship("Fund", back_populates="lps")
+    contributions = relationship(
+        "LPContribution",
+        back_populates="lp",
+        cascade="all, delete-orphan",
+        order_by="LPContribution.due_date",
+    )
     address_book = relationship("LPAddressBook", back_populates="lps")
     transfers_from = relationship("LPTransfer", foreign_keys="LPTransfer.from_lp_id", back_populates="from_lp")
     transfers_to = relationship("LPTransfer", foreign_keys="LPTransfer.to_lp_id", back_populates="to_lp")
