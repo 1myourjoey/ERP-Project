@@ -12,15 +12,13 @@ type ThemeContextType = {
   theme: Theme
   setTheme: (theme: Theme) => void
   themes: ThemeOption[]
-  darkMode: boolean
-  toggleDarkMode: () => void
 }
 
 const THEMES: ThemeOption[] = [
-  { key: 'default', label: 'Default', icon: 'D' },
-  { key: 'cream', label: 'Cream', icon: 'C' },
-  { key: 'mint', label: 'Mint', icon: 'M' },
-  { key: 'lavender', label: 'Lavender', icon: 'L' },
+  { key: 'default', label: '기본', icon: '◯' },
+  { key: 'cream', label: '크림', icon: '◐' },
+  { key: 'mint', label: '민트', icon: '◑' },
+  { key: 'lavender', label: '라벤더', icon: '◍' },
 ]
 
 const ThemeContext = createContext<ThemeContextType | null>(null)
@@ -32,64 +30,28 @@ function normalizeTheme(value: string | null): Theme {
   return 'default'
 }
 
-function resolveInitialDarkMode(): boolean {
-  if (typeof window === 'undefined') return false
-  const stored = window.localStorage.getItem('von-dark-mode')
-  if (stored !== null) return stored === 'true'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'default'
     return normalizeTheme(window.localStorage.getItem('von-theme'))
   })
-  const [darkMode, setDarkMode] = useState<boolean>(() => resolveInitialDarkMode())
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
+    if (theme === 'default') {
+      document.documentElement.removeAttribute('data-theme')
+    } else {
+      document.documentElement.setAttribute('data-theme', theme)
+    }
     window.localStorage.setItem('von-theme', theme)
   }, [theme])
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    window.localStorage.setItem('von-dark-mode', String(darkMode))
-  }, [darkMode])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (event: MediaQueryListEvent) => {
-      if (window.localStorage.getItem('von-dark-mode') === null) {
-        setDarkMode(event.matches)
-      }
-    }
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
-    }
-
-    mediaQuery.addListener(handleChange)
-    return () => mediaQuery.removeListener(handleChange)
-  }, [])
-
-  const setTheme = (nextTheme: Theme) => setThemeState(nextTheme)
-  const toggleDarkMode = () => setDarkMode((prev) => !prev)
 
   const value = useMemo(
     () => ({
       theme,
       setTheme,
       themes: THEMES,
-      darkMode,
-      toggleDarkMode,
     }),
-    [theme, darkMode],
+    [theme],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

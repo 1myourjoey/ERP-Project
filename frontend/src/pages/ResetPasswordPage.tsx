@@ -1,11 +1,6 @@
 import { Suspense, lazy, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { resetPassword } from '../lib/api'
 
 const ShaderBackground = lazy(() => import('../components/ShaderBackground'))
@@ -39,69 +34,68 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-8">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
       <Suspense fallback={null}>
         <ShaderBackground />
       </Suspense>
-      <Card className="relative z-10 w-full max-w-md border-white/50 bg-white/90 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/90">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         {!token ? (
-          <CardContent className="space-y-3 pt-6 text-center">
-            <CardTitle>재설정 링크 오류</CardTitle>
-            <CardDescription>토큰이 없거나 형식이 올바르지 않습니다.</CardDescription>
-            <Button asChild className="w-full">
-              <Link to="/login">로그인으로 이동</Link>
-            </Button>
-          </CardContent>
+          <div className="space-y-3 text-center">
+            <h1 className="text-xl font-semibold text-gray-900">재설정 링크 오류</h1>
+            <p className="text-sm text-gray-600">토큰이 없거나 형식이 올바르지 않습니다.</p>
+            <Link to="/login" className="primary-btn inline-flex w-full items-center justify-center">
+              로그인으로 이동
+            </Link>
+          </div>
         ) : done ? (
-          <CardContent className="space-y-3 pt-6 text-center">
-            <CardTitle>비밀번호가 변경되었습니다</CardTitle>
-            <CardDescription>새 비밀번호로 다시 로그인해 주세요.</CardDescription>
-            <Button asChild className="w-full">
-              <Link to="/login">로그인하기</Link>
-            </Button>
-          </CardContent>
+          <div className="space-y-3 text-center">
+            <h1 className="text-xl font-semibold text-gray-900">비밀번호가 변경되었습니다</h1>
+            <p className="text-sm text-gray-600">새 비밀번호로 다시 로그인해 주세요.</p>
+            <Link to="/login" className="primary-btn inline-flex w-full items-center justify-center">
+              로그인하기
+            </Link>
+          </div>
         ) : (
           <>
-            <CardHeader className="space-y-1 text-center">
+            <div className="mb-4 text-center">
               <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-              <CardTitle>비밀번호 재설정</CardTitle>
-              <CardDescription>새 비밀번호를 입력하세요.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={onSubmit} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-password">새 비밀번호</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="새 비밀번호"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-password-confirm">새 비밀번호 확인</Label>
-                  <Input
-                    id="new-password-confirm"
-                    type="password"
-                    value={passwordConfirm}
-                    onChange={(event) => setPasswordConfirm(event.target.value)}
-                    placeholder="새 비밀번호 확인"
-                  />
-                </div>
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button type="submit" disabled={submitting || !password || !passwordConfirm} className="w-full">
-                  {submitting ? '변경 중...' : '비밀번호 변경'}
-                </Button>
-              </form>
-            </CardContent>
+              <h1 className="mt-3 text-lg font-semibold text-gray-900">비밀번호 재설정</h1>
+            </div>
+            <form onSubmit={onSubmit} className="space-y-3">
+              <div>
+                <label className="form-label">새 비밀번호</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="form-input"
+                  placeholder="새 비밀번호"
+                />
+              </div>
+              <div>
+                <label className="form-label">새 비밀번호 확인</label>
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                  className="form-input"
+                  placeholder="새 비밀번호 확인"
+                />
+              </div>
+              {error && (
+                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+              )}
+              <button
+                type="submit"
+                disabled={submitting || !password || !passwordConfirm}
+                className="primary-btn w-full disabled:opacity-60"
+              >
+                {submitting ? '변경 중...' : '비밀번호 변경'}
+              </button>
+            </form>
           </>
         )}
-      </Card>
+      </div>
     </div>
   )
 }

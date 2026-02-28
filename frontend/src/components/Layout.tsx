@@ -23,14 +23,10 @@ import {
   Users,
   Menu,
   Search,
-  Moon,
-  Sun,
   X,
 } from 'lucide-react'
 
 import SearchModal from './SearchModal'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -120,7 +116,7 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const navRef = useRef<HTMLDivElement | null>(null)
-  const { theme, setTheme, themes, darkMode, toggleDarkMode } = useTheme()
+  const { theme, setTheme, themes } = useTheme()
   const { user, hasAccess, logout } = useAuth()
 
   const [searchOpen, setSearchOpen] = useState(false)
@@ -296,34 +292,22 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleDarkMode}
-              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </Button>
-            <Button
+            <button
               onClick={() => setTheme(nextTheme.key)}
-              variant="ghost"
-              size="icon"
+              className="rounded-lg p-1.5 text-sm text-gray-600 hover:bg-gray-100"
               title={`Theme: ${currentTheme.label} -> ${nextTheme.label}`}
               aria-label={`Change theme from ${currentTheme.label} to ${nextTheme.label}`}
             >
               {currentTheme.icon}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+            </button>
+            <button
               onClick={() => setSearchOpen(true)}
-              className="gap-2 text-xs"
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
             >
               <Search size={14} />
               <span className="hidden sm:inline">Search</span>
               <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
-            </Button>
+            </button>
             <div className="relative">
               <button
                 onClick={() => {
@@ -373,19 +357,19 @@ export default function Layout() {
         </div>
       </nav>
 
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-full max-w-none border-r-0 p-0 md:hidden">
-          <div className="h-full overflow-auto bg-white px-6 pb-8 pt-5 dark:bg-gray-900">
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute inset-0 overflow-auto bg-white px-6 pb-8 pt-5">
             <div className="mb-6 flex items-center justify-between">
               <img src="/logo.svg" alt="V:ON" className="h-6 w-auto" />
-              <Button
+              <button
                 onClick={() => setMobileMenuOpen(false)}
-                variant="ghost"
-                size="icon"
-                aria-label="Close menu"
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                aria-label="메뉴 닫기"
               >
                 <X size={20} />
-              </Button>
+              </button>
             </div>
 
             <div className="space-y-5">
@@ -401,7 +385,7 @@ export default function Layout() {
                           to={item.to}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`block rounded-xl px-3 py-2.5 text-sm ${
-                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800'
+                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
                           {item.label}
@@ -413,13 +397,8 @@ export default function Layout() {
               ))}
             </div>
 
-            <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Theme</p>
-                <Button variant="outline" size="xs" onClick={toggleDarkMode}>
-                  {darkMode ? 'Light' : 'Dark'}
-                </Button>
-              </div>
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Theme</p>
               <div className="grid grid-cols-2 gap-2">
                 {themes.map((item) => (
                   <button
@@ -428,7 +407,7 @@ export default function Layout() {
                     className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                       theme === item.key
                         ? 'border-blue-300 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <span>{item.icon}</span>
@@ -437,29 +416,31 @@ export default function Layout() {
                 ))}
               </div>
 
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-100">{user?.name}</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">{user?.username}</p>
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-semibold text-gray-700">{user?.name}</p>
+                <p className="text-[11px] text-gray-500">{user?.username}</p>
                 <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="xs"
+                  <button
                     onClick={() => {
                       setMobileMenuOpen(false)
                       navigate('/profile')
                     }}
+                    className="secondary-btn text-xs"
                   >
                     내 프로필
-                  </Button>
-                  <Button variant="destructive" size="xs" onClick={handleLogout}>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700"
+                  >
                     로그아웃
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
 
       <main className="relative z-10 flex-1 overflow-auto">
         <Outlet />

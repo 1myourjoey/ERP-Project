@@ -1,11 +1,6 @@
 import { Suspense, lazy, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { forgotPassword } from '../lib/api'
 
 const ShaderBackground = lazy(() => import('../components/ShaderBackground'))
@@ -32,59 +27,56 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-8">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
       <Suspense fallback={null}>
         <ShaderBackground />
       </Suspense>
-      <Card className="relative z-10 w-full max-w-md border-white/50 bg-white/90 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/90">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         {submitted ? (
-          <CardContent className="space-y-4 pt-6 text-center">
-            <CardTitle>요청 완료</CardTitle>
-            <CardDescription>
+          <div className="space-y-4 text-center">
+            <h1 className="text-xl font-semibold text-gray-900">요청 완료</h1>
+            <p className="text-sm text-gray-600">
               비밀번호 재설정 요청이 접수되었습니다.
               <br />
-              관리자 확인 후 안내됩니다.
-            </CardDescription>
-            <Button asChild className="w-full">
-              <Link to="/login">로그인 페이지로 이동</Link>
-            </Button>
-          </CardContent>
+              관리자가 확인 후 안내할 예정입니다.
+            </p>
+            <Link to="/login" className="primary-btn inline-flex w-full items-center justify-center">
+              로그인 페이지로 이동
+            </Link>
+          </div>
         ) : (
           <>
-            <CardHeader className="space-y-1 text-center">
+            <div className="mb-4 text-center">
               <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-              <CardTitle>비밀번호 찾기</CardTitle>
-              <CardDescription>아이디 또는 이메일을 입력하세요.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={onSubmit} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-id">아이디 / 이메일</Label>
-                  <Input
-                    id="login-id"
-                    value={loginId}
-                    onChange={(event) => setLoginId(event.target.value)}
-                    placeholder="hong or hong@company.com"
-                  />
-                </div>
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button type="submit" disabled={submitting || !loginId.trim()} className="w-full">
-                  {submitting ? '요청 중...' : '재설정 요청'}
-                </Button>
-              </form>
-              <p className="mt-4 text-center text-xs text-gray-500">
-                <Link to="/login" className="text-blue-600 hover:underline">
-                  로그인으로 돌아가기
-                </Link>
-              </p>
-            </CardContent>
+              <h1 className="mt-3 text-lg font-semibold text-gray-900">비밀번호 찾기</h1>
+            </div>
+
+            <form onSubmit={onSubmit} className="space-y-3">
+              <div>
+                <label className="form-label">아이디 또는 이메일</label>
+                <input
+                  value={loginId}
+                  onChange={(event) => setLoginId(event.target.value)}
+                  className="form-input"
+                  placeholder="hong 또는 hong@company.com"
+                />
+              </div>
+              {error && (
+                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+              )}
+              <button type="submit" disabled={submitting || !loginId.trim()} className="primary-btn w-full disabled:opacity-60">
+                {submitting ? '요청 중...' : '재설정 요청'}
+              </button>
+            </form>
+
+            <p className="mt-4 text-center text-xs text-gray-500">
+              <Link to="/login" className="text-blue-600 hover:underline">
+                로그인으로 돌아가기
+              </Link>
+            </p>
           </>
         )}
-      </Card>
+      </div>
     </div>
   )
 }
