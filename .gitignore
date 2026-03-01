@@ -12,8 +12,10 @@ dist/
 build/
 *.egg
 .venv/
+.venv312/
 venv/
 env/
+backend/.venv312/
 
 # Database
 *.db
@@ -39,6 +41,11 @@ frontend/.vite/
 
 # Logs
 *.log
+
+# Local generated data
+backend/chroma_data/
+backend/uploads/
+uploads/
 
 
 docs/조합_자동화/
