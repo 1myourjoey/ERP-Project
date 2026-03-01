@@ -1,4 +1,5 @@
 # Phase 56: 준법 문서 라이브러리 고도화 — 문서 삭제 · 스코프 분류 · 조합 연결
+ㅇ
 
 > 🔖 **작업 전 필수:** `docs/CODEX_RULES.md` 먼저 읽을 것.
 > **완료 후:** CODEX_RULES.md §2의 Post-Work Checklist 수행.
