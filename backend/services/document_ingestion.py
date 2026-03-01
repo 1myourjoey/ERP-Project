@@ -97,8 +97,8 @@ class DocumentIngestionService:
             text=text,
             doc_id=document_id,
             metadata=metadata,
-            chunk_size=500,
-            overlap=100,
+            chunk_size=1000,
+            overlap=200,
         )
 
     def _chunk_by_articles(
@@ -119,23 +119,54 @@ class DocumentIngestionService:
             start = match.start()
             end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
             block = text[start:end].strip()
-            if len(block) < 50:
+            if len(block) < 100:
                 continue
 
             article = match.group(1).strip()
-            chunks.append(
-                {
-                    "id": f"doc{doc_id}_art_{len(chunks)}",
-                    "text": block,
-                    "metadata": {
-                        **metadata,
-                        "document_id": doc_id,
-                        "article": article,
-                        "chunk_index": len(chunks),
-                    },
-                }
-            )
+
+            # Sub-chunk long articles to keep within optimal embedding size
+            if len(block) > 2000:
+                sub_chunks = self._chunk_by_sliding_window(
+                    text=block,
+                    doc_id=doc_id,
+                    metadata={**metadata, "article": article},
+                    chunk_size=1000,
+                    overlap=200,
+                )
+                for sc_idx, sc in enumerate(sub_chunks):
+                    sc["id"] = f"doc{doc_id}_art_{len(chunks)}"
+                    sc["metadata"]["chunk_index"] = len(chunks)
+                    sc["metadata"]["article"] = article
+                    sc["metadata"]["sub_chunk"] = sc_idx
+                    chunks.append(sc)
+            else:
+                chunks.append(
+                    {
+                        "id": f"doc{doc_id}_art_{len(chunks)}",
+                        "text": block,
+                        "metadata": {
+                            **metadata,
+                            "document_id": doc_id,
+                            "article": article,
+                            "chunk_index": len(chunks),
+                        },
+                    }
+                )
         return chunks
+
+    @staticmethod
+    def _find_sentence_boundary(text: str, pos: int, search_range: int = 100) -> int:
+        """Find the nearest sentence boundary (period, newline) near *pos*."""
+        if pos >= len(text):
+            return len(text)
+        # Search backward from pos within search_range
+        search_start = max(0, pos - search_range)
+        segment = text[search_start:pos]
+        for delim in (". ", ".\n", "\n\n", "\n"):
+            idx = segment.rfind(delim)
+            if idx != -1:
+                return search_start + idx + len(delim)
+        return pos
 
     def _chunk_by_sliding_window(
         self,
@@ -152,9 +183,11 @@ class DocumentIngestionService:
         start = 0
         step = chunk_size - overlap
         while start < len(text):
-            end = min(start + chunk_size, len(text))
+            raw_end = min(start + chunk_size, len(text))
+            # Snap to sentence boundary unless we are at the end
+            end = self._find_sentence_boundary(text, raw_end) if raw_end < len(text) else raw_end
             chunk_text = text[start:end].strip()
-            if len(chunk_text) > 50:
+            if len(chunk_text) > 100:
                 chunks.append(
                     {
                         "id": f"doc{doc_id}_sw_{len(chunks)}",

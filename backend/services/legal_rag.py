@@ -31,15 +31,27 @@ class LegalRAGService:
 
     SYSTEM_PROMPT = """당신은 벤처캐피탈 조합 운용 관련 법률 전문가입니다.
 
-아래 법률 문서 컨텍스트를 기반으로 질의에 답변하세요.
+## 역할
+- 자본시장법, 벤처투자법, 금감원 가이드라인 등 VC 펀드 관련 법률 해석 전문가
+- 실무진이 이해할 수 있도록 명확하고 구체적으로 답변
 
-규칙:
+## 답변 규칙
 1. 반드시 근거 조항을 명시하세요 (예: "자본시장법 제81조 제1항에 따르면...")
 2. 컨텍스트에 없는 내용은 "제공된 문서에서 확인되지 않습니다"로 답변
-3. 실무적 권고사항이 있다면 추가로 제안
-4. 답변은 한국어로 작성
+3. 관련 조항이 여러 개일 경우 모두 인용하세요
+4. 실무적 권고사항이 있다면 별도 섹션으로 제안
+5. 답변은 한국어로 작성
+6. 불확실한 해석에는 "⚠️ 확인 필요" 표시를 추가하세요
+7. 한 문서의 여러 조항이 관련될 경우 상호 관계를 설명하세요
 
-컨텍스트:
+## 답변 구조
+1. **요약**: 핵심 답변 1-2문장
+2. **근거**: 관련 법조항 인용 및 해석
+3. **실무 참고**: 실무 적용 시 유의사항 (해당 시)
+
+## 컨텍스트
+아래는 질의와 관련하여 검색된 법률 문서의 관련 조항입니다:
+
 {context}
 """
 
@@ -107,8 +119,19 @@ class LegalRAGService:
         if db and not await self.check_monthly_limit(db):
             raise MonthlyTokenLimitExceededError("월간 LLM 토큰 한도를 초과했습니다.")
 
-        search_results = self._get_vector_db().search_all_collections(normalized_query, n_results=5)
-        if not search_results:
+        search_results = self._get_vector_db().search_all_collections(normalized_query, n_results=10)
+
+        # Filter out low-relevance results (distance threshold)
+        DISTANCE_THRESHOLD = 1.5
+        filtered_results = [
+            row for row in search_results
+            if row.get("distance") is not None and float(row["distance"]) < DISTANCE_THRESHOLD
+        ]
+        # Fall back to top results if all are filtered out
+        if not filtered_results and search_results:
+            filtered_results = search_results[:3]
+
+        if not filtered_results:
             return {
                 "tier": "L2",
                 "answer": "관련 법률 문서를 찾지 못했습니다. 문서 라이브러리에 관련 법규를 등록해주세요.",
@@ -117,13 +140,24 @@ class LegalRAGService:
                 "tokens_used": 0,
             }
 
+        # Collection label mapping for readable context
+        collection_labels = {
+            "laws": "법률",
+            "regulations": "시행령/시행규칙",
+            "guidelines": "가이드라인",
+            "agreements": "규약/계약",
+            "internal": "내부지침",
+        }
+
         context = "\n\n---\n\n".join(
             (
-                f"[{row.get('collection', '')}] "
+                f"📄 문서유형: {collection_labels.get(row.get('collection', ''), row.get('collection', ''))}\n"
+                f"📌 제목/조항: {(row.get('metadata') or {}).get('title', '')} "
                 f"{(row.get('metadata') or {}).get('article', '')}\n"
-                f"{row.get('text', '')}"
+                f"📊 관련도: {1.0 - min(float(row.get('distance', 0)), 1.0):.0%}\n"
+                f"\n{row.get('text', '')}"
             )
-            for row in search_results
+            for row in filtered_results
         )
 
         client = self._get_client()
@@ -134,7 +168,7 @@ class LegalRAGService:
                 {"role": "user", "content": normalized_query},
             ],
             temperature=0.1,
-            max_tokens=2000,
+            max_tokens=3000,
         )
 
         answer = (response.choices[0].message.content or "").strip()
@@ -168,10 +202,12 @@ class LegalRAGService:
                 {
                     "collection": row.get("collection"),
                     "text": str(row.get("text", ""))[:260],
+                    "title": (row.get("metadata") or {}).get("title", ""),
                     "article": (row.get("metadata") or {}).get("article", ""),
                     "distance": row.get("distance"),
+                    "relevance": round(1.0 - min(float(row.get("distance", 0)), 1.0), 2),
                 }
-                for row in search_results
+                for row in filtered_results
             ],
             "rule_check": None,
             "tokens_used": total_tokens,
