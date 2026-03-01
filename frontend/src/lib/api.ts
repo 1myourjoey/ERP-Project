@@ -227,8 +227,16 @@ export const uploadLegalDocument = (payload: LegalDocumentUploadInput): Promise<
   if (payload.version) {
     formData.append('version', payload.version)
   }
+  if (payload.fund_id != null) {
+    formData.append('fund_id', String(payload.fund_id))
+  }
+  if (payload.fund_type_filter) {
+    formData.append('fund_type_filter', payload.fund_type_filter)
+  }
   return api.post('/legal-documents/upload', formData).then(r => r.data)
 }
+export const deleteLegalDocument = (id: number): Promise<{ deleted: boolean; id: number }> =>
+  api.delete(`/legal-documents/${id}`).then(r => r.data)
 export const fetchComplianceObligations = (
   params?: { fund_id?: number; status?: string; period?: string; category?: string },
 ): Promise<ComplianceObligation[]> =>
@@ -1440,8 +1448,13 @@ export interface ComplianceDocumentCreateInput {
 }
 
 export type LegalDocumentType = 'laws' | 'regulations' | 'guidelines' | 'agreements' | 'internal'
+export type LegalDocumentScope = 'global' | 'fund_type' | 'fund'
 
 export interface LegalDocument extends ComplianceDocument {
+  scope: LegalDocumentScope
+  fund_id: number | null
+  fund_name: string | null
+  fund_type_filter: string | null
   chunk_count?: number | null
 }
 
@@ -1450,6 +1463,8 @@ export interface LegalDocumentUploadInput {
   title: string
   document_type: LegalDocumentType | string
   version?: string | null
+  fund_id?: number | null
+  fund_type_filter?: string | null
 }
 
 export interface LegalDocumentUploadResponse {
@@ -1511,9 +1526,12 @@ export interface ComplianceInterpretRequest {
 
 export interface ComplianceInterpretSource {
   collection: string
+  scope?: LegalDocumentScope | string
   text: string
+  title?: string
   article: string
   distance: number | null
+  relevance?: number
 }
 
 export interface ComplianceInterpretRuleCheckItem {

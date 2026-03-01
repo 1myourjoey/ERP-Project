@@ -33,10 +33,15 @@ class DocumentIngestionService:
         if not normalized_text:
             raise ValueError("No extractable text found in uploaded file.")
 
+        base_metadata = dict(metadata or {})
+        base_metadata.setdefault("scope", "global")
+        base_metadata.setdefault("fund_id", "")
+        base_metadata.setdefault("fund_type_filter", "")
+
         chunks = self._legal_chunking(
             text=normalized_text,
             document_id=document_id,
-            metadata=metadata or {},
+            metadata=base_metadata,
         )
         if not chunks:
             raise ValueError("No indexable text chunks were generated.")

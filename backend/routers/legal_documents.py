@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.compliance import ComplianceDocument
+from models.fund import Fund
 from services.document_ingestion import DocumentIngestionService
 from services.vector_db import VectorDBService
 
@@ -35,11 +36,42 @@ def _normalize_document_type(value: str) -> str:
     return normalized
 
 
+def _resolve_scope_fields(
+    document_type: str,
+    fund_id: int | None,
+    fund_type_filter: str | None,
+    db: Session,
+) -> tuple[str, int | None, str | None]:
+    normalized_fund_type = (fund_type_filter or "").strip() or None
+
+    if document_type in {"laws", "regulations"}:
+        return "global", None, None
+
+    if document_type == "guidelines":
+        if not normalized_fund_type:
+            raise HTTPException(status_code=400, detail="fund_type_filter is required for guidelines.")
+        return "fund_type", None, normalized_fund_type
+
+    # agreements, internal
+    if fund_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="fund_id is required for agreements/internal documents.",
+        )
+    if not db.get(Fund, fund_id):
+        raise HTTPException(status_code=404, detail="Fund not found.")
+    return "fund", fund_id, None
+
+
 def _serialize_document(row: ComplianceDocument, chunk_count: int | None = None) -> dict:
     return {
         "id": row.id,
         "title": row.title,
         "document_type": row.document_type,
+        "scope": row.scope,
+        "fund_id": row.fund_id,
+        "fund_name": row.fund.name if row.fund_id and row.fund else None,
+        "fund_type_filter": row.fund_type_filter,
         "version": row.version,
         "effective_date": row.effective_date.isoformat() if row.effective_date else None,
         "content_summary": row.content_summary,
@@ -74,12 +106,20 @@ async def upload_legal_document(
     title: str = Form(...),
     document_type: str = Form(...),
     version: str | None = Form(default=None),
+    fund_id: int | None = Form(default=None),
+    fund_type_filter: str | None = Form(default=None),
     db: Session = Depends(get_db),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required.")
 
     normalized_type = _normalize_document_type(document_type)
+    scope, resolved_fund_id, resolved_fund_type = _resolve_scope_fields(
+        normalized_type,
+        fund_id,
+        fund_type_filter,
+        db,
+    )
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in {"pdf", "docx"}:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX are supported.")
@@ -96,6 +136,9 @@ async def upload_legal_document(
     row = ComplianceDocument(
         title=title.strip(),
         document_type=normalized_type,
+        scope=scope,
+        fund_id=resolved_fund_id,
+        fund_type_filter=resolved_fund_type,
         version=(version or "").strip() or None,
         file_path=relative_path,
         content_summary=None,
@@ -123,6 +166,9 @@ async def upload_legal_document(
                 "document_type": normalized_type,
                 "title": row.title,
                 "version": row.version or "",
+                "scope": scope,
+                "fund_id": resolved_fund_id if resolved_fund_id is not None else "",
+                "fund_type_filter": resolved_fund_type or "",
             },
         )
     except RuntimeError as exc:
@@ -150,6 +196,30 @@ async def upload_legal_document(
         "chunk_count": chunk_count,
         "collection": normalized_type,
     }
+
+
+@router.delete("/api/legal-documents/{document_id}")
+def delete_legal_document(document_id: int, db: Session = Depends(get_db)):
+    row = db.get(ComplianceDocument, document_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    if row.document_type in ALLOWED_COLLECTIONS:
+        try:
+            vector_db = VectorDBService()
+            vector_db.delete_chunks_by_document(row.document_type, row.id)
+        except RuntimeError:
+            # Keep delete endpoint usable even when vector dependencies are unavailable.
+            pass
+
+    if row.file_path:
+        candidate = Path(row.file_path)
+        file_path = candidate if candidate.is_absolute() else (PROJECT_ROOT / candidate)
+        file_path.unlink(missing_ok=True)
+
+    db.delete(row)
+    db.commit()
+    return {"deleted": True, "id": document_id}
 
 
 @router.get("/api/legal-documents/search")

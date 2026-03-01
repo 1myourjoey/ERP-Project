@@ -262,6 +262,9 @@ def ensure_sqlite_compat_columns():
             ("compliance_documents", "file_path", "TEXT"),
             ("compliance_documents", "is_active", "INTEGER DEFAULT 1"),
             ("compliance_documents", "created_at", "DATETIME"),
+            ("compliance_documents", "scope", "TEXT DEFAULT 'global'"),
+            ("compliance_documents", "fund_id", "INTEGER"),
+            ("compliance_documents", "fund_type_filter", "TEXT"),
             ("fund_compliance_rules", "fund_id", "INTEGER"),
             ("fund_compliance_rules", "document_id", "INTEGER"),
             ("fund_compliance_rules", "rule_name", "TEXT"),
@@ -302,13 +305,30 @@ def ensure_sqlite_compat_columns():
                 )
             if has_column("compliance_documents", "document_type"):
                 conn.exec_driver_sql(
-                    "UPDATE compliance_documents SET document_type = 'law' "
+                    "UPDATE compliance_documents SET document_type = 'laws' "
                     "WHERE document_type IS NULL OR TRIM(document_type) = ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE compliance_documents SET document_type = 'laws' "
+                    "WHERE LOWER(TRIM(document_type)) = 'law'"
                 )
             if has_column("compliance_documents", "is_active"):
                 conn.exec_driver_sql(
                     "UPDATE compliance_documents SET is_active = 1 "
                     "WHERE is_active IS NULL"
+                )
+            if has_column("compliance_documents", "scope"):
+                conn.exec_driver_sql(
+                    """
+                    UPDATE compliance_documents
+                    SET scope = CASE
+                        WHEN document_type IN ('laws', 'regulations') THEN 'global'
+                        WHEN document_type = 'guidelines' THEN 'fund_type'
+                        WHEN document_type IN ('agreements', 'internal') THEN 'fund'
+                        ELSE 'global'
+                    END
+                    WHERE scope IS NULL OR TRIM(scope) = ''
+                    """
                 )
 
             # Legacy compatibility: some local DBs have compliance_documents with
@@ -332,23 +352,49 @@ def ensure_sqlite_compat_columns():
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         title TEXT NOT NULL,
                         document_type TEXT NOT NULL,
+                        scope TEXT NOT NULL DEFAULT 'global',
+                        fund_id INTEGER,
+                        fund_type_filter TEXT,
                         version TEXT,
                         effective_date DATETIME,
                         content_summary TEXT,
                         file_path TEXT,
                         is_active INTEGER NOT NULL DEFAULT 1,
-                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(fund_id) REFERENCES funds(id)
                     )
                     """
                 )
                 conn.exec_driver_sql(
                     """
                     INSERT INTO compliance_documents__new
-                    (id, title, document_type, version, effective_date, content_summary, file_path, is_active, created_at)
+                    (
+                        id,
+                        title,
+                        document_type,
+                        scope,
+                        fund_id,
+                        fund_type_filter,
+                        version,
+                        effective_date,
+                        content_summary,
+                        file_path,
+                        is_active,
+                        created_at
+                    )
                     SELECT
                         id,
                         COALESCE(NULLIF(TRIM(title), ''), NULLIF(TRIM(name), ''), 'Untitled Compliance Document') AS title,
-                        COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), ''), 'law') AS document_type,
+                        COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), ''), 'laws') AS document_type,
+                        CASE
+                            WHEN COALESCE(NULLIF(TRIM(scope), ''), '') <> '' THEN TRIM(scope)
+                            WHEN COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), '')) IN ('laws', 'regulations') THEN 'global'
+                            WHEN COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), '')) = 'guidelines' THEN 'fund_type'
+                            WHEN COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), '')) IN ('agreements', 'internal') THEN 'fund'
+                            ELSE 'global'
+                        END AS scope,
+                        NULL AS fund_id,
+                        NULL AS fund_type_filter,
                         CASE WHEN version IS NULL THEN NULL ELSE CAST(version AS TEXT) END AS version,
                         effective_date,
                         COALESCE(content_summary, description) AS content_summary,

@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models.compliance import FundComplianceRule
+from models.fund import Fund
 from models.llm_usage import LLMUsage
 from services.compliance_rule_engine import ComplianceRuleEngine
 from services.vector_db import VectorDBService
@@ -58,8 +59,10 @@ class LegalRAGService:
     RULE_KEYWORDS: dict[str, str] = {
         "투자한도": "INV-LIMIT",
         "보고서": "RPT-DEADLINE",
+        "보고": "RPT-DEADLINE",
         "출자금": "CAP-CROSS",
         "수탁계약": "DOC-EXIST",
+        "확약계약": "DOC-EXIST",
     }
 
     def __init__(self):
@@ -119,13 +122,29 @@ class LegalRAGService:
         if db and not await self.check_monthly_limit(db):
             raise MonthlyTokenLimitExceededError("월간 LLM 토큰 한도를 초과했습니다.")
 
-        search_results = self._get_vector_db().search_all_collections(normalized_query, n_results=10)
+        fund_type: str | None = None
+        fund_name: str | None = None
+        if fund_id and db:
+            fund = db.get(Fund, fund_id)
+            if fund:
+                fund_type = (fund.type or "").strip() or None
+                fund_name = fund.name
+
+        if fund_id:
+            search_results = self._get_vector_db().search_with_scope(
+                query=normalized_query,
+                fund_id=fund_id,
+                fund_type=fund_type,
+                n_results=10,
+            )
+        else:
+            search_results = self._get_vector_db().search_all_collections(normalized_query, n_results=10)
 
         # Filter out low-relevance results (distance threshold)
-        DISTANCE_THRESHOLD = 1.5
+        distance_threshold = 1.5
         filtered_results = [
             row for row in search_results
-            if row.get("distance") is not None and float(row["distance"]) < DISTANCE_THRESHOLD
+            if row.get("distance") is not None and float(row["distance"]) < distance_threshold
         ]
         # Fall back to top results if all are filtered out
         if not filtered_results and search_results:
@@ -140,7 +159,6 @@ class LegalRAGService:
                 "tokens_used": 0,
             }
 
-        # Collection label mapping for readable context
         collection_labels = {
             "laws": "법률",
             "regulations": "시행령/시행규칙",
@@ -148,10 +166,16 @@ class LegalRAGService:
             "agreements": "규약/계약",
             "internal": "내부지침",
         }
+        scope_labels = {
+            "global": "🌐 공통 법령",
+            "fund_type": "📋 조합유형별 가이드",
+            "fund": "🏢 조합 개별 문서",
+        }
 
         context = "\n\n---\n\n".join(
             (
                 f"📄 문서유형: {collection_labels.get(row.get('collection', ''), row.get('collection', ''))}\n"
+                f"🗂 적용범위: {scope_labels.get(((row.get('metadata') or {}).get('scope') or 'global'), '🌐 공통 법령')}\n"
                 f"📌 제목/조항: {(row.get('metadata') or {}).get('title', '')} "
                 f"{(row.get('metadata') or {}).get('article', '')}\n"
                 f"📊 관련도: {1.0 - min(float(row.get('distance', 0)), 1.0):.0%}\n"
@@ -160,11 +184,19 @@ class LegalRAGService:
             for row in filtered_results
         )
 
+        fund_context = ""
+        if fund_name:
+            fund_context = (
+                "\n\n## 질의 대상 조합\n"
+                f"- 조합명: {fund_name}\n"
+                f"- 유형: {fund_type or '미지정'}\n"
+            )
+
         client = self._get_client()
         response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": self.SYSTEM_PROMPT.format(context=context)},
+                {"role": "system", "content": self.SYSTEM_PROMPT.format(context=context) + fund_context},
                 {"role": "user", "content": normalized_query},
             ],
             temperature=0.1,
@@ -204,6 +236,7 @@ class LegalRAGService:
                     "text": str(row.get("text", ""))[:260],
                     "title": (row.get("metadata") or {}).get("title", ""),
                     "article": (row.get("metadata") or {}).get("article", ""),
+                    "scope": (row.get("metadata") or {}).get("scope") or "global",
                     "distance": row.get("distance"),
                     "relevance": round(1.0 - min(float(row.get("distance", 0)), 1.0), 2),
                 }
@@ -332,7 +365,7 @@ class LegalRAGService:
 
     @staticmethod
     def _format_rule_answer(rules: list[FundComplianceRule], checks: list[Any]) -> str:
-        lines = ["[규칙 엔진 판단 결과]"]
+        lines = ["[규칙 엔진 진단 결과]"]
         for rule, check in zip(rules, checks):
             lines.append(f"- {rule.rule_name}: {check.result}")
             if check.detail:

@@ -101,6 +101,9 @@ class ComplianceDocument(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
     document_type = Column(String, nullable=False)
+    scope = Column(String, nullable=False, default="global")
+    fund_id = Column(Integer, ForeignKey("funds.id"), nullable=True)
+    fund_type_filter = Column(String, nullable=True)
     version = Column(String, nullable=True)
     effective_date = Column(DateTime, nullable=True)
     content_summary = Column(Text, nullable=True)
@@ -108,6 +111,7 @@ class ComplianceDocument(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
+    fund = relationship("Fund", backref="compliance_documents", foreign_keys=[fund_id])
     rules = relationship("FundComplianceRule", back_populates="document")
 
 

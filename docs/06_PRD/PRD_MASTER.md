@@ -174,7 +174,11 @@
 | Phase 53 | PRD_08_Reports_Documents | completed | 2026-03-01 |
 | Phase 54 | PRD_08_Reports_Documents | completed | 2026-03-01 |
 | Phase 55 | PRD_08_Reports_Documents | completed | 2026-03-01 |
+| Phase 56 | PRD_08_Reports_Documents | completed | 2026-03-01 |
+| Phase 57 | PRD_08_Reports_Documents | completed | 2026-03-01 |
 
 | 2026-03-01 | v3.1 | Phase 53 completed (APScheduler periodic compliance jobs, law amendment monitor, scan/amendment APIs, CompliancePage schedule tab). |
 | 2026-03-01 | v3.2 | Phase 54 completed (compliance history analyzer, pattern/suggestion/remediation/monthly-report APIs, CompliancePage History & Report tab). |
 | 2026-03-01 | v3.3 | Phase 55 completed (integrated compliance dashboard API, FundComplianceGrid/AuditTimeline/AmendmentAlerts, CompliancePage Dashboard tab integration). |
+| 2026-03-01 | v3.4 | Phase 56 completed (document scope model: global/fund_type/fund, scoped legal document upload, vector metadata expansion, document delete API, DocumentLibrary scope UI). |
+| 2026-03-01 | v3.5 | Phase 57 completed (scope-aware RAG retrieval by fund/fund-type, fund context prompt injection, scope-labeled context/sources, CompliancePage legal query scope guidance/icons). |

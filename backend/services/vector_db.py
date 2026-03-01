@@ -98,7 +98,23 @@ class VectorDBService:
         self._require_embedding()
         collection = self._get_collection(collection_name)
         result = collection.query(query_texts=[query], n_results=n_results)
+        return self._parse_query_result(result)
 
+    def search_all_collections(self, query: str, n_results: int = 3) -> list[dict[str, Any]]:
+        all_rows: list[dict[str, Any]] = []
+        for name in self.COLLECTIONS:
+            for row in self.search(name, query, n_results=n_results):
+                row["collection"] = name
+                all_rows.append(row)
+
+        def _distance_value(row: dict[str, Any]) -> float:
+            value = row.get("distance")
+            return float(value) if isinstance(value, (int, float)) else 999999.0
+
+        return sorted(all_rows, key=_distance_value)[: n_results * 2]
+
+    @staticmethod
+    def _parse_query_result(result: dict[str, Any]) -> list[dict[str, Any]]:
         ids = result.get("ids") or [[]]
         docs = result.get("documents") or [[]]
         metadatas = result.get("metadatas") or [[]]
@@ -116,18 +132,177 @@ class VectorDBService:
             )
         return rows
 
-    def search_all_collections(self, query: str, n_results: int = 3) -> list[dict[str, Any]]:
+    @staticmethod
+    def _metadata_scope(row: dict[str, Any]) -> str:
+        metadata = row.get("metadata") or {}
+        scope = metadata.get("scope")
+        if isinstance(scope, str) and scope.strip():
+            return scope.strip()
+        return ""
+
+    @staticmethod
+    def _metadata_fund_id(row: dict[str, Any]) -> int | None:
+        metadata = row.get("metadata") or {}
+        value = metadata.get("fund_id")
+        if value in (None, ""):
+            return None
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _metadata_fund_type(row: dict[str, Any]) -> str | None:
+        metadata = row.get("metadata") or {}
+        value = metadata.get("fund_type_filter")
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    def search_with_scope(
+        self,
+        query: str,
+        fund_id: int | None = None,
+        fund_type: str | None = None,
+        n_results: int = 10,
+    ) -> list[dict[str, Any]]:
+        self._require_embedding()
         all_rows: list[dict[str, Any]] = []
-        for name in self.COLLECTIONS:
-            for row in self.search(name, query, n_results=n_results):
-                row["collection"] = name
+
+        def add_rows(collection_name: str, rows: list[dict[str, Any]]):
+            for row in rows:
+                row["collection"] = collection_name
                 all_rows.append(row)
 
+        # 1) Global scope across all collections
+        for name in self.COLLECTIONS:
+            collection = self._get_collection(name)
+            rows: list[dict[str, Any]] = []
+            try:
+                rows = self._parse_query_result(
+                    collection.query(
+                        query_texts=[query],
+                        n_results=n_results,
+                        where={"scope": "global"},
+                    )
+                )
+            except Exception:
+                rows = []
+
+            if not rows:
+                # Legacy fallback: scope metadata may be absent.
+                try:
+                    legacy_rows = self._parse_query_result(
+                        collection.query(query_texts=[query], n_results=n_results)
+                    )
+                except Exception:
+                    legacy_rows = []
+
+                filtered_legacy: list[dict[str, Any]] = []
+                for row in legacy_rows:
+                    scope = self._metadata_scope(row)
+                    if scope not in ("", "global"):
+                        continue
+                    # Avoid cross-fund leakage for sensitive collections when metadata is incomplete.
+                    if name in {"agreements", "internal"}:
+                        meta_fund_id = self._metadata_fund_id(row)
+                        if fund_id is None or meta_fund_id != fund_id:
+                            continue
+                    filtered_legacy.append(row)
+                rows = filtered_legacy
+
+            add_rows(name, rows)
+
+        # 2) Fund-type scope (guidelines only)
+        normalized_fund_type = (fund_type or "").strip() or None
+        if normalized_fund_type:
+            collection = self._get_collection("guidelines")
+            rows = []
+            try:
+                rows = self._parse_query_result(
+                    collection.query(
+                        query_texts=[query],
+                        n_results=n_results,
+                        where={
+                            "$and": [
+                                {"scope": "fund_type"},
+                                {"fund_type_filter": normalized_fund_type},
+                            ]
+                        },
+                    )
+                )
+            except Exception:
+                rows = []
+
+            if not rows:
+                try:
+                    legacy_rows = self._parse_query_result(
+                        collection.query(query_texts=[query], n_results=n_results)
+                    )
+                except Exception:
+                    legacy_rows = []
+                rows = [
+                    row
+                    for row in legacy_rows
+                    if self._metadata_scope(row) in ("", "fund_type")
+                    and self._metadata_fund_type(row) == normalized_fund_type
+                ]
+
+            add_rows("guidelines", rows)
+
+        # 3) Fund scope (agreements/internal only)
+        if fund_id is not None:
+            for name in ("agreements", "internal"):
+                collection = self._get_collection(name)
+                rows = []
+                try:
+                    rows = self._parse_query_result(
+                        collection.query(
+                            query_texts=[query],
+                            n_results=n_results,
+                            where={
+                                "$and": [
+                                    {"scope": "fund"},
+                                    {"fund_id": int(fund_id)},
+                                ]
+                            },
+                        )
+                    )
+                except Exception:
+                    rows = []
+
+                if not rows:
+                    try:
+                        legacy_rows = self._parse_query_result(
+                            collection.query(query_texts=[query], n_results=n_results)
+                        )
+                    except Exception:
+                        legacy_rows = []
+                    rows = [
+                        row
+                        for row in legacy_rows
+                        if self._metadata_scope(row) in ("", "fund")
+                        and self._metadata_fund_id(row) == int(fund_id)
+                    ]
+
+                add_rows(name, rows)
+
+        # Dedupe by (collection, chunk id), keep best distance first.
         def _distance_value(row: dict[str, Any]) -> float:
             value = row.get("distance")
             return float(value) if isinstance(value, (int, float)) else 999999.0
 
-        return sorted(all_rows, key=_distance_value)[: n_results * 2]
+        deduped: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+        for row in sorted(all_rows, key=_distance_value):
+            key = (str(row.get("collection", "")), str(row.get("id", "")))
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(row)
+
+        return deduped[: n_results * 2]
 
     def count_chunks_for_document(self, collection_name: str, document_id: int) -> int:
         if collection_name not in self.COLLECTIONS:
@@ -135,6 +310,16 @@ class VectorDBService:
         collection = self._get_collection(collection_name)
         result = collection.get(where={"document_id": int(document_id)})
         ids = result.get("ids") or []
+        return len(ids)
+
+    def delete_chunks_by_document(self, collection_name: str, document_id: int) -> int:
+        if collection_name not in self.COLLECTIONS:
+            return 0
+        collection = self._get_collection(collection_name)
+        result = collection.get(where={"document_id": int(document_id)})
+        ids = result.get("ids") or []
+        if ids:
+            collection.delete(ids=ids)
         return len(ids)
 
     def get_stats(self) -> dict[str, dict[str, Any]]:

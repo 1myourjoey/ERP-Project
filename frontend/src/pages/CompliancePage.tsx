@@ -71,6 +71,28 @@ function dDayLabel(dDay: number | null | undefined): string {
   return `D-${dDay}`
 }
 
+function scopeMeta(scope?: string): { icon: string; label: string; className: string } {
+  if (scope === 'fund_type') {
+    return {
+      icon: '📋',
+      label: '유형 가이드',
+      className: 'border-sky-200 bg-sky-50 text-sky-700',
+    }
+  }
+  if (scope === 'fund') {
+    return {
+      icon: '🏢',
+      label: '조합 문서',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    }
+  }
+  return {
+    icon: '🌐',
+    label: '공통 법령',
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  }
+}
+
 function stringifyCondition(condition: Record<string, unknown>): string {
   try {
     return JSON.stringify(condition, null, 2)
@@ -432,6 +454,10 @@ export default function CompliancePage() {
             {interpretMut.isPending ? '질의 중...' : '질의'}
           </button>
         </div>
+        <p className="text-xs text-gray-500">
+          조합을 선택하면 공통 법령(🌐) + 조합유형 가이드(📋) + 해당 조합 문서(🏢)까지 함께 검색합니다. 조합을 선택하지 않으면
+          공통 법령만 검색합니다.
+        </p>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3 lg:col-span-2">
@@ -447,14 +473,24 @@ export default function CompliancePage() {
                         source.distance == null || Number.isNaN(source.distance)
                           ? '-'
                           : Math.max(0, Math.min(1, 1 - source.distance)).toFixed(2)
+                      const scope = scopeMeta(source.scope)
                       return (
                         <div
                           key={`${source.collection}-${idx}`}
                           className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5 text-xs text-gray-700"
                         >
-                          <div className="font-medium">
-                            [{source.collection}] {source.article || '해당없음'} | 점수 {similarity}
+                          <div className="mb-1 flex flex-wrap items-center gap-1 text-[11px]">
+                            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 ${scope.className}`}>
+                              {scope.icon} {scope.label}
+                            </span>
+                            <span className="inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-gray-600">
+                              [{source.collection}]
+                            </span>
+                            <span className="text-gray-500">
+                              {source.article || '해당없음'} | 유사도 {similarity}
+                            </span>
                           </div>
+                          {source.title && <div className="font-medium text-gray-700">{source.title}</div>}
                           <div className="mt-0.5 text-gray-600">{source.text}</div>
                         </div>
                       )
@@ -1228,7 +1264,7 @@ export default function CompliancePage() {
         </div>
       )}
 
-      {activeTab === 'documents' && <DocumentLibrary />}
+      {activeTab === 'documents' && <DocumentLibrary funds={funds} />}
 
       {targetRow && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
