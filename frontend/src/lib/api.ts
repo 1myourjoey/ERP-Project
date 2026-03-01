@@ -186,10 +186,49 @@ export const fetchDashboardSidebar = (): Promise<DashboardSidebarResponse> => ap
 export const fetchDashboardCompleted = (): Promise<DashboardCompletedResponse> => api.get('/dashboard/completed').then(r => r.data)
 export const fetchUpcomingNotices = (days = 30): Promise<UpcomingNotice[]> =>
   api.get('/dashboard/upcoming-notices', { params: { days } }).then(r => r.data)
-export const fetchComplianceRules = (params?: { category?: string; active_only?: boolean }): Promise<ComplianceRule[]> =>
+export const fetchComplianceRules = (
+  params?: { fund_id?: number; level?: string; category?: string; active_only?: boolean },
+): Promise<ComplianceRule[]> =>
   api.get('/compliance/rules', { params }).then(r => r.data)
 export const fetchComplianceRule = (ruleCode: string): Promise<ComplianceRule> =>
   api.get(`/compliance/rules/${ruleCode}`).then(r => r.data)
+export const createComplianceRule = (data: ComplianceRuleCreateInput): Promise<ComplianceRule> =>
+  api.post('/compliance/rules', data).then(r => r.data)
+export const updateComplianceRule = (ruleId: number, data: ComplianceRuleUpdateInput): Promise<ComplianceRule> =>
+  api.put(`/compliance/rules/${ruleId}`, data).then(r => r.data)
+export const deleteComplianceRule = (ruleId: number): Promise<{ deleted: boolean; id: number }> =>
+  api.delete(`/compliance/rules/${ruleId}`).then(r => r.data)
+export const runComplianceCheck = (
+  fundId: number,
+  triggerType: 'manual' | 'event' | 'scheduled' = 'manual',
+): Promise<ComplianceManualCheckResponse> =>
+  api.post(`/compliance/check/${fundId}`, null, { params: { trigger_type: triggerType } }).then(r => r.data)
+export const fetchComplianceChecks = (
+  params?: { fund_id?: number; result?: string; limit?: number },
+): Promise<ComplianceCheckRecord[]> =>
+  api.get('/compliance/checks', { params }).then(r => r.data)
+export const fetchComplianceDocuments = (activeOnly = false): Promise<ComplianceDocument[]> =>
+  api.get('/compliance/documents', { params: { active_only: activeOnly } }).then(r => r.data)
+export const createComplianceDocument = (data: ComplianceDocumentCreateInput): Promise<ComplianceDocument> =>
+  api.post('/compliance/documents', data).then(r => r.data)
+export const fetchLegalDocuments = (): Promise<LegalDocument[]> =>
+  api.get('/legal-documents').then(r => r.data)
+export const fetchLegalDocumentStats = (): Promise<LegalDocumentStatsResponse> =>
+  api.get('/legal-documents/stats').then(r => r.data)
+export const searchLegalDocuments = (
+  params: { query: string; collection?: LegalDocumentType | string; n_results?: number },
+): Promise<LegalDocumentSearchResponse> =>
+  api.get('/legal-documents/search', { params }).then(r => r.data)
+export const uploadLegalDocument = (payload: LegalDocumentUploadInput): Promise<LegalDocumentUploadResponse> => {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  formData.append('title', payload.title)
+  formData.append('document_type', payload.document_type)
+  if (payload.version) {
+    formData.append('version', payload.version)
+  }
+  return api.post('/legal-documents/upload', formData).then(r => r.data)
+}
 export const fetchComplianceObligations = (
   params?: { fund_id?: number; status?: string; period?: string; category?: string },
 ): Promise<ComplianceObligation[]> =>
@@ -213,6 +252,41 @@ export const checkInvestmentLimits = (
 ): Promise<ComplianceLimitCheckResponse> => api.post('/compliance/check-investment-limits', data).then(r => r.data)
 export const updateComplianceOverdue = (): Promise<{ updated: number }> =>
   api.post('/compliance/update-overdue').then(r => r.data)
+export const interpretComplianceQuery = (
+  data: ComplianceInterpretRequest,
+): Promise<ComplianceInterpretResponse> => api.post('/compliance/interpret', data).then(r => r.data)
+export const fetchComplianceLLMUsage = (
+  period: 'month' | 'week' | 'all' = 'month',
+): Promise<ComplianceLLMUsageResponse> => api.get('/compliance/llm-usage', { params: { period } }).then(r => r.data)
+export const fetchComplianceScanHistory = (
+  period: 'week' | 'month' | 'all' = 'week',
+): Promise<ComplianceScanHistoryResponse> => api.get('/compliance/scan-history', { params: { period } }).then(r => r.data)
+export const fetchComplianceAmendments = (
+  limit = 20,
+): Promise<ComplianceDocument[]> => api.get('/compliance/amendments', { params: { limit } }).then(r => r.data)
+export const triggerComplianceManualScan = (
+  data?: ComplianceManualScanRequest,
+): Promise<ComplianceManualScanResponse> => api.post('/compliance/scan/manual', data ?? {}).then(r => r.data)
+export const fetchComplianceViolationPatterns = (
+  params: { fund_id: number; months?: number },
+): Promise<ComplianceViolationPatternsResponse> =>
+  api.get('/compliance/history/patterns', { params }).then(r => r.data)
+export const fetchComplianceRuleSuggestions = (
+  params?: { fund_id?: number },
+): Promise<ComplianceRuleSuggestion[]> =>
+  api.get('/compliance/history/suggestions', { params }).then(r => r.data)
+export const fetchComplianceRemediationStats = (
+  params?: { fund_id?: number },
+): Promise<ComplianceRemediationStatsResponse> =>
+  api.get('/compliance/history/remediation', { params }).then(r => r.data)
+export const fetchComplianceMonthlyReport = (
+  params: { fund_id: number; year_month: string },
+): Promise<ComplianceMonthlyReportResponse> =>
+  api.get('/compliance/report/monthly', { params }).then(r => r.data)
+export const downloadComplianceMonthlyReport = (
+  params: { fund_id: number; year_month: string },
+): Promise<Blob> =>
+  api.get('/compliance/report/monthly/download', { params, responseType: 'blob' }).then(r => r.data)
 
 // -- VICS Reports --
 export const fetchVicsReports = (
@@ -451,6 +525,61 @@ export const generateDocument = (
     },
     responseType: 'blob',
   }).then(r => r.data)
+
+export const generateTemplateDocument = (
+  data: TemplateDocumentGenerateInput,
+): Promise<GeneratedDocumentGenerateResponse> => api.post('/documents/generate', data).then(r => r.data)
+
+export const generateTemplateDocumentsBulk = (
+  data: TemplateDocumentBulkGenerateInput,
+): Promise<TemplateDocumentBulkGenerateResponse> => api.post('/documents/generate/bulk', data).then(r => r.data)
+
+export const fetchTemplateGeneratedDocuments = (
+  params?: { fund_id?: number; template_id?: number; limit?: number },
+): Promise<TemplateGeneratedDocumentItem[]> => api.get('/documents/generated', { params }).then(r => r.data)
+
+export const downloadTemplateGeneratedDocument = (documentId: number): Promise<Blob> =>
+  api.get(`/documents/generated/${documentId}/download`, { responseType: 'blob' }).then(r => r.data)
+
+export const fetchDocumentMarkerDefinitions = (
+  templateId?: number,
+): Promise<DocumentMarkerDefinition[]> =>
+  api.get('/documents/markers', { params: { template_id: templateId } }).then(r => r.data)
+
+export const previewGeneratedTemplateDocument = (
+  data: TemplateDocumentGenerateInput,
+): Promise<Blob> => api.post('/documents/preview', data, { responseType: 'blob' }).then(r => r.data)
+
+export const resolveDocumentVariables = (
+  data: TemplateDocumentGenerateInput,
+): Promise<ResolveDocumentVariablesResponse> =>
+  api.post('/documents/variables/resolve', data).then(r => r.data)
+
+export const analyzeTemplateFile = (file: File): Promise<TemplateAnalyzeResponse> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/templates/analyze', formData).then(r => r.data)
+}
+
+export const registerTemplate = (data: TemplateRegisterInput): Promise<TemplateRegisterResponse> => {
+  const formData = new FormData()
+  formData.append('file', data.file)
+  formData.append('name', data.name)
+  formData.append('document_type', data.document_type)
+  formData.append('variables', JSON.stringify(data.variables))
+  return api.post('/templates/register', formData).then(r => r.data)
+}
+
+export const testGenerateRegisteredTemplate = (
+  data: TemplateRegistrationTestGenerateInput,
+): Promise<Blob> => api.post('/templates/test-generate', data, { responseType: 'blob' }).then(r => r.data)
+
+export const fetchTemplateInputCache = (
+  fundId: number,
+  templateId: number,
+): Promise<TemplateInputCacheResponse> =>
+  api.get('/templates/input-cache', { params: { fund_id: fundId, template_id: templateId } }).then(r => r.data)
+
 export const generateDocumentByBuilder = (
   data: { builder: string; params: Record<string, unknown> },
 ): Promise<GeneratedDocumentGenerateResponse> => api.post('/documents/generate', data).then(r => r.data)
@@ -597,6 +726,14 @@ export const updateLPAddressBook = (id: number, data: Partial<LPAddressBookInput
   api.patch(`/lp-address-books/${id}`, data).then(r => r.data)
 export const deactivateLPAddressBook = (id: number) => api.delete(`/lp-address-books/${id}`)
 
+// -- GP Profiles --
+export const fetchGPProfiles = (): Promise<GPProfile[]> => api.get('/gp-profiles').then(r => r.data)
+export const fetchGPProfile = (id: number): Promise<GPProfile> => api.get(`/gp-profiles/${id}`).then(r => r.data)
+export const createGPProfile = (data: GPProfileInput): Promise<GPProfile> =>
+  api.post('/gp-profiles', data).then(r => r.data)
+export const updateGPProfile = (id: number, data: Partial<GPProfileInput>): Promise<GPProfile> =>
+  api.put(`/gp-profiles/${id}`, data).then(r => r.data)
+
 // -- Investments --
 export const fetchCompanies = (): Promise<Company[]> => api.get('/companies').then(r => r.data)
 export const createCompany = (data: CompanyInput) => api.post('/companies', data).then(r => r.data)
@@ -694,6 +831,10 @@ export const fetchRegularReports = (params?: { report_target?: string; fund_id?:
 export const createRegularReport = (data: RegularReportInput): Promise<RegularReport> => api.post('/regular-reports', data).then(r => r.data)
 export const updateRegularReport = (id: number, data: Partial<RegularReportInput>): Promise<RegularReport> => api.put(`/regular-reports/${id}`, data).then(r => r.data)
 export const deleteRegularReport = (id: number) => api.delete(`/regular-reports/${id}`)
+export const runReportPreCheck = (reportId: number): Promise<PreReportCheckResult> =>
+  api.post(`/reports/${reportId}/pre-check`).then(r => r.data)
+export const fetchReportPreChecks = (reportId: number): Promise<PreReportCheckResult[]> =>
+  api.get(`/reports/${reportId}/pre-checks`).then(r => r.data)
 export const fetchAccounts = (params?: { fund_id?: number; category?: string }): Promise<Account[]> =>
   api.get('/accounts', { params }).then(r => r.data)
 export const createAccount = (data: AccountInput): Promise<Account> => api.post('/accounts', data).then(r => r.data)
@@ -1093,18 +1234,47 @@ export interface DashboardPrioritizedTask {
 
 export interface ComplianceRule {
   id: number
-  category: string
-  subcategory: string
+  fund_id: number | null
+  document_id: number | null
+  document_title: string | null
   rule_code: string
-  title: string
+  rule_name: string
+  level: 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | string
+  category: string
   description: string | null
-  trigger_event: string | null
-  frequency: string | null
-  deadline_rule: string | null
-  target_system: string | null
-  guideline_ref: string | null
+  condition: Record<string, unknown>
+  severity: 'info' | 'warning' | 'error' | 'critical' | string
+  auto_task: boolean
   is_active: boolean
-  fund_type_filter: string | null
+  created_at: string | null
+}
+
+export interface ComplianceRuleCreateInput {
+  fund_id?: number | null
+  document_id?: number | null
+  rule_code: string
+  rule_name: string
+  level: 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | string
+  category: string
+  description?: string | null
+  condition: Record<string, unknown>
+  severity?: 'info' | 'warning' | 'error' | 'critical' | string
+  auto_task?: boolean
+  is_active?: boolean
+}
+
+export interface ComplianceRuleUpdateInput {
+  fund_id?: number | null
+  document_id?: number | null
+  rule_code?: string
+  rule_name?: string
+  level?: 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | string
+  category?: string
+  description?: string | null
+  condition?: Record<string, unknown>
+  severity?: 'info' | 'warning' | 'error' | 'critical' | string
+  auto_task?: boolean
+  is_active?: boolean
 }
 
 export interface ComplianceObligation {
@@ -1139,12 +1309,178 @@ export interface ComplianceDashboardByFundItem {
   completed: number
 }
 
+export interface ComplianceDashboardSummaryMetrics {
+  total_rules: number
+  active_violations: number
+  warnings: number
+  passed: number
+  compliance_rate: number
+}
+
+export interface ComplianceDashboardFundStatusItem {
+  fund_id: number
+  fund_name: string
+  total_rules: number
+  passed: number
+  failed: number
+  warnings?: number
+  violation_count?: number
+  compliance_rate: number
+  last_checked: string | null
+}
+
+export interface ComplianceDashboardRecentCheckItem {
+  id: number
+  fund_id: number
+  fund_name: string | null
+  rule_id: number
+  rule_code: string | null
+  rule_name: string | null
+  result: 'pass' | 'warning' | 'fail' | 'error' | string
+  detail: string | null
+  checked_at: string | null
+  trigger_type: 'manual' | 'event' | 'scheduled' | string | null
+  trigger_source: string | null
+}
+
+export interface ComplianceDashboardAmendmentAlert {
+  id: number
+  law_name: string | null
+  effective_date: string | null
+  days_remaining: number | null
+  summary: string | null
+  version: string | null
+  created_at: string | null
+}
+
+export interface ComplianceDashboardDocumentStats {
+  laws: number
+  regulations: number
+  guidelines: number
+  agreements: number
+  internal: number
+  total_chunks: number
+}
+
+export interface ComplianceDashboardLlmUsage {
+  month_total_tokens: number
+  month_limit: number
+  month_cost_usd: number
+  usage_rate: number
+}
+
 export interface ComplianceDashboardSummary {
+  summary?: ComplianceDashboardSummaryMetrics
+  fund_status?: ComplianceDashboardFundStatusItem[]
+  recent_checks?: ComplianceDashboardRecentCheckItem[]
+  amendment_alerts?: ComplianceDashboardAmendmentAlert[]
+  document_stats?: ComplianceDashboardDocumentStats
+  llm_usage?: ComplianceDashboardLlmUsage
   overdue_count: number
   due_this_week: number
   due_this_month: number
   completed_count: number
   by_fund: ComplianceDashboardByFundItem[]
+  rule_count?: number
+  active_rule_count?: number
+  check_count?: number
+  failed_check_count?: number
+  recent_check_count?: number
+}
+
+export interface ComplianceCheckRecord {
+  id: number
+  rule_id: number
+  rule_code: string | null
+  rule_name: string | null
+  level: string | null
+  fund_id: number
+  fund_name: string | null
+  checked_at: string | null
+  result: 'pass' | 'warning' | 'fail' | 'error' | string
+  actual_value: string | null
+  threshold_value: string | null
+  detail: string | null
+  trigger_type: 'manual' | 'event' | 'scheduled' | string | null
+  trigger_source: string | null
+  trigger_source_id: number | null
+  remediation_task_id: number | null
+  remediation_task_title: string | null
+  resolved_at: string | null
+}
+
+export interface ComplianceManualCheckResponse {
+  fund_id: number
+  checked_count: number
+  failed_count: number
+  warning_count: number
+  checks: ComplianceCheckRecord[]
+}
+
+export interface ComplianceDocument {
+  id: number
+  title: string
+  document_type: string
+  version: string | null
+  effective_date: string | null
+  content_summary: string | null
+  file_path: string | null
+  is_active: boolean
+  created_at: string | null
+}
+
+export interface ComplianceDocumentCreateInput {
+  title: string
+  document_type: string
+  version?: string | null
+  effective_date?: string | null
+  content_summary?: string | null
+  file_path?: string | null
+  is_active?: boolean
+}
+
+export type LegalDocumentType = 'laws' | 'regulations' | 'guidelines' | 'agreements' | 'internal'
+
+export interface LegalDocument extends ComplianceDocument {
+  chunk_count?: number | null
+}
+
+export interface LegalDocumentUploadInput {
+  file: File
+  title: string
+  document_type: LegalDocumentType | string
+  version?: string | null
+}
+
+export interface LegalDocumentUploadResponse {
+  document: LegalDocument
+  chunk_count: number
+  collection: LegalDocumentType | string
+}
+
+export interface LegalDocumentSearchResult {
+  id: string
+  text: string
+  metadata: Record<string, unknown>
+  distance: number | null
+  collection: string
+}
+
+export interface LegalDocumentSearchResponse {
+  query: string
+  collection?: string | null
+  count: number
+  results: LegalDocumentSearchResult[]
+}
+
+export interface LegalDocumentCollectionStat {
+  count: number
+  description: string
+}
+
+export interface LegalDocumentStatsResponse {
+  collections: Record<LegalDocumentType | string, LegalDocumentCollectionStat>
+  total_chunks: number
 }
 
 export interface ComplianceLimitCheckItem {
@@ -1166,6 +1502,235 @@ export interface ComplianceLimitCheckRequest {
 export interface ComplianceLimitCheckResponse {
   checks: ComplianceLimitCheckItem[]
   overall: 'pass' | 'warning' | 'block' | string
+}
+
+export interface ComplianceInterpretRequest {
+  query: string
+  fund_id?: number | null
+}
+
+export interface ComplianceInterpretSource {
+  collection: string
+  text: string
+  article: string
+  distance: number | null
+}
+
+export interface ComplianceInterpretRuleCheckItem {
+  rule_code: string
+  rule_name: string
+  result: string
+  detail: string | null
+}
+
+export interface ComplianceInterpretRuleCheck {
+  matched_keyword: string | null
+  status: 'pass' | 'fail' | string
+  answer: string
+  checks: ComplianceInterpretRuleCheckItem[]
+}
+
+export interface ComplianceInterpretResponse {
+  tier: 'L1' | 'L2' | string
+  answer: string
+  sources: ComplianceInterpretSource[]
+  rule_check: ComplianceInterpretRuleCheck | null
+  tokens_used: number
+}
+
+export interface ComplianceLLMUsageRecord {
+  id: number
+  service: string
+  model: string
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  estimated_cost_usd: number
+  request_summary: string | null
+  user_id: number | null
+  created_at: string | null
+}
+
+export interface ComplianceLLMUsageByService {
+  service: string
+  total_tokens: number
+  estimated_cost_usd: number
+}
+
+export interface ComplianceLLMUsageResponse {
+  period: 'month' | 'week' | 'all' | string
+  used_tokens: number
+  used_cost_usd: number
+  limit_tokens: number | null
+  remaining_tokens: number | null
+  usage_pct: number | null
+  records: ComplianceLLMUsageRecord[]
+  by_service: ComplianceLLMUsageByService[]
+}
+
+export interface ComplianceScheduledJobStatus {
+  job_id: string
+  label: string
+  cron: string
+  next_run_at: string | null
+  last_run_at: string | null
+  enabled: boolean
+}
+
+export interface ComplianceScanHistoryItem {
+  scan_type: string
+  scan_date: string
+  last_checked_at: string
+  checked_count: number
+  pass_count: number
+  warning_count: number
+  failed_count: number
+  fund_count: number
+}
+
+export interface ComplianceScanHistoryResponse {
+  period: 'week' | 'month' | 'all' | string
+  schedules: ComplianceScheduledJobStatus[]
+  history: ComplianceScanHistoryItem[]
+}
+
+export interface ComplianceManualScanRequest {
+  fund_id?: number | null
+  mode?: 'daily' | 'full' | 'law' | string
+}
+
+export interface ComplianceManualScanFundResult {
+  fund_id: number
+  fund_name: string
+  total_rules: number
+  passed: number
+  failed: number
+  warnings: number
+  new_violations: Array<{
+    rule_code: string
+    rule_name: string
+    detail: string | null
+  }>
+}
+
+export interface ComplianceManualScanResponse {
+  scan_type?: string
+  trigger_type?: string
+  executed_at?: string
+  fund_count?: number
+  total_rules?: number
+  passed?: number
+  failed?: number
+  warnings?: number
+  results?: ComplianceManualScanFundResult[]
+  checked_at?: string
+  days?: number
+  count?: number
+  saved_count?: number
+  amendments?: Array<Record<string, unknown>>
+  errors?: string[]
+}
+
+export interface ComplianceRecurringViolation {
+  rule_id: number
+  rule_code: string | null
+  rule_name: string | null
+  violation_count: number
+  months_violated: string[]
+  severity: string | null
+  pattern: string
+  recommendation: string
+}
+
+export interface ComplianceTrendArea {
+  rule_id: number
+  rule_code: string | null
+  rule_name: string | null
+  early_period_violations: number
+  recent_period_violations: number
+  delta: number
+  trend: 'improving' | 'worsening' | string
+}
+
+export interface ComplianceViolationPatternsResponse {
+  fund_id: number
+  months: number
+  since: string
+  recurring_violations: ComplianceRecurringViolation[]
+  improving_areas: ComplianceTrendArea[]
+  worsening_areas: ComplianceTrendArea[]
+}
+
+export interface ComplianceRuleSuggestion {
+  rule_id: number
+  fund_id: number | null
+  rule_code: string | null
+  rule_name: string | null
+  current_level: string | null
+  current_severity: string | null
+  suggestion: 'frequency_reduce' | 'severity_upgrade' | string
+  detail: string
+  recommended_severity?: string | null
+  violation_count?: number | null
+}
+
+export interface ComplianceRemediationOverdueTask {
+  task_id: number
+  task_title: string | null
+  days_open: number
+  deadline: string | null
+  rule_id: number | null
+  rule_name: string | null
+  fund_id: number | null
+  checked_at: string | null
+}
+
+export interface ComplianceRemediationStatsResponse {
+  fund_id: number | null
+  total_tasks: number
+  completed: number
+  pending: number
+  completion_rate: number
+  avg_resolution_days: number
+  overdue_tasks: ComplianceRemediationOverdueTask[]
+}
+
+export interface ComplianceMonthlySummary {
+  total_checks: number
+  pass: number
+  fail: number
+  warning: number
+}
+
+export interface ComplianceMonthlyViolation {
+  check_id: number
+  rule_id: number | null
+  rule_code: string | null
+  rule_name: string | null
+  result: string | null
+  detail: string | null
+  checked_at: string | null
+}
+
+export interface ComplianceMonthlyTrend {
+  period: string
+  previous_period: string
+  improved: number
+  worsened: number
+  unchanged: number
+}
+
+export interface ComplianceMonthlyReportResponse {
+  fund_id: number
+  fund_name: string
+  period: string
+  generated_at: string
+  summary: ComplianceMonthlySummary
+  violations: ComplianceMonthlyViolation[]
+  recurring_patterns: ComplianceRecurringViolation[]
+  remediation_status: ComplianceRemediationStatsResponse
+  recommendations: ComplianceRuleSuggestion[]
+  trend_vs_last_month: ComplianceMonthlyTrend
 }
 
 export interface VicsGenerateInput {
@@ -2025,6 +2590,30 @@ export interface GPEntity {
   is_primary: number
 }
 
+export interface GPProfileInput {
+  company_name: string
+  company_name_en?: string | null
+  representative: string
+  business_number?: string | null
+  corporate_number?: string | null
+  address?: string | null
+  address_en?: string | null
+  phone?: string | null
+  fax?: string | null
+  email?: string | null
+  seal_image_path?: string | null
+  signature_image_path?: string | null
+  vc_registration_number?: string | null
+  fss_code?: string | null
+  memo?: string | null
+}
+
+export interface GPProfile extends GPProfileInput {
+  id: number
+  created_at: string | null
+  updated_at: string | null
+}
+
 export interface FundNoticePeriodInput {
   notice_type: string
   label: string
@@ -2411,6 +3000,34 @@ export interface RegularReport {
   created_at: string | null
   fund_name: string | null
   days_remaining: number | null
+}
+
+export interface PreReportCheckFinding {
+  type: 'legal' | 'cross' | 'guideline' | 'contract' | string
+  severity: 'error' | 'warning' | 'info' | string
+  title: string
+  detail: string
+  reference?: string | null
+  rule_code?: string | null
+  difference?: number | null
+  source?: string | null
+}
+
+export interface PreReportCheckResult {
+  id: number
+  report_id: number
+  fund_id: number
+  checked_at: string | null
+  overall_status: 'pass' | 'warning' | 'error' | string
+  legal_check: PreReportCheckFinding[]
+  cross_check: PreReportCheckFinding[]
+  guideline_check: PreReportCheckFinding[]
+  contract_check: PreReportCheckFinding[]
+  total_errors: number
+  total_warnings: number
+  total_info: number
+  tasks_created: number
+  created_by: number | null
 }
 
 export interface UpcomingReport {
@@ -2939,6 +3556,101 @@ export interface GeneratedDocumentItem {
   filename: string
   created_at: string | null
   download_url: string
+}
+
+export interface TemplateDocumentGenerateInput {
+  fund_id: number
+  template_id: number
+  lp_id?: number | null
+  investment_id?: number | null
+  extra_vars?: Record<string, string> | null
+}
+
+export interface TemplateDocumentBulkGenerateInput {
+  fund_id: number
+  template_id: number
+  extra_vars?: Record<string, string> | null
+}
+
+export interface TemplateGeneratedDocumentItem {
+  id: number
+  filename: string
+  document_number: string | null
+  fund_id: number | null
+  template_id: number | null
+  lp_id: number | null
+  investment_id: number | null
+  created_at: string | null
+  download_url: string
+}
+
+export interface TemplateDocumentBulkGenerateResponse {
+  generated_count: number
+  documents: TemplateGeneratedDocumentItem[]
+}
+
+export interface DocumentMarkerDefinition {
+  marker: string
+  source: string
+  description: string
+}
+
+export interface ResolveDocumentVariablesResponse {
+  variables: Record<string, string>
+}
+
+export interface TemplateAnalyzeMarker {
+  text: string
+  marker: string
+  source: 'fund' | 'lp' | 'gp' | 'investment' | 'manual' | string
+  confidence: number
+  existing: boolean
+}
+
+export interface TemplateAnalyzeResponse {
+  extracted_text: string
+  identified_markers: TemplateAnalyzeMarker[]
+  existing_markers: string[]
+}
+
+export interface TemplateVariableRegistrationInput {
+  marker_name: string
+  display_label?: string | null
+  source_type?: string | null
+  source_field?: string | null
+  default_value?: string | null
+  is_required?: boolean
+  display_order?: number
+  text?: string | null
+}
+
+export interface TemplateRegisterInput {
+  file: File
+  name: string
+  document_type: string
+  variables: TemplateVariableRegistrationInput[]
+}
+
+export interface TemplateRegisterResponse {
+  template_id: number
+  name: string
+  document_type: string
+  variable_count: number
+  file_path: string
+}
+
+export interface TemplateRegistrationTestGenerateInput {
+  template_id: number
+  fund_id: number
+  lp_id?: number | null
+  investment_id?: number | null
+  manual_vars?: Record<string, string>
+}
+
+export interface TemplateInputCacheResponse {
+  fund_id: number
+  template_id: number
+  inputs: Record<string, string>
 }
 
 export interface MarkerInfo {

@@ -3,17 +3,23 @@ setlocal
 
 cd /d "%~dp0"
 
-echo [1/4] Creating virtual environment (.venv) with global Python...
-python -m venv .venv
+set "PYTHON_CMD=py -3.12"
+%PYTHON_CMD% --version >nul 2>&1
 if errorlevel 1 (
-  echo Failed to create .venv. Check that "python" works in this terminal.
+  set "PYTHON_CMD=python"
+)
+
+echo [1/4] Creating virtual environment (.venv312)...
+%PYTHON_CMD% -m venv .venv312
+if errorlevel 1 (
+  echo Failed to create .venv312. Check that Python 3.12 is installed.
   exit /b 1
 )
 
-echo [2/4] Activating .venv...
-call .venv\Scripts\activate
+echo [2/4] Activating .venv312...
+call .venv312\Scripts\activate
 if errorlevel 1 (
-  echo Failed to activate .venv.
+  echo Failed to activate .venv312.
   exit /b 1
 )
 
@@ -32,7 +38,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Done. Backend is now using backend\.venv
+echo Done. Backend is now using backend\.venv312
 echo Run server with: run_backend.bat
 exit /b 0
-

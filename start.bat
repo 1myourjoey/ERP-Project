@@ -4,8 +4,12 @@ echo   VC ERP - Starting Backend + Frontend
 echo ========================================
 echo.
 
+set "BACKEND_PY=.venv312\Scripts\python.exe"
+if not exist "%~dp0backend\%BACKEND_PY%" set "BACKEND_PY=.venv\Scripts\python.exe"
+if not exist "%~dp0backend\%BACKEND_PY%" set "BACKEND_PY=python"
+
 echo [1/2] Starting Backend (port 8000)...
-start "VC-ERP Backend" cmd /k "cd /d %~dp0backend && set VON_AUTH_DISABLED=1 && python -m uvicorn main:app --port 8000 --reload"
+start "VC-ERP Backend" cmd /k "cd /d %~dp0backend && set VON_AUTH_DISABLED=1 && %BACKEND_PY% -m uvicorn main:app --port 8000 --reload"
 
 timeout /t 3 /nobreak >nul
 

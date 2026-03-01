@@ -45,6 +45,7 @@ from services.workflow_service import calculate_business_days_before
 from services.workflow_service import instantiate_workflow
 from services.fund_integrity import validate_lp_paid_in_pair
 from services.compliance_engine import ComplianceEngine
+from services.compliance_rule_engine import ComplianceRuleEngine
 
 router = APIRouter(tags=["funds"])
 logger = logging.getLogger(__name__)
@@ -190,6 +191,40 @@ FORMATION_WORKFLOW_NAME_MAP = {
     "조합 등록": "벤처투자조합 등록",
 }
 FORMATION_SLOT_MEMO_PREFIX = "formation_slot="
+
+
+def _run_compliance_rule_checks(
+    *,
+    db: Session,
+    fund_id: int,
+    trigger_source: str,
+    trigger_source_id: int | None = None,
+) -> None:
+    try:
+        checks = ComplianceRuleEngine().evaluate_all(
+            fund_id=fund_id,
+            db=db,
+            trigger_type="event",
+            trigger_source=trigger_source,
+            trigger_source_id=trigger_source_id,
+        )
+        violations = [check for check in checks if check.result in {"fail", "error"}]
+        if violations:
+            logger.warning(
+                "compliance rule violations: fund_id=%s trigger_source=%s violations=%s",
+                fund_id,
+                trigger_source,
+                len(violations),
+            )
+    except Exception as exc:  # noqa: BLE001 - rule checks must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance rule engine failed: fund_id=%s trigger_source=%s trigger_source_id=%s error=%s",
+            fund_id,
+            trigger_source,
+            trigger_source_id,
+            exc,
+        )
 
 
 def _to_str(value: object | None) -> str:
@@ -1688,6 +1723,12 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"조합 생성 중 오류가 발생했습니다: {exc}") from exc
 
     db.refresh(fund)
+    _run_compliance_rule_checks(
+        db=db,
+        fund_id=fund.id,
+        trigger_source="fund_create",
+        trigger_source_id=fund.id,
+    )
     return fund
 
 
@@ -1707,6 +1748,12 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(fund)
+    _run_compliance_rule_checks(
+        db=db,
+        fund_id=fund.id,
+        trigger_source="fund_update",
+        trigger_source_id=fund.id,
+    )
     return fund
 
 
@@ -1882,6 +1929,12 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
             lp.id,
             exc,
         )
+    _run_compliance_rule_checks(
+        db=db,
+        fund_id=fund_id,
+        trigger_source="lp_create",
+        trigger_source_id=lp.id,
+    )
     return lp
 
 
@@ -1949,6 +2002,12 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
         db.rollback()
         raise HTTPException(status_code=409, detail="Duplicate LP in the same fund is not allowed") from exc
     db.refresh(lp)
+    _run_compliance_rule_checks(
+        db=db,
+        fund_id=fund_id,
+        trigger_source="lp_update",
+        trigger_source_id=lp.id,
+    )
     return lp
 
 
@@ -1971,6 +2030,12 @@ def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
             lp_id,
             exc,
         )
+    _run_compliance_rule_checks(
+        db=db,
+        fund_id=fund_id,
+        trigger_source="lp_delete",
+        trigger_source_id=lp_id,
+    )
 
 
 @router.put("/api/funds/{fund_id}/notice-periods", response_model=list[FundNoticePeriodResponse])

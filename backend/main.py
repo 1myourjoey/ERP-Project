@@ -1,16 +1,21 @@
 from contextlib import asynccontextmanager
 import os
+from dotenv import load_dotenv
 
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+load_dotenv()  # backend/.env 파일에서 환경변수 로드
+
 from database import engine, Base, SessionLocal
 from dependencies.auth import get_current_user
 from models import *  # noqa: F401,F403 - import all models so tables are created
 from seed.seed_accounts import seed_accounts
 from scripts.seed_data import seed_all
+from seeds.compliance_rules import seed_default_compliance_rules
+from services.scheduler import get_scheduler_service
 from routers import (
     tasks,
     task_categories,
@@ -37,6 +42,7 @@ from routers import (
     users,
     performance,
     biz_reports,
+    reports,
     regular_reports,
     accounting,
     provisional_fs,
@@ -44,6 +50,7 @@ from routers import (
     documents,
     lp_transfers,
     gp_entities,
+    gp_profiles,
     lp_address_books,
     admin,
     compliance,
@@ -55,7 +62,12 @@ from routers import (
     invitations,
     document_generation,
     lp_contributions,
+    template_registration,
+    legal_documents,
 )
+
+os.environ.setdefault("LLM_MONTHLY_LIMIT", "500000")
+scheduler_service = get_scheduler_service()
 
 def ensure_sqlite_compat_columns():
     if engine.dialect.name != "sqlite":
@@ -241,9 +253,247 @@ def ensure_sqlite_compat_columns():
             ("exit_trades", "settlement_date", "DATE"),
             ("exit_trades", "settlement_amount", "REAL"),
             ("exit_trades", "related_transaction_id", "INTEGER"),
+            # Phase 49+ compatibility: compliance documents/rules/checks
+            ("compliance_documents", "title", "TEXT"),
+            ("compliance_documents", "document_type", "TEXT"),
+            ("compliance_documents", "version", "TEXT"),
+            ("compliance_documents", "effective_date", "DATETIME"),
+            ("compliance_documents", "content_summary", "TEXT"),
+            ("compliance_documents", "file_path", "TEXT"),
+            ("compliance_documents", "is_active", "INTEGER DEFAULT 1"),
+            ("compliance_documents", "created_at", "DATETIME"),
+            ("fund_compliance_rules", "fund_id", "INTEGER"),
+            ("fund_compliance_rules", "document_id", "INTEGER"),
+            ("fund_compliance_rules", "rule_name", "TEXT"),
+            ("fund_compliance_rules", "level", "TEXT"),
+            ("fund_compliance_rules", "category", "TEXT"),
+            ("fund_compliance_rules", "description", "TEXT"),
+            ("fund_compliance_rules", "condition", "TEXT"),
+            ("fund_compliance_rules", "severity", "TEXT DEFAULT 'warning'"),
+            ("fund_compliance_rules", "auto_task", "INTEGER DEFAULT 0"),
+            ("fund_compliance_rules", "is_active", "INTEGER DEFAULT 1"),
+            ("fund_compliance_rules", "created_at", "DATETIME"),
+            ("compliance_checks", "actual_value", "TEXT"),
+            ("compliance_checks", "threshold_value", "TEXT"),
+            ("compliance_checks", "detail", "TEXT"),
+            ("compliance_checks", "trigger_type", "TEXT"),
+            ("compliance_checks", "trigger_source", "TEXT"),
+            ("compliance_checks", "trigger_source_id", "INTEGER"),
+            ("compliance_checks", "remediation_task_id", "INTEGER"),
+            ("compliance_checks", "resolved_at", "DATETIME"),
+            ("llm_usages", "service", "TEXT"),
+            ("llm_usages", "model", "TEXT"),
+            ("llm_usages", "prompt_tokens", "INTEGER DEFAULT 0"),
+            ("llm_usages", "completion_tokens", "INTEGER DEFAULT 0"),
+            ("llm_usages", "total_tokens", "INTEGER DEFAULT 0"),
+            ("llm_usages", "estimated_cost_usd", "REAL DEFAULT 0"),
+            ("llm_usages", "request_summary", "TEXT"),
+            ("llm_usages", "user_id", "INTEGER"),
+            ("llm_usages", "created_at", "DATETIME"),
         ]:
             if has_table(table) and not has_column(table, column):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+
+        if has_table("compliance_documents"):
+            if has_column("compliance_documents", "title"):
+                conn.exec_driver_sql(
+                    "UPDATE compliance_documents SET title = 'Untitled Compliance Document' "
+                    "WHERE title IS NULL OR TRIM(title) = ''"
+                )
+            if has_column("compliance_documents", "document_type"):
+                conn.exec_driver_sql(
+                    "UPDATE compliance_documents SET document_type = 'law' "
+                    "WHERE document_type IS NULL OR TRIM(document_type) = ''"
+                )
+            if has_column("compliance_documents", "is_active"):
+                conn.exec_driver_sql(
+                    "UPDATE compliance_documents SET is_active = 1 "
+                    "WHERE is_active IS NULL"
+                )
+
+            # Legacy compatibility: some local DBs have compliance_documents with
+            # mandatory legacy columns (layer/name/scope/status) that break current inserts.
+            # Rebuild table into current schema while preserving existing rows.
+            doc_cols = conn.exec_driver_sql("PRAGMA table_info('compliance_documents')").fetchall()
+            doc_col_info = {row[1]: {"notnull": int(row[3]), "default": row[4]} for row in doc_cols}
+            legacy_required = {"layer", "name", "scope", "status"}
+            has_legacy_required = legacy_required.issubset(set(doc_col_info.keys()))
+            legacy_without_default = any(
+                doc_col_info.get(col, {}).get("notnull") == 1
+                and doc_col_info.get(col, {}).get("default") is None
+                for col in legacy_required
+            )
+            if has_legacy_required and legacy_without_default:
+                conn.exec_driver_sql("PRAGMA foreign_keys = OFF")
+                conn.exec_driver_sql("DROP TABLE IF EXISTS compliance_documents__new")
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE compliance_documents__new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT NOT NULL,
+                        document_type TEXT NOT NULL,
+                        version TEXT,
+                        effective_date DATETIME,
+                        content_summary TEXT,
+                        file_path TEXT,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                conn.exec_driver_sql(
+                    """
+                    INSERT INTO compliance_documents__new
+                    (id, title, document_type, version, effective_date, content_summary, file_path, is_active, created_at)
+                    SELECT
+                        id,
+                        COALESCE(NULLIF(TRIM(title), ''), NULLIF(TRIM(name), ''), 'Untitled Compliance Document') AS title,
+                        COALESCE(NULLIF(TRIM(document_type), ''), NULLIF(TRIM(layer), ''), 'law') AS document_type,
+                        CASE WHEN version IS NULL THEN NULL ELSE CAST(version AS TEXT) END AS version,
+                        effective_date,
+                        COALESCE(content_summary, description) AS content_summary,
+                        file_path,
+                        CASE WHEN is_active IS NULL THEN 1 ELSE is_active END AS is_active,
+                        COALESCE(created_at, CURRENT_TIMESTAMP) AS created_at
+                    FROM compliance_documents
+                    """
+                )
+                conn.exec_driver_sql("DROP TABLE compliance_documents")
+                conn.exec_driver_sql("ALTER TABLE compliance_documents__new RENAME TO compliance_documents")
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON")
+
+        if has_table("fund_compliance_rules"):
+            if has_column("fund_compliance_rules", "rule_name"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET rule_name = IFNULL(rule_code, 'Unnamed Rule') "
+                    "WHERE rule_name IS NULL OR TRIM(rule_name) = ''"
+                )
+            if has_column("fund_compliance_rules", "level"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET level = 'L1' "
+                    "WHERE level IS NULL OR TRIM(level) = ''"
+                )
+            if has_column("fund_compliance_rules", "category"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET category = 'general' "
+                    "WHERE category IS NULL OR TRIM(category) = ''"
+                )
+            if has_column("fund_compliance_rules", "condition"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET condition = '{}' "
+                    "WHERE condition IS NULL OR TRIM(CAST(condition AS TEXT)) = ''"
+                )
+            if has_column("fund_compliance_rules", "severity"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET severity = 'warning' "
+                    "WHERE severity IS NULL OR TRIM(severity) = ''"
+                )
+            if has_column("fund_compliance_rules", "auto_task"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET auto_task = 0 "
+                    "WHERE auto_task IS NULL"
+                )
+            if has_column("fund_compliance_rules", "is_active"):
+                conn.exec_driver_sql(
+                    "UPDATE fund_compliance_rules SET is_active = 1 "
+                    "WHERE is_active IS NULL"
+                )
+
+            # Legacy compatibility: old rule table had mandatory fund_id/rule_value/enabled shape.
+            # Rebuild to current phase schema (supports global rules with NULL fund_id).
+            rule_cols = conn.exec_driver_sql("PRAGMA table_info('fund_compliance_rules')").fetchall()
+            rule_col_names = {row[1] for row in rule_cols}
+            has_legacy_rule_shape = {"rule_value", "enabled"}.issubset(rule_col_names)
+            if has_legacy_rule_shape:
+                conn.exec_driver_sql("PRAGMA foreign_keys = OFF")
+                conn.exec_driver_sql("DROP TABLE IF EXISTS fund_compliance_rules__new")
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE fund_compliance_rules__new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        fund_id INTEGER,
+                        document_id INTEGER,
+                        rule_code TEXT NOT NULL UNIQUE,
+                        rule_name TEXT NOT NULL,
+                        level TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        description TEXT,
+                        condition TEXT NOT NULL,
+                        severity TEXT NOT NULL DEFAULT 'warning',
+                        auto_task INTEGER NOT NULL DEFAULT 0,
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                conn.exec_driver_sql(
+                    """
+                    INSERT INTO fund_compliance_rules__new
+                    (id, fund_id, document_id, rule_code, rule_name, level, category, description, condition, severity, auto_task, is_active, created_at)
+                    SELECT
+                        id,
+                        fund_id,
+                        document_id,
+                        rule_code,
+                        COALESCE(NULLIF(TRIM(rule_name), ''), NULLIF(TRIM(rule_code), ''), 'Unnamed Rule') AS rule_name,
+                        COALESCE(NULLIF(TRIM(level), ''), 'L1') AS level,
+                        COALESCE(NULLIF(TRIM(category), ''), 'general') AS category,
+                        description,
+                        CASE
+                            WHEN condition IS NULL OR TRIM(CAST(condition AS TEXT)) = ''
+                            THEN json_object('type', 'legacy_threshold', 'value', rule_value, 'unit', rule_unit)
+                            ELSE condition
+                        END AS condition,
+                        COALESCE(NULLIF(TRIM(severity), ''), 'warning') AS severity,
+                        CASE WHEN auto_task IS NULL THEN 0 ELSE auto_task END AS auto_task,
+                        CASE
+                            WHEN is_active IS NOT NULL THEN is_active
+                            WHEN enabled IS NOT NULL THEN CASE WHEN enabled THEN 1 ELSE 0 END
+                            ELSE 1
+                        END AS is_active,
+                        COALESCE(created_at, CURRENT_TIMESTAMP) AS created_at
+                    FROM fund_compliance_rules
+                    """
+                )
+                conn.exec_driver_sql("DROP TABLE fund_compliance_rules")
+                conn.exec_driver_sql("ALTER TABLE fund_compliance_rules__new RENAME TO fund_compliance_rules")
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON")
+
+        if has_table("compliance_checks"):
+            # Legacy compatibility: old check table lacked rule_id/checked_at/result columns.
+            # Rebuild as current schema and reset legacy logs that cannot be mapped safely.
+            check_cols = conn.exec_driver_sql("PRAGMA table_info('compliance_checks')").fetchall()
+            check_col_names = {row[1] for row in check_cols}
+            missing_core_check_cols = any(
+                col not in check_col_names for col in ("rule_id", "checked_at", "result")
+            )
+            has_legacy_check_cols = {"trigger_event", "check_type", "status"}.issubset(check_col_names)
+            if missing_core_check_cols or has_legacy_check_cols:
+                conn.exec_driver_sql("PRAGMA foreign_keys = OFF")
+                conn.exec_driver_sql("DROP TABLE IF EXISTS compliance_checks__new")
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE compliance_checks__new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        rule_id INTEGER NOT NULL,
+                        fund_id INTEGER NOT NULL,
+                        checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        result TEXT NOT NULL,
+                        actual_value TEXT,
+                        threshold_value TEXT,
+                        detail TEXT,
+                        trigger_type TEXT,
+                        trigger_source TEXT,
+                        trigger_source_id INTEGER,
+                        remediation_task_id INTEGER,
+                        resolved_at DATETIME
+                    )
+                    """
+                )
+                # No data copy: legacy check rows are structurally incompatible with rule-based logs.
+                conn.exec_driver_sql("DROP TABLE compliance_checks")
+                conn.exec_driver_sql("ALTER TABLE compliance_checks__new RENAME TO compliance_checks")
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON")
 
         if has_table("exit_trades") and has_column("exit_trades", "settlement_status"):
             conn.exec_driver_sql(
@@ -606,12 +856,27 @@ async def lifespan(app: FastAPI):
         try:
             seed_accounts(db)
             seed_all(db)
+            seed_default_compliance_rules(db)
         finally:
             db.close()
-    yield
+    await startup_event()
+    try:
+        yield
+    finally:
+        await shutdown_event()
 
 
 app = FastAPI(title="VC ERP API", version="0.2.0", lifespan=lifespan)
+
+
+@app.on_event("startup")
+async def startup_event():
+    scheduler_service.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler_service.stop()
 
 origins = [
     origin.strip()
@@ -674,6 +939,7 @@ include_protected_router(fees.router)
 include_protected_router(users.router)
 include_protected_router(performance.router)
 include_protected_router(biz_reports.router)
+include_protected_router(reports.router)
 include_protected_router(regular_reports.router)
 include_protected_router(accounting.router)
 include_protected_router(provisional_fs.router)
@@ -681,6 +947,7 @@ include_protected_router(vote_records.router)
 include_protected_router(documents.router)
 include_protected_router(lp_transfers.router)
 include_protected_router(gp_entities.router)
+include_protected_router(gp_profiles.router)
 include_protected_router(lp_address_books.router)
 include_protected_router(admin.router)
 include_protected_router(compliance.router)
@@ -690,6 +957,8 @@ include_protected_router(attachments.router)
 include_protected_router(periodic_schedules.router)
 include_protected_router(document_generation.router)
 include_protected_router(lp_contributions.router)
+include_protected_router(template_registration.router)
+include_protected_router(legal_documents.router)
 
 
 @app.exception_handler(RequestValidationError)

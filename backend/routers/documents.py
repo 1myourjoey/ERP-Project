@@ -14,6 +14,7 @@ from models.attachment import Attachment
 from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
 from schemas.document_template import DocumentTemplateResponse
+from services.bulk_document_generator import BulkDocumentGenerator
 from services.document_service import build_variables_for_fund, generate_document_for_template
 from services.generated_document_service import (
     BUILDER_LABELS,
@@ -32,9 +33,20 @@ class TemplatePreviewRequest(BaseModel):
     custom_data: dict[str, Any] | None = None
 
 
-class DocumentGenerateRequest(BaseModel):
+class BuilderDocumentGenerateRequest(BaseModel):
     builder: str
     params: dict[str, Any] = Field(default_factory=dict)
+
+
+class TemplateDocumentGenerateRequest(BaseModel):
+    fund_id: int
+    template_id: int
+    lp_id: int | None = None
+    investment_id: int | None = None
+    extra_vars: dict[str, str] | None = None
+
+
+DocumentGenerateRequest = BuilderDocumentGenerateRequest | TemplateDocumentGenerateRequest
 
 
 class DocumentGenerateResponse(BaseModel):
@@ -78,16 +90,43 @@ def _sample_variables() -> dict[str, str]:
 
 @router.post("/api/documents/generate", response_model=DocumentGenerateResponse)
 def generate_document_with_builder(body: DocumentGenerateRequest, db: Session = Depends(get_db)):
-    if body.builder not in BUILDER_LABELS:
-        raise HTTPException(status_code=400, detail="지원하지 않는 문서 빌더입니다.")
+    if isinstance(body, BuilderDocumentGenerateRequest):
+        if body.builder not in BUILDER_LABELS:
+            raise HTTPException(status_code=400, detail="지원하지 않는 문서 빌더입니다.")
+        try:
+            return generate_and_store_document(body.builder, body.params or {}, db)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    generator = BulkDocumentGenerator()
     try:
-        return generate_and_store_document(body.builder, body.params or {}, db)
+        generated = generator.generate_one(
+            db=db,
+            fund_id=body.fund_id,
+            template_id=body.template_id,
+            lp_id=body.lp_id,
+            investment_id=body.investment_id,
+            extra_vars=body.extra_vars,
+            commit=True,
+        )
     except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return DocumentGenerateResponse(
+        document_id=generated.id,
+        filename=generated.original_filename,
+        download_url=f"/api/documents/generated/{generated.id}/download",
+    )
 
 
 @router.get("/api/documents", response_model=list[GeneratedDocumentItem])
@@ -104,7 +143,10 @@ def list_documents(
 @router.get("/api/documents/{document_id}/download", response_class=FileResponse)
 def download_document(document_id: int, db: Session = Depends(get_db)):
     row = db.get(Attachment, document_id)
-    if not row or not (row.entity_type or "").startswith("generated_document:"):
+    entity_type = (row.entity_type or "") if row else ""
+    is_legacy = entity_type.startswith("generated_document:")
+    is_template_generated = entity_type.startswith("generated_template_document:")
+    if not row or not (is_legacy or is_template_generated):
         raise HTTPException(status_code=404, detail="생성 문서를 찾을 수 없습니다.")
 
     path = Path(row.file_path)

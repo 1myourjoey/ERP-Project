@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -36,6 +37,7 @@ from schemas.document_generation import (
     TemplateStructure,
 )
 from services.document_generator import generate_documents
+from services.bulk_document_generator import BulkDocumentGenerator
 from services.template_manager import (
     get_marker_infos,
     get_marker_keys,
@@ -45,6 +47,7 @@ from services.template_manager import (
     resolve_output_base_dir,
     resolve_template_base_dir,
 )
+from services.variable_resolver import VariableResolver
 
 router = APIRouter(tags=["document_generation"])
 
@@ -609,3 +612,187 @@ def delete_document_variable(variable_id: int, db: Session = Depends(get_db)):
     db.delete(row)
     db.commit()
     return SimpleOkResponse(ok=True)
+
+
+class TemplateSingleGenerateRequest(BaseModel):
+    fund_id: int = Field(ge=1)
+    template_id: int = Field(ge=1)
+    lp_id: int | None = Field(default=None, ge=1)
+    investment_id: int | None = Field(default=None, ge=1)
+    extra_vars: dict[str, str] | None = None
+
+
+class TemplateBulkGenerateRequest(BaseModel):
+    fund_id: int = Field(ge=1)
+    template_id: int = Field(ge=1)
+    extra_vars: dict[str, str] | None = None
+
+
+class TemplateGeneratedDocumentItem(BaseModel):
+    id: int
+    filename: str
+    document_number: str | None = None
+    fund_id: int | None = None
+    template_id: int | None = None
+    lp_id: int | None = None
+    investment_id: int | None = None
+    created_at: str | None = None
+    download_url: str
+
+
+class TemplateBulkGenerateResponse(BaseModel):
+    generated_count: int
+    documents: list[TemplateGeneratedDocumentItem]
+
+
+class MarkerDefinition(BaseModel):
+    marker: str
+    source: str
+    description: str
+
+
+class ResolveVariablesResponse(BaseModel):
+    variables: dict[str, str]
+
+
+@router.post("/api/documents/generate/bulk", response_model=TemplateBulkGenerateResponse)
+def generate_documents_for_all_lps(
+    body: TemplateBulkGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    generator = BulkDocumentGenerator()
+    try:
+        rows = generator.generate_for_all_lps(
+            db=db,
+            fund_id=body.fund_id,
+            template_id=body.template_id,
+            extra_vars=body.extra_vars,
+            created_by=current_user.id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    items = generator.list_generated(db, fund_id=body.fund_id, template_id=body.template_id, limit=len(rows))
+    indexed = {item["id"]: item for item in items}
+    ordered_items = [indexed.get(row.id) for row in rows if row.id in indexed]
+    normalized = [TemplateGeneratedDocumentItem.model_validate(item) for item in ordered_items if item]
+    return TemplateBulkGenerateResponse(generated_count=len(normalized), documents=normalized)
+
+
+@router.get("/api/documents/generated", response_model=list[TemplateGeneratedDocumentItem])
+def list_generated_template_documents(
+    fund_id: int | None = Query(default=None, ge=1),
+    template_id: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=300, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
+    generator = BulkDocumentGenerator()
+    rows = generator.list_generated(db, fund_id=fund_id, template_id=template_id, limit=limit)
+    return [TemplateGeneratedDocumentItem.model_validate(row) for row in rows]
+
+
+@router.get("/api/documents/generated/{document_id}/download", response_class=FileResponse)
+def download_generated_template_document(document_id: int, db: Session = Depends(get_db)):
+    generator = BulkDocumentGenerator()
+    row = generator.get_generated_attachment(db, document_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="생성 문서를 찾을 수 없습니다.")
+
+    output_path = Path(row.file_path)
+    if not output_path.exists():
+        raise HTTPException(status_code=404, detail="생성 문서 파일을 찾을 수 없습니다.")
+
+    return FileResponse(
+        path=str(output_path),
+        media_type=row.mime_type or "application/octet-stream",
+        filename=row.original_filename,
+    )
+
+
+@router.get("/api/documents/markers", response_model=list[MarkerDefinition])
+def fetch_document_marker_definitions(
+    template_id: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+):
+    resolver = VariableResolver()
+    base_markers = resolver.get_available_markers()
+
+    if template_id is None:
+        return [MarkerDefinition.model_validate(item) for item in base_markers]
+
+    generator = BulkDocumentGenerator()
+    try:
+        template_markers = generator.extract_template_markers(db, template_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    mapping = {item["marker"]: item for item in base_markers}
+    response_rows: list[MarkerDefinition] = []
+    for marker in template_markers:
+        if marker in mapping:
+            response_rows.append(MarkerDefinition.model_validate(mapping[marker]))
+        else:
+            response_rows.append(
+                MarkerDefinition(marker=marker, source="Template", description="템플릿에서 추출된 마커")
+            )
+    return response_rows
+
+
+@router.post("/api/documents/preview")
+def preview_generated_document(
+    body: TemplateSingleGenerateRequest,
+    db: Session = Depends(get_db),
+):
+    generator = BulkDocumentGenerator()
+    try:
+        preview_bytes = generator.preview_one(
+            db=db,
+            fund_id=body.fund_id,
+            template_id=body.template_id,
+            lp_id=body.lp_id,
+            investment_id=body.investment_id,
+            extra_vars=body.extra_vars,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return StreamingResponse(
+        iter([preview_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": "attachment; filename=preview.docx"},
+    )
+
+
+@router.post("/api/documents/variables/resolve", response_model=ResolveVariablesResponse)
+def resolve_document_variables(
+    body: TemplateSingleGenerateRequest,
+    db: Session = Depends(get_db),
+):
+    fund = db.get(Fund, body.fund_id)
+    if not fund:
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다.")
+
+    resolver = VariableResolver()
+    variables = resolver.resolve_all(
+        db=db,
+        fund_id=body.fund_id,
+        lp_id=body.lp_id,
+        investment_id=body.investment_id,
+        extra_vars=body.extra_vars,
+    )
+    return ResolveVariablesResponse(variables=variables)

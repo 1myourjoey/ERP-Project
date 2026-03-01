@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from database import Base
@@ -18,3 +19,11 @@ class DocumentTemplate(Base):
     workflow_step_label = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Keep legacy `variables` text column for backward compatibility.
+    template_variables = relationship(
+        "TemplateVariable",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        order_by="TemplateVariable.display_order.asc()",
+    )

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -18,3 +19,5 @@ class RegularReport(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    pre_checks = relationship("PreReportCheck", back_populates="report", cascade="all, delete-orphan")

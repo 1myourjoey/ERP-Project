@@ -19,6 +19,7 @@ from schemas.investment import (
     InvestmentDocumentResponse,
 )
 from services.compliance_engine import ComplianceEngine
+from services.compliance_rule_engine import ComplianceRuleEngine
 
 router = APIRouter(tags=["investments"])
 logger = logging.getLogger(__name__)
@@ -139,6 +140,31 @@ def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
             exc,
         )
 
+    try:
+        checks = ComplianceRuleEngine().evaluate_all(
+            fund_id=investment.fund_id,
+            db=db,
+            trigger_type="event",
+            trigger_source="investment_create",
+            trigger_source_id=investment.id,
+        )
+        violations = [check for check in checks if check.result in {"fail", "error"}]
+        if violations:
+            logger.warning(
+                "compliance rule violations on create_investment: investment_id=%s fund_id=%s violations=%s",
+                investment.id,
+                investment.fund_id,
+                len(violations),
+            )
+    except Exception as exc:  # noqa: BLE001 - compliance check failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance rule engine failed on create_investment: investment_id=%s fund_id=%s error=%s",
+            investment.id,
+            investment.fund_id,
+            exc,
+        )
+
     return investment
 
 
@@ -159,6 +185,32 @@ def update_investment(investment_id: int, data: InvestmentUpdate, db: Session = 
 
     db.commit()
     db.refresh(investment)
+
+    try:
+        checks = ComplianceRuleEngine().evaluate_all(
+            fund_id=investment.fund_id,
+            db=db,
+            trigger_type="event",
+            trigger_source="investment_update",
+            trigger_source_id=investment.id,
+        )
+        violations = [check for check in checks if check.result in {"fail", "error"}]
+        if violations:
+            logger.warning(
+                "compliance rule violations on update_investment: investment_id=%s fund_id=%s violations=%s",
+                investment.id,
+                investment.fund_id,
+                len(violations),
+            )
+    except Exception as exc:  # noqa: BLE001 - compliance check failures must not break main flow
+        db.rollback()
+        logger.warning(
+            "compliance rule engine failed on update_investment: investment_id=%s fund_id=%s error=%s",
+            investment.id,
+            investment.fund_id,
+            exc,
+        )
+
     return investment
 
 

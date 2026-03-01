@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import RegistrationWizard from '../components/templates/RegistrationWizard'
 import DocumentEditorModal, {
   type TemplateCustomData,
   type TemplateKind,
@@ -8,12 +9,22 @@ import DocumentEditorModal, {
 import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import {
+  downloadTemplateGeneratedDocument,
   fetchDocumentTemplates,
+  fetchDocumentMarkerDefinitions,
+  fetchFundLPs,
   fetchFunds,
+  generateTemplateDocument,
+  generateTemplateDocumentsBulk,
+  previewGeneratedTemplateDocument,
   previewTemplate,
+  resolveDocumentVariables,
   updateTemplateCustomData,
+  type DocumentMarkerDefinition,
   type DocumentTemplate,
   type Fund,
+  type LP,
+  type TemplateGeneratedDocumentItem,
 } from '../lib/api'
 
 const DEFAULT_OFFICIAL_CUSTOM: TemplateCustomData = {
@@ -114,6 +125,25 @@ function parseVariables(raw: string): string[] {
     .filter(Boolean)
 }
 
+function parseExtraVarsInput(raw: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  if (!raw.trim()) return result
+
+  raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const separatorIndex = line.includes('=') ? line.indexOf('=') : line.indexOf(':')
+      if (separatorIndex <= 0) return
+      const key = line.slice(0, separatorIndex).trim()
+      const value = line.slice(separatorIndex + 1).trim()
+      if (!key) return
+      result[key] = value
+    })
+  return result
+}
+
 function downloadBlob(blob: Blob, fileName: string) {
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -146,6 +176,12 @@ export default function TemplateManagementPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editData, setEditData] = useState<TemplateCustomData>({})
   const [previewFundId, setPreviewFundId] = useState<number | ''>('')
+  const [wizardFundId, setWizardFundId] = useState<number | ''>('')
+  const [wizardMode, setWizardMode] = useState<'single' | 'bulk'>('single')
+  const [wizardLpId, setWizardLpId] = useState<number | ''>('')
+  const [extraVarsText, setExtraVarsText] = useState('')
+  const [resolvedVariables, setResolvedVariables] = useState<Record<string, string>>({})
+  const [bulkResults, setBulkResults] = useState<TemplateGeneratedDocumentItem[]>([])
 
   const { data: templates = [], isLoading } = useQuery<DocumentTemplate[]>({
     queryKey: ['documentTemplates'],
@@ -157,10 +193,28 @@ export default function TemplateManagementPage() {
     queryFn: fetchFunds,
   })
 
+  const { data: templateMarkers = [] } = useQuery<DocumentMarkerDefinition[]>({
+    queryKey: ['documentMarkers', selectedTemplateId],
+    queryFn: () =>
+      selectedTemplateId ? fetchDocumentMarkerDefinitions(selectedTemplateId) : Promise.resolve([]),
+    enabled: selectedTemplateId !== null,
+  })
+
+  const { data: wizardLps = [] } = useQuery<LP[]>({
+    queryKey: ['fundLps', wizardFundId],
+    queryFn: () => fetchFundLPs(Number(wizardFundId)),
+    enabled: wizardFundId !== '',
+  })
+
   useEffect(() => {
     if (selectedTemplateId !== null || templates.length === 0) return
     setSelectedTemplateId(templates[0].id)
   }, [selectedTemplateId, templates])
+
+  useEffect(() => {
+    if (wizardFundId !== '' || funds.length === 0) return
+    setWizardFundId(funds[0].id)
+  }, [wizardFundId, funds])
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? null,
@@ -211,6 +265,28 @@ export default function TemplateManagementPage() {
     }) => previewTemplate(templateId, fundId, customData),
   })
 
+  const resolveVariablesMutation = useMutation({
+    mutationFn: resolveDocumentVariables,
+    onSuccess: (response) => {
+      setResolvedVariables(response.variables)
+    },
+    onError: () => {
+      addToast('error', 'Failed to resolve template variables.')
+    },
+  })
+
+  const wizardPreviewMutation = useMutation({
+    mutationFn: previewGeneratedTemplateDocument,
+  })
+
+  const wizardGenerateSingleMutation = useMutation({
+    mutationFn: generateTemplateDocument,
+  })
+
+  const wizardGenerateBulkMutation = useMutation({
+    mutationFn: generateTemplateDocumentsBulk,
+  })
+
   const handleSave = () => {
     if (!selectedTemplate) return
     saveMutation.mutate({ templateId: selectedTemplate.id, customData: editData })
@@ -241,6 +317,111 @@ export default function TemplateManagementPage() {
     setEditorOpen(true)
   }
 
+  const handleTemplateRegistered = (templateId: number) => {
+    queryClient.invalidateQueries({ queryKey: ['documentTemplates'] })
+    setSelectedTemplateId(templateId)
+  }
+
+  const buildWizardPayload = () => {
+    if (!selectedTemplate || wizardFundId === '') return null
+    if (wizardMode === 'single' && wizardLpId === '') return null
+
+    const extraVars = parseExtraVarsInput(extraVarsText)
+    const mergedExtraVars = {
+      ...extraVars,
+      ...resolvedVariables,
+    }
+
+    return {
+      fund_id: Number(wizardFundId),
+      template_id: selectedTemplate.id,
+      lp_id: wizardMode === 'single' ? Number(wizardLpId) : undefined,
+      extra_vars: mergedExtraVars,
+    }
+  }
+
+  const handleResolveWizardVariables = async () => {
+    const payload = buildWizardPayload()
+    if (!payload) {
+      addToast('warning', 'Select template, fund, and LP before resolving variables.')
+      return
+    }
+    try {
+      await resolveVariablesMutation.mutateAsync(payload)
+      addToast('success', 'Variables loaded from Fund/LP/GP data.')
+    } catch {
+      // handled in mutation
+    }
+  }
+
+  const handleWizardPreview = async () => {
+    const payload = buildWizardPayload()
+    if (!payload) {
+      addToast('warning', 'Select template, fund, and LP before preview.')
+      return
+    }
+    try {
+      const blob = await wizardPreviewMutation.mutateAsync(payload)
+      downloadBlob(blob, `wizard_preview_${selectedTemplate?.name ?? 'template'}.docx`)
+    } catch {
+      addToast('error', 'Failed to generate wizard preview.')
+    }
+  }
+
+  const handleWizardGenerate = async () => {
+    const payload = buildWizardPayload()
+    if (!payload) {
+      addToast('warning', 'Select template, fund, and LP before generate.')
+      return
+    }
+
+    try {
+      if (wizardMode === 'bulk') {
+        const result = await wizardGenerateBulkMutation.mutateAsync({
+          fund_id: payload.fund_id,
+          template_id: payload.template_id,
+          extra_vars: payload.extra_vars,
+        })
+        setBulkResults(result.documents)
+        addToast('success', `${result.generated_count} documents generated for all LPs.`)
+        return
+      }
+
+      const generated = await wizardGenerateSingleMutation.mutateAsync(payload)
+      const blob = await downloadTemplateGeneratedDocument(generated.document_id)
+      downloadBlob(blob, generated.filename)
+      addToast('success', 'Document generated and downloaded.')
+    } catch {
+      addToast('error', 'Failed to generate document.')
+    }
+  }
+
+  const displayedMarkerKeys = useMemo(() => {
+    if (templateMarkers.length > 0) return templateMarkers.map((item) => item.marker)
+    return variables
+  }, [templateMarkers, variables])
+
+  const markerMetaByKey = useMemo(
+    () => new Map(templateMarkers.map((item) => [item.marker, item])),
+    [templateMarkers],
+  )
+
+  useEffect(() => {
+    if (wizardMode === 'bulk') {
+      setWizardLpId('')
+      return
+    }
+    if (wizardLpId === '' && wizardLps.length > 0) {
+      setWizardLpId(wizardLps[0].id)
+    }
+  }, [wizardMode, wizardLpId, wizardLps])
+
+  useEffect(() => {
+    setBulkResults([])
+  }, [selectedTemplateId, wizardFundId, wizardMode])
+
+  const canRunWizard = selectedTemplate && wizardFundId !== '' && (wizardMode === 'bulk' || wizardLpId !== '')
+
   return (
     <div className="page-container space-y-4">
       <div className="page-header">
@@ -249,6 +430,8 @@ export default function TemplateManagementPage() {
           <p className="page-subtitle">Edit official templates and preview output before generating documents.</p>
         </div>
       </div>
+
+      <RegistrationWizard onRegistered={handleTemplateRegistered} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="card-base space-y-2">
@@ -388,6 +571,195 @@ export default function TemplateManagementPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Document Generation Wizard</p>
+                    <p className="text-xs text-gray-500">Step 1-4 flow for single or all-LP document generation.</p>
+                  </div>
+                  <button
+                    onClick={handleResolveWizardVariables}
+                    className="secondary-btn"
+                    disabled={!canRunWizard || resolveVariablesMutation.isPending}
+                  >
+                    {resolveVariablesMutation.isPending ? 'Loading Variables...' : 'Load Variables'}
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase text-gray-500">Step 1. Template</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">{selectedTemplate.name}</p>
+                    <p className="mt-1 text-xs text-gray-500">{selectedTemplate.category}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {displayedMarkerKeys.length === 0 ? (
+                        <span className="text-xs text-gray-400">No marker metadata</span>
+                      ) : (
+                        displayedMarkerKeys.slice(0, 10).map((marker) => (
+                          <span
+                            key={marker}
+                            className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700"
+                          >
+                            {`{{${marker}}}`}
+                          </span>
+                        ))
+                      )}
+                      {displayedMarkerKeys.length > 10 && (
+                        <span className="text-[11px] text-gray-500">+{displayedMarkerKeys.length - 10} more</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase text-gray-500">Step 2. Target</p>
+                    <label className="mt-2 block text-xs text-gray-500">Fund</label>
+                    <select
+                      value={wizardFundId}
+                      onChange={(event) => setWizardFundId(event.target.value ? Number(event.target.value) : '')}
+                      className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                    >
+                      <option value="">Select fund</option>
+                      {funds.map((fund) => (
+                        <option key={fund.id} value={fund.id}>
+                          {fund.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="wizard-mode"
+                          checked={wizardMode === 'single'}
+                          onChange={() => setWizardMode('single')}
+                        />
+                        Single LP
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="wizard-mode"
+                          checked={wizardMode === 'bulk'}
+                          onChange={() => setWizardMode('bulk')}
+                        />
+                        Bulk (All LP)
+                      </label>
+                    </div>
+
+                    {wizardMode === 'single' ? (
+                      <>
+                        <label className="mt-2 block text-xs text-gray-500">LP</label>
+                        <select
+                          value={wizardLpId}
+                          onChange={(event) => setWizardLpId(event.target.value ? Number(event.target.value) : '')}
+                          className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                        >
+                          <option value="">Select LP</option>
+                          {wizardLps.map((lp) => (
+                            <option key={lp.id} value={lp.id}>
+                              {lp.name}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-500">Bulk will generate one DOCX per LP in this fund.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-gray-500">Step 3. Variables</p>
+                  <label className="mt-2 block text-xs text-gray-500">Extra Vars (one per line, key=value)</label>
+                  <textarea
+                    value={extraVarsText}
+                    onChange={(event) => setExtraVarsText(event.target.value)}
+                    className="mt-1 min-h-[72px] w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                    placeholder="분기=2026년 1분기"
+                  />
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {displayedMarkerKeys.length === 0 ? (
+                      <p className="text-sm text-gray-500">No markers to edit.</p>
+                    ) : (
+                      displayedMarkerKeys.map((key) => (
+                        <label key={key} className="space-y-1">
+                          <span className="text-[11px] text-gray-500">
+                            {key}
+                            {markerMetaByKey.get(key)?.description ? ` · ${markerMetaByKey.get(key)?.description}` : ''}
+                          </span>
+                          <input
+                            type="text"
+                            value={resolvedVariables[key] ?? ''}
+                            onChange={(event) =>
+                              setResolvedVariables((prev) => ({
+                                ...prev,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                          />
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-gray-500">Step 4. Preview & Generate</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={handleWizardPreview}
+                      className="secondary-btn"
+                      disabled={!canRunWizard || wizardPreviewMutation.isPending}
+                    >
+                      {wizardPreviewMutation.isPending ? 'Previewing...' : 'Preview'}
+                    </button>
+                    <button
+                      onClick={handleWizardGenerate}
+                      className="primary-btn"
+                      disabled={
+                        !canRunWizard ||
+                        wizardGenerateSingleMutation.isPending ||
+                        wizardGenerateBulkMutation.isPending
+                      }
+                    >
+                      {wizardGenerateSingleMutation.isPending || wizardGenerateBulkMutation.isPending
+                        ? 'Generating...'
+                        : wizardMode === 'bulk'
+                          ? 'Generate Bulk'
+                          : 'Generate & Download'}
+                    </button>
+                  </div>
+
+                  {bulkResults.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {bulkResults.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium text-gray-700">{item.filename}</p>
+                            <p className="text-[11px] text-gray-500">{item.document_number || '-'}</p>
+                          </div>
+                          <button
+                            className="secondary-btn"
+                            onClick={async () => {
+                              const blob = await downloadTemplateGeneratedDocument(item.id)
+                              downloadBlob(blob, item.filename)
+                            }}
+                          >
+                            Download
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

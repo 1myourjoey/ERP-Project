@@ -28,6 +28,10 @@ interface DashboardRightPanelProps {
   funds: FundSummary[]
   reports: UpcomingReport[]
   missingDocuments: MissingDocument[]
+  investmentReviewActiveCount: number
+  totalNav: number
+  unpaidLpCount: number
+  complianceOverdueCount: number
   completedTodayTasks: Task[]
   completedThisWeekTasks: Task[]
   completedLastWeekTasks: Task[]
@@ -43,6 +47,10 @@ function DashboardRightPanel({
   funds,
   reports,
   missingDocuments,
+  investmentReviewActiveCount,
+  totalNav,
+  unpaidLpCount,
+  complianceOverdueCount,
   completedTodayTasks,
   completedThisWeekTasks,
   completedLastWeekTasks,
@@ -55,7 +63,7 @@ function DashboardRightPanel({
 }: DashboardRightPanelProps) {
   const navigate = useNavigate()
   const [rightTab, setRightTab] = useState<RightTab>('funds')
-  const [quickCollapsed, setQuickCollapsed] = useState(false)
+  const [quickCollapsed, setQuickCollapsed] = useState(true)
   const [completedFilter, setCompletedFilter] = useState<'today' | 'this_week' | 'last_week'>('today')
   const { data: upcomingNotices = [], isLoading: noticesLoading } = useQuery<UpcomingNotice[]>({
     queryKey: ['dashboard-upcoming-notices', 30],
@@ -131,12 +139,18 @@ function DashboardRightPanel({
 
       {rightTab === 'funds' && (
         <div className="card-base dashboard-card">
+          <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2">
+            <p className="text-[11px] font-semibold text-blue-800">운영 요약</p>
+            <p className="mt-1 text-xs text-blue-700">
+              심의 진행 {investmentReviewActiveCount}건 | 운용 NAV {formatKRW(totalNav)} | 미납 LP {unpaidLpCount}건 | 컴플라이언스 지연 {complianceOverdueCount}건
+            </p>
+          </div>
           {widgetsLoading ? (
             <p className="py-8 text-center text-sm text-gray-500">조합 목록을 불러오는 중입니다...</p>
           ) : !funds.length ? (
             <EmptyState emoji="🏦" message="등록된 조합이 없어요" className="py-8" />
           ) : (
-            <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
               {funds.map((fund) => (
                 <button
                   key={fund.id}
@@ -165,7 +179,7 @@ function DashboardRightPanel({
           ) : !upcomingNotices.length ? (
             <EmptyState emoji="🗓️" message="다가오는 통지 기한이 없어요" className="py-8" />
           ) : (
-            <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
               {upcomingNotices.map((notice) => {
                 const badge = dueBadge(notice.days_remaining)
                 return (
@@ -213,7 +227,7 @@ function DashboardRightPanel({
           ) : !reports.length ? (
             <EmptyState emoji="📊" message="임박한 보고 마감이 없어요" className="py-8" />
           ) : (
-            <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
               {reports.map((report) => {
                 const badge = dueBadge(report.days_remaining)
                 return (
@@ -258,7 +272,7 @@ function DashboardRightPanel({
           ) : !missingDocuments.length ? (
             <EmptyState emoji="📄" message="미수집 서류가 없어요" className="py-8" />
           ) : (
-            <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
               {missingDocuments.map((doc) => {
                 const badge = dueBadge(doc.days_remaining)
                 return (
@@ -307,7 +321,7 @@ function DashboardRightPanel({
         ) : filteredCompleted.length === 0 ? (
           <EmptyState emoji="✅" message="완료된 업무가 없어요" className="py-6" />
         ) : (
-          <div className="max-h-64 space-y-1 overflow-y-auto">
+          <div className="max-h-44 space-y-1 overflow-y-auto">
             {filteredCompleted.map((task) => (
               <div key={task.id} className="flex items-center justify-between text-sm">
                 <button

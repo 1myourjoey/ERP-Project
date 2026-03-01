@@ -4,10 +4,14 @@ import { useLocation } from 'react-router-dom'
 import {
   createRegularReport,
   deleteRegularReport,
+  fetchReportPreChecks,
   fetchFunds,
   fetchRegularReports,
+  runReportPreCheck,
   updateRegularReport,
   type Fund,
+  type PreReportCheckFinding,
+  type PreReportCheckResult,
   type RegularReport,
   type RegularReportInput,
 } from '../lib/api'
@@ -71,6 +75,25 @@ function statusBadgeClass(status: string): string {
   return 'rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'
 }
 
+function severityBadgeClass(severity: string): string {
+  if (severity === 'error') return 'tag tag-red'
+  if (severity === 'warning') return 'tag tag-amber'
+  if (severity === 'info') return 'tag tag-blue'
+  return 'tag tag-gray'
+}
+
+function preCheckStatusBadgeClass(status: string): string {
+  if (status === 'error') return 'tag tag-red'
+  if (status === 'warning') return 'tag tag-amber'
+  return 'tag tag-green'
+}
+
+function findingReferenceText(finding: PreReportCheckFinding): string | null {
+  if (finding.reference && finding.reference.trim()) return finding.reference
+  if (finding.rule_code && finding.rule_code.trim()) return finding.rule_code
+  return null
+}
+
 export default function ReportsPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -82,6 +105,7 @@ export default function ReportsPage() {
   const [newReport, setNewReport] = useState<RegularReportInput>(EMPTY_INPUT)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<RegularReportInput | null>(null)
+  const [openPreCheckId, setOpenPreCheckId] = useState<number | null>(null)
 
   const params = useMemo(
     () => ({
@@ -96,6 +120,11 @@ export default function ReportsPage() {
   const { data: rows, isLoading } = useQuery<RegularReport[]>({
     queryKey: ['regularReports', params],
     queryFn: () => fetchRegularReports(params),
+  })
+  const { data: preChecks = [], isLoading: isPreChecksLoading } = useQuery<PreReportCheckResult[]>({
+    queryKey: ['reportPreChecks', openPreCheckId],
+    queryFn: () => fetchReportPreChecks(openPreCheckId as number),
+    enabled: openPreCheckId != null,
   })
 
   const createMut = useMutation({
@@ -126,6 +155,21 @@ export default function ReportsPage() {
     },
   })
 
+  const runPreCheckMut = useMutation({
+    mutationFn: (reportId: number) => runReportPreCheck(reportId),
+    onMutate: (reportId) => {
+      setOpenPreCheckId(reportId)
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['reportPreChecks', result.report_id] })
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      addToast(
+        result.total_errors > 0 ? 'warning' : 'success',
+        `사전 검증 완료: 오류 ${result.total_errors}건, 경고 ${result.total_warnings}건`,
+      )
+    },
+  })
+
   const matrixRows = useMemo(() => {
     const targets = REPORT_TARGET_OPTIONS
     return (funds || []).map((fund) => {
@@ -146,6 +190,37 @@ export default function ReportsPage() {
       return { fund, byTarget }
     })
   }, [funds, rows])
+
+  const latestPreCheck = openPreCheckId ? (preChecks[0] ?? null) : null
+
+  function renderFindingGroup(title: string, findings: PreReportCheckFinding[]) {
+    return (
+      <div className="space-y-1 rounded-xl border border-gray-200 bg-white p-3">
+        <p className="text-xs font-semibold text-gray-700">{title}</p>
+        {findings.length === 0 ? (
+          <p className="text-xs text-emerald-700">이상 없음</p>
+        ) : (
+          <div className="space-y-1.5">
+            {findings.map((finding, idx) => {
+              const refText = findingReferenceText(finding)
+              return (
+                <div key={`${title}-${idx}`} className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={severityBadgeClass(finding.severity)}>
+                      {finding.severity.toUpperCase()}
+                    </span>
+                    <span className="text-xs font-medium text-gray-800">{finding.title}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-700">{finding.detail}</p>
+                  {refText && <p className="mt-0.5 text-[11px] text-gray-500">근거: {refText}</p>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="page-container space-y-4">
@@ -319,7 +394,7 @@ export default function ReportsPage() {
                       <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
                       <textarea value={row.memo || ''} readOnly rows={3} className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-sm text-gray-700" />
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       <button
                         onClick={() => {
                           setEditingId(row.id)
@@ -339,7 +414,78 @@ export default function ReportsPage() {
                         수정
                       </button>
                       <button onClick={() => { if (confirm('이 보고 기록을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
+                      <button
+                        onClick={() => setOpenPreCheckId((prev) => (prev === row.id ? null : row.id))}
+                        className={`secondary-btn ${openPreCheckId === row.id ? 'border-blue-200 bg-blue-50 text-blue-700' : ''}`}
+                      >
+                        사전 검증
+                      </button>
                     </div>
+
+                    {openPreCheckId === row.id && (
+                      <div className="mt-2 space-y-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">보고서 사전 검증</p>
+                            <p className="text-xs text-gray-500">법적 오류, 교차 검증, 가이드라인, 계약 일치성을 점검합니다.</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {latestPreCheck && (
+                              <span className={preCheckStatusBadgeClass(latestPreCheck.overall_status)}>
+                                {latestPreCheck.overall_status.toUpperCase()}
+                              </span>
+                            )}
+                            <button
+                              className="primary-btn btn-sm"
+                              disabled={runPreCheckMut.isPending || !row.fund_id}
+                              onClick={() => runPreCheckMut.mutate(row.id)}
+                            >
+                              {runPreCheckMut.isPending ? '검증 실행 중...' : '검증 실행'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {!row.fund_id && (
+                          <p className="text-xs text-amber-700">조합이 지정된 보고서에서만 사전 검증을 실행할 수 있습니다.</p>
+                        )}
+
+                        {isPreChecksLoading ? (
+                          <p className="text-xs text-gray-500">검증 이력을 불러오는 중입니다...</p>
+                        ) : latestPreCheck ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                              <div className="rounded-lg border border-gray-200 bg-white p-2">
+                                <p className="text-[11px] text-gray-500">오류</p>
+                                <p className="text-base font-semibold text-red-600">{latestPreCheck.total_errors}</p>
+                              </div>
+                              <div className="rounded-lg border border-gray-200 bg-white p-2">
+                                <p className="text-[11px] text-gray-500">경고</p>
+                                <p className="text-base font-semibold text-amber-600">{latestPreCheck.total_warnings}</p>
+                              </div>
+                              <div className="rounded-lg border border-gray-200 bg-white p-2">
+                                <p className="text-[11px] text-gray-500">정보</p>
+                                <p className="text-base font-semibold text-blue-600">{latestPreCheck.total_info}</p>
+                              </div>
+                              <div className="rounded-lg border border-gray-200 bg-white p-2">
+                                <p className="text-[11px] text-gray-500">시정 Task</p>
+                                <p className="text-base font-semibold text-gray-800">{latestPreCheck.tasks_created}</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                              {renderFindingGroup('Type 1 · 법적 오류', latestPreCheck.legal_check)}
+                              {renderFindingGroup('Type 2 · 교차 검증', latestPreCheck.cross_check)}
+                              {renderFindingGroup('Type 3 · 가이드라인', latestPreCheck.guideline_check)}
+                              {renderFindingGroup('Type 4 · 계약 일치성', latestPreCheck.contract_check)}
+                            </div>
+                            <p className="text-[11px] text-gray-500">
+                              최근 점검: {latestPreCheck.checked_at ? new Date(latestPreCheck.checked_at).toLocaleString('ko-KR') : '-'}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500">검증 이력이 없습니다. 검증 실행 버튼으로 첫 점검을 수행하세요.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

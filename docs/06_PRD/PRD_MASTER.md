@@ -123,6 +123,12 @@
 | Phase 42_4 | PRD_08_Reports_Documents | ???꾨즺 | 2026-02-25 |
 | Phase 43 | PRD_04_Funds, PRD_08_Reports_Documents | 완료 | 2026-02-25 |
 | Phase 44 | PRD_04_Funds, PRD_05_LP_Management | 완료 | 2026-02-28 |
+| Phase 49 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
+| Phase 50 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
+| Phase 51 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
+| Phase 52 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
+| Phase 54 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
+| Phase 55 | PRD_08_Reports_Documents | 완료 | 2026-03-01 |
 
 ---
 
@@ -156,5 +162,19 @@
 | 2026-02-25 | v2.4 | Phase 42_4 완료 (회원가입 승인대기, 비밀번호 찾기/재설정, 내 프로필, 초대 링크 가입, 모든 기기 로그아웃 세션 무효화) |
 | 2026-02-25 | v2.5 | Phase 43 완료 (조합 서류 자동 생성: 5단계 템플릿 치환, 자동채움/프리셋, 생성 이력/ZIP 다운로드) |
 | 2026-02-28 | v2.6 | Phase 44 완료 (LP 납입 이력 관리 모델/API, LP 행 확장형 납입 패널, 캐피탈콜 생성 시 납입 이력 자동 연동) |
+| 2026-03-01 | v2.7 | Phase 49 완료 (준법감시 L1~L5 규칙 엔진, 펀드별 규칙 CRUD, 이벤트 자동 점검, 시정 Task 자동생성, 컴플라이언스 점검 기록 UI) |
+| 2026-03-01 | v2.8 | Phase 50 완료 (법률 문서 벡터DB 인덱싱/검색 API, 문서 수집 파이프라인, Compliance 문서 라이브러리 UI) |
+| 2026-03-01 | v2.9 | Phase 51 완료 (L1/L2 법률 해석 엔진, LLM 토큰 사용량/월간 한도 관리, Compliance 법률 질의 패널) |
+| 2026-03-01 | v3.0 | Phase 52 완료 (정기보고 사전 검증 4유형 엔진, 오류 시정 Task 자동 생성, ReportsPage 사전 검증 패널/이력) |
 
 
+
+### Phase 53 mapping update
+
+| Phase 53 | PRD_08_Reports_Documents | completed | 2026-03-01 |
+| Phase 54 | PRD_08_Reports_Documents | completed | 2026-03-01 |
+| Phase 55 | PRD_08_Reports_Documents | completed | 2026-03-01 |
+
+| 2026-03-01 | v3.1 | Phase 53 completed (APScheduler periodic compliance jobs, law amendment monitor, scan/amendment APIs, CompliancePage schedule tab). |
+| 2026-03-01 | v3.2 | Phase 54 completed (compliance history analyzer, pattern/suggestion/remediation/monthly-report APIs, CompliancePage History & Report tab). |
+| 2026-03-01 | v3.3 | Phase 55 completed (integrated compliance dashboard API, FundComplianceGrid/AuditTimeline/AmendmentAlerts, CompliancePage Dashboard tab integration). |
