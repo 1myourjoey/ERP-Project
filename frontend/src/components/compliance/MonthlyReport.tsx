@@ -36,7 +36,7 @@ export default function MonthlyReport({ fundId, yearMonth }: MonthlyReportProps)
 
   async function onDownload() {
     if (!enabled) {
-      addToast('warning', 'Select a fund and a valid year-month first.')
+      addToast('warning', '조합과 조회 월을 먼저 선택해주세요.')
       return
     }
 
@@ -50,16 +50,16 @@ export default function MonthlyReport({ fundId, yearMonth }: MonthlyReportProps)
       anchor.click()
       document.body.removeChild(anchor)
       window.URL.revokeObjectURL(url)
-      addToast('success', 'Monthly report downloaded.')
+      addToast('success', '월간 리포트를 다운로드했습니다.')
     } catch {
-      addToast('error', 'Failed to download monthly report.')
+      addToast('error', '월간 리포트 다운로드에 실패했습니다.')
     }
   }
 
   if (!enabled) {
     return (
       <div className="card-base">
-        <EmptyState emoji="m" message="Select a fund and year-month to generate a monthly report." className="py-8" />
+        <EmptyState emoji="m" message="조합과 조회 월을 선택하면 월간 리포트를 생성할 수 있습니다." className="py-8" />
       </div>
     )
   }
@@ -75,7 +75,7 @@ export default function MonthlyReport({ fundId, yearMonth }: MonthlyReportProps)
   if (!data) {
     return (
       <div className="card-base">
-        <EmptyState emoji="r" message="No monthly report data found." className="py-8" />
+        <EmptyState emoji="r" message="월간 리포트 데이터가 없습니다." className="py-8" />
       </div>
     )
   }
@@ -85,68 +85,68 @@ export default function MonthlyReport({ fundId, yearMonth }: MonthlyReportProps)
       <div className="card-base">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">Monthly Compliance Report</h3>
+            <h3 className="text-sm font-semibold text-gray-800">월간 준법감시 리포트</h3>
             <p className="mt-1 text-xs text-gray-500">
               {data.fund_name} | {data.period}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button className="secondary-btn btn-sm" onClick={() => refetch()}>
-              {isFetching ? 'Refreshing...' : 'Generate'}
+              {isFetching ? '새로고침 중...' : '재생성'}
             </button>
             <button className="primary-btn btn-sm" onClick={onDownload}>
-              Download TXT
+              TXT 다운로드
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-            <p className="text-xs text-gray-500">Total Checks</p>
+            <p className="text-xs text-gray-500">총 점검 수</p>
             <p className="text-lg font-semibold text-gray-800">{data.summary.total_checks}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-            <p className="text-xs text-gray-500">Pass</p>
+            <p className="text-xs text-gray-500">적합</p>
             <p className="text-lg font-semibold text-green-700">{data.summary.pass}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-            <p className="text-xs text-gray-500">Fail/Error</p>
+            <p className="text-xs text-gray-500">위반/오류</p>
             <p className="text-lg font-semibold text-red-700">{data.summary.fail}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-            <p className="text-xs text-gray-500">Warning</p>
+            <p className="text-xs text-gray-500">경고</p>
             <p className="text-lg font-semibold text-amber-700">{data.summary.warning}</p>
           </div>
         </div>
       </div>
 
       <div className="card-base">
-        <h4 className="mb-2 text-sm font-semibold text-gray-800">Trend vs Previous Month</h4>
+        <h4 className="mb-2 text-sm font-semibold text-gray-800">전월 대비 추이</h4>
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-lg border border-green-100 bg-green-50 p-2 text-xs text-green-800">
-            Improved: <span className="font-semibold">{data.trend_vs_last_month.improved}</span>
+            개선: <span className="font-semibold">{data.trend_vs_last_month.improved}</span>
           </div>
           <div className="rounded-lg border border-red-100 bg-red-50 p-2 text-xs text-red-800">
-            Worsened: <span className="font-semibold">{data.trend_vs_last_month.worsened}</span>
+            악화: <span className="font-semibold">{data.trend_vs_last_month.worsened}</span>
           </div>
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700">
-            Unchanged: <span className="font-semibold">{data.trend_vs_last_month.unchanged}</span>
+            동일: <span className="font-semibold">{data.trend_vs_last_month.unchanged}</span>
           </div>
         </div>
       </div>
 
       <div className="card-base overflow-auto">
-        <h4 className="mb-2 text-sm font-semibold text-gray-800">Violations</h4>
+        <h4 className="mb-2 text-sm font-semibold text-gray-800">위반 내역</h4>
         {!data.violations.length ? (
-          <p className="text-xs text-gray-500">No violations in this month.</p>
+          <p className="text-xs text-gray-500">해당 월에 위반 내역이 없습니다.</p>
         ) : (
           <table className="min-w-[880px] w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500">
               <tr>
-                <th className="px-3 py-2 text-left">Rule</th>
-                <th className="px-3 py-2 text-left">Result</th>
-                <th className="px-3 py-2 text-left">Detail</th>
-                <th className="px-3 py-2 text-left">Checked At</th>
+                <th className="px-3 py-2 text-left">규칙</th>
+                <th className="px-3 py-2 text-left">결과</th>
+                <th className="px-3 py-2 text-left">상세</th>
+                <th className="px-3 py-2 text-left">점검 시각</th>
               </tr>
             </thead>
             <tbody className="divide-y">

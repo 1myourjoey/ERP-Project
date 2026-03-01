@@ -8,7 +8,7 @@ type AmendmentAlertsProps = {
 }
 
 function dDayBadge(daysRemaining: number | null): { label: string; className: string } {
-  if (daysRemaining == null) return { label: 'No due date', className: 'tag tag-gray' }
+  if (daysRemaining == null) return { label: '시행일 미지정', className: 'tag tag-gray' }
   if (daysRemaining < 0) return { label: `D+${Math.abs(daysRemaining)}`, className: 'tag tag-gray' }
   if (daysRemaining === 0) return { label: 'D-Day', className: 'tag tag-red' }
   if (daysRemaining <= 14) return { label: `D-${daysRemaining}`, className: 'tag tag-red' }
@@ -33,7 +33,7 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
   if (!rows.length) {
     return (
       <div className="card-base">
-        <EmptyState emoji="a" message="No amendment alerts found." className="py-8" />
+        <EmptyState emoji="a" message="법령 개정 알림이 없습니다." className="py-8" />
       </div>
     )
   }
@@ -41,8 +41,8 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
   return (
     <div className="card-base">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">Law Amendment Alerts</h3>
-        <span className="text-xs text-gray-500">{rows.length} alert(s)</span>
+        <h3 className="text-sm font-semibold text-gray-800">법령 개정 알림</h3>
+        <span className="text-xs text-gray-500">{rows.length}건</span>
       </div>
 
       <div className="space-y-2">
@@ -55,7 +55,7 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
                 <span className={badge.className}>{badge.label}</span>
               </div>
               <p className="mt-1 text-xs text-gray-600">
-                Effective Date: {dateLabel(row.effective_date)} {row.version ? `| ${row.version}` : ''}
+                시행일: {dateLabel(row.effective_date)} {row.version ? `| ${row.version}` : ''}
               </p>
               <p className="mt-2 text-xs text-gray-700">{row.summary || '-'}</p>
             </div>
@@ -65,4 +65,3 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
     </div>
   )
 }
-

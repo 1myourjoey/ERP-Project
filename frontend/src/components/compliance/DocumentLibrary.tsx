@@ -16,7 +16,7 @@ import {
 
 const DOC_TYPES: Array<{ value: LegalDocumentType; label: string }> = [
   { value: 'laws', label: '법률' },
-  { value: 'regulations', label: '시행령/규칙' },
+  { value: 'regulations', label: '시행령/시행규칙' },
   { value: 'guidelines', label: '가이드라인' },
   { value: 'agreements', label: '규약/계약' },
   { value: 'internal', label: '내부지침' },
@@ -95,11 +95,11 @@ export default function DocumentLibrary() {
   function onUpload() {
     const normalizedTitle = title.trim()
     if (!normalizedTitle) {
-      addToast('warning', '문서 제목을 입력하세요.')
+      addToast('warning', '문서 제목을 입력해주세요.')
       return
     }
     if (!selectedFile) {
-      addToast('warning', '업로드할 파일을 선택하세요.')
+      addToast('warning', '업로드할 파일을 선택해주세요.')
       return
     }
     uploadMut.mutate({
@@ -146,7 +146,7 @@ export default function DocumentLibrary() {
           </select>
           <input
             className="form-input"
-            placeholder="버전 (예: 2026개정)"
+            placeholder="버전 (예: 2026 개정)"
             value={version}
             onChange={(event) => setVersion(event.target.value)}
           />
@@ -212,7 +212,7 @@ export default function DocumentLibrary() {
         {isDocumentsLoading ? (
           <PageLoading />
         ) : documents.length === 0 ? (
-          <EmptyState emoji="📚" message="등록된 문서가 없습니다." className="py-8" />
+          <EmptyState emoji="d" message="등록된 문서가 없습니다." className="py-8" />
         ) : (
           <table className="min-w-[900px] w-full text-sm">
             <thead className="table-head-row">
@@ -250,16 +250,14 @@ export default function DocumentLibrary() {
             {isSearchLoading && <span className="text-xs text-gray-500">검색 중...</span>}
           </div>
           {!isSearchLoading && (searchResult?.results.length ?? 0) === 0 ? (
-            <EmptyState emoji="🔎" message="검색 결과가 없습니다." className="py-8" />
+            <EmptyState emoji="s" message="검색 결과가 없습니다." className="py-8" />
           ) : (
             <div className="space-y-2">
               {(searchResult?.results ?? []).map((result) => (
                 <div key={result.id} className="rounded-xl border border-gray-200 bg-white/70 p-3">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="tag tag-purple">{typeLabel(result.collection)}</span>
-                    <span className="text-xs text-gray-500">
-                      유사도 {similarityLabel(result.distance)}
-                    </span>
+                    <span className="text-xs text-gray-500">유사도 {similarityLabel(result.distance)}</span>
                   </div>
                   <p className="max-h-20 overflow-hidden text-sm text-gray-700">{result.text}</p>
                 </div>

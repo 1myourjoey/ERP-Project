@@ -47,20 +47,20 @@ import ViolationPatterns from '../components/compliance/ViolationPatterns'
 type TabKey = 'dashboard' | 'obligations' | 'rules' | 'checks' | 'documents' | 'schedule' | 'history'
 
 function statusBadge(row: ComplianceObligation): { label: string; className: string } {
-  if (row.status === 'completed') return { label: 'Completed', className: 'tag tag-green' }
-  if (row.status === 'waived') return { label: 'Waived', className: 'tag tag-gray' }
+  if (row.status === 'completed') return { label: '완료', className: 'tag tag-green' }
+  if (row.status === 'waived') return { label: '면제', className: 'tag tag-gray' }
   if (row.status === 'overdue' || (row.d_day != null && row.d_day < 0)) {
-    return { label: 'Overdue', className: 'tag tag-red' }
+    return { label: '기한초과', className: 'tag tag-red' }
   }
-  if (row.d_day != null && row.d_day <= 7) return { label: 'Due Soon', className: 'tag tag-amber' }
-  return { label: 'Pending', className: 'tag tag-blue' }
+  if (row.d_day != null && row.d_day <= 7) return { label: '기한임박', className: 'tag tag-amber' }
+  return { label: '대기', className: 'tag tag-blue' }
 }
 
 function checkBadge(result: string): { label: string; className: string } {
-  if (result === 'pass') return { label: 'PASS', className: 'tag tag-green' }
-  if (result === 'warning') return { label: 'WARNING', className: 'tag tag-amber' }
-  if (result === 'fail') return { label: 'FAIL', className: 'tag tag-red' }
-  if (result === 'error') return { label: 'ERROR', className: 'tag tag-red' }
+  if (result === 'pass') return { label: '적합', className: 'tag tag-green' }
+  if (result === 'warning') return { label: '경고', className: 'tag tag-amber' }
+  if (result === 'fail') return { label: '위반', className: 'tag tag-red' }
+  if (result === 'error') return { label: '오류', className: 'tag tag-red' }
   return { label: result.toUpperCase(), className: 'tag tag-gray' }
 }
 
@@ -211,7 +211,7 @@ export default function CompliancePage() {
       setTargetRow(null)
       setCompletedBy('')
       setEvidenceNote('')
-      addToast('success', 'Obligation marked as completed.')
+      addToast('success', '의무 항목을 완료 처리했습니다.')
     },
   })
 
@@ -225,7 +225,7 @@ export default function CompliancePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complianceRules'] })
-      addToast('success', editingRuleId ? 'Rule updated.' : 'Rule created.')
+      addToast('success', editingRuleId ? '규칙을 수정했습니다.' : '규칙을 생성했습니다.')
       setEditingRuleId(null)
       setRuleForm(emptyRuleForm)
       setConditionText(stringifyCondition(emptyRuleForm.condition))
@@ -236,7 +236,7 @@ export default function CompliancePage() {
     mutationFn: (ruleId: number) => deleteComplianceRule(ruleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complianceRules'] })
-      addToast('success', 'Rule deleted.')
+      addToast('success', '규칙을 삭제했습니다.')
     },
   })
 
@@ -245,7 +245,7 @@ export default function CompliancePage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['complianceDashboard'] })
       queryClient.invalidateQueries({ queryKey: ['complianceChecks'] })
-      addToast('success', `Manual check finished. Checked ${result.checked_count}, failed ${result.failed_count}.`)
+      addToast('success', `수동 점검이 완료되었습니다. 점검 ${result.checked_count}건, 위반 ${result.failed_count}건`)
     },
   })
 
@@ -254,7 +254,7 @@ export default function CompliancePage() {
     onSuccess: (result) => {
       setInterpretResult(result)
       queryClient.invalidateQueries({ queryKey: ['complianceLlmUsage'] })
-      addToast('success', result.tier === 'L1' ? 'Answered by rule engine (L1).' : 'Answered by RAG + LLM (L2).')
+      addToast('success', result.tier === 'L1' ? '규칙 엔진(L1)으로 답변했습니다.' : 'RAG + LLM(L2)으로 답변했습니다.')
     },
   })
 
@@ -268,9 +268,9 @@ export default function CompliancePage() {
       queryClient.invalidateQueries({ queryKey: ['complianceAmendments'] })
       queryClient.invalidateQueries({ queryKey: ['complianceDashboard'] })
       if (result.scan_type) {
-        addToast('success', `Manual scan completed: ${result.scan_type}`)
+        addToast('success', `수동 스캔 완료: ${result.scan_type}`)
       } else {
-        addToast('success', 'Manual law amendment check completed.')
+        addToast('success', '수동 법령 개정 점검이 완료되었습니다.')
       }
     },
   })
@@ -306,11 +306,11 @@ export default function CompliancePage() {
   function submitRule() {
     const condition = parseCondition(conditionText)
     if (!condition) {
-      addToast('warning', 'Condition JSON is invalid.')
+      addToast('warning', '조건 JSON 형식이 올바르지 않습니다.')
       return
     }
     if (!ruleForm.rule_code.trim() || !ruleForm.rule_name.trim() || !ruleForm.category.trim()) {
-      addToast('warning', 'Please fill rule_code, rule_name, and category.')
+      addToast('warning', 'rule_code, rule_name, category를 입력해주세요.')
       return
     }
 
@@ -326,7 +326,7 @@ export default function CompliancePage() {
 
   function runManualCheck() {
     if (ruleFundFilter === '') {
-      addToast('warning', 'Select a fund before running manual check.')
+      addToast('warning', '수동 점검 전에 조합을 선택해주세요.')
       return
     }
     manualCheckMut.mutate(ruleFundFilter)
@@ -335,7 +335,7 @@ export default function CompliancePage() {
   function submitLegalQuery() {
     const normalized = legalQuery.trim()
     if (!normalized) {
-      addToast('warning', 'Please enter a legal query.')
+      addToast('warning', '법률 질의 내용을 입력해주세요.')
       return
     }
     interpretMut.mutate({
@@ -390,26 +390,26 @@ export default function CompliancePage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Compliance</h2>
-          <p className="page-subtitle">Manage obligations, rules, checks, and legal guidance in one place.</p>
+          <h2 className="page-title">컴플라이언스</h2>
+          <p className="page-subtitle">의무사항, 규칙, 점검, 법률 해석을 한 곳에서 관리합니다.</p>
         </div>
       </div>
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">Legal Query</h3>
-            <p className="mt-1 text-xs text-gray-500">L1 rule engine first, then L2 RAG + GPT analysis when needed.</p>
+            <h3 className="text-sm font-semibold text-gray-800">법률 질의</h3>
+            <p className="mt-1 text-xs text-gray-500">L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다.</p>
           </div>
           <span className={`tag ${interpretResult?.tier === 'L1' ? 'tag-green' : 'tag-indigo'}`}>
-            {interpretResult?.tier ? `Last answer: ${interpretResult.tier}` : 'No answer yet'}
+            {interpretResult?.tier ? `최근 답변: ${interpretResult.tier}` : '아직 답변이 없습니다'}
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input
             className="form-input md:col-span-4"
-            placeholder="Example: Is a same-issuer over-concentration currently in breach?"
+            placeholder="예: 동일 발행인 집중투자가 현재 위반인지 알려줘"
             value={legalQuery}
             onChange={(event) => setLegalQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -421,7 +421,7 @@ export default function CompliancePage() {
             value={legalFundId}
             onChange={(event) => setLegalFundId(event.target.value ? Number(event.target.value) : '')}
           >
-            <option value="">No fund filter</option>
+            <option value="">조합 필터 없음</option>
             {funds.map((fund) => (
               <option key={fund.id} value={fund.id}>
                 {fund.name}
@@ -429,19 +429,19 @@ export default function CompliancePage() {
             ))}
           </select>
           <button className="primary-btn" onClick={submitLegalQuery} disabled={interpretMut.isPending}>
-            {interpretMut.isPending ? 'Querying...' : 'Ask'}
+            {interpretMut.isPending ? '질의 중...' : '질의'}
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3 lg:col-span-2">
-            <p className="mb-1 text-xs font-semibold text-gray-600">Answer</p>
+            <p className="mb-1 text-xs font-semibold text-gray-600">답변</p>
             {interpretResult ? (
               <>
                 <pre className="whitespace-pre-wrap text-sm text-gray-800">{interpretResult.answer}</pre>
                 {interpretResult.sources.length > 0 && (
                   <div className="mt-3 space-y-1">
-                    <p className="text-xs font-semibold text-gray-600">Sources</p>
+                    <p className="text-xs font-semibold text-gray-600">근거 문서</p>
                     {interpretResult.sources.map((source, idx) => {
                       const similarity =
                         source.distance == null || Number.isNaN(source.distance)
@@ -453,7 +453,7 @@ export default function CompliancePage() {
                           className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5 text-xs text-gray-700"
                         >
                           <div className="font-medium">
-                            [{source.collection}] {source.article || 'N/A'} | score {similarity}
+                            [{source.collection}] {source.article || '해당없음'} | 점수 {similarity}
                           </div>
                           <div className="mt-0.5 text-gray-600">{source.text}</div>
                         </div>
@@ -463,34 +463,34 @@ export default function CompliancePage() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-gray-500">Submit a question to generate a legal interpretation.</p>
+              <p className="text-sm text-gray-500">질의를 입력하면 법률 해석 결과를 확인할 수 있습니다.</p>
             )}
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-gray-600">Token Usage</p>
+              <p className="text-xs font-semibold text-gray-600">토큰 사용량</p>
               <select
                 className="form-input-sm w-auto"
                 value={usagePeriod}
                 onChange={(event) => setUsagePeriod(event.target.value as 'month' | 'week' | 'all')}
               >
-                <option value="month">This month</option>
-                <option value="week">Last 7 days</option>
-                <option value="all">All</option>
+                <option value="month">이번 달</option>
+                <option value="week">최근 7일</option>
+                <option value="all">전체</option>
               </select>
             </div>
             {isUsageLoading ? (
-              <p className="text-xs text-gray-500">Loading...</p>
+              <p className="text-xs text-gray-500">불러오는 중...</p>
             ) : (
               <div className="space-y-2 text-xs text-gray-700">
                 <p>
-                  Used: <span className="font-semibold">{(llmUsage?.used_tokens ?? 0).toLocaleString()}</span> tokens
+                  사용: <span className="font-semibold">{(llmUsage?.used_tokens ?? 0).toLocaleString()}</span> 토큰
                 </p>
                 {llmUsage?.limit_tokens != null && (
                   <>
                     <p>
-                      Limit: <span className="font-semibold">{llmUsage.limit_tokens.toLocaleString()}</span> | Remaining:{' '}
+                      한도: <span className="font-semibold">{llmUsage.limit_tokens.toLocaleString()}</span> | 잔여:{' '}
                       <span className="font-semibold">{(llmUsage.remaining_tokens ?? 0).toLocaleString()}</span>
                     </p>
                     <div className="h-2 overflow-hidden rounded-full bg-gray-100">
@@ -501,10 +501,10 @@ export default function CompliancePage() {
                         style={{ width: `${usageProgress}%` }}
                       />
                     </div>
-                    <p className="text-[11px] text-gray-500">Usage {usageProgress.toFixed(1)}%</p>
+                    <p className="text-[11px] text-gray-500">사용률 {usageProgress.toFixed(1)}%</p>
                   </>
                 )}
-                <p>Estimated cost: ${(llmUsage?.used_cost_usd ?? 0).toFixed(4)}</p>
+                <p>예상 비용: ${(llmUsage?.used_cost_usd ?? 0).toFixed(4)}</p>
               </div>
             )}
           </div>
@@ -514,25 +514,25 @@ export default function CompliancePage() {
       <div className="card-base">
         <div className="flex flex-wrap gap-2">
           <button className={tabClass('dashboard')} onClick={() => setActiveTab('dashboard')}>
-            Dashboard
+            대시보드
           </button>
           <button className={tabClass('obligations')} onClick={() => setActiveTab('obligations')}>
-            Obligations
+            의무사항
           </button>
           <button className={tabClass('rules')} onClick={() => setActiveTab('rules')}>
-            Rules
+            규칙
           </button>
           <button className={tabClass('checks')} onClick={() => setActiveTab('checks')}>
-            Checks
+            점검
           </button>
           <button className={tabClass('documents')} onClick={() => setActiveTab('documents')}>
-            Library
+            문서 라이브러리
           </button>
           <button className={tabClass('schedule')} onClick={() => setActiveTab('schedule')}>
-            Schedule & Amendments
+            스케줄/개정
           </button>
           <button className={tabClass('history')} onClick={() => setActiveTab('history')}>
-            History & Report
+            이력/리포트
           </button>
         </div>
       </div>
@@ -541,23 +541,23 @@ export default function CompliancePage() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <div className="card-base">
-              <p className="text-xs text-gray-500">Total Rules</p>
+              <p className="text-xs text-gray-500">총 규칙 수</p>
               <p className="mt-1 text-xl font-semibold text-gray-800">{summaryRules}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-gray-500">Active Violations</p>
+              <p className="text-xs text-gray-500">진행 중 위반</p>
               <p className="mt-1 text-xl font-semibold text-red-600">{summaryViolations}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-gray-500">Warnings</p>
+              <p className="text-xs text-gray-500">경고</p>
               <p className="mt-1 text-xl font-semibold text-amber-600">{summaryWarnings}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-gray-500">Passed</p>
+              <p className="text-xs text-gray-500">적합</p>
               <p className="mt-1 text-xl font-semibold text-green-700">{summaryPassed}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-gray-500">Compliance Rate</p>
+              <p className="text-xs text-gray-500">준수율</p>
               <p className="mt-1 text-xl font-semibold text-gray-800">{summaryRate.toFixed(1)}%</p>
             </div>
           </div>
@@ -577,46 +577,46 @@ export default function CompliancePage() {
 
             <div className="card-base space-y-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">Indexing & LLM Usage</h3>
-                <p className="mt-1 text-xs text-gray-500">Vector document chunks and monthly legal LLM usage.</p>
+                <h3 className="text-sm font-semibold text-gray-800">인덱싱 및 LLM 사용량</h3>
+                <p className="mt-1 text-xs text-gray-500">벡터 문서 청크 수와 월간 법률 LLM 사용량입니다.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Laws</p>
+                  <p className="text-gray-500">법률</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.laws ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Regulations</p>
+                  <p className="text-gray-500">시행령/규칙</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.regulations ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Guidelines</p>
+                  <p className="text-gray-500">가이드라인</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.guidelines ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Agreements</p>
+                  <p className="text-gray-500">규약/계약</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.agreements ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Internal</p>
+                  <p className="text-gray-500">내부지침</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.internal ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white/70 p-3">
-                  <p className="text-gray-500">Total Chunks</p>
+                  <p className="text-gray-500">총 청크 수</p>
                   <p className="text-lg font-semibold text-gray-800">{dashboardDocumentStats?.total_chunks ?? 0}</p>
                 </div>
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white/70 p-3 text-xs text-gray-700">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-gray-700">Monthly Token Usage</p>
+                  <p className="font-semibold text-gray-700">월간 토큰 사용량</p>
                   <span className={dashboardLlmUsageProgress >= 90 ? 'tag tag-red' : dashboardLlmUsageProgress >= 70 ? 'tag tag-amber' : 'tag tag-blue'}>
                     {dashboardLlmUsageProgress.toFixed(1)}%
                   </span>
                 </div>
                 <p className="mt-2">
-                  {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} tokens
+                  {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} 토큰
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
                   <div
@@ -630,7 +630,7 @@ export default function CompliancePage() {
                     style={{ width: `${dashboardLlmUsageProgress}%` }}
                   />
                 </div>
-                <p className="mt-2">Cost: ${(dashboardLlmUsage?.month_cost_usd ?? 0).toFixed(4)}</p>
+                <p className="mt-2">비용: ${(dashboardLlmUsage?.month_cost_usd ?? 0).toFixed(4)}</p>
               </div>
             </div>
           </div>
@@ -640,7 +640,7 @@ export default function CompliancePage() {
       {activeTab === 'obligations' && (
         <>
           <div className="card-base">
-            <p className="mb-2 text-xs font-semibold text-gray-600">Fund Filter</p>
+            <p className="mb-2 text-xs font-semibold text-gray-600">조합 필터</p>
             <div className="flex flex-wrap gap-2">
               <button
                 className={`rounded px-2 py-1 text-xs ${
@@ -648,7 +648,7 @@ export default function CompliancePage() {
                 }`}
                 onClick={() => setFundFilter('')}
               >
-                All
+                전체
               </button>
               {funds.map((fund) => (
                 <button
@@ -667,24 +667,24 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
                 <select className="form-input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="">All</option>
-                  <option value="pending">pending</option>
-                  <option value="in_progress">in_progress</option>
-                  <option value="overdue">overdue</option>
-                  <option value="completed">completed</option>
-                  <option value="waived">waived</option>
+                  <option value="">전체</option>
+                  <option value="pending">대기</option>
+                  <option value="in_progress">진행중</option>
+                  <option value="overdue">기한초과</option>
+                  <option value="completed">완료</option>
+                  <option value="waived">면제</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
                 <select className="form-input" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                  <option value="">All</option>
-                  <option value="reporting">reporting</option>
-                  <option value="investment_limit">investment_limit</option>
-                  <option value="impairment">impairment</option>
-                  <option value="asset_rating">asset_rating</option>
+                  <option value="">전체</option>
+                  <option value="reporting">보고</option>
+                  <option value="investment_limit">투자한도</option>
+                  <option value="impairment">손상</option>
+                  <option value="asset_rating">자산평가</option>
                 </select>
               </div>
             </div>
@@ -692,7 +692,7 @@ export default function CompliancePage() {
 
           {adhocNotice && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Ad-hoc report notice: {adhocNotice.rule_title} | due {adhocNotice.due_date} ({dDayLabel(adhocNotice.d_day)})
+              수시 보고 통지: {adhocNotice.rule_title} | 마감 {adhocNotice.due_date} ({dDayLabel(adhocNotice.d_day)})
             </div>
           )}
 
@@ -700,19 +700,19 @@ export default function CompliancePage() {
             {isObligationLoading ? (
               <PageLoading />
             ) : obligations.length === 0 ? (
-              <EmptyState emoji="i" message="No compliance obligations found." className="py-8" />
+              <EmptyState emoji="i" message="준수 의무 항목이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Due Date</th>
+                    <th className="px-3 py-2 text-left">상태</th>
+                    <th className="px-3 py-2 text-left">마감일</th>
                     <th className="px-3 py-2 text-left">D-Day</th>
-                    <th className="px-3 py-2 text-left">Obligation</th>
-                    <th className="px-3 py-2 text-left">Guideline Ref</th>
-                    <th className="px-3 py-2 text-left">Target System</th>
-                    <th className="px-3 py-2 text-left">Fund</th>
-                    <th className="px-3 py-2 text-left">Action</th>
+                    <th className="px-3 py-2 text-left">의무사항</th>
+                    <th className="px-3 py-2 text-left">근거 조항</th>
+                    <th className="px-3 py-2 text-left">대상 시스템</th>
+                    <th className="px-3 py-2 text-left">조합</th>
+                    <th className="px-3 py-2 text-left">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -731,10 +731,10 @@ export default function CompliancePage() {
                         <td className="px-3 py-2">{row.fund_name || '-'}</td>
                         <td className="px-3 py-2">
                           {row.status === 'completed' || row.status === 'waived' ? (
-                            <span className="text-xs text-gray-400">Done</span>
+                            <span className="text-xs text-gray-400">완료</span>
                           ) : (
                             <button className="secondary-btn btn-sm" onClick={() => setTargetRow(row)}>
-                              Complete
+                              완료 처리
                             </button>
                           )}
                         </td>
@@ -753,13 +753,13 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Fund</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
                 <select
                   className="form-input"
                   value={ruleFundFilter}
                   onChange={(event) => setRuleFundFilter(event.target.value ? Number(event.target.value) : '')}
                 >
-                  <option value="">All (global + fund)</option>
+                  <option value="">전체(공통+조합)</option>
                   {funds.map((fund) => (
                     <option key={fund.id} value={fund.id}>
                       {fund.name}
@@ -768,9 +768,9 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Level</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">레벨</label>
                 <select className="form-input" value={ruleLevelFilter} onChange={(event) => setRuleLevelFilter(event.target.value)}>
-                  <option value="">All</option>
+                  <option value="">전체</option>
                   <option value="L1">L1</option>
                   <option value="L2">L2</option>
                   <option value="L3">L3</option>
@@ -780,10 +780,10 @@ export default function CompliancePage() {
               </div>
               <div className="flex items-end gap-2 md:col-span-2">
                 <button className="secondary-btn" onClick={startCreateRule}>
-                  New Rule
+                  규칙 추가
                 </button>
                 <button className="primary-btn" onClick={runManualCheck} disabled={manualCheckMut.isPending || ruleFundFilter === ''}>
-                  {manualCheckMut.isPending ? 'Running...' : 'Run Manual Check'}
+                  {manualCheckMut.isPending ? '실행 중...' : '수동 점검 실행'}
                 </button>
               </div>
             </div>
@@ -791,10 +791,10 @@ export default function CompliancePage() {
 
           <div className="card-base space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">{editingRuleId ? `Edit Rule #${editingRuleId}` : 'Create Rule'}</p>
+              <p className="text-sm font-semibold text-gray-800">{editingRuleId ? `규칙 수정 #${editingRuleId}` : '규칙 생성'}</p>
               {editingRuleId && (
                 <button className="text-xs text-gray-500 hover:text-gray-700" onClick={startCreateRule}>
-                  Cancel
+                  취소
                 </button>
               )}
             </div>
@@ -802,13 +802,13 @@ export default function CompliancePage() {
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input
                 className="form-input"
-                placeholder="rule_code (e.g. INV-LIMIT-001)"
+                placeholder="rule_code (예: INV-LIMIT-001)"
                 value={ruleForm.rule_code}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_code: event.target.value }))}
               />
               <input
                 className="form-input"
-                placeholder="rule_name"
+                placeholder="규칙명"
                 value={ruleForm.rule_name}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_name: event.target.value }))}
               />
@@ -825,7 +825,7 @@ export default function CompliancePage() {
               </select>
               <input
                 className="form-input"
-                placeholder="category"
+                placeholder="카테고리"
                 value={ruleForm.category}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, category: event.target.value }))}
               />
@@ -834,23 +834,23 @@ export default function CompliancePage() {
                 value={ruleForm.severity}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, severity: event.target.value }))}
               >
-                <option value="info">info</option>
-                <option value="warning">warning</option>
-                <option value="error">error</option>
-                <option value="critical">critical</option>
+                <option value="info">정보</option>
+                <option value="warning">경고</option>
+                <option value="error">오류</option>
+                <option value="critical">치명</option>
               </select>
               <select
                 className="form-input"
                 value={ruleForm.auto_task ? 'true' : 'false'}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, auto_task: event.target.value === 'true' }))}
               >
-                <option value="false">auto_task: false</option>
-                <option value="true">auto_task: true</option>
+                <option value="false">자동업무: 비활성</option>
+                <option value="true">자동업무: 활성</option>
               </select>
               <textarea className="form-input md:col-span-2" rows={8} value={conditionText} onChange={(event) => setConditionText(event.target.value)} />
               <input
                 className="form-input md:col-span-2"
-                placeholder="description"
+                placeholder="설명"
                 value={ruleForm.description ?? ''}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, description: event.target.value }))}
               />
@@ -858,7 +858,7 @@ export default function CompliancePage() {
 
             <div>
               <button className="primary-btn" onClick={submitRule} disabled={saveRuleMut.isPending}>
-                {saveRuleMut.isPending ? 'Saving...' : editingRuleId ? 'Update Rule' : 'Create Rule'}
+                {saveRuleMut.isPending ? '저장 중...' : editingRuleId ? '규칙 수정' : '규칙 생성'}
               </button>
             </div>
           </div>
@@ -867,19 +867,19 @@ export default function CompliancePage() {
             {isRuleLoading ? (
               <PageLoading />
             ) : rules.length === 0 ? (
-              <EmptyState emoji="r" message="No rules found." className="py-8" />
+              <EmptyState emoji="r" message="규칙이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left">Code</th>
-                    <th className="px-3 py-2 text-left">Name</th>
-                    <th className="px-3 py-2 text-left">Level</th>
-                    <th className="px-3 py-2 text-left">Category</th>
-                    <th className="px-3 py-2 text-left">Severity</th>
-                    <th className="px-3 py-2 text-left">Auto Task</th>
-                    <th className="px-3 py-2 text-left">Active</th>
-                    <th className="px-3 py-2 text-left">Action</th>
+                    <th className="px-3 py-2 text-left">코드</th>
+                    <th className="px-3 py-2 text-left">이름</th>
+                    <th className="px-3 py-2 text-left">레벨</th>
+                    <th className="px-3 py-2 text-left">카테고리</th>
+                    <th className="px-3 py-2 text-left">심각도</th>
+                    <th className="px-3 py-2 text-left">자동 업무</th>
+                    <th className="px-3 py-2 text-left">활성</th>
+                    <th className="px-3 py-2 text-left">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -890,18 +890,18 @@ export default function CompliancePage() {
                       <td className="px-3 py-2">{rule.level}</td>
                       <td className="px-3 py-2">{rule.category}</td>
                       <td className="px-3 py-2">{rule.severity}</td>
-                      <td className="px-3 py-2">{rule.auto_task ? 'Y' : 'N'}</td>
-                      <td className="px-3 py-2">{rule.is_active ? 'Y' : 'N'}</td>
+                      <td className="px-3 py-2">{rule.auto_task ? '예' : '아니오'}</td>
+                      <td className="px-3 py-2">{rule.is_active ? '예' : '아니오'}</td>
                       <td className="px-3 py-2 space-x-2">
                         <button className="secondary-btn btn-sm" onClick={() => startEditRule(rule)}>
-                          Edit
+                          수정
                         </button>
                         <button
                           className="secondary-btn btn-sm"
                           disabled={deleteRuleMut.isPending}
                           onClick={() => deleteRuleMut.mutate(rule.id)}
                         >
-                          Delete
+                          삭제
                         </button>
                       </td>
                     </tr>
@@ -918,13 +918,13 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Fund</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
                 <select
                   className="form-input"
                   value={ruleFundFilter}
                   onChange={(event) => setRuleFundFilter(event.target.value ? Number(event.target.value) : '')}
                 >
-                  <option value="">All</option>
+                  <option value="">전체</option>
                   {funds.map((fund) => (
                     <option key={fund.id} value={fund.id}>
                       {fund.name}
@@ -933,18 +933,18 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Result</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">결과</label>
                 <select className="form-input" value={checkResultFilter} onChange={(event) => setCheckResultFilter(event.target.value)}>
-                  <option value="">All</option>
-                  <option value="pass">pass</option>
-                  <option value="warning">warning</option>
-                  <option value="fail">fail</option>
-                  <option value="error">error</option>
+                  <option value="">전체</option>
+                  <option value="pass">적합</option>
+                  <option value="warning">경고</option>
+                  <option value="fail">위반</option>
+                  <option value="error">오류</option>
                 </select>
               </div>
               <div className="flex items-end md:col-span-2">
                 <button className="primary-btn" onClick={runManualCheck} disabled={manualCheckMut.isPending || ruleFundFilter === ''}>
-                  {manualCheckMut.isPending ? 'Running...' : 'Run Manual Check'}
+                  {manualCheckMut.isPending ? '실행 중...' : '수동 점검 실행'}
                 </button>
               </div>
             </div>
@@ -954,19 +954,19 @@ export default function CompliancePage() {
             {isCheckLoading ? (
               <PageLoading />
             ) : checks.length === 0 ? (
-              <EmptyState emoji="c" message="No check records found." className="py-8" />
+              <EmptyState emoji="c" message="점검 기록이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left">Checked At</th>
-                    <th className="px-3 py-2 text-left">Fund</th>
-                    <th className="px-3 py-2 text-left">Rule</th>
-                    <th className="px-3 py-2 text-left">Level</th>
-                    <th className="px-3 py-2 text-left">Result</th>
-                    <th className="px-3 py-2 text-left">Detail</th>
-                    <th className="px-3 py-2 text-left">Trigger</th>
-                    <th className="px-3 py-2 text-left">Remediation Task</th>
+                    <th className="px-3 py-2 text-left">점검 시각</th>
+                    <th className="px-3 py-2 text-left">조합</th>
+                    <th className="px-3 py-2 text-left">규칙</th>
+                    <th className="px-3 py-2 text-left">레벨</th>
+                    <th className="px-3 py-2 text-left">결과</th>
+                    <th className="px-3 py-2 text-left">상세</th>
+                    <th className="px-3 py-2 text-left">트리거</th>
+                    <th className="px-3 py-2 text-left">시정조치 업무</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -1014,32 +1014,32 @@ export default function CompliancePage() {
         <div className="space-y-3">
           <div className="card-base space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-800">Scheduled Compliance Jobs</h3>
+              <h3 className="text-sm font-semibold text-gray-800">정기 준수 점검 스케줄</h3>
               <select
                 className="form-input-sm w-auto"
                 value={scanPeriod}
                 onChange={(event) => setScanPeriod(event.target.value as 'week' | 'month' | 'all')}
               >
-                <option value="week">Last 7 days</option>
-                <option value="month">Last 30 days</option>
-                <option value="all">All</option>
+                <option value="week">최근 7일</option>
+                <option value="month">최근 30일</option>
+                <option value="all">전체</option>
               </select>
             </div>
             {isScanHistoryLoading ? (
               <PageLoading />
             ) : !scanHistory?.schedules?.length ? (
-              <EmptyState emoji="s" message="No scheduler configuration found." className="py-6" />
+              <EmptyState emoji="s" message="스케줄러 설정이 없습니다." className="py-6" />
             ) : (
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
                 {scanHistory.schedules.map((job) => (
                   <div key={job.job_id} className="rounded-xl border border-gray-200 bg-white/70 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-gray-800">{job.label}</p>
-                      <span className={`tag ${job.enabled ? 'tag-green' : 'tag-gray'}`}>{job.enabled ? 'ON' : 'OFF'}</span>
+                      <span className={`tag ${job.enabled ? 'tag-green' : 'tag-gray'}`}>{job.enabled ? '활성' : '비활성'}</span>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">{job.cron}</p>
-                    <p className="mt-2 text-xs text-gray-600">Next: {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : '-'}</p>
-                    <p className="text-xs text-gray-600">Last: {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : '-'}</p>
+                    <p className="mt-2 text-xs text-gray-600">다음 실행: {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : '-'}</p>
+                    <p className="text-xs text-gray-600">최근 실행: {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : '-'}</p>
                   </div>
                 ))}
               </div>
@@ -1047,16 +1047,16 @@ export default function CompliancePage() {
           </div>
 
           <div className="card-base space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Manual Scan</h3>
+            <h3 className="text-sm font-semibold text-gray-800">수동 스캔</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <select
                 className="form-input"
                 value={manualScanMode}
                 onChange={(event) => setManualScanMode(event.target.value as 'daily' | 'full' | 'law')}
               >
-                <option value="daily">Daily Scope (L1-L3)</option>
-                <option value="full">Monthly Full Audit (L1-L5)</option>
-                <option value="law">Law Amendment Check</option>
+                <option value="daily">일간 범위 (L1-L3)</option>
+                <option value="full">월간 전체 감사 (L1-L5)</option>
+                <option value="law">법령 개정 점검</option>
               </select>
               <select
                 className="form-input"
@@ -1064,7 +1064,7 @@ export default function CompliancePage() {
                 onChange={(event) => setManualScanFundId(event.target.value ? Number(event.target.value) : '')}
                 disabled={manualScanMode !== 'daily'}
               >
-                <option value="">All Funds</option>
+                <option value="">전체 조합</option>
                 {funds.map((fund) => (
                   <option key={fund.id} value={fund.id}>
                     {fund.name}
@@ -1072,7 +1072,7 @@ export default function CompliancePage() {
                 ))}
               </select>
               <button className="primary-btn md:col-span-2" onClick={runManualScheduledScan} disabled={manualScheduledScanMut.isPending}>
-                {manualScheduledScanMut.isPending ? 'Running...' : 'Run Manual Scan'}
+                {manualScheduledScanMut.isPending ? '실행 중...' : '수동 스캔 실행'}
               </button>
             </div>
             {manualScanResult && (
@@ -1080,22 +1080,22 @@ export default function CompliancePage() {
                 {manualScanResult.scan_type ? (
                   <div className="space-y-1">
                     <p>
-                      Type: <span className="font-semibold">{manualScanResult.scan_type}</span>
+                      유형: <span className="font-semibold">{manualScanResult.scan_type}</span>
                     </p>
                     <p>
-                      Rules: <span className="font-semibold">{manualScanResult.total_rules ?? 0}</span> | Pass{' '}
-                      <span className="font-semibold text-green-700">{manualScanResult.passed ?? 0}</span> | Warn{' '}
-                      <span className="font-semibold text-amber-700">{manualScanResult.warnings ?? 0}</span> | Fail{' '}
+                      규칙: <span className="font-semibold">{manualScanResult.total_rules ?? 0}</span> | 적합{' '}
+                      <span className="font-semibold text-green-700">{manualScanResult.passed ?? 0}</span> | 경고{' '}
+                      <span className="font-semibold text-amber-700">{manualScanResult.warnings ?? 0}</span> | 위반{' '}
                       <span className="font-semibold text-red-700">{manualScanResult.failed ?? 0}</span>
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <p>
-                      Amendments detected: <span className="font-semibold">{manualScanResult.count ?? 0}</span>
+                      개정 감지: <span className="font-semibold">{manualScanResult.count ?? 0}</span>
                     </p>
                     <p>
-                      Newly saved alerts: <span className="font-semibold">{manualScanResult.saved_count ?? 0}</span>
+                      신규 저장 알림: <span className="font-semibold">{manualScanResult.saved_count ?? 0}</span>
                     </p>
                   </div>
                 )}
@@ -1105,25 +1105,25 @@ export default function CompliancePage() {
 
           <div className="card-base overflow-auto">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-800">Recent Scan History</h3>
+              <h3 className="text-sm font-semibold text-gray-800">최근 스캔 이력</h3>
               <span className="text-xs text-gray-500">{scanHistory?.period ?? scanPeriod}</span>
             </div>
             {isScanHistoryLoading ? (
               <PageLoading />
             ) : !scanHistory?.history?.length ? (
-              <EmptyState emoji="h" message="No scan history found." className="py-6" />
+              <EmptyState emoji="h" message="스캔 이력이 없습니다." className="py-6" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left">Scan</th>
-                    <th className="px-3 py-2 text-left">Date</th>
-                    <th className="px-3 py-2 text-left">Funds</th>
-                    <th className="px-3 py-2 text-left">Checked</th>
-                    <th className="px-3 py-2 text-left">Pass</th>
-                    <th className="px-3 py-2 text-left">Warn</th>
-                    <th className="px-3 py-2 text-left">Fail</th>
-                    <th className="px-3 py-2 text-left">Last Run</th>
+                    <th className="px-3 py-2 text-left">스캔</th>
+                    <th className="px-3 py-2 text-left">일자</th>
+                    <th className="px-3 py-2 text-left">조합 수</th>
+                    <th className="px-3 py-2 text-left">점검 수</th>
+                    <th className="px-3 py-2 text-left">적합</th>
+                    <th className="px-3 py-2 text-left">경고</th>
+                    <th className="px-3 py-2 text-left">위반</th>
+                    <th className="px-3 py-2 text-left">최근 실행</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -1145,20 +1145,20 @@ export default function CompliancePage() {
           </div>
 
           <div className="card-base overflow-auto">
-            <h3 className="mb-2 text-sm font-semibold text-gray-800">Law Amendment Alerts</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-800">법령 개정 알림</h3>
             {isAmendmentsLoading ? (
               <PageLoading />
             ) : amendmentAlerts.length === 0 ? (
-              <EmptyState emoji="a" message="No amendment alerts yet." className="py-6" />
+              <EmptyState emoji="a" message="아직 법령 개정 알림이 없습니다." className="py-6" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-3 py-2 text-left">Title</th>
-                    <th className="px-3 py-2 text-left">Effective Date</th>
-                    <th className="px-3 py-2 text-left">Version</th>
-                    <th className="px-3 py-2 text-left">Summary</th>
-                    <th className="px-3 py-2 text-left">Created</th>
+                    <th className="px-3 py-2 text-left">제목</th>
+                    <th className="px-3 py-2 text-left">시행일</th>
+                    <th className="px-3 py-2 text-left">버전</th>
+                    <th className="px-3 py-2 text-left">요약</th>
+                    <th className="px-3 py-2 text-left">생성일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -1183,13 +1183,13 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Fund</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
                 <select
                   className="form-input"
                   value={historyFundId}
                   onChange={(event) => setHistoryFundId(event.target.value ? Number(event.target.value) : '')}
                 >
-                  <option value="">All Funds (for suggestions/remediation)</option>
+                  <option value="">전체 조합 (제안/시정조치 포함)</option>
                   {funds.map((fund) => (
                     <option key={fund.id} value={fund.id}>
                       {fund.name}
@@ -1198,19 +1198,19 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Pattern Window</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">패턴 분석 기간</label>
                 <select
                   className="form-input"
                   value={patternMonths}
                   onChange={(event) => setPatternMonths(Number(event.target.value))}
                 >
-                  <option value={3}>Last 3 months</option>
-                  <option value={6}>Last 6 months</option>
-                  <option value={12}>Last 12 months</option>
+                  <option value={3}>최근 3개월</option>
+                  <option value={6}>최근 6개월</option>
+                  <option value={12}>최근 12개월</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Report Month</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">리포트 월</label>
                 <input
                   className="form-input"
                   type="month"
@@ -1233,23 +1233,23 @@ export default function CompliancePage() {
       {targetRow && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
-            <h3 className="mb-2 text-base font-semibold text-gray-900">Complete Obligation</h3>
+            <h3 className="mb-2 text-base font-semibold text-gray-900">의무사항 완료 처리</h3>
             <p className="mb-3 text-xs text-gray-500">
-              {targetRow.rule_title || targetRow.rule_code || '-'} | due {targetRow.due_date || '-'}
+              {targetRow.rule_title || targetRow.rule_code || '-'} | 마감 {targetRow.due_date || '-'}
             </p>
             <div className="space-y-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Completed By</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">완료자</label>
                 <input className="form-input" value={completedBy} onChange={(event) => setCompletedBy(event.target.value)} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Evidence Note</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">근거 메모</label>
                 <textarea className="form-input" rows={3} value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} />
               </div>
             </div>
             <div className="mt-3 flex justify-end gap-2">
               <button className="secondary-btn" onClick={() => setTargetRow(null)}>
-                Cancel
+                취소
               </button>
               <button
                 className="primary-btn"
@@ -1262,7 +1262,7 @@ export default function CompliancePage() {
                   })
                 }
               >
-                Confirm
+                확인
               </button>
             </div>
           </div>

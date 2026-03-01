@@ -13,10 +13,10 @@ type RuleSuggestionsProps = {
 
 function suggestionBadge(suggestion: string): { label: string; className: string } {
   if (suggestion === 'severity_upgrade') {
-    return { label: 'Severity Upgrade', className: 'tag tag-red' }
+    return { label: '심각도 상향', className: 'tag tag-red' }
   }
   if (suggestion === 'frequency_reduce') {
-    return { label: 'Frequency Reduce', className: 'tag tag-blue' }
+    return { label: '점검 주기 완화', className: 'tag tag-blue' }
   }
   return { label: suggestion, className: 'tag tag-gray' }
 }
@@ -41,20 +41,20 @@ export default function RuleSuggestions({ fundId }: RuleSuggestionsProps) {
   return (
     <div className="card-base overflow-auto">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">Rule Suggestions</h3>
-        <span className="text-xs text-gray-500">{isFetching ? 'Refreshing...' : `${data.length} suggestion(s)`}</span>
+        <h3 className="text-sm font-semibold text-gray-800">규칙 조정 제안</h3>
+        <span className="text-xs text-gray-500">{isFetching ? '새로고침 중...' : `${data.length}건`}</span>
       </div>
 
       {!data.length ? (
-        <EmptyState emoji="s" message="No rule adjustment suggestions for current scope." className="py-8" />
+        <EmptyState emoji="s" message="현재 범위에서 규칙 조정 제안이 없습니다." className="py-8" />
       ) : (
         <table className="min-w-[860px] w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500">
             <tr>
-              <th className="px-3 py-2 text-left">Rule</th>
-              <th className="px-3 py-2 text-left">Current</th>
-              <th className="px-3 py-2 text-left">Suggestion</th>
-              <th className="px-3 py-2 text-left">Detail</th>
+              <th className="px-3 py-2 text-left">규칙</th>
+              <th className="px-3 py-2 text-left">현재값</th>
+              <th className="px-3 py-2 text-left">제안</th>
+              <th className="px-3 py-2 text-left">상세</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -67,8 +67,8 @@ export default function RuleSuggestions({ fundId }: RuleSuggestionsProps) {
                     <div>{item.rule_name || '-'}</div>
                   </td>
                   <td className="px-3 py-2 text-xs text-gray-700">
-                    <div>Level: {item.current_level || '-'}</div>
-                    <div>Severity: {item.current_severity || '-'}</div>
+                    <div>레벨: {item.current_level || '-'}</div>
+                    <div>심각도: {item.current_severity || '-'}</div>
                   </td>
                   <td className="px-3 py-2">
                     <span className={badge.className}>{badge.label}</span>

@@ -38,7 +38,7 @@ export default function FundComplianceGrid({
   if (!rows.length) {
     return (
       <div className="card-base">
-        <EmptyState emoji="f" message="No fund compliance status yet." className="py-8" />
+        <EmptyState emoji="f" message="조합 준수 현황 데이터가 없습니다." className="py-8" />
       </div>
     )
   }
@@ -46,19 +46,19 @@ export default function FundComplianceGrid({
   return (
     <div className="card-base overflow-auto">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">Fund Compliance Grid</h3>
-        <span className="text-xs text-gray-500">{rows.length} fund(s)</span>
+        <h3 className="text-sm font-semibold text-gray-800">조합별 준수 현황</h3>
+        <span className="text-xs text-gray-500">{rows.length}개 조합</span>
       </div>
 
       <table className="min-w-[760px] w-full text-sm">
         <thead className="bg-gray-50 text-xs text-gray-500">
           <tr>
-            <th className="px-3 py-2 text-left">Fund</th>
-            <th className="px-3 py-2 text-left">Rules Checked</th>
-            <th className="px-3 py-2 text-left">Compliance</th>
-            <th className="px-3 py-2 text-left">Violations</th>
-            <th className="px-3 py-2 text-left">Last Checked</th>
-            <th className="px-3 py-2 text-left">Action</th>
+            <th className="px-3 py-2 text-left">조합</th>
+            <th className="px-3 py-2 text-left">점검 규칙 수</th>
+            <th className="px-3 py-2 text-left">준수율</th>
+            <th className="px-3 py-2 text-left">위반 건수</th>
+            <th className="px-3 py-2 text-left">마지막 점검</th>
+            <th className="px-3 py-2 text-left">작업</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -82,7 +82,7 @@ export default function FundComplianceGrid({
                     onClick={() => onSelectFund?.(row.fund_id)}
                     disabled={!onSelectFund}
                   >
-                    View Checks
+                    점검 보기
                   </button>
                 </td>
               </tr>
@@ -93,4 +93,3 @@ export default function FundComplianceGrid({
     </div>
   )
 }
-

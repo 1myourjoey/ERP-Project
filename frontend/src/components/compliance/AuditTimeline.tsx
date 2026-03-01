@@ -39,7 +39,7 @@ export default function AuditTimeline({ rows, isLoading = false, maxItems = 15 }
   if (!rows.length) {
     return (
       <div className="card-base">
-        <EmptyState emoji="t" message="No audit timeline records yet." className="py-8" />
+        <EmptyState emoji="t" message="감사 타임라인 기록이 없습니다." className="py-8" />
       </div>
     )
   }
@@ -47,8 +47,8 @@ export default function AuditTimeline({ rows, isLoading = false, maxItems = 15 }
   return (
     <div className="card-base">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">Audit Timeline</h3>
-        <span className="text-xs text-gray-500">Latest {Math.min(maxItems, rows.length)} checks</span>
+        <h3 className="text-sm font-semibold text-gray-800">감사 타임라인</h3>
+        <span className="text-xs text-gray-500">최근 {Math.min(maxItems, rows.length)}건 점검</span>
       </div>
 
       <div className="relative space-y-3 before:absolute before:left-[9px] before:top-1 before:h-[calc(100%-8px)] before:w-px before:bg-gray-200">
@@ -61,7 +61,7 @@ export default function AuditTimeline({ rows, isLoading = false, maxItems = 15 }
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800">
-                    {row.fund_name || `Fund #${row.fund_id}`} | {row.rule_name || row.rule_code || `Rule #${row.rule_id}`}
+                    {row.fund_name || `조합 #${row.fund_id}`} | {row.rule_name || row.rule_code || `규칙 #${row.rule_id}`}
                   </p>
                   <p className="mt-1 text-xs text-gray-600">
                     {checkedAtLabel(row.checked_at)} | {row.trigger_type || '-'} / {row.trigger_source || '-'}
@@ -77,4 +77,3 @@ export default function AuditTimeline({ rows, isLoading = false, maxItems = 15 }
     </div>
   )
 }
-
