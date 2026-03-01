@@ -78,6 +78,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
       { to: '/transactions', label: '거래원장', icon: ListTree },
       { to: '/valuations', label: '가치평가', icon: LineChart },
       { to: '/accounting', label: '회계 관리', icon: Calculator },
+      { to: '/provisional-fs', label: '가결산 관리', icon: FileSpreadsheet },
       { to: '/fee-management', label: '보수 관리', icon: Landmark },
     ],
   },

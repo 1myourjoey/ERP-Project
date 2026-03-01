@@ -19,6 +19,9 @@ from .valuation import Valuation
 from .biz_report import BizReport, BizReportTemplate, BizReportRequest, BizReportAnomaly
 from .regular_report import RegularReport
 from .accounting import Account, JournalEntry, JournalEntryLine
+from .bank_transaction import BankTransaction
+from .auto_mapping_rule import AutoMappingRule
+from .provisional_fs import ProvisionalFS
 from .vote_record import VoteRecord
 from .phase3 import (
     CapitalCall,
@@ -63,6 +66,7 @@ __all__ = [
     "BizReport", "BizReportTemplate", "BizReportRequest", "BizReportAnomaly",
     "RegularReport",
     "Account", "JournalEntry", "JournalEntryLine",
+    "BankTransaction", "AutoMappingRule", "ProvisionalFS",
     "VoteRecord",
     "CapitalCall", "CapitalCallItem", "CapitalCallDetail",
     "Distribution", "DistributionItem", "DistributionDetail",

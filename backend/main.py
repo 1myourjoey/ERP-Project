@@ -39,6 +39,7 @@ from routers import (
     biz_reports,
     regular_reports,
     accounting,
+    provisional_fs,
     vote_records,
     documents,
     lp_transfers,
@@ -675,6 +676,7 @@ include_protected_router(performance.router)
 include_protected_router(biz_reports.router)
 include_protected_router(regular_reports.router)
 include_protected_router(accounting.router)
+include_protected_router(provisional_fs.router)
 include_protected_router(vote_records.router)
 include_protected_router(documents.router)
 include_protected_router(lp_transfers.router)

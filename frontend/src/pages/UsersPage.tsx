@@ -39,6 +39,7 @@ const ROUTE_KEYS = [
   '/transactions',
   '/valuations',
   '/accounting',
+  '/provisional-fs',
   '/fee-management',
   '/lp-management',
   '/users',

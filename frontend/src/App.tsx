@@ -27,6 +27,7 @@ import MyProfilePage from './pages/MyProfilePage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ReportsPage from './pages/ReportsPage'
+import ProvisionalFSPage from './pages/ProvisionalFSPage'
 import TaskBoardPage from './pages/TaskBoardPage'
 import TemplateManagementPage from './pages/TemplateManagementPage'
 import TransactionsPage from './pages/TransactionsPage'
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="/transactions" element={<RouteGuard routeKey="/transactions"><TransactionsPage /></RouteGuard>} />
             <Route path="/valuations" element={<RouteGuard routeKey="/valuations"><ValuationsPage /></RouteGuard>} />
             <Route path="/accounting" element={<RouteGuard routeKey="/accounting"><AccountingPage /></RouteGuard>} />
+            <Route path="/provisional-fs" element={<RouteGuard routeKey="/provisional-fs"><ProvisionalFSPage /></RouteGuard>} />
             <Route path="/fee-management" element={<RouteGuard routeKey="/fee-management"><FeeManagementPage /></RouteGuard>} />
 
             <Route path="/lp-management" element={<RouteGuard routeKey="/lp-management"><LPManagementPage /></RouteGuard>} />

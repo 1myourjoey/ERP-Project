@@ -707,6 +707,64 @@ export const updateJournalEntry = (id: number, data: Partial<JournalEntryInput>)
 export const deleteJournalEntry = (id: number) => api.delete(`/journal-entries/${id}`)
 export const fetchTrialBalance = (fund_id: number, as_of_date?: string): Promise<TrialBalanceItem[]> =>
   api.get('/accounts/trial-balance', { params: { fund_id, as_of_date } }).then(r => r.data)
+export const parseBankTransactionsFromText = (
+  fundId: number,
+  data: { text: string; account_number?: string | null },
+): Promise<BankTransactionParseResponse> =>
+  api.post(`/funds/${fundId}/bank-transactions/parse`, data).then(r => r.data)
+export const uploadBankTransactionsFile = (
+  fundId: number,
+  file: File,
+): Promise<BankTransactionParseResponse> =>
+  api.post(`/funds/${fundId}/bank-transactions/upload`, file, {
+    headers: { 'Content-Type': 'application/octet-stream' },
+  }).then(r => r.data)
+export const fetchBankTransactions = (
+  fundId: number,
+  params?: { year_month?: string },
+): Promise<BankTransaction[]> =>
+  api.get(`/funds/${fundId}/bank-transactions`, { params }).then(r => r.data)
+export const runAutoJournal = (
+  fundId: number,
+  data?: { year_month?: string | null },
+): Promise<AutoJournalResult> =>
+  api.post(`/funds/${fundId}/bank-transactions/auto-journal`, data ?? {}).then(r => r.data)
+export const manualMapBankTransaction = (
+  fundId: number,
+  txnId: number,
+  data: ManualMapInput,
+): Promise<ManualMapResult> =>
+  api.post(`/funds/${fundId}/bank-transactions/${txnId}/manual-map`, data).then(r => r.data)
+export const fetchMappingRules = (fundId: number): Promise<AutoMappingRule[]> =>
+  api.get(`/funds/${fundId}/mapping-rules`).then(r => r.data)
+export const createMappingRule = (
+  fundId: number,
+  data: AutoMappingRuleInput,
+): Promise<AutoMappingRule> =>
+  api.post(`/funds/${fundId}/mapping-rules`, data).then(r => r.data)
+export const updateMappingRule = (
+  id: number,
+  data: Partial<AutoMappingRuleInput>,
+): Promise<AutoMappingRule> =>
+  api.put(`/mapping-rules/${id}`, data).then(r => r.data)
+export const generateProvisionalFS = (
+  fundId: number,
+  yearMonth: string,
+): Promise<ProvisionalFS> =>
+  api.post(`/funds/${fundId}/provisional-fs/generate`, { year_month: yearMonth }).then(r => r.data)
+export const fetchProvisionalFS = (
+  fundId: number,
+  yearMonth: string,
+): Promise<ProvisionalFS | null> =>
+  api.get(`/funds/${fundId}/provisional-fs`, { params: { year_month: yearMonth } }).then(r => r.data)
+export const confirmProvisionalFS = (id: number): Promise<ProvisionalFS> =>
+  api.put(`/provisional-fs/${id}/confirm`).then(r => r.data)
+export const downloadProvisionalFS = (id: number): Promise<Blob> =>
+  api.get(`/provisional-fs/${id}/download`, { responseType: 'blob' }).then(r => r.data)
+export const fetchProvisionalFSOverview = (
+  yearMonth: string,
+): Promise<ProvisionalFSOverviewResponse> =>
+  api.get('/provisional-fs/overview', { params: { year_month: yearMonth } }).then(r => r.data)
 export const fetchCapitalCalls = (params?: { fund_id?: number; call_type?: string }): Promise<CapitalCall[]> => api.get('/capital-calls', { params }).then(r => r.data)
 export const fetchCapitalCall = (id: number): Promise<CapitalCall> => api.get(`/capital-calls/${id}`).then(r => r.data)
 export const createCapitalCall = (
@@ -2463,6 +2521,118 @@ export interface TrialBalanceItem {
   debit_total: number
   credit_total: number
   balance: number
+}
+
+export interface BankTransaction {
+  id: number
+  fund_id: number
+  transaction_date: string
+  withdrawal: number
+  deposit: number
+  balance_after: number | null
+  description: string | null
+  counterparty: string | null
+  bank_branch: string | null
+  account_number: string | null
+  journal_entry_id: number | null
+  auto_mapped: boolean
+  mapping_rule_id: number | null
+  year_month: string
+  created_at: string | null
+}
+
+export interface BankTransactionParseResponse {
+  created_count: number
+  items: BankTransaction[]
+  year_months: string[]
+}
+
+export interface AutoJournalResult {
+  mapped: BankTransaction[]
+  unmapped: BankTransaction[]
+  total: number
+  mapped_count: number
+  unmapped_count: number
+}
+
+export interface ManualMapInput {
+  debit_account_id: number
+  credit_account_id: number
+  description?: string | null
+  learn?: boolean
+}
+
+export interface ManualMapResult {
+  ok: boolean
+  result: {
+    txn_id: number
+    journal_entry_id: number
+    rule_id: number | null
+  }
+  item: BankTransaction
+}
+
+export interface AutoMappingRuleInput {
+  keyword: string
+  direction: 'deposit' | 'withdrawal'
+  debit_account_id: number
+  credit_account_id: number
+  description_template?: string | null
+  priority?: number
+  is_active?: boolean
+}
+
+export interface AutoMappingRule extends AutoMappingRuleInput {
+  id: number
+  fund_id: number | null
+  debit_account_name: string | null
+  credit_account_name: string | null
+  use_count: number
+  created_at: string | null
+}
+
+export interface ProvisionalFS {
+  id: number
+  fund_id: number
+  year_month: string
+  status: 'draft' | 'confirmed' | 'exported' | string
+  sfp_data: Record<string, number>
+  is_data: Record<string, number>
+  total_assets: number | null
+  total_liabilities: number | null
+  total_equity: number | null
+  net_income: number | null
+  confirmed_at: string | null
+  confirmed_by: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface ProvisionalFSOverviewItem {
+  fund_id: number
+  fund_name: string
+  status: 'confirmed' | 'not_started' | 'needs_mapping' | 'draft' | 'ready' | string
+  provisional_fs_id: number | null
+  total_assets: number | null
+  total_liabilities: number | null
+  total_equity: number | null
+  net_income: number | null
+  bank_txn_count: number
+  mapped_count: number
+  unmapped_count: number
+}
+
+export interface ProvisionalFSOverviewResponse {
+  year_month: string
+  summary: {
+    fund_count: number
+    confirmed_count: number
+    needs_mapping_count: number
+    not_started_count: number
+    total_unmapped_count: number
+    total_assets_sum: number
+  }
+  items: ProvisionalFSOverviewItem[]
 }
 
 export interface CapitalCallInput {
