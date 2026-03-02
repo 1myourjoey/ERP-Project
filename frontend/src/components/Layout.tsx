@@ -228,7 +228,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="rounded-lg p-1.5 text-[#f1f1e6] hover:bg-[#558ef8]/20 md:hidden"
+              className="rounded-lg p-1.5 text-[#fff7d6] hover:bg-[#558ef8]/20 md:hidden"
               aria-label="메뉴 열기"
             >
               <Menu size={20} />
@@ -277,7 +277,7 @@ export default function Layout() {
                             to={to}
                             onClick={() => setOpenDropdown(null)}
                             className={`mx-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                              active ? 'bg-[#e9f0ff] text-[#0f1f3d]' : 'text-[#0f1f3d] hover:bg-[#f7f9ff]'
+                              active ? 'bg-[#eef4ff] text-[#0f1f3d]' : 'text-[#0f1f3d] hover:bg-[#f5f9ff]'
                             }`}
                           >
                             <Icon size={16} />
@@ -296,7 +296,7 @@ export default function Layout() {
             <div className="relative">
               <button
                 type="button"
-                className="icon-btn relative !text-[#f1f1e6] hover:!bg-[#558ef8]/20 hover:!text-white"
+                className="icon-btn relative !text-[#fff7d6] hover:!bg-[#558ef8]/20 hover:!text-white"
                 aria-label={`알림 ${unreadCount}건`}
                 onClick={() => {
                   setOpenDropdown(null)
@@ -315,7 +315,7 @@ export default function Layout() {
             </div>
             <button
               onClick={() => setSearchOpen(true)}
-              className="secondary-btn btn-sm gap-2 !border-[#d6dced] !bg-[#f1f1e6] !text-[#0f1f3d] hover:!bg-white"
+              className="secondary-btn btn-sm gap-2 !border-[#d8e5fb] !bg-[#fff7d6] !text-[#0f1f3d] hover:!bg-white"
             >
               <Search size={14} />
               <span className="hidden sm:inline">검색</span>
@@ -328,7 +328,7 @@ export default function Layout() {
                   setNotificationPanelOpen(false)
                   setUserMenuOpen((prev) => !prev)
                 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#d6dced] bg-[#f1f1e6] px-2 py-1.5 text-xs text-[#0f1f3d] hover:bg-white"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#d8e5fb] bg-[#fff7d6] px-2 py-1.5 text-xs text-[#0f1f3d] hover:bg-white"
               >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
@@ -340,11 +340,11 @@ export default function Layout() {
                 <span className="hidden sm:inline">{user?.name || '사용자'}</span>
               </button>
               <div
-                className={`absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-[#d6dced] bg-white p-1.5 shadow-lg transition-all duration-150 ${
+                className={`absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-[#d8e5fb] bg-white p-1.5 shadow-lg transition-all duration-150 ${
                   userMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 }`}
               >
-                <div className="mb-1 rounded-lg bg-[#f7f9ff] px-2.5 py-2">
+                <div className="mb-1 rounded-lg bg-[#f5f9ff] px-2.5 py-2">
                   <p className="text-xs font-semibold text-[#0f1f3d]">{user?.name}</p>
                   <p className="text-[11px] text-[#64748b]">
                     {user?.username} · {ROLE_LABEL[user?.role || ''] || user?.role}
@@ -356,7 +356,7 @@ export default function Layout() {
                     setNotificationPanelOpen(false)
                     navigate('/profile')
                   }}
-                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[#0f1f3d] hover:bg-[#f7f9ff]"
+                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[#0f1f3d] hover:bg-[#f5f9ff]"
                 >
                   내 프로필
                 </button>

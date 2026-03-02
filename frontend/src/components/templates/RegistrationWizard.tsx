@@ -229,7 +229,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
 
       {step === 1 && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-dashed border-[#d6dced] bg-[#f7f9ff] p-4">
+          <div className="rounded-xl border border-dashed border-[#d8e5fb] bg-[#f5f9ff] p-4">
             <label className="text-sm font-semibold text-[#0f1f3d]">템플릿 파일</label>
             <input
               type="file"
@@ -247,7 +247,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                 type="text"
                 value={templateName}
                 onChange={(event) => setTemplateName(event.target.value)}
-                className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
               />
             </label>
             <label className="space-y-1">
@@ -256,7 +256,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                 type="text"
                 value={documentType}
                 onChange={(event) => setDocumentType(event.target.value)}
-                className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
               />
             </label>
           </div>
@@ -269,14 +269,14 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
 
       {step === 2 && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-[#d6dced] bg-[#f7f9ff] p-3">
+          <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
             <p className="text-xs font-semibold uppercase text-[#64748b]">문서 내 기존 마커 목록</p>
             {existingMarkers.length === 0 ? (
               <p className="mt-2 text-sm text-[#64748b]">문서 내에서 기본 {'{{marker}}'} 형태의 마커가 발견되지 않았습니다.</p>
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
                 {existingMarkers.map((marker) => (
-                  <span key={marker} className="rounded-full border border-[#d6d2bf] bg-[#f1f1e6] px-2 py-0.5 text-xs text-[#0f1f3d]">
+                  <span key={marker} className="rounded-full border border-[#e7ddb6] bg-[#fff7d6] px-2 py-0.5 text-xs text-[#0f1f3d]">
                     {marker}
                   </span>
                 ))}
@@ -286,7 +286,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
 
           <div className="space-y-2">
             {variables.map((row, index) => (
-              <div key={`${row.marker_name}-${index}`} className="rounded-xl border border-[#d6dced] bg-white p-3">
+              <div key={`${row.marker_name}-${index}`} className="rounded-xl border border-[#d8e5fb] bg-white p-3">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                   <label className="space-y-1">
                     <span className="text-[11px] text-[#64748b]">원문 텍스트</span>
@@ -294,7 +294,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                       type="text"
                       value={row.text ?? ''}
                       onChange={(event) => updateVariable(index, { text: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                   <label className="space-y-1">
@@ -303,7 +303,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                       type="text"
                       value={row.marker_name}
                       onChange={(event) => updateVariable(index, { marker_name: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                   <label className="space-y-1">
@@ -311,7 +311,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                     <select
                       value={row.source_type ?? 'manual'}
                       onChange={(event) => updateVariable(index, { source_type: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     >
                       <option value="fund">펀드</option>
                       <option value="lp">LP</option>
@@ -345,7 +345,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
         <div className="space-y-3">
           <div className="space-y-2">
             {variables.map((row, index) => (
-              <div key={`${row.marker_name}-${index}`} className="rounded-xl border border-[#d6dced] bg-white p-3">
+              <div key={`${row.marker_name}-${index}`} className="rounded-xl border border-[#d8e5fb] bg-white p-3">
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   <label className="space-y-1">
                     <span className="text-[11px] text-[#64748b]">표시 라벨</span>
@@ -353,7 +353,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                       type="text"
                       value={row.display_label ?? ''}
                       onChange={(event) => updateVariable(index, { display_label: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                   <label className="space-y-1">
@@ -362,7 +362,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                       type="text"
                       value={row.source_field ?? ''}
                       onChange={(event) => updateVariable(index, { source_field: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                   <label className="space-y-1">
@@ -371,7 +371,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                       type="text"
                       value={row.default_value ?? ''}
                       onChange={(event) => updateVariable(index, { default_value: event.target.value })}
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                 </div>
@@ -406,7 +406,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
               <select
                 value={testFundId}
                 onChange={(event) => setTestFundId(event.target.value ? Number(event.target.value) : '')}
-                className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
               >
                 <option value="">펀드를 선택</option>
                 {funds.map((fund) => (
@@ -421,7 +421,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
               <select
                 value={testLpId}
                 onChange={(event) => setTestLpId(event.target.value ? Number(event.target.value) : '')}
-                className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
               >
                 <option value="">LP를 선택</option>
                 {lps.map((lp) => (
@@ -434,7 +434,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
           </div>
 
           {manualMarkers.length > 0 && (
-            <div className="rounded-xl border border-[#d6dced] bg-[#f7f9ff] p-3">
+            <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
               <p className="text-xs font-semibold uppercase text-[#64748b]">수동 입력값 (캐시)</p>
               <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                 {manualMarkers.map((marker) => (
@@ -449,7 +449,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
                           [marker]: event.target.value,
                         }))
                       }
-                      className="w-full rounded-lg border border-[#d6dced] px-2 py-1.5 text-sm"
+                      className="w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
                     />
                   </label>
                 ))}
@@ -476,7 +476,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
       )}
 
       {extractedText && (
-        <details className="rounded-xl border border-[#d6dced] bg-[#f7f9ff] p-3">
+        <details className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
           <summary className="cursor-pointer text-xs font-semibold uppercase text-[#64748b]">추출된 원문 미리보기</summary>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] text-[#0f1f3d]">{extractedText}</pre>
         </details>
@@ -484,3 +484,4 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
     </div>
   )
 }
+

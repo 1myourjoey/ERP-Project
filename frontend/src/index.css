@@ -18,41 +18,41 @@
   /* Brand */
   --color-primary: #0f1f3d;
   --color-primary-dark: #0a1630;
-  --color-primary-light: #f1f1e6;
+  --color-primary-light: #fff7d6;
   --color-accent: #558ef8;
   --color-accent-strong: #3f79e0;
-  --color-danger: #dc2626;
-  --color-warning: #b8952a;
+  --color-danger: #bfa5a7;
+  --color-warning: #bfa5a7;
   --color-success: #256b4a;
   /* Neutral */
-  --color-bg: #f7f9ff;
+  --color-bg: #f5f9ff;
   --color-surface: #ffffff;
-  --color-surface-subtle: #f1f1e6;
-  --color-border: #dce3f0;
-  --color-border-strong: #c6cfde;
+  --color-surface-subtle: #fff7d6;
+  --color-border: #d8e5fb;
+  --color-border-strong: #bfcff0;
   --color-text: #0f1f3d;
   --color-text-secondary: #64748b;
   --color-text-muted: #94a3b8;
-  --color-hover: #eef3ff;
+  --color-hover: #edf4ff;
   /* Shadow */
   --shadow-xs: 0 1px 2px rgba(15, 31, 61, 0.08);
   --shadow-sm: 0 2px 6px rgba(15, 31, 61, 0.08), 0 1px 2px rgba(15, 31, 61, 0.05);
   --shadow-md: 0 8px 16px rgba(15, 31, 61, 0.1), 0 2px 6px rgba(15, 31, 61, 0.08);
   --shadow-lg: 0 16px 28px rgba(15, 31, 61, 0.14), 0 6px 12px rgba(15, 31, 61, 0.09);
   /* Tag colors */
-  --tag-blue-bg: #e9f0ff;
+  --tag-blue-bg: #eef4ff;
   --tag-blue-text: #0f1f3d;
   --tag-green-bg: #edf6f1;
   --tag-green-text: #256b4a;
-  --tag-amber-bg: #f7f1dc;
-  --tag-amber-text: #8c6d10;
-  --tag-red-bg: #fdeef0;
-  --tag-red-text: #a33645;
+  --tag-amber-bg: #f1e8e9;
+  --tag-amber-text: #7b5f62;
+  --tag-red-bg: #f1e8e9;
+  --tag-red-text: #73585c;
   --tag-purple-bg: #f0ecff;
   --tag-purple-text: #5846a0;
   --tag-indigo-bg: #ebefff;
   --tag-indigo-text: #2f4f96;
-  --tag-gray-bg: #f1f1e6;
+  --tag-gray-bg: #fff7d6;
   --tag-gray-text: #475569;
   --tag-emerald-bg: #e8f4ef;
   --tag-emerald-text: #1f5b45;
@@ -269,17 +269,17 @@ input[type="radio"] {
 }
 
 .secondary-btn:hover {
-  background-color: #e7ebd8;
+  background-color: #fff2c4;
 }
 
 .danger-btn {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  border-color: #fecaca;
+  background-color: #f1e8e9;
+  color: #73585c;
+  border-color: #d6c3c5;
 }
 
 .danger-btn:hover {
-  background-color: #fee2e2;
+  background-color: #e8d9db;
 }
 
 .ghost-btn {
@@ -389,13 +389,13 @@ input[type="radio"] {
   @apply relative z-20 border-b backdrop-blur-lg;
   min-height: 54px;
   background: rgba(15, 31, 61, 0.96);
-  border-color: rgba(241, 241, 230, 0.2);
+  border-color: rgba(255, 247, 214, 0.26);
   box-shadow: var(--shadow-xs);
 }
 
 .app-nav-link {
   @apply rounded-lg px-3 py-1.5 text-sm font-medium;
-  color: rgba(241, 241, 230, 0.84);
+  color: rgba(255, 247, 214, 0.9);
   transition: background-color 120ms, color 120ms;
 }
 
@@ -406,7 +406,7 @@ input[type="radio"] {
 
 .app-nav-link.active {
   color: var(--color-primary);
-  background-color: #f1f1e6;
+  background-color: #fff7d6;
 }
 
 .app-dropdown {
@@ -430,7 +430,7 @@ input[type="radio"] {
 
 .tab-btn.active {
   border-color: rgba(85, 142, 248, 0.5);
-  background: #e9f0ff;
+  background: #eef4ff;
   color: var(--color-accent-strong);
 }
 
@@ -497,7 +497,7 @@ input[type="radio"] {
 }
 
 .info-banner {
-  background: #edf3ff;
+  background: #f5f9ff;
   border: 1px solid rgba(85, 142, 248, 0.35);
 }
 
@@ -509,7 +509,7 @@ input[type="radio"] {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #dce8ff;
+  background: #e3edff;
   color: #1a3660;
 }
 
@@ -520,9 +520,9 @@ input[type="radio"] {
 }
 
 .warning-banner {
-  background: #f7f1dc;
-  border: 1px solid #d7c489;
-  color: #826114;
+  background: #f1e8e9;
+  border: 1px solid #d6c3c5;
+  color: #73585c;
 }
 
 .success-banner {
@@ -569,7 +569,7 @@ input[type="radio"] {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: #f1f1e6;
+  background: #fff7d6;
   color: #475569;
 }
 

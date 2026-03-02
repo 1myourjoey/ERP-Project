@@ -301,7 +301,7 @@ function renderPrintWindow(title: string, body: string) {
           .meta { margin-top: 8px; color: #64748b; font-size: 13px; line-height: 1.6; }
           h2 { margin-top: 20px; margin-bottom: 8px; font-size: 14px; color: #0f1f3d; font-family: 'GmarketSans', 'Pretendard', sans-serif; }
           table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'IBM Plex Sans KR', 'Pretendard', sans-serif; }
-          th, td { text-align: left; border-bottom: 1px solid #dce3f0; padding: 8px; vertical-align: top; }
+          th, td { text-align: left; border-bottom: 1px solid #d8e5fb; padding: 8px; vertical-align: top; }
           th { border-bottom: 2px solid #0f1f3d; }
           ul { margin: 0; padding-left: 18px; font-size: 13px; }
           li { margin: 4px 0; }
