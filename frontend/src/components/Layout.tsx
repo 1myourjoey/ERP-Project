@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+﻿import { Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -28,7 +28,6 @@ import SearchModal from './SearchModal'
 import NotificationPanel from './NotificationPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { PageSkeleton } from './ui/PageSkeleton'
-import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getUnreadCount } from '../lib/api/notifications'
 import { queryKeys } from '../lib/queryKeys'
@@ -54,6 +53,13 @@ const DASHBOARD_GROUP: DashboardGroup = {
   label: '대시보드',
   to: '/dashboard',
   icon: LayoutDashboard,
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: '관리자',
+  manager: '매니저',
+  viewer: '열람자',
+  analyst: '분석가',
 }
 
 const DROPDOWN_GROUPS: DropdownGroup[] = [
@@ -99,8 +105,6 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
   },
 ]
 
-const ShaderBackground = lazy(() => import('./ShaderBackground'))
-
 function isPathActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`)
 }
@@ -117,7 +121,6 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const navRef = useRef<HTMLDivElement | null>(null)
-  const { theme, setTheme, themes } = useTheme()
   const { user, hasAccess, logout } = useAuth()
 
   const [searchOpen, setSearchOpen] = useState(false)
@@ -159,12 +162,6 @@ export default function Layout() {
     [location.pathname, visibleDropdownGroups],
   )
 
-  const currentThemeIndex = useMemo(
-    () => Math.max(0, themes.findIndex((item) => item.key === theme)),
-    [theme, themes],
-  )
-  const currentTheme = themes[currentThemeIndex]
-  const nextTheme = themes[(currentThemeIndex + 1) % themes.length]
   const { data: unreadCount = 0 } = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: getUnreadCount,
@@ -224,11 +221,7 @@ export default function Layout() {
 
   return (
     <div className="relative flex h-screen flex-col">
-      <Suspense fallback={null}>
-        <ShaderBackground />
-      </Suspense>
-
-      <nav className="relative z-20 h-14 border-b border-white/20 bg-white/80 backdrop-blur-xl">
+      <nav className="app-nav">
         <div className="mx-auto flex h-full w-full items-center justify-between px-4 sm:px-6" ref={navRef}>
           <div className="flex items-center gap-3">
             <button
@@ -246,11 +239,7 @@ export default function Layout() {
           <div className="hidden items-center gap-1 md:flex">
             <NavLink
               to={DASHBOARD_GROUP.to}
-              className={({ isActive }) =>
-                `rounded-xl px-3 py-2 text-sm transition-colors ${
-                  isActive ? 'font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                }`
-              }
+              className={({ isActive }) => (isActive ? 'app-nav-link active' : 'app-nav-link')}
             >
               {DASHBOARD_GROUP.label}
             </NavLink>
@@ -267,15 +256,13 @@ export default function Layout() {
                       setNotificationPanelOpen(false)
                       setOpenDropdown((prev) => (prev === group.label ? null : group.label))
                     }}
-                    className={`rounded-xl px-3 py-2 text-sm transition-colors ${
-                      isActive ? 'font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={isActive ? 'app-nav-link active' : 'app-nav-link'}
                   >
                     {group.label}
                   </button>
 
                   <div
-                    className={`absolute left-0 top-full z-40 mt-2 min-w-[200px] rounded-xl border border-white/30 bg-white/85 shadow-lg backdrop-blur-xl transition-all duration-150 ${
+                    className={`app-dropdown absolute left-0 top-full z-40 mt-2 min-w-[200px] transition-all duration-150 ${
                       isOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                     }`}
                   >
@@ -288,7 +275,7 @@ export default function Layout() {
                             to={to}
                             onClick={() => setOpenDropdown(null)}
                             className={`mx-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                              active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                              active ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
                             }`}
                           >
                             <Icon size={16} />
@@ -304,14 +291,6 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTheme(nextTheme.key)}
-              className="rounded-lg p-1.5 text-sm text-gray-600 hover:bg-gray-100"
-              title={`Theme: ${currentTheme.label} -> ${nextTheme.label}`}
-              aria-label={`Change theme from ${currentTheme.label} to ${nextTheme.label}`}
-            >
-              {currentTheme.icon}
-            </button>
             <div className="relative">
               <button
                 type="button"
@@ -334,10 +313,10 @@ export default function Layout() {
             </div>
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              className="secondary-btn btn-sm gap-2"
             >
               <Search size={14} />
-              <span className="hidden sm:inline">Search</span>
+              <span className="hidden sm:inline">검색</span>
               <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
             </button>
             <div className="relative">
@@ -366,7 +345,7 @@ export default function Layout() {
                 <div className="mb-1 rounded-lg bg-gray-50 px-2.5 py-2">
                   <p className="text-xs font-semibold text-gray-800">{user?.name}</p>
                   <p className="text-[11px] text-gray-500">
-                    {user?.username} · {user?.role}
+                    {user?.username} · {ROLE_LABEL[user?.role || ''] || user?.role}
                   </p>
                 </div>
                 <button
@@ -432,25 +411,7 @@ export default function Layout() {
             </div>
 
             <div className="mt-6 border-t border-gray-200 pt-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Theme</p>
-              <div className="grid grid-cols-2 gap-2">
-                {themes.map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setTheme(item.key)}
-                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                      theme === item.key
-                        ? 'border-blue-300 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                 <p className="text-xs font-semibold text-gray-700">{user?.name}</p>
                 <p className="text-[11px] text-gray-500">{user?.username}</p>
                 <div className="mt-3 flex gap-2">
@@ -488,3 +449,4 @@ export default function Layout() {
     </div>
   )
 }
+

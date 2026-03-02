@@ -911,13 +911,12 @@ function TemplateModal({
         <details open className="rounded-lg border border-gray-200 bg-white p-3">
           <summary className="cursor-pointer text-sm font-semibold text-gray-800">기본 정보</summary>
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-          <div><label className="form-label">템플릿 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
+          <div><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
           <div>
-            <label className="form-label">카테고리</label>
             <input
               value={form.category || ''}
               onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
-              placeholder="기존 카테고리 선택 또는 직접 입력"
+              placeholder="카테고리"
               list="workflow-template-category-options"
               className="form-input"
             />
@@ -927,8 +926,8 @@ function TemplateModal({
               ))}
             </datalist>
           </div>
-          <div><label className="form-label">총 기간</label><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="form-input" /></div>
-          <div><label className="form-label">트리거 설명</label><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+          <div><input value={form.total_duration || ''} onChange={e => setForm(prev => ({ ...prev, total_duration: e.target.value }))} placeholder="예: 30일" className="form-input" /></div>
+          <div><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="템플릿 설명 (선택)" className="form-input" /></div>
           </div>
         </details>
         <details open className="rounded-lg border border-gray-200 bg-white p-3">
@@ -936,9 +935,9 @@ function TemplateModal({
           <div className="mt-2 space-y-2">
           {form.steps.map((step, idx) => (
             <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
-              <div className="md:col-span-2"><label className="form-label text-xs">단계 이름</label><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="예: 통지서 발송" className="form-input" /></div>
+              <div className="md:col-span-2"><input value={step.name} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, name: e.target.value } : it) }))} placeholder="단계명" className="form-input" /></div>
               <div><label className="form-label text-xs">시점</label><input value={step.timing} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing: e.target.value } : it) }))} placeholder="예: T-7" className="form-input" /></div>
-              <div><label className="form-label text-xs">오프셋(일)</label><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="0" className="form-input" /></div>
+              <div><input type="number" value={step.timing_offset_days} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, timing_offset_days: Number(e.target.value || 0) } : it) }))} placeholder="D+일수" className="form-input" /></div>
               <div><label className="form-label text-xs">예상 시간</label><input value={step.estimated_time || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, estimated_time: e.target.value } : it) }))} placeholder="예: 1h" className="form-input" /></div>
               <div><label className="form-label text-xs">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="form-input" /></div>
               <div className="md:col-span-2"><label className="form-label text-xs">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="form-input" /></div>
@@ -1354,7 +1353,7 @@ function WorkflowDetail({
         <button onClick={() => setShowRun(true)} className="primary-btn inline-flex items-center gap-2"><Play size={16} /> 실행</button>
       ) : (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <div><label className="form-label text-blue-700">인스턴스 이름</label><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="form-input" /></div>
+          <div><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="form-input" /></div>
           <div><label className="form-label text-blue-700">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="form-input" /></div>
           <div>
             <label className="form-label text-blue-700">관련 조합</label>
@@ -1408,8 +1407,7 @@ function WorkflowDetail({
             </div>
           )}
           <div>
-            <label className="form-label text-blue-700">메모</label>
-            <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="선택 입력" rows={2} className="form-input" />
+            <textarea value={instMemo} onChange={e => setInstMemo(e.target.value)} placeholder="메모 (선택)" rows={2} className="form-input" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => instName && instDate && runMut.mutate()} disabled={!instName || !instDate} className="primary-btn flex-1">실행</button>
@@ -1949,16 +1947,34 @@ function InstanceList({
   return (
     <div className="space-y-2.5">
       {activeSummary && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900 sm:text-sm">
-          진행 중 {activeSummary.total}건 | 지연 {activeSummary.overdue}건 | 이번 주 마감 {activeSummary.weekDue}건
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+            전체 {activeSummary.total}건
+          </span>
+          {activeSummary.overdue > 0 && (
+            <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-700">
+              지연 {activeSummary.overdue}건
+            </span>
+          )}
+          {activeSummary.weekDue > 0 && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700">
+              이번 주 마감 {activeSummary.weekDue}건
+            </span>
+          )}
         </div>
       )}
 
       {instanceRows.map(({ inst, nextStep: nextCompletableStep, dueMeta, progressPercent }) => {
         const dueBadge = dueToneBadge(dueMeta)
+        const instanceToneClass =
+          dueMeta.tone === 'overdue'
+            ? 'border-red-200 bg-red-50/50'
+            : dueMeta.tone === 'today'
+              ? 'border-amber-200 bg-amber-50/50'
+              : 'border-slate-200 bg-white'
         return (
-        <div key={inst.id} className="card-base overflow-hidden p-0">
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-gray-50">
+        <div key={inst.id} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-gray-800">{inst.name}</p>
               <p className="truncate text-xs text-gray-500">{inst.workflow_name} | {inst.trigger_date}</p>
@@ -2019,7 +2035,7 @@ function InstanceList({
             </div>
           </div>
           {openId === inst.id && (
-            <div className="space-y-1 border-t border-gray-100 px-2.5 py-2">
+            <div className="space-y-2 border-t border-slate-100 px-3 py-2.5">
               {status === 'active' && editingInstanceId === inst.id && editInstance && (
                 <div className="mb-2 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                   <div>
@@ -2102,7 +2118,7 @@ function InstanceList({
                 const editingCurrentDocument =
                   editingStepDocument && editingStepDocument.stepId === step.id ? editingStepDocument : null
                 return (
-                  <div key={step.id} className="space-y-1 rounded bg-gray-50 px-2 py-1.5 text-xs">
+                  <div key={step.id} className="flex-col space-y-1.5 rounded-lg bg-slate-50 px-2.5 py-2 text-xs">
                     <div className="flex items-center gap-1.5">
                       {step.status === 'completed' ? (
                         <div className="flex items-center gap-1">
@@ -2159,7 +2175,7 @@ function InstanceList({
                       {step.completed_at && <span className="text-xs text-gray-400">{formatCompletedAt(step.completed_at)}</span>}
                     </div>
 
-                    <div className="ml-5 rounded border border-gray-200 bg-white px-2 py-2">
+                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                       <div className="mb-1 flex items-center justify-between">
                         <p className="text-xs font-semibold text-gray-700">단계 서류 {stepDocuments.length}건</p>
                         {canMutateStepDocuments && (
@@ -2736,31 +2752,33 @@ function PeriodicSchedulesPanel() {
         </div>
       </div>
 
-      <div className="card-base">
-        <div className="grid min-w-max grid-cols-12 gap-2">
-          {PERIODIC_MONTH_LABELS.map((label, monthIndex) => {
-            const month = monthIndex + 1
-            const rows = timelineByMonth.get(month) ?? []
-            return (
-              <div key={label} className="w-28 rounded-lg border border-gray-200 p-2">
-                <p className="mb-2 text-xs font-semibold text-gray-700">{label}</p>
-                <div className="space-y-1">
-                  {rows.length === 0 ? (
-                    <p className="text-xs text-gray-400">-</p>
-                  ) : (
-                    rows.map((schedule) => (
-                      <p
-                        key={`${month}-${schedule.id}`}
-                        className={`rounded border px-1.5 py-0.5 text-xs ${periodicCategoryClass(schedule.category)}`}
-                      >
-                        {schedule.name}
-                      </p>
-                    ))
-                  )}
+      <div className="card-base overflow-hidden">
+        <div className="overflow-x-auto pb-2">
+          <div className="grid min-w-max grid-cols-12 gap-2">
+            {PERIODIC_MONTH_LABELS.map((label, monthIndex) => {
+              const month = monthIndex + 1
+              const rows = timelineByMonth.get(month) ?? []
+              return (
+                <div key={label} className="w-24 min-w-[96px] rounded-lg border border-slate-200 bg-white p-2">
+                  <p className="mb-2 text-xs font-semibold text-gray-700">{label}</p>
+                  <div className="space-y-1">
+                    {rows.length === 0 ? (
+                      <p className="text-xs text-gray-400">-</p>
+                    ) : (
+                      rows.map((schedule) => (
+                        <p
+                          key={`${month}-${schedule.id}`}
+                          className={`rounded border px-1.5 py-0.5 text-xs ${periodicCategoryClass(schedule.category)}`}
+                        >
+                          {schedule.name}
+                        </p>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -2814,12 +2832,10 @@ function PeriodicSchedulesPanel() {
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>
-              <label className="form-label">업무명</label>
-              <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} className="form-input" />
+              <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="업무명" className="form-input" />
             </div>
             <div>
-              <label className="form-label">카테고리</label>
-              <input value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} className="form-input" />
+              <input value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="카테고리" className="form-input" />
             </div>
             <div>
               <label className="form-label">주기</label>
@@ -2851,7 +2867,6 @@ function PeriodicSchedulesPanel() {
               <input type="number" min={1} max={31} value={form.base_day} onChange={(event) => setForm((prev) => ({ ...prev, base_day: Number(event.target.value || 1) }))} className="form-input" />
             </div>
             <div>
-              <label className="form-label">조합 필터</label>
               <input
                 value={form.fund_type_filter || ''}
                 onChange={(event) => setForm((prev) => ({ ...prev, fund_type_filter: event.target.value || null }))}
@@ -3110,25 +3125,35 @@ export default function WorkflowsPage() {
     <div className="page-container space-y-6">
       <div className="page-header">
         <div>
-          <h2 className="page-title">⚙️ 워크플로우</h2>
+          <h2 className="page-title">워크플로우</h2>
           <p className="page-subtitle">실행 중/완료 워크플로 중심으로 진행 상황을 관리합니다.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => changeTab('templates')} className="secondary-btn">템플릿 관리(관리자)</button>
+          <button onClick={() => changeTab('templates')} className="secondary-btn">템플릿 관리</button>
           <button onClick={() => { changeTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 템플릿 생성</button>
         </div>
       </div>
 
-      <div className="border-b border-gray-200">
-        <div className="flex gap-6">
+      <div className="border-b border-slate-200">
+        <div className="flex gap-1 overflow-x-auto">
           {[
             { key: 'active' as const, label: '진행 중' },
             { key: 'completed' as const, label: '완료' },
-            { key: 'templates' as const, label: '템플릿(관리자)' },
+            { key: 'templates' as const, label: '템플릿 관리' },
             { key: 'periodic' as const, label: '정기 업무' },
-            { key: 'checklists' as const, label: '체크리스트(레거시)' },
+            { key: 'checklists' as const, label: '체크리스트' },
           ].map((t) => (
-            <button key={t.key} onClick={() => changeTab(t.key)} className={`border-b-2 pb-2 text-sm ${tab === t.key ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t.label}</button>
+            <button
+              key={t.key}
+              onClick={() => changeTab(t.key)}
+              className={`whitespace-nowrap border-b-2 px-4 pb-2.5 pt-1 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-800'
+              }`}
+            >
+              {t.label}
+            </button>
           ))}
         </div>
       </div>
@@ -3210,7 +3235,7 @@ export default function WorkflowsPage() {
                 onPrint={handlePrintTemplate}
               />
             ) : (
-              <div className="card-base text-sm text-gray-400">템플릿을 선택하세요.</div>
+              <div className="card-base text-sm text-slate-500">템플릿을 선택하세요.</div>
             )}
           </div>
         </div>

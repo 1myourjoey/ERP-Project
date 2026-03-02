@@ -104,20 +104,15 @@ function DashboardDefaultView({
   const navigate = useNavigate()
   const [showAllUrgent, setShowAllUrgent] = useState(false)
 
-  const taskGroups = useMemo(
-    () => groupPrioritizedTasks(prioritizedTasks),
-    [prioritizedTasks],
-  )
-  const workflowGroups = useMemo(
-    () => groupWorkflows(activeWorkflows),
-    [activeWorkflows],
-  )
+  const taskGroups = useMemo(() => groupPrioritizedTasks(prioritizedTasks), [prioritizedTasks])
+  const workflowGroups = useMemo(() => groupWorkflows(activeWorkflows), [activeWorkflows])
 
   const overdueTodayCount = todayTasks.filter((task) => {
     if (task.status === 'completed' || !task.deadline) return false
     const deadline = new Date(task.deadline)
     return !Number.isNaN(deadline.getTime()) && deadline.getTime() < Date.now()
   }).length
+
   const priorityHotCount = prioritizedTasks.filter(
     (item) => item.urgency === 'overdue' || item.urgency === 'today',
   ).length
@@ -125,15 +120,15 @@ function DashboardDefaultView({
   const todayPriorityTasks = prioritizedTasks.filter((item) => item.urgency === 'today')
 
   const urgentItems = useMemo(() => {
-    const items: Array<{ key: string; icon: '❌' | '⚠️'; label: string; onClick?: () => void }> = []
+    const items: Array<{ key: string; icon: 'warning' | 'pin'; label: string; onClick?: () => void }> = []
 
     for (const item of overduePriorityTasks) {
       const task = item.task
       const dueLabel = item.d_day != null ? `D+${Math.abs(item.d_day)}` : '지연'
       items.push({
         key: `overdue-task-${task.id}`,
-        icon: '❌',
-        label: `${task.fund_name || task.gp_entity_name || '공통'} ${task.title} — ${dueLabel} 지연`,
+        icon: 'warning',
+        label: `${task.fund_name || task.gp_entity_name || '공통'} ${task.title} · ${dueLabel} 지연`,
         onClick: () => onOpenTask(task, true),
       })
     }
@@ -142,8 +137,8 @@ function DashboardDefaultView({
       const task = item.task
       items.push({
         key: `today-task-${task.id}`,
-        icon: '⚠️',
-        label: `${task.fund_name || task.gp_entity_name || '공통'} ${task.title} — D-day`,
+        icon: 'pin',
+        label: `${task.fund_name || task.gp_entity_name || '공통'} ${task.title} · D-day`,
         onClick: () => onOpenTask(task, true),
       })
     }
@@ -151,7 +146,7 @@ function DashboardDefaultView({
     for (const [index, alert] of urgentAlerts.entries()) {
       items.push({
         key: `alert-${index}-${alert.type}-${alert.due_date ?? 'none'}`,
-        icon: alert.type === 'overdue' || alert.type === 'internal_review' ? '❌' : '⚠️',
+        icon: alert.type === 'overdue' || alert.type === 'internal_review' ? 'warning' : 'pin',
         label: alert.message,
       })
     }
@@ -164,13 +159,13 @@ function DashboardDefaultView({
   return (
     <>
       {urgentItems.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <div className="warning-banner">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-amber-900">긴급 알림</p>
+            <p className="text-sm font-semibold">긴급 알림</p>
             <button
               type="button"
               onClick={() => setShowAllUrgent((prev) => !prev)}
-              className="cursor-pointer text-xs text-amber-700 hover:text-amber-900"
+              className="cursor-pointer text-xs hover:opacity-80"
             >
               {showAllUrgent ? '접기' : `더보기 (${urgentItems.length})`}
             </button>
@@ -181,20 +176,22 @@ function DashboardDefaultView({
                 key={item.key}
                 type="button"
                 onClick={item.onClick}
-                className={`flex w-full items-start gap-2 rounded px-1 py-1 text-left text-xs text-amber-900 ${item.onClick ? 'cursor-pointer hover:bg-amber-100/70' : ''}`}
+                className={`flex w-full items-start gap-2 rounded px-1 py-1 text-left text-sm ${
+                  item.onClick ? 'cursor-pointer hover:bg-amber-100/70' : ''
+                }`}
               >
-                <span>{item.icon}</span>
+                <span>{item.icon === 'warning' ? '⚠' : '📌'}</span>
                 <span className="truncate">{item.label}</span>
               </button>
             ))}
           </div>
           {overdueTodayCount > 0 && (
-            <p className="mt-1 text-[11px] text-amber-800">오늘 기준 지연 업무 {overdueTodayCount}건</p>
+            <p className="mt-1 text-[11px] text-amber-800">오늘 기한 지연 업무 {overdueTodayCount}건</p>
           )}
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <DashboardStatCard
           label="오늘 우선업무"
           value={priorityHotCount}
@@ -206,13 +203,13 @@ function DashboardDefaultView({
           label={`이번주 마감 (${thisWeekRangeLabel})`}
           value={thisWeekTasks.length}
           onClick={() => onOpenPopup('this_week')}
-          variant="compact"
+          variant="default"
         />
         <DashboardStatCard
           label="진행 워크플로"
           value={activeWorkflows.length}
           onClick={() => onOpenPopup('workflows')}
-          variant="compact"
+          variant="default"
         />
         <DashboardStatCard
           label="미수 서류"
@@ -224,13 +221,15 @@ function DashboardDefaultView({
           label="오늘 완료"
           value={completedTodayCount}
           onClick={() => onOpenPopup('completed')}
-          variant="emerald"
+          variant="success"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-2 lg:col-span-2">
-          <p className="px-1 text-xs text-gray-500">업무 {prioritizedTasks.length}건 · {taskGroups.length}그룹</p>
+          <p className="mb-1 px-1 text-xs text-slate-400">
+            업무 {prioritizedTasks.length}건 · {taskGroups.length}그룹
+          </p>
           <DashboardTaskPanels
             prioritizedTasks={prioritizedTasks}
             thisWeekTasks={thisWeekTasks}
@@ -243,7 +242,9 @@ function DashboardDefaultView({
         </div>
 
         <div className="space-y-2">
-          <p className="px-1 text-xs text-gray-500">워크플로 {activeWorkflows.length}건 · {workflowGroups.length}그룹</p>
+          <p className="mb-1 px-1 text-xs text-slate-400">
+            워크플로 {activeWorkflows.length}건 · {workflowGroups.length}그룹
+          </p>
           <DashboardWorkflowPanel
             activeWorkflows={activeWorkflows}
             loading={workflowsLoading}
@@ -256,24 +257,26 @@ function DashboardDefaultView({
         </div>
       </div>
 
-      <DashboardRightPanel
-        funds={fundSummary}
-        reports={upcomingReports}
-        missingDocuments={missingDocuments}
-        investmentReviewActiveCount={investmentReviewActiveCount}
-        totalNav={Math.round(totalNav || 0)}
-        unpaidLpCount={unpaidLpCount}
-        complianceOverdueCount={complianceSummary?.overdue_count || 0}
-        completedTodayTasks={completedTodayTasks}
-        completedThisWeekTasks={completedThisWeekTasks}
-        completedLastWeekTasks={completedLastWeekTasks}
-        completedTodayCount={completedTodayCount}
-        completedThisWeekCount={completedThisWeekCount}
-        widgetsLoading={sidebarLoading}
-        completedLoading={completedLoading}
-        onOpenTask={onOpenTask}
-        onUndoComplete={onUndoComplete}
-      />
+      <div className="mt-2">
+        <DashboardRightPanel
+          funds={fundSummary}
+          reports={upcomingReports}
+          missingDocuments={missingDocuments}
+          investmentReviewActiveCount={investmentReviewActiveCount}
+          totalNav={Math.round(totalNav || 0)}
+          unpaidLpCount={unpaidLpCount}
+          complianceOverdueCount={complianceSummary?.overdue_count || 0}
+          completedTodayTasks={completedTodayTasks}
+          completedThisWeekTasks={completedThisWeekTasks}
+          completedLastWeekTasks={completedLastWeekTasks}
+          completedTodayCount={completedTodayCount}
+          completedThisWeekCount={completedThisWeekCount}
+          widgetsLoading={sidebarLoading}
+          completedLoading={completedLoading}
+          onOpenTask={onOpenTask}
+          onUndoComplete={onUndoComplete}
+        />
+      </div>
     </>
   )
 }

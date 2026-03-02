@@ -4,7 +4,7 @@ interface DashboardStatCardProps {
   label: string
   value: number
   onClick?: () => void
-  variant?: 'default' | 'emerald' | 'danger' | 'compact'
+  variant?: 'default' | 'danger' | 'success' | 'warning'
   valueSuffix?: string | null
 }
 
@@ -16,45 +16,42 @@ function DashboardStatCard({
   valueSuffix = null,
 }: DashboardStatCardProps) {
   const tone =
-    variant === 'emerald'
+    variant === 'success'
       ? {
-          panel: 'border-emerald-200 bg-emerald-50',
-          label: 'text-emerald-600',
-          value: 'text-emerald-700',
-          suffix: 'text-emerald-600',
+          panel: 'border-[#bbf7d0] bg-[#f0fdf4]',
+          label: 'text-green-600',
+          value: 'text-green-700',
+          suffix: 'text-green-600',
         }
       : variant === 'danger'
         ? {
-            panel: 'border-red-200 bg-red-50',
-            label: 'text-red-600',
+            panel: 'border-[#fecaca] bg-[#fef2f2]',
+            label: 'text-red-500',
             value: 'text-red-700',
             suffix: 'text-red-600',
           }
-        : variant === 'compact'
+        : variant === 'warning'
           ? {
-              panel: 'border-blue-100 bg-blue-50/60',
-              label: 'text-blue-700',
-              value: 'text-blue-900',
-              suffix: 'text-blue-700',
+              panel: 'border-[#fde68a] bg-[#fffbeb]',
+              label: 'text-amber-600',
+              value: 'text-amber-700',
+              suffix: 'text-amber-700',
             }
         : {
-            panel: 'border-gray-200 bg-white',
-            label: 'text-gray-500',
-            value: 'text-gray-900',
-            suffix: 'text-gray-500',
+            panel: 'border-[#e2e8f0] bg-white',
+            label: 'text-slate-500',
+            value: 'text-slate-900',
+            suffix: 'text-slate-500',
           }
-  const compactMode = variant === 'compact'
 
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl border ${compactMode ? 'p-2.5' : 'p-3'} ${tone.panel} ${onClick ? 'cursor-pointer transition-all hover:border-blue-300 hover:shadow-sm' : ''}`}
+      className={`rounded-xl border bg-white p-4 shadow-sm ${tone.panel} ${onClick ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
     >
-      <p className={`${compactMode ? 'text-[11px]' : 'text-xs'} ${tone.label}`}>{label}</p>
-      <div className={`${compactMode ? 'mt-0.5' : 'mt-1'} flex items-end gap-1.5`}>
-        <p className={`${compactMode ? 'text-xl' : 'text-2xl'} font-semibold ${tone.value}`}>{value}</p>
-        {valueSuffix && <p className={`pb-1 text-xs font-medium ${tone.suffix}`}>{valueSuffix}</p>}
-      </div>
+      <p className={`text-sm ${tone.label}`}>{label}</p>
+      <p className={`mt-1 text-2xl font-semibold ${tone.value}`}>{value}</p>
+      {valueSuffix && <p className={`mt-1 text-xs font-medium ${tone.suffix}`}>{valueSuffix}</p>}
     </div>
   )
 }

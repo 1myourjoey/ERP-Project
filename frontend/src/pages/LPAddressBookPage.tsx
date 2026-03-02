@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
   createLPAddressBook,
   deactivateLPAddressBook,
@@ -10,7 +11,14 @@ import {
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 
-const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
+const LP_TYPE_OPTIONS = ['institutional', 'individual', 'GP'] as const
+const LP_TYPE_LABEL: Record<string, string> = {
+  institutional: '기관투자자',
+  individual: '개인투자자',
+  GP: 'GP',
+  corporate: '법인',
+  government: '정부기관',
+}
 
 const EMPTY_FORM: LPAddressBookInput = {
   name: '',
@@ -40,6 +48,23 @@ export default function LPAddressBookPage() {
       }),
   })
 
+  const filteredBooks = useMemo(() => {
+    const keywordValue = keyword.trim().toLowerCase()
+    if (!keywordValue) return books
+    return books.filter((book) => {
+      const source = [
+        book.name,
+        book.type,
+        book.business_number,
+        book.contact,
+        book.address,
+      ]
+        .join(' ')
+        .toLowerCase()
+      return source.includes(keywordValue)
+    })
+  }, [books, keyword])
+
   const createMut = useMutation({
     mutationFn: createLPAddressBook,
     onSuccess: () => {
@@ -50,7 +75,8 @@ export default function LPAddressBookPage() {
   })
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<LPAddressBookInput> }) => updateLPAddressBook(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<LPAddressBookInput> }) =>
+      updateLPAddressBook(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lpAddressBooks'] })
       setEditing(null)
@@ -96,8 +122,8 @@ export default function LPAddressBookPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-          <h2 className="page-title">📒 LP 주소록</h2>
-          <p className="page-subtitle">조합 LP 입력 시 재사용할 마스터 데이터를 관리합니다.</p>
+          <h2 className="page-title">LP 주소록</h2>
+          <p className="page-subtitle">LP 마스터 데이터(이름/유형/연락처)를 관리합니다.</p>
         </div>
       </div>
 
@@ -110,7 +136,7 @@ export default function LPAddressBookPage() {
                 setEditing(null)
                 setForm(EMPTY_FORM)
               }}
-              className="secondary-btn"
+              className="secondary-btn btn-sm"
             >
               수정 취소
             </button>
@@ -119,40 +145,71 @@ export default function LPAddressBookPage() {
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">이름</label>
-            <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <label className="form-label">이름</label>
+            <input
+              value={form.name}
+              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              className="form-input"
+            />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">유형</label>
-            <select value={form.type} onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm">
+            <label className="form-label">유형</label>
+            <select
+              value={form.type}
+              onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
+              className="form-input"
+            >
+              {!LP_TYPE_OPTIONS.includes(form.type as (typeof LP_TYPE_OPTIONS)[number]) && (
+                <option value={form.type}>{LP_TYPE_LABEL[form.type] || form.type}</option>
+              )}
               {LP_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {LP_TYPE_LABEL[type] || type}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호/생년월일</label>
-            <input value={form.business_number || ''} onChange={(e) => setForm((prev) => ({ ...prev, business_number: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <label className="form-label">사업자등록번호/생년월일</label>
+            <input
+              value={form.business_number || ''}
+              onChange={(event) => setForm((prev) => ({ ...prev, business_number: event.target.value }))}
+              className="form-input"
+            />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
-            <input value={form.contact || ''} onChange={(e) => setForm((prev) => ({ ...prev, contact: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <input
+              value={form.contact || ''}
+              onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
+              placeholder="연락처"
+              className="form-input"
+            />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
-            <input value={form.address || ''} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <input
+              value={form.address || ''}
+              onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
+              placeholder="주소"
+              className="form-input"
+            />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
-            <input value={form.memo || ''} onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))} className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <input
+              value={form.memo || ''}
+              onChange={(event) => setForm((prev) => ({ ...prev, memo: event.target.value }))}
+              placeholder="메모 (선택)"
+              className="form-input"
+            />
           </div>
         </div>
 
         <div className="flex gap-2">
-          <button onClick={submit} disabled={createMut.isPending || updateMut.isPending} className="primary-btn">
-            {editing ? '수정 저장' : '등록'}
+          <button
+            onClick={submit}
+            disabled={createMut.isPending || updateMut.isPending}
+            className="primary-btn"
+          >
+            {editing ? '저장' : '등록'}
           </button>
         </div>
       </div>
@@ -163,12 +220,16 @@ export default function LPAddressBookPage() {
           <div className="flex items-center gap-2">
             <input
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(event) => setKeyword(event.target.value)}
               placeholder="이름/유형/사업자번호 검색"
-              className="rounded-lg border px-3 py-2 text-sm"
+              className="form-input-sm w-72"
             />
             <label className="inline-flex items-center gap-1 text-xs text-gray-600">
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => setShowInactive(event.target.checked)}
+              />
               비활성 포함
             </label>
           </div>
@@ -176,32 +237,32 @@ export default function LPAddressBookPage() {
 
         {isLoading ? (
           <p className="text-sm text-gray-500">불러오는 중...</p>
-        ) : !books.length ? (
+        ) : filteredBooks.length === 0 ? (
           <p className="text-sm text-gray-400">등록된 주소록이 없습니다.</p>
         ) : (
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-600">
+          <div className="overflow-auto rounded-lg border border-slate-200">
+            <table className="min-w-full">
+              <thead className="table-head-row">
                 <tr>
-                  <th className="px-2 py-2 text-left">이름</th>
-                  <th className="px-2 py-2 text-left">유형</th>
-                  <th className="px-2 py-2 text-left">사업자번호</th>
-                  <th className="px-2 py-2 text-left">연락처</th>
-                  <th className="px-2 py-2 text-left">주소</th>
-                  <th className="px-2 py-2 text-left">상태</th>
-                  <th className="px-2 py-2 text-left">액션</th>
+                  <th className="table-head-cell">이름</th>
+                  <th className="table-head-cell">유형</th>
+                  <th className="table-head-cell">사업자번호</th>
+                  <th className="table-head-cell">연락처</th>
+                  <th className="table-head-cell">주소</th>
+                  <th className="table-head-cell">상태</th>
+                  <th className="table-head-cell">액션</th>
                 </tr>
               </thead>
               <tbody>
-                {books.map((book) => (
-                  <tr key={book.id} className="border-t">
-                    <td className="px-2 py-2">{book.name}</td>
-                    <td className="px-2 py-2">{book.type}</td>
-                    <td className="px-2 py-2">{book.business_number || '-'}</td>
-                    <td className="px-2 py-2">{book.contact || '-'}</td>
-                    <td className="px-2 py-2">{book.address || '-'}</td>
-                    <td className="px-2 py-2">{book.is_active ? '활성' : '비활성'}</td>
-                    <td className="px-2 py-2">
+                {filteredBooks.map((book) => (
+                  <tr key={book.id} className="hover:bg-slate-50">
+                    <td className="table-body-cell">{book.name}</td>
+                    <td className="table-body-cell">{LP_TYPE_LABEL[book.type] || book.type}</td>
+                    <td className="table-body-cell">{book.business_number || '-'}</td>
+                    <td className="table-body-cell">{book.contact || '-'}</td>
+                    <td className="table-body-cell">{book.address || '-'}</td>
+                    <td className="table-body-cell">{book.is_active ? '활성' : '비활성'}</td>
+                    <td className="table-body-cell">
                       <div className="flex gap-1">
                         <button
                           onClick={() => {
@@ -217,21 +278,21 @@ export default function LPAddressBookPage() {
                               is_active: book.is_active,
                             })
                           }}
-                          className="secondary-btn"
+                          className="secondary-btn btn-xs"
                         >
                           수정
                         </button>
                         {book.is_active ? (
                           <button
                             onClick={() => deactivateMut.mutate(book.id)}
-                            className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                            className="danger-btn btn-xs"
                           >
                             비활성
                           </button>
                         ) : (
                           <button
                             onClick={() => updateMut.mutate({ id: book.id, data: { is_active: 1 } })}
-                            className="rounded-lg border border-emerald-200 px-3 py-1 text-xs text-emerald-600 hover:bg-emerald-50"
+                            className="secondary-btn btn-xs"
                           >
                             복구
                           </button>

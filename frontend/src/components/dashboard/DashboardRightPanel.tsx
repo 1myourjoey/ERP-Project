@@ -17,7 +17,7 @@ import { dueBadge, formatShortDate } from './dashboardUtils'
 
 const RIGHT_TABS = [
   { key: 'funds', label: '조합', icon: Building2 },
-  { key: 'notices', label: '통지', icon: Clock },
+  { key: 'notices', label: '공지', icon: Clock },
   { key: 'reports', label: '보고', icon: Send },
   { key: 'documents', label: '서류', icon: FileWarning },
 ] as const
@@ -63,8 +63,9 @@ function DashboardRightPanel({
 }: DashboardRightPanelProps) {
   const navigate = useNavigate()
   const [rightTab, setRightTab] = useState<RightTab>('funds')
-  const [quickCollapsed, setQuickCollapsed] = useState(true)
+  const [quickCollapsed, setQuickCollapsed] = useState(false)
   const [completedFilter, setCompletedFilter] = useState<'today' | 'this_week' | 'last_week'>('today')
+
   const { data: upcomingNotices = [], isLoading: noticesLoading } = useQuery<UpcomingNotice[]>({
     queryKey: ['dashboard-upcoming-notices', 30],
     queryFn: () => fetchUpcomingNotices(30),
@@ -90,17 +91,17 @@ function DashboardRightPanel({
 
   const isPeriodicRow = (sourceLabel?: string | null, title?: string | null) => {
     const normalized = `${sourceLabel || ''} ${title || ''}`.replace(/\s+/g, '').toLowerCase()
-    return normalized.includes('정기') || normalized.includes('분기') || normalized.includes('영업') || normalized.includes('총회')
+    return normalized.includes('정기') || normalized.includes('분기') || normalized.includes('연간') || normalized.includes('총회')
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">운영진 Quick View</h3>
+        <h3 className="text-sm font-semibold text-slate-700">운영 현황</h3>
         <button
           type="button"
           onClick={() => setQuickCollapsed((prev) => !prev)}
-          className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
         >
           {quickCollapsed ? '펼치기' : '접기'}
           <ChevronDown size={12} className={`transition-transform ${quickCollapsed ? '-rotate-90' : ''}`} />
@@ -108,234 +109,252 @@ function DashboardRightPanel({
       </div>
 
       {quickCollapsed ? (
-        <div className="card-base dashboard-card grid grid-cols-1 gap-2 text-xs text-gray-600">
-          <p>조합 {funds.length}건</p>
-          <p>보고 마감 {reports.length}건</p>
-          <p>미수 서류 {missingDocuments.length}건</p>
-          <p>통지/노티스 {upcomingNotices.length}건</p>
+        <div className="card-base dashboard-card">
+          <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">조합 {funds.length}건</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">보고 마감 {reports.length}건</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
+          </div>
         </div>
       ) : (
         <>
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
-        {RIGHT_TABS.map((tab) => {
-          const count = tabCount[tab.key]
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setRightTab(tab.key)}
-              className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs transition-colors ${rightTab === tab.key ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              <tab.icon size={13} />
-              {tab.label}
-              {count > 0 && (
-                <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 text-[10px] text-gray-600">
-                  {count}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {rightTab === 'funds' && (
-        <div className="card-base dashboard-card">
-          <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2">
-            <p className="text-[11px] font-semibold text-blue-800">운영 요약</p>
-            <p className="mt-1 text-xs text-blue-700">
-              심의 진행 {investmentReviewActiveCount}건 | 운용 NAV {formatKRW(totalNav)} | 미납 LP {unpaidLpCount}건 | 컴플라이언스 지연 {complianceOverdueCount}건
-            </p>
-          </div>
-          {widgetsLoading ? (
-            <p className="py-8 text-center text-sm text-gray-500">조합 목록을 불러오는 중입니다...</p>
-          ) : !funds.length ? (
-            <EmptyState emoji="🏦" message="등록된 조합이 없어요" className="py-8" />
-          ) : (
-            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-              {funds.map((fund) => (
+          <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5">
+            {RIGHT_TABS.map((tab) => {
+              const count = tabCount[tab.key]
+              return (
                 <button
-                  key={fund.id}
-                  onClick={() => navigate(`/funds/${fund.id}`)}
-                  className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                  key={tab.key}
+                  onClick={() => setRightTab(tab.key)}
+                  className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                    rightTab === tab.key ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
+                  }`}
                 >
-                  <p className="text-sm font-medium text-gray-800">{fund.name}</p>
-                  <p className="text-xs text-gray-500">
-                    LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    컴플라이언스 {fund.compliance_overdue}건 지연
-                    {' '}| 서류 {fund.doc_collection_progress || '-'}
-                  </p>
+                  <tab.icon size={13} />
+                  {tab.label}
+                  {count > 0 && (
+                    <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[10px] text-slate-600">
+                      {count}
+                    </span>
+                  )}
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              )
+            })}
+          </div>
 
-      {rightTab === 'notices' && (
-        <div className="card-base dashboard-card">
-          {noticesLoading ? (
-            <p className="py-8 text-center text-sm text-gray-500">통지 일정을 불러오는 중입니다...</p>
-          ) : !upcomingNotices.length ? (
-            <EmptyState emoji="🗓️" message="다가오는 통지 기한이 없어요" className="py-8" />
-          ) : (
-            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-              {upcomingNotices.map((notice) => {
-                const badge = dueBadge(notice.days_remaining)
-                return (
-                  <button
-                    key={`${notice.workflow_instance_id ?? 'none'}-${notice.task_id ?? 'none'}-${notice.deadline}-${notice.notice_label}`}
-                    onClick={() => {
-                      if (notice.task_id) {
-                        navigate('/tasks', { state: { highlightTaskId: notice.task_id } })
-                        return
-                      }
-                      navigate('/workflows', {
-                        state: notice.workflow_instance_id
-                          ? { expandInstanceId: notice.workflow_instance_id }
-                          : undefined,
-                      })
-                    }}
-                    className="feed-card w-full text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-gray-800">
-                        {notice.fund_name} | {notice.notice_label}
-                        {isPeriodicRow(notice.source_label, notice.notice_label) && (
-                          <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
-                        )}
+          {rightTab === 'funds' && (
+            <div className="card-base dashboard-card">
+              <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2">
+                <p className="text-xs font-semibold text-blue-800">운영 요약</p>
+                <div className="mt-1 grid grid-cols-2 gap-1.5 text-xs text-blue-700">
+                  <div>
+                    심의 진행 <span className="font-semibold">{investmentReviewActiveCount}건</span>
+                  </div>
+                  <div>
+                    NAV <span className="font-semibold">{formatKRW(totalNav)}</span>
+                  </div>
+                  <div>
+                    미납 LP <span className="font-semibold">{unpaidLpCount}건</span>
+                  </div>
+                  <div>
+                    컴플라이언스 지연 <span className="font-semibold">{complianceOverdueCount}건</span>
+                  </div>
+                </div>
+              </div>
+
+              {widgetsLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">조합 목록을 불러오는 중입니다...</p>
+              ) : funds.length === 0 ? (
+                <EmptyState emoji="🏦" message="등록된 조합이 없습니다." className="py-8" />
+              ) : (
+                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {funds.map((fund) => (
+                    <button
+                      key={fund.id}
+                      onClick={() => navigate(`/funds/${fund.id}`)}
+                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
+                    >
+                      <p className="text-sm font-medium text-slate-800">{fund.name}</p>
+                      <p className="text-xs text-slate-500">
+                        LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}
                       </p>
-                      {badge && <span className={badge.className}>{badge.text}</span>}
-                    </div>
-                    <p className="feed-card-meta">
-                      {notice.source_label ? `${notice.source_label} ` : ''}
-                      {notice.workflow_instance_name}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">기한 {formatShortDate(notice.deadline)}</p>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {rightTab === 'reports' && (
-        <div className="card-base dashboard-card">
-          {widgetsLoading ? (
-            <p className="py-8 text-center text-sm text-gray-500">보고 마감 목록을 불러오는 중입니다...</p>
-          ) : !reports.length ? (
-            <EmptyState emoji="📊" message="임박한 보고 마감이 없어요" className="py-8" />
-          ) : (
-            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-              {reports.map((report) => {
-                const badge = dueBadge(report.days_remaining)
-                return (
-                  <button
-                    key={report.id}
-                    onClick={() => {
-                      if (report.task_id) {
-                        navigate('/tasks', { state: { highlightTaskId: report.task_id } })
-                        return
-                      }
-                      if (report.source_label === '[워크플로]') {
-                        navigate('/workflows')
-                        return
-                      }
-                      navigate('/reports', { state: { highlightId: report.id } })
-                    }}
-                    className="feed-card w-full text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="feed-card-title">
-                        {report.source_label ? `${report.source_label} ` : ''}
-                        {report.report_target} | {report.period}
-                        {isPeriodicRow(report.source_label, report.report_target) && (
-                          <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
-                        )}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        컴플라이언스 {fund.compliance_overdue}건 지연 | 서류 {fund.doc_collection_progress || '-'}
                       </p>
-                      {badge && <span className={badge.className}>{badge.text}</span>}
-                    </div>
-                    <p className="feed-card-meta">{report.fund_name || '조합 공통'} | {labelStatus(report.status)}</p>
-                  </button>
-                )
-              })}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {rightTab === 'documents' && (
-        <div className="card-base dashboard-card">
-          {widgetsLoading ? (
-            <p className="py-8 text-center text-sm text-gray-500">미수집 서류를 불러오는 중입니다...</p>
-          ) : !missingDocuments.length ? (
-            <EmptyState emoji="📄" message="미수집 서류가 없어요" className="py-8" />
-          ) : (
-            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-              {missingDocuments.map((doc) => {
-                const badge = dueBadge(doc.days_remaining)
-                return (
-                  <button
-                    key={doc.id}
-                    onClick={() => navigate(`/investments/${doc.investment_id}`)}
-                    className="feed-card w-full text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="feed-card-title">{doc.document_name}</p>
-                      {badge && <span className={badge.className}>{badge.text}</span>}
-                    </div>
-                    <p className="feed-card-meta">
-                      {doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">마감 {formatShortDate(doc.due_date)}</p>
-                  </button>
-                )
-              })}
+          {rightTab === 'notices' && (
+            <div className="card-base dashboard-card">
+              {noticesLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">공지 일정을 불러오는 중입니다...</p>
+              ) : upcomingNotices.length === 0 ? (
+                <EmptyState emoji="📎" message="다가오는 공지 기한이 없습니다." className="py-8" />
+              ) : (
+                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {upcomingNotices.map((notice) => {
+                    const badge = dueBadge(notice.days_remaining)
+                    return (
+                      <button
+                        key={`${notice.workflow_instance_id ?? 'none'}-${notice.task_id ?? 'none'}-${notice.deadline}-${notice.notice_label}`}
+                        onClick={() => {
+                          if (notice.task_id) {
+                            navigate('/tasks', { state: { highlightTaskId: notice.task_id } })
+                            return
+                          }
+                          navigate('/workflows', {
+                            state: notice.workflow_instance_id
+                              ? { expandInstanceId: notice.workflow_instance_id }
+                              : undefined,
+                          })
+                        }}
+                        className="feed-card w-full text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-slate-800">
+                            {notice.fund_name} | {notice.notice_label}
+                            {isPeriodicRow(notice.source_label, notice.notice_label) && (
+                              <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
+                            )}
+                          </p>
+                          {badge && <span className={badge.className}>{badge.text}</span>}
+                        </div>
+                        <p className="feed-card-meta">
+                          {notice.source_label ? `${notice.source_label} ` : ''}
+                          {notice.workflow_instance_name}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">기한 {formatShortDate(notice.deadline)}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
+
+          {rightTab === 'reports' && (
+            <div className="card-base dashboard-card">
+              {widgetsLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">보고 마감 목록을 불러오는 중입니다...</p>
+              ) : reports.length === 0 ? (
+                <EmptyState emoji="📤" message="임박한 보고 마감이 없습니다." className="py-8" />
+              ) : (
+                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {reports.map((report) => {
+                    const badge = dueBadge(report.days_remaining)
+                    return (
+                      <button
+                        key={report.id}
+                        onClick={() => {
+                          if (report.task_id) {
+                            navigate('/tasks', { state: { highlightTaskId: report.task_id } })
+                            return
+                          }
+                          if (report.source_label === '[워크플로]') {
+                            navigate('/workflows')
+                            return
+                          }
+                          navigate('/reports', { state: { highlightId: report.id } })
+                        }}
+                        className="feed-card w-full text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="feed-card-title">
+                            {report.source_label ? `${report.source_label} ` : ''}
+                            {report.report_target} | {report.period}
+                            {isPeriodicRow(report.source_label, report.report_target) && (
+                              <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
+                            )}
+                          </p>
+                          {badge && <span className={badge.className}>{badge.text}</span>}
+                        </div>
+                        <p className="feed-card-meta">
+                          {report.fund_name || '조합 공통'} | {labelStatus(report.status)}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {rightTab === 'documents' && (
+            <div className="card-base dashboard-card">
+              {widgetsLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">미수집 서류를 불러오는 중입니다...</p>
+              ) : missingDocuments.length === 0 ? (
+                <EmptyState emoji="🧾" message="미수집 서류가 없습니다." className="py-8" />
+              ) : (
+                <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {missingDocuments.map((doc) => {
+                    const badge = dueBadge(doc.days_remaining)
+                    return (
+                      <button
+                        key={doc.id}
+                        onClick={() => navigate(`/investments/${doc.investment_id}`)}
+                        className="feed-card w-full text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="feed-card-title">{doc.document_name}</p>
+                          {badge && <span className={badge.className}>{badge.text}</span>}
+                        </div>
+                        <p className="feed-card-meta">
+                          {doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">마감 {formatShortDate(doc.due_date)}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
       <div className="card-base dashboard-card">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-emerald-700">완료 업무</h3>
-          <div className="flex gap-1 rounded bg-gray-100 p-0.5 text-xs">
+          <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5 text-xs">
             {(['today', 'this_week', 'last_week'] as const).map((key) => (
               <button
                 key={key}
                 onClick={() => setCompletedFilter(key)}
-                className={`rounded px-2 py-1 ${completedFilter === key ? 'bg-white font-medium text-emerald-700 shadow' : 'text-gray-500'}`}
+                className={`rounded-lg px-2 py-1 ${
+                  completedFilter === key ? 'bg-white font-medium text-emerald-700 shadow' : 'text-slate-500 hover:text-slate-700'
+                }`}
               >
-                {key === 'today' ? '오늘' : key === 'this_week' ? '이번 주' : '전주'}
+                {key === 'today' ? '오늘' : key === 'this_week' ? '이번 주' : '지난주'}
               </button>
             ))}
           </div>
         </div>
 
-        <p className="mb-2 text-xs text-gray-400">오늘 {completedTodayCount}건 · 이번 주 {completedThisWeekCount}건</p>
+        <p className="mb-2 text-xs text-slate-400">
+          오늘 {completedTodayCount}건 · 이번 주 {completedThisWeekCount}건
+        </p>
         {completedLoading ? (
-          <p className="py-6 text-center text-sm text-gray-500">완료 업무를 불러오는 중입니다...</p>
+          <p className="py-6 text-center text-sm text-slate-500">완료 업무를 불러오는 중입니다...</p>
         ) : filteredCompleted.length === 0 ? (
-          <EmptyState emoji="✅" message="완료된 업무가 없어요" className="py-6" />
+          <EmptyState emoji="✅" message="완료된 업무가 없습니다." className="py-6" />
         ) : (
           <div className="max-h-44 space-y-1 overflow-y-auto">
             {filteredCompleted.map((task) => (
               <div key={task.id} className="flex items-center justify-between text-sm">
                 <button
                   onClick={() => onOpenTask(task, true)}
-                  className="truncate text-left text-gray-400 line-through hover:text-blue-600"
+                  className="truncate text-left text-slate-400 line-through hover:text-blue-600"
                 >
                   {task.title}
                 </button>
                 <div className="ml-2 flex items-center gap-2">
-                  {task.actual_time && <span className="text-xs text-gray-400">{task.actual_time}</span>}
-                  <button
-                    onClick={() => onUndoComplete(task.id)}
-                    className="text-xs text-blue-500 hover:underline"
-                  >
+                  {task.actual_time && <span className="text-xs text-slate-400">{task.actual_time}</span>}
+                  <button onClick={() => onUndoComplete(task.id)} className="text-xs text-blue-500 hover:underline">
                     되돌리기
                   </button>
                 </div>

@@ -1,6 +1,6 @@
 ﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Clock, GitBranch, GripVertical, Plus, Tag, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Clock, GitBranch, GripVertical, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -12,7 +12,6 @@ import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import FilterPanel, { type FilterConfig } from '../components/ui/FilterPanel'
-import StatusBadge from '../components/ui/StatusBadge'
 import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import {
@@ -142,14 +141,14 @@ function taskUrgencyMeta(task: Task): {
       }
     case 'none':
       return {
-        leftBorderClass: 'border-l-[var(--theme-border)]',
+        leftBorderClass: 'border-l-slate-300',
         badgeStatus: 'pending',
         label: '기한없음',
       }
     case 'later':
     default:
       return {
-        leftBorderClass: 'border-l-[var(--theme-border)]',
+        leftBorderClass: 'border-l-slate-300',
         badgeStatus: null,
         label: null,
       }
@@ -233,6 +232,23 @@ const TaskItem = memo(function TaskItem({
     : null
   const urgencyMeta = taskUrgencyMeta(task)
   const [isDragging, setIsDragging] = useState(false)
+  const displayTag =
+    urgencyMeta.label && urgencyMeta.badgeStatus
+      ? {
+          label: urgencyMeta.label,
+          className:
+            urgencyMeta.badgeStatus === 'warning'
+              ? 'tag tag-amber'
+              : urgencyMeta.badgeStatus === 'pending'
+                ? 'tag tag-gray'
+                : 'tag tag-red',
+        }
+      : task.category
+        ? {
+            label: task.category,
+            className: categoryBadgeClass(task.category),
+          }
+        : null
 
   return (
     <div
@@ -244,7 +260,7 @@ const TaskItem = memo(function TaskItem({
         setIsDragging(true)
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`group flex items-center gap-2 rounded-md border border-gray-200 border-l-4 bg-white p-2.5 transition-shadow hover:shadow-sm ${
+      className={`group flex items-center gap-2 rounded-lg border border-slate-200 border-l-4 bg-white px-3 py-2.5 transition-shadow hover:shadow-sm ${
         urgencyMeta.leftBorderClass
       } ${
         isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
@@ -267,37 +283,24 @@ const TaskItem = memo(function TaskItem({
         />
       </div>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onEdit(task)}>
-        <p className="text-sm leading-snug text-gray-800">{task.title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-          {urgencyMeta.label && urgencyMeta.badgeStatus && (
-            <StatusBadge status={urgencyMeta.badgeStatus} label={urgencyMeta.label} showIcon={false} />
-          )}
+        <p className="text-sm font-medium leading-snug text-slate-800">{task.title}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          {displayTag && <span className={displayTag.className}>{displayTag.label}</span>}
           {deadlineStr && <span>{deadlineStr}</span>}
           {task.estimated_time && (
             <span className="flex items-center gap-0.5">
               <Clock size={11} /> {task.estimated_time}
             </span>
           )}
-          {task.workflow_instance_id && <span className="tag tag-indigo">WF</span>}
-          {task.category && (
-            <span className={categoryBadgeClass(task.category)}>
-              {task.category}
-            </span>
-          )}
-          {!!task.attachment_count && task.attachment_count > 0 && (
-            <span className="tag tag-gray">📎 {task.attachment_count}</span>
-          )}
-          {task.fund_name && (
-            <span className="tag tag-blue">{task.fund_name}</span>
-          )}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
           onClick={() => onComplete(task)}
-          className="btn-sm rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+          className="icon-btn text-emerald-700 hover:bg-emerald-50"
+          title="완료"
         >
-          완료
+          <Check size={14} />
         </button>
         <button
           onClick={() => onEdit(task)}
@@ -349,8 +352,8 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
   }, [hasBlinkingTask])
 
   return (
-    <div className="rounded-md border border-indigo-200 bg-indigo-50/50">
-      <button onClick={() => setExpanded((prev) => !prev)} className="flex w-full items-center gap-2 px-2.5 py-2 text-left">
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5">
+      <button onClick={() => setExpanded((prev) => !prev)} className="flex w-full items-center gap-2 text-left">
         <span className="text-indigo-500">
           <GitBranch size={13} />
         </span>
@@ -375,7 +378,7 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
       </button>
 
       {expanded && (
-        <div className="space-y-1 border-t border-indigo-200 px-2 py-1.5">
+        <div className="ml-3 mt-1.5 space-y-1.5 border-l-2 border-indigo-200 pl-3">
           {group.tasks.map((task) => {
             const isCurrent = group.currentStep?.id === task.id
             return (
@@ -514,13 +517,12 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
   return (
     <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
       <div>
-        <label className="form-label">작업 제목</label>
         <input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="예: 투자자 업데이트 메일 발송"
+          placeholder="작업명을 입력하세요"
           className="form-input-sm"
         />
       </div>
@@ -580,13 +582,12 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
           </select>
         </div>
         <div>
-          <label className="form-label text-[10px]">카테고리</label>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="form-input-sm"
           >
-            <option value="">카테고리 선택</option>
+            <option value="">카테고리</option>
             {categoryOptions.map((categoryName) => (
               <option key={categoryName} value={categoryName}>{categoryName}</option>
             ))}
@@ -1518,12 +1519,6 @@ export default function TaskBoardPage() {
   const taskFilterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
-        key: 'view',
-        label: '뷰',
-        type: 'select',
-        options: VIEW_TABS.map((tab) => ({ value: tab.key, label: tab.label })),
-      },
-      {
         key: 'status',
         label: '상태',
         type: 'select',
@@ -1537,7 +1532,7 @@ export default function TaskBoardPage() {
         key: 'search',
         label: '검색',
         type: 'text',
-        placeholder: '업무명, 펀드, 카테고리 검색',
+        placeholder: '업무 검색...',
       },
       {
         key: 'due',
@@ -1583,7 +1578,6 @@ export default function TaskBoardPage() {
 
   const taskFilterValues = useMemo(
     () => ({
-      view: boardView,
       status: statusFilter,
       search: searchKeyword,
       due: quickDueFilter,
@@ -1832,9 +1826,9 @@ export default function TaskBoardPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header mb-4 items-center">
+      <div className="page-header mb-3 items-center">
         <div className="flex items-center gap-2">
-          <h2 className="page-title">📌 업무 보드</h2>
+          <h2 className="page-title">업무 보드</h2>
           {overdueCount > 0 && (
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
               🔴 지연 {overdueCount}건
@@ -1877,26 +1871,44 @@ export default function TaskBoardPage() {
         visibleCount={3}
       />
 
+      <div className="mt-4 space-y-4">
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+          {VIEW_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setBoardView(tab.key)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                boardView === tab.key
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
       {boardView === 'board' && selectedVisibleTasks.length > 0 && (
-        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <span className="text-sm font-medium text-blue-800">✅ {selectedVisibleTasks.length}개 선택됨</span>
+        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <span className="text-sm font-semibold text-slate-700">✅ {selectedVisibleTasks.length}개 선택됨</span>
           <button
             onClick={handleBulkComplete}
             disabled={bulkCompleteMutation.isPending || completeMutation.isPending}
-            className="btn-sm rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="primary-btn btn-sm disabled:opacity-60"
           >
             일괄 완료
           </button>
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleteMutation.isPending}
-            className="btn-sm rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+            className="danger-btn btn-sm disabled:opacity-60"
           >
             일괄 삭제
           </button>
           <button
             onClick={clearSelectedTasks}
-            className="btn-sm rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            className="secondary-btn btn-sm"
           >
             선택 해제
           </button>
@@ -1960,7 +1972,7 @@ export default function TaskBoardPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {QUADRANTS.map((quadrant) => {
             const allTasks = sortTasksForQuadrant(
               applyTaskFilters(board?.[quadrant.key] || []),
@@ -1984,17 +1996,17 @@ export default function TaskBoardPage() {
                   if (!taskId || !fromQuadrant || fromQuadrant === quadrant.key) return
                   moveMutation.mutate({ id: taskId, quadrant: quadrant.key })
                 }}
-                className={`rounded-xl border-2 p-4 ${quadrant.color} ${quadrant.bg} ${
+                className={`rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm ${quadrant.color} ${
                   dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-blue-400 bg-blue-50/30' : ''
                 }`}
               >
                 <div className="mb-3 flex items-center gap-2">
                   <span className={`h-2.5 w-2.5 rounded-full ${quadrant.badge}`} />
-                  <h3 className="text-sm font-semibold text-gray-700">{quadrant.label}</h3>
-                  <span className="ml-auto text-xs text-gray-400">{allTasks.length}</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{quadrant.label}</h3>
+                  <span className="ml-auto text-xs text-slate-400">{allTasks.length}</span>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2.5">
                   {standalone.map((task) => (
                     <TaskItem
                       key={task.id}
@@ -2037,6 +2049,7 @@ export default function TaskBoardPage() {
           })}
         </div>
       )}
+      </div>
 
       {showCategoryManager && (
         <CategoryManagerModal

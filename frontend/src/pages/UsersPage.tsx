@@ -25,6 +25,7 @@ import {
   type UserRole,
   type UserUpdateInput,
 } from '../lib/api'
+import { labelRole } from '../lib/labels'
 
 const ROLE_OPTIONS: UserRole[] = ['master', 'admin', 'manager', 'viewer']
 const ROUTE_KEYS = [
@@ -279,7 +280,7 @@ export default function UsersPage() {
           <div className="space-y-2">
             {activeUsers.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2 text-sm">
-                <p>{row.name} ({row.username}) · {row.role} · {displayEmail(row.email)}</p>
+                <p>{row.name} ({row.username}) · {labelRole(row.role)} · {displayEmail(row.email)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditingId(row.id); setForm({ username: row.username, name: row.name, email: displayEmail(row.email) === '-' ? '' : displayEmail(row.email), password: '', role: row.role, department: row.department || '', is_active: row.is_active, allowed_routes: row.allowed_routes || [] }); setOpenMode('edit') }} className="secondary-btn text-xs">수정</button>
                   <button onClick={() => { const value = prompt(`${row.username} 임시 비밀번호`); if (value && value.trim()) adminResetMut.mutate({ id: row.id, new_password: value.trim() }) }} className="secondary-btn text-xs">비번초기화</button>
@@ -295,7 +296,7 @@ export default function UsersPage() {
           <div className="space-y-2">
             {pendingUsers.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2 text-sm">
-                <p>{row.name} ({row.username}) · {displayEmail(row.email)} · {toDateLabel(row.created_at)}</p>
+                <p>{row.name} ({row.username}) · {labelRole(row.role)} · {displayEmail(row.email)} · {toDateLabel(row.created_at)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => approveMut.mutate(row.id)} className="secondary-btn text-xs">승인</button>
                   <button onClick={() => { if (!confirm('거절할까요?')) return; rejectMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">거절</button>
@@ -309,7 +310,7 @@ export default function UsersPage() {
           <div className="space-y-2">
             {invitations.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2 text-sm">
-                <p>{row.name || row.email || '-'} · {row.role} · {row.status} · {toDateLabel(row.expires_at)}</p>
+                <p>{row.name || row.email || '-'} · {labelRole(row.role)} · {row.status} · {toDateLabel(row.expires_at)}</p>
                 <div className="flex gap-2">
                   {row.status === 'pending' && (
                     <>
@@ -328,8 +329,8 @@ export default function UsersPage() {
       </div>
 
       {openMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-3xl rounded-xl border border-white/30 bg-white p-4 shadow-xl">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="modal-content w-full max-w-3xl bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-800">{openMode === 'create' ? '사용자 생성' : '사용자 수정'}</h3>
               <button onClick={() => { setOpenMode(null); setEditingId(null); setForm(EMPTY_USER_FORM) }} className="text-sm text-gray-500">닫기</button>
@@ -340,7 +341,7 @@ export default function UsersPage() {
               <input value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className="form-input" placeholder="이메일" />
               <input value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} className="form-input" placeholder="부서" />
               <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as UserRole }))} className="form-input">
-                {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
+                {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{labelRole(role)}</option>)}
               </select>
               <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} className="form-input" placeholder={openMode === 'edit' ? '비밀번호(선택)' : '비밀번호'} />
             </div>
@@ -395,8 +396,8 @@ export default function UsersPage() {
       )}
 
       {inviteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-2xl rounded-xl border border-white/30 bg-white p-4 shadow-xl">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="modal-content w-full max-w-2xl bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-800">초대 링크 생성</h3>
               <button onClick={() => setInviteModalOpen(false)} className="text-sm text-gray-500">닫기</button>
@@ -405,7 +406,7 @@ export default function UsersPage() {
               <input value={inviteForm.name} onChange={(e) => setInviteForm((p) => ({ ...p, name: e.target.value }))} className="form-input" placeholder="이름(선택)" />
               <input value={inviteForm.email} onChange={(e) => setInviteForm((p) => ({ ...p, email: e.target.value }))} className="form-input" placeholder="이메일(선택)" />
               <select value={inviteForm.role} onChange={(e) => setInviteForm((p) => ({ ...p, role: e.target.value as UserRole }))} className="form-input">
-                {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
+                {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{labelRole(role)}</option>)}
               </select>
               <input value={inviteForm.department} onChange={(e) => setInviteForm((p) => ({ ...p, department: e.target.value }))} className="form-input" placeholder="부서(선택)" />
               <input type="number" min={1} max={365} value={inviteForm.expires_in_days} onChange={(e) => setInviteForm((p) => ({ ...p, expires_in_days: Number(e.target.value || 7) }))} className="form-input md:col-span-2" placeholder="만료일(일)" />

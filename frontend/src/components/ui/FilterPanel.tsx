@@ -52,7 +52,7 @@ export function FilterPanel({
           onChange={(event) => onChange(filter.key, event.target.value)}
           className="form-input-sm"
         >
-          <option value="">전체</option>
+          <option value="">{filter.placeholder || `${filter.label} 선택`}</option>
           {(filter.options || []).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -77,7 +77,7 @@ export function FilterPanel({
       return (
         <button
           type="button"
-          className={`secondary-btn btn-sm ${value ? 'ring-2 ring-[var(--color-secondary)]' : ''}`}
+          className={`secondary-btn btn-sm ${value ? 'ring-2 ring-blue-300' : ''}`}
           onClick={() => onChange(filter.key, !value)}
         >
           {value ? 'ON' : 'OFF'}
@@ -90,7 +90,7 @@ export function FilterPanel({
         type="text"
         value={value}
         onChange={(event) => onChange(filter.key, event.target.value)}
-        placeholder={filter.placeholder}
+        placeholder={filter.placeholder || `${filter.label} 입력`}
         className="form-input-sm"
       />
     )
@@ -99,16 +99,13 @@ export function FilterPanel({
   const renderGrid = (items: FilterConfig[]) => (
     <div className="grid gap-3 md:grid-cols-3">
       {items.map((filter) => (
-        <div key={filter.key} className="space-y-1">
-          <label className="form-label text-xs">{filter.label}</label>
-          {renderFilter(filter)}
-        </div>
+        <div key={filter.key}>{renderFilter(filter)}</div>
       ))}
     </div>
   )
 
   return (
-    <div className="card-base space-y-3 p-4">
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <div className="hidden items-center justify-between md:flex">
         <div className="inline-flex items-center gap-2 text-sm font-semibold">
           <Filter size={15} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}

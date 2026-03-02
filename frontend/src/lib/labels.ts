@@ -1,17 +1,23 @@
-﻿export const STATUS_LABEL: Record<string, string> = {
+export const STATUS_LABEL: Record<string, string> = {
+  active: '진행 중',
   pending: '대기',
-  in_progress: '진행중',
+  in_progress: '진행 중',
   completed: '완료',
+  inactive: '비활성',
+  cancelled: '취소',
+  skipped: '건너뜀',
+  overdue: '지연',
+  draft: '초안',
+  published: '공개',
+  closed: '종료',
   forming: '결성예정',
-  active: '운용중',
-  closed: '청산',
+  closed_fund: '청산',
   collected: '수집완료',
   archived: '보관',
   requested: '요청중',
   reviewing: '검토중',
   exited: '회수완료',
   written_off: '손실처리',
-  cancelled: '취소',
   scheduled: '예정중',
   deliberating: '심의중',
   approved: '가결',
@@ -20,25 +26,38 @@
   done: '완료',
 
   // Raw Korean status values from legacy DB rows
-  '요청전': '요청전',
-  '요청중': '요청중',
-  '회신': '회신',
-  '검토완료': '검토완료',
-  '미작성': '미작성',
-  '작성중': '작성중',
-  '전송완료': '전송완료',
-  '실패': '실패',
-  '미결재': '미결재',
-  '결재완료': '결재완료',
-  '예정': '예정',
-  '준비중': '준비중',
-  '제출완료': '제출완료',
-  '확인완료': '확인완료',
+  요청전: '요청전',
+  요청중: '요청중',
+  회신: '회신',
+  검토완료: '검토완료',
+  미작성: '미작성',
+  작성중: '작성중',
+  전송완료: '전송완료',
+  실패: '실패',
+  미결재: '미결재',
+  결재완료: '결재완료',
+  예정: '예정',
+  준비중: '준비중',
+  제출완료: '제출완료',
+  확인완료: '확인완료',
+}
+
+export const ROLE_LABEL: Record<string, string> = {
+  master: '마스터',
+  admin: '관리자',
+  manager: '매니저',
+  viewer: '열람자',
+  analyst: '분석가',
 }
 
 export const labelStatus = (status?: string | null): string => {
   if (!status) return '-'
   return STATUS_LABEL[status] ?? status
+}
+
+export const labelRole = (role?: string | null): string => {
+  if (!role) return '-'
+  return ROLE_LABEL[role] ?? role
 }
 
 export const formatKRW = (amount: number | null): string => {

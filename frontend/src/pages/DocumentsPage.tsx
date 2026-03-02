@@ -101,7 +101,7 @@ export default function DocumentsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-      <h2 className="page-title">📄 서류 현황</h2>
+      <h2 className="page-title">서류 현황</h2>
           <p className="page-subtitle">서류 수집 상태와 마감 일정을 추적합니다.</p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function DocumentsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
-            <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-2 py-1 text-sm border rounded">
+            <select value={status} onChange={e => setStatus(e.target.value)} className="form-input">
               <option value="">전체 상태</option>
               <option value="pending">미수집</option>
               <option value="requested">요청중</option>
@@ -126,7 +126,7 @@ export default function DocumentsPage() {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
-            <select value={fundId} onChange={e => setFundId(e.target.value ? Number(e.target.value) : '')} className="w-full px-2 py-1 text-sm border rounded">
+            <select value={fundId} onChange={e => setFundId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">전체 조합</option>
               {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
             </select>
@@ -134,7 +134,7 @@ export default function DocumentsPage() {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">회사</label>
-            <select value={companyId} onChange={e => setCompanyId(e.target.value ? Number(e.target.value) : '')} className="w-full px-2 py-1 text-sm border rounded">
+            <select value={companyId} onChange={e => setCompanyId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">전체 회사</option>
               {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
             </select>

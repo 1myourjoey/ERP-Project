@@ -396,7 +396,7 @@ export default function AccountingPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-      <h2 className="page-title">🧮 회계 관리</h2>
+      <h2 className="page-title">회계 관리</h2>
           <p className="page-subtitle">계정과목, 전표, 합계잔액표를 관리합니다.</p>
         </div>
         <div>

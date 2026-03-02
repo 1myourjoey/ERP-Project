@@ -591,7 +591,7 @@ export default function FundsPage() {
   return (
     <div className="page-container">
       <div className="page-header mb-4">
-        <h2 className="page-title">🏦 조합 관리</h2>
+        <h2 className="page-title">조합 관리</h2>
         <button onClick={() => setShowCreateFund((v) => !v)} className="primary-btn inline-flex items-center gap-1">
           <Plus size={14} /> 조합 추가
         </button>
@@ -786,7 +786,9 @@ export default function FundsPage() {
                       </p>
                       {fund.registration_number && <p className="mt-0.5 text-xs text-gray-500">고유번호: {fund.registration_number}</p>}
                     </div>
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">{labelStatus(fund.status)}</span>
+                    <span className={fund.status === 'active' ? 'tag tag-green' : 'tag tag-gray'}>
+                      {labelStatus(fund.status)}
+                    </span>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm md:grid-cols-4">

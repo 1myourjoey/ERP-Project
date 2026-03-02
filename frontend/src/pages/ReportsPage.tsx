@@ -226,7 +226,7 @@ export default function ReportsPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-      <h2 className="page-title">📑 보고·공시 관리</h2>
+      <h2 className="page-title">보고·공시 관리</h2>
           <p className="page-subtitle">정기/수시 보고 일정과 제출 상태를 관리합니다.</p>
         </div>
       </div>

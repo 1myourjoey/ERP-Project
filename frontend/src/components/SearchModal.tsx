@@ -100,9 +100,9 @@ export default function SearchModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[110] bg-black/40 p-4 md:p-10" onClick={handleClose}>
+    <div className="modal-overlay fixed inset-0 z-[110] bg-black/40 p-4 md:p-10" onClick={handleClose}>
       <div
-        className="mx-auto max-w-2xl rounded-2xl shadow-sm border border-gray-100 bg-white"
+        className="modal-content mx-auto max-w-2xl border border-gray-100 bg-white shadow-sm"
         onClick={e => e.stopPropagation()}
       >
         <div className="border-b border-gray-200 px-3 py-2">
@@ -113,7 +113,7 @@ export default function SearchModal({
               ref={inputRef}
               value={query}
               onChange={e => onQueryChange(e.target.value)}
-              placeholder="조합, 회사, 업무, 워크플로우, 보고서 검색"
+              placeholder="업무, 워크플로, 펀드 검색..."
               className="w-full bg-transparent text-sm outline-none"
             />
             <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={handleClose}>

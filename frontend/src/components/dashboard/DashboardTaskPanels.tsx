@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 
 import EmptyState from '../EmptyState'
 import type { DashboardPrioritizedTask, Task } from '../../lib/api'
@@ -17,19 +17,18 @@ interface DashboardTaskPanelsProps {
 
 function urgencyBadge(item: DashboardPrioritizedTask): { text: string; className: string } {
   const { urgency, d_day } = item
-  if (urgency === 'overdue') {
-    return { text: `지연 D+${Math.abs(d_day ?? 0)}`, className: 'tag tag-red' }
-  }
-  if (urgency === 'today') {
-    return { text: 'D-day', className: 'tag tag-red' }
-  }
-  if (urgency === 'tomorrow') {
-    return { text: 'D-1', className: 'tag tag-amber' }
-  }
-  if (urgency === 'this_week') {
-    return { text: `D-${d_day ?? '-'}`, className: 'tag tag-blue' }
-  }
-  return { text: d_day != null ? `D-${d_day}` : '예정', className: 'tag tag-gray' }
+  if (urgency === 'overdue') return { text: `지연 D+${Math.abs(d_day ?? 0)}`, className: 'tag tag-red' }
+  if (urgency === 'today') return { text: 'D-day', className: 'tag tag-red' }
+  if (urgency === 'tomorrow') return { text: 'D-1', className: 'tag tag-amber' }
+  if (urgency === 'this_week') return { text: `D-${d_day ?? '-'}`, className: 'tag tag-blue' }
+  return { text: d_day != null ? `D-${d_day}` : '일정', className: 'tag tag-gray' }
+}
+
+function urgencyBorder(urgency: DashboardPrioritizedTask['urgency']): string {
+  if (urgency === 'overdue' || urgency === 'today') return 'border-l-red-400'
+  if (urgency === 'tomorrow') return 'border-l-amber-400'
+  if (urgency === 'this_week') return 'border-l-blue-400'
+  return 'border-l-slate-300'
 }
 
 function taskMeta(task: Task): string {
@@ -65,18 +64,18 @@ function DashboardTaskPanels({
       <div
         key={`prio-${task.id}`}
         onClick={() => onOpenTask(task, true)}
-        className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50"
+        className={`cursor-pointer rounded-lg border border-slate-200 border-l-4 bg-white px-3 py-2.5 hover:bg-slate-50 ${urgencyBorder(item.urgency)}`}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-sm font-medium text-gray-800">
+          <p className="truncate text-sm font-medium text-slate-800">
             {prefix ? `${prefix} ` : ''}
             {task.title}
           </p>
           <span className={badge.className}>{badge.text}</span>
         </div>
-        <p className="mt-0.5 truncate text-xs text-gray-500">{taskMeta(task)}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500">{taskMeta(task)}</p>
         {item.workflow_info && (
-          <p className="mt-0.5 truncate text-[11px] text-indigo-700">
+          <p className="mt-0.5 truncate text-[11px] text-indigo-600">
             {item.workflow_info.name} | {item.workflow_info.step} | {item.workflow_info.step_name}
           </p>
         )}
@@ -88,9 +87,10 @@ function DashboardTaskPanels({
                 onQuickComplete(task)
               }}
               disabled={completingTaskId === task.id}
-              className="secondary-btn btn-xs"
+              className="icon-btn"
+              aria-label="완료 처리"
             >
-              {completingTaskId === task.id ? '처리중' : '완료'}
+              {completingTaskId === task.id ? <span className="text-xs">...</span> : <Check size={14} />}
             </button>
           </div>
         )}
@@ -101,7 +101,7 @@ function DashboardTaskPanels({
   return (
     <div className="space-y-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">오늘 할 일 우선순위</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">오늘 우선순위</h3>
         <button
           onClick={onOpenTaskBoard}
           className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
@@ -112,16 +112,16 @@ function DashboardTaskPanels({
 
       <div className="card-base dashboard-card">
         <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-700">우선순위 ({prioritizedTasks.length}건, {taskGroups.length}그룹)</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            우선순위 ({prioritizedTasks.length}건 · {taskGroups.length}그룹)
+          </h4>
         </div>
         {taskGroups.length === 0 ? (
-          <EmptyState emoji="📌" message="우선순위 업무가 없습니다." className="py-6" />
+          <EmptyState emoji="🧩" message="우선순위 업무가 없습니다." className="py-6" />
         ) : (
-          <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[320px] space-y-2.5 overflow-y-auto pr-1">
             {taskGroups.map((group) => {
-              if (group.tasks.length === 1) {
-                return renderTaskRow(group.tasks[0])
-              }
+              if (group.tasks.length === 1) return renderTaskRow(group.tasks[0])
 
               const isExpanded = expandedGroups[group.groupKey] === true
               const previewFunds =
@@ -137,30 +137,24 @@ function DashboardTaskPanels({
               })
 
               return (
-                <div
-                  key={group.groupKey}
-                  className="rounded-lg border border-gray-200 bg-white"
-                >
+                <div key={group.groupKey} className="rounded-lg border border-slate-200 bg-white">
                   <button
                     onClick={() => toggleGroup(group.groupKey)}
-                    className="w-full cursor-pointer px-3 py-2 text-left hover:bg-gray-50"
+                    className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
                   >
                     <div className="flex items-center gap-2">
-                      <p className="flex-1 truncate text-sm font-semibold text-gray-800">
-                        {group.groupLabel}
-                      </p>
-                      <span className="text-xs text-gray-500">{group.tasks.length}건</span>
+                      <p className="flex-1 truncate text-sm font-semibold text-slate-800">{group.groupLabel}</p>
+                      <span className="text-xs text-slate-500">{group.tasks.length}건</span>
                       <span className={badge.className}>{badge.text}</span>
-                      <ChevronDown size={14} className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        size={14}
+                        className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-gray-500">
-                      {previewFunds || '개별 업무'}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-gray-400">
-                      {isExpanded ? '접기' : '펼치기'}
-                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{previewFunds || '개별 업무'}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">{isExpanded ? '접기' : '펼치기'}</p>
                   </button>
-                  <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-gray-100 px-2 pb-2 pt-1`}>
+                  <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-slate-100 px-2 pb-2 pt-1`}>
                     <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
                       {group.tasks.map((item, index) => renderTaskRow(item, `${index + 1}.`))}
                     </div>
@@ -175,21 +169,21 @@ function DashboardTaskPanels({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="card-base dashboard-card">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-gray-700">이번주 마감</h4>
-            <span className="text-xs text-gray-400">{thisWeekTasks.length}건</span>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">이번 주 마감</h4>
+            <span className="text-xs text-slate-400">{thisWeekTasks.length}건</span>
           </div>
           {thisWeekTasks.length === 0 ? (
-            <EmptyState emoji="📆" message="이번주 마감 업무가 없습니다." className="py-6" />
+            <EmptyState emoji="📠" message="이번 주 마감 업무가 없습니다." className="py-6" />
           ) : (
             <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
               {thisWeekTasks.slice(0, 8).map((task) => (
                 <button
                   key={`week-${task.id}`}
                   onClick={() => onOpenTask(task, true)}
-                  className="w-full rounded border border-gray-200 px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  className="w-full rounded border border-slate-200 px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
                 >
                   <p className="truncate">{task.title}</p>
-                  <p className="truncate text-xs text-gray-500">{taskMeta(task)}</p>
+                  <p className="truncate text-xs text-slate-500">{taskMeta(task)}</p>
                 </button>
               ))}
             </div>
@@ -198,11 +192,11 @@ function DashboardTaskPanels({
 
         <div className="card-base dashboard-card">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-emerald-700">완료</h4>
-            <span className="text-xs text-gray-400">{completedTasks.length}건</span>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">완료</h4>
+            <span className="text-xs text-slate-400">{completedTasks.length}건</span>
           </div>
           {completedTasks.length === 0 ? (
-            <EmptyState emoji="✅" message="오늘 완료한 업무가 없습니다." className="py-6" />
+            <EmptyState emoji="✅" message="오늘 완료된 업무가 없습니다." className="py-6" />
           ) : (
             <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
               {completedTasks.slice(0, 8).map((task) => (

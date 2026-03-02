@@ -180,7 +180,7 @@ export default function CalendarPage() {
     <div className="page-container">
       <div className="page-header">
         <div>
-      <h2 className="page-title">🗓️ 캘린더</h2>
+      <h2 className="page-title">캘린더</h2>
           <p className="page-subtitle">일정과 업무 마감 일정을 한 화면에서 확인합니다.</p>
         </div>
         <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>

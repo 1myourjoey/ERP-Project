@@ -235,13 +235,13 @@ export default function InvestmentsPage() {
   const investmentColumns = useMemo<Column<InvestmentListItem>[]>(() => [
     {
       key: 'fund_name',
-      header: '조합',
+      header: '펀드',
       priority: 1,
       render: (row) => row.fund_name || '-',
     },
     {
       key: 'company_name',
-      header: '회사',
+      header: '피투자기업',
       priority: 1,
       render: (row) => row.company_name || `투자 #${row.id}`,
     },
@@ -253,7 +253,7 @@ export default function InvestmentsPage() {
     },
     {
       key: 'amount',
-      header: '총 투자금',
+      header: '금액',
       priority: 1,
       align: 'right',
       render: (row) => (row.amount != null ? row.amount.toLocaleString() : '-'),
@@ -290,7 +290,7 @@ export default function InvestmentsPage() {
     },
     {
       key: 'investment_date',
-      header: '투자일',
+      header: '일자',
       priority: 3,
       render: (row) => row.investment_date || '-',
     },

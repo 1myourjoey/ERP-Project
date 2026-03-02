@@ -471,7 +471,7 @@ export default function WorkLogsPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">📝 업무일지</h2>
+        <h2 className="page-title">업무일지</h2>
         {activeTab === 'logs' && (
           <button
             onClick={() => {

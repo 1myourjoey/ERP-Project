@@ -264,7 +264,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
       {!embedded ? (
         <div className="page-header">
           <div>
-            <h2 className="page-title">☑️ 체크리스트</h2>
+            <h2 className="page-title">체크리스트</h2>
             <p className="page-subtitle">특정 시점의 점검 항목을 관리합니다. (예: 투자 전 점검, 연말 결산, 감사 준비)</p>
           </div>
           <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>

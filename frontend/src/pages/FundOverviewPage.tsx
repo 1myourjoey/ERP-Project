@@ -86,7 +86,7 @@ export default function FundOverviewPage() {
     <div className="page-container space-y-6">
       <div className="page-header">
         <div>
-          <h2 className="page-title">🏦 조합 개요</h2>
+          <h2 className="page-title">조합 개요</h2>
           <p className="page-subtitle">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
         </div>
         <div className="flex items-center gap-2">
