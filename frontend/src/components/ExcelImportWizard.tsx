@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 
 import {
   confirmExcelImport,
@@ -66,7 +67,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">엑셀 가져오기</h3>
             <button type="button" className="icon-btn" onClick={onClose} aria-label="닫기">
-              X
+              <X size={16} />
             </button>
           </div>
 
@@ -74,7 +75,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
             {[1, 2, 3].map((value) => (
               <div
                 key={value}
-                className={`rounded-full px-2 py-1 ${step === value ? 'bg-[var(--theme-hover)] font-semibold' : 'bg-[var(--theme-bg-elevated)]'}`}
+                className={`rounded-full px-2 py-1 ${step === value ? 'bg-slate-100 font-semibold' : 'bg-slate-50'}`}
               >
                 Step {value}
               </div>
@@ -84,7 +85,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
           {step === 1 && (
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[var(--theme-text-secondary)]">가져오기 유형</span>
+                <span className="mb-1 block text-xs font-medium text-slate-500">가져오기 유형</span>
                 <select className="form-input" value={importType} onChange={(event) => setImportType(event.target.value as ImportDomain)}>
                   {IMPORT_TYPES.map((type) => (
                     <option key={type.value} value={type.value}>
@@ -93,14 +94,14 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
                   ))}
                 </select>
               </label>
-              <label className="block rounded border border-dashed border-[var(--theme-border)] p-4 text-center">
+              <label className="block rounded border border-dashed border-slate-200 p-4 text-center">
                 <input
                   type="file"
                   className="hidden"
                   accept=".xlsx,.xlsm,.xltx"
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
                 />
-                <span className="text-sm text-[var(--theme-text-secondary)]">
+                <span className="text-sm text-slate-500">
                   {file ? file.name : '엑셀 파일을 선택하세요'}
                 </span>
               </label>
@@ -112,7 +113,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
 
           {step === 2 && preview && (
             <div className="space-y-3">
-              <div className="rounded border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] p-3 text-sm">
+              <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
                 총 {preview.total_rows}행 | 유효 {preview.valid_rows}행 | 오류 {preview.error_rows.length}행
               </div>
 
@@ -127,7 +128,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
                 </div>
               )}
 
-              <div className="overflow-x-auto rounded border border-[var(--theme-border)]">
+              <div className="overflow-x-auto rounded border border-slate-200">
                 <table className="min-w-full">
                   <thead>
                     <tr className="table-head-row">
@@ -154,7 +155,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
 
           {step === 3 && result && (
             <div className="space-y-2 text-sm">
-              <div className="rounded border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] p-3">
+              <div className="rounded border border-slate-200 bg-slate-50 p-3">
                 가져오기를 완료했습니다.
               </div>
               <p>성공: {result.imported_count}건</p>
@@ -210,4 +211,3 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
     </div>
   )
 }
-

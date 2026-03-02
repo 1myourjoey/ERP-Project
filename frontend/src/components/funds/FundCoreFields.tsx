@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+﻿import { useRef } from 'react'
 import type { FundInput } from '../../lib/api'
 import KrwAmountInput from '../common/KrwAmountInput'
 
@@ -49,7 +49,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.name ?? ''}
           onChange={(e) => update('name', e.target.value)}
           placeholder="예: V:ON 1호"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -57,7 +57,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <select
           value={form.type ?? FUND_TYPE_OPTIONS[0]}
           onChange={(e) => update('type', e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         >
           {FUND_TYPE_OPTIONS.map((type) => (
             <option key={type} value={type}>
@@ -71,7 +71,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <select
           value={form.status || 'active'}
           onChange={(e) => update('status', e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         >
           {FUND_STATUS_OPTIONS.map((status) => (
             <option key={status.value} value={status.value}>
@@ -86,7 +86,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           type="date"
           value={form.formation_date || ''}
           onChange={(e) => update('formation_date', e.target.value || null)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -94,7 +94,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <input
           value={form.registration_number || ''}
           onChange={(e) => update('registration_number', e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
           placeholder="예: 123-45-67890"
         />
       </div>
@@ -104,7 +104,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           type="date"
           value={form.registration_date || ''}
           onChange={(e) => update('registration_date', e.target.value || null)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       {form.status !== 'forming' && (
@@ -114,7 +114,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
             type="date"
             value={form.maturity_date || ''}
             onChange={(e) => update('maturity_date', e.target.value || null)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
       )}
@@ -125,7 +125,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
             type="date"
             value={form.dissolution_date || ''}
             onChange={(e) => update('dissolution_date', e.target.value || null)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
       )}
@@ -135,7 +135,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           <select
             value={form.gp || ''}
             onChange={(e) => update('gp', e.target.value || null)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           >
             <option value="">고유계정 선택</option>
             {gpOptions.map((option) => (
@@ -149,7 +149,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
             value={form.gp || ''}
             onChange={(e) => update('gp', e.target.value)}
             placeholder="GP"
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         )}
       </div>
@@ -159,7 +159,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.fund_manager || ''}
           onChange={(e) => update('fund_manager', e.target.value)}
           placeholder="대표 펀드매니저"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -168,7 +168,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.co_gp || ''}
           onChange={(e) => update('co_gp', e.target.value)}
           placeholder="예: 공동운용사명"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -177,7 +177,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.trustee || ''}
           onChange={(e) => update('trustee', e.target.value)}
           placeholder="예: OO은행"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -204,7 +204,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
             lastAutoGpCommitmentRef.current = autoGpCommitment
             onChange(nextForm)
           }}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
           placeholder="숫자만 입력"
           helperClassName="mt-1 text-[11px] text-gray-500"
         />
@@ -221,7 +221,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
                 : nextGpCommitment !== autoGpCommitment
             update('gp_commitment', nextGpCommitment)
           }}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
           placeholder="숫자만 입력"
           helperClassName="mt-1 text-[11px] text-gray-500"
         />
@@ -231,7 +231,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         <select
           value={form.contribution_type || ''}
           onChange={(e) => update('contribution_type', e.target.value || null)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         >
           <option value="">출자방식 선택</option>
           {CONTRIBUTION_TYPE_OPTIONS.map((option) => (
@@ -247,7 +247,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           type="date"
           value={form.investment_period_end || ''}
           onChange={(e) => update('investment_period_end', e.target.value || null)}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -258,7 +258,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.mgmt_fee_rate ?? ''}
           onChange={(e) => update('mgmt_fee_rate', e.target.value ? Number(e.target.value) : null)}
           placeholder="관리보수율(%)"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -269,7 +269,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.performance_fee_rate ?? ''}
           onChange={(e) => update('performance_fee_rate', e.target.value ? Number(e.target.value) : null)}
           placeholder="성과보수율(%)"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -280,7 +280,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.hurdle_rate ?? ''}
           onChange={(e) => update('hurdle_rate', e.target.value ? Number(e.target.value) : null)}
           placeholder="허들레이트(%)"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
       <div>
@@ -289,9 +289,10 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           value={form.account_number || ''}
           onChange={(e) => update('account_number', e.target.value)}
           placeholder="운용계좌번호"
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="form-input"
         />
       </div>
     </div>
   )
 }
+

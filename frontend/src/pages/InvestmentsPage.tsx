@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -471,17 +471,17 @@ export default function InvestmentsPage() {
                 return (
                   <button
                     type="button"
-                    className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] px-3 py-2 text-left"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left"
                     onClick={() => navigate(`/investments/${row.id}`)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-[var(--theme-text-primary)]">{row.company_name || `투자 #${row.id}`}</p>
+                      <p className="text-sm font-medium text-slate-800">{row.company_name || `투자 #${row.id}`}</p>
                       <StatusBadge status={meta.tone} label={meta.label} />
                     </div>
-                    <p className="mt-1 text-xs text-[var(--theme-text-secondary)]">
+                    <p className="mt-1 text-xs text-slate-500">
                       {row.fund_name || '-'} · {row.instrument || '-'}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--theme-text-secondary)]">
+                    <p className="mt-1 text-xs text-slate-500">
                       {row.amount != null ? `${row.amount.toLocaleString()}원` : '-'} · {row.investment_date || '-'}
                     </p>
                   </button>

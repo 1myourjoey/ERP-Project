@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Download, Paperclip, Plus, Trash2 } from 'lucide-react'
 
 import { downloadAttachment, fetchAttachments, type Attachment } from '../../lib/api'
 
@@ -36,7 +37,7 @@ export default function FileAttachmentPanel({
   onRemove,
   disabled = false,
   compact = false,
-  label = '📎 첨부 파일',
+  label = '첨부 파일',
 }: FileAttachmentPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -113,11 +114,14 @@ export default function FileAttachmentPanel({
   }
 
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white ${compact ? 'p-3' : 'p-4'}`}>
+    <div className={`rounded-lg border border-slate-200 bg-white ${compact ? 'p-3' : 'p-4'}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-gray-800`}>{label}</p>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-          {normalizedIds.length}개
+        <p className={`${compact ? 'text-xs' : 'text-sm'} flex items-center gap-1.5 font-semibold text-slate-800`}>
+          <Paperclip size={14} className="text-slate-500" />
+          {label}
+        </p>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+          {normalizedIds.length}건
         </span>
       </div>
 
@@ -127,9 +131,10 @@ export default function FileAttachmentPanel({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || removingId != null}
-            className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+            className="secondary-btn btn-sm gap-1"
           >
-            {isUploading ? '업로드 중...' : '+ 파일 추가'}
+            <Plus size={12} />
+            {isUploading ? '업로드 중...' : '파일 추가'}
           </button>
           <input
             ref={fileInputRef}
@@ -146,23 +151,23 @@ export default function FileAttachmentPanel({
       )}
 
       {normalizedIds.length > 0 && attachmentsQuery.isLoading && (
-        <p className="text-xs text-gray-500">첨부 파일을 불러오는 중...</p>
+        <p className="text-xs text-slate-500">첨부 파일을 불러오는 중...</p>
       )}
 
       {normalizedIds.length === 0 ? (
-        <p className="rounded border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-500">
+        <p className="rounded border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
           첨부된 파일이 없습니다.
         </p>
       ) : (
         <ul className="space-y-2">
           {orderedAttachments.map((attachment) => (
-            <li key={attachment.id} className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+            <li key={attachment.id} className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className={`${compact ? 'text-xs' : 'text-sm'} truncate text-gray-800`}>
+                  <p className={`${compact ? 'text-xs' : 'text-sm'} truncate text-slate-800`}>
                     {attachment.original_filename}
                   </p>
-                  <p className="text-[11px] text-gray-500">{formatFileSize(attachment.file_size)}</p>
+                  <p className="text-[11px] text-slate-500">{formatFileSize(attachment.file_size)}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -170,8 +175,9 @@ export default function FileAttachmentPanel({
                     onClick={() => {
                       void handleDownload(attachment)
                     }}
-                    className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] text-blue-700 hover:bg-blue-100"
+                    className="secondary-btn btn-xs gap-1"
                   >
+                    <Download size={12} />
                     다운로드
                   </button>
                   {!disabled && (
@@ -181,8 +187,9 @@ export default function FileAttachmentPanel({
                       onClick={() => {
                         void handleRemove(attachment.id)
                       }}
-                      className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-700 hover:bg-red-100 disabled:opacity-60"
+                      className="danger-btn btn-xs gap-1"
                     >
+                      <Trash2 size={12} />
                       {removingId === attachment.id ? '삭제 중...' : '삭제'}
                     </button>
                   )}

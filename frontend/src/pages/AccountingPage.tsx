@@ -67,7 +67,7 @@ function JournalForm({
           <select
             value={form.fund_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">조합 선택</option>
             {funds.map((fund) => (
@@ -83,7 +83,7 @@ function JournalForm({
             type="date"
             value={form.entry_date}
             onChange={(e) => setForm((prev) => ({ ...prev, entry_date: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -91,7 +91,7 @@ function JournalForm({
           <select
             value={form.status || '미결재'}
             onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             {ENTRY_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -105,7 +105,7 @@ function JournalForm({
           <input
             value={form.description || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
             placeholder="예: 관리비 지급"
           />
         </div>
@@ -123,7 +123,7 @@ function JournalForm({
                   next[index] = { ...next[index], account_id: Number(e.target.value) || 0 }
                   setForm((prev) => ({ ...prev, lines: next }))
                 }}
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
               >
                 <option value="">계정과목</option>
                 {accounts.map((account) => (
@@ -143,7 +143,7 @@ function JournalForm({
                   next[index] = { ...next[index], debit: e.target.value ? Number(e.target.value) : 0 }
                   setForm((prev) => ({ ...prev, lines: next }))
                 }}
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
                 placeholder="숫자 입력"
               />
             </div>
@@ -157,7 +157,7 @@ function JournalForm({
                   next[index] = { ...next[index], credit: e.target.value ? Number(e.target.value) : 0 }
                   setForm((prev) => ({ ...prev, lines: next }))
                 }}
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
                 placeholder="숫자 입력"
               />
             </div>
@@ -170,7 +170,7 @@ function JournalForm({
                   next[index] = { ...next[index], memo: e.target.value }
                   setForm((prev) => ({ ...prev, lines: next }))
                 }}
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
                 placeholder="선택 입력"
               />
             </div>
@@ -419,12 +419,12 @@ export default function AccountingPage() {
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
             <h3 className="mb-2 text-sm font-semibold text-gray-700">계정과목 등록</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">코드</label><input value={newAccount.code} onChange={(e) => setNewAccount((prev) => ({ ...prev, code: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="예: 1110" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">계정명</label><input value={newAccount.name} onChange={(e) => setNewAccount((prev) => ({ ...prev, name: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="예: 현금" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">대분류</label><select value={newAccount.category} onChange={(e) => setNewAccount((prev) => ({ ...prev, category: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">중분류</label><input value={newAccount.sub_category || ''} onChange={(e) => setNewAccount((prev) => ({ ...prev, sub_category: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="선택 입력" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">정상 차/대변</label><select value={newAccount.normal_side || '차변'} onChange={(e) => setNewAccount((prev) => ({ ...prev, normal_side: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm"><option value="차변">차변</option><option value="대변">대변</option></select></div>
-              <div><label className="mb-1 block text-xs font-medium text-gray-600">정렬순서</label><input type="number" value={newAccount.display_order || 0} onChange={(e) => setNewAccount((prev) => ({ ...prev, display_order: Number(e.target.value || 0) }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="숫자 입력" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">코드</label><input value={newAccount.code} onChange={(e) => setNewAccount((prev) => ({ ...prev, code: e.target.value }))} className="form-input" placeholder="예: 1110" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">계정명</label><input value={newAccount.name} onChange={(e) => setNewAccount((prev) => ({ ...prev, name: e.target.value }))} className="form-input" placeholder="예: 현금" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">대분류</label><select value={newAccount.category} onChange={(e) => setNewAccount((prev) => ({ ...prev, category: e.target.value }))} className="form-input">{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">중분류</label><input value={newAccount.sub_category || ''} onChange={(e) => setNewAccount((prev) => ({ ...prev, sub_category: e.target.value }))} className="form-input" placeholder="선택 입력" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">정상 차/대변</label><select value={newAccount.normal_side || '차변'} onChange={(e) => setNewAccount((prev) => ({ ...prev, normal_side: e.target.value }))} className="form-input"><option value="차변">차변</option><option value="대변">대변</option></select></div>
+              <div><label className="mb-1 block text-xs font-medium text-gray-600">정렬순서</label><input type="number" value={newAccount.display_order || 0} onChange={(e) => setNewAccount((prev) => ({ ...prev, display_order: Number(e.target.value || 0) }))} className="form-input" placeholder="숫자 입력" /></div>
               <button
                 onClick={() => {
                   if (!newAccount.code.trim() || !newAccount.name.trim() || !newAccount.category) return
@@ -647,7 +647,7 @@ export default function AccountingPage() {
                 <select
                   value={selectedLedgerAccountId || ''}
                   onChange={(e) => setLedgerAccountId(Number(e.target.value) || null)}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   {(accounts || []).map((account) => (
                     <option key={account.id} value={account.id}>
@@ -759,6 +759,7 @@ export default function AccountingPage() {
     </div>
   )
 }
+
 
 
 

@@ -172,7 +172,7 @@ export default function FeeManagementPage() {
             <select
               value={selectedFundId || ''}
               onChange={(e) => setSelectedFundId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             >
               <option value="">조합 선택</option>
               {funds.map((fund) => (
@@ -237,11 +237,11 @@ export default function FeeManagementPage() {
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">관리보수율</label>
-                    <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="w-full rounded border px-2 py-1 text-sm" />
+                    <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">관리보수 기준</label>
-                    <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm">
+                    <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="form-input">
                       <option value="commitment">commitment</option>
                       <option value="nav">nav</option>
                       <option value="invested">invested</option>
@@ -249,11 +249,11 @@ export default function FeeManagementPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">허들율</label>
-                    <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="w-full rounded border px-2 py-1 text-sm" />
+                    <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">캐리율</label>
-                    <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="w-full rounded border px-2 py-1 text-sm" />
+                    <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
                   </div>
                 </div>
                 <button onClick={() => updateConfigMut.mutate(draftConfig)} className="primary-btn mt-3">설정 저장</button>
@@ -357,3 +357,4 @@ export default function FeeManagementPage() {
     </div>
   )
 }
+

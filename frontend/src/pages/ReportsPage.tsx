@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
@@ -267,35 +267,35 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label>
-              <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="form-input">
                 {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
-              <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="w-full rounded border px-2 py-1 text-sm">
+              <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="form-input">
                 <option value="">조합 미지정</option>
                 {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">기간</label>
-              <input value={newReport.period} onChange={(e) => setNewReport((prev) => ({ ...prev, period: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm" placeholder="예: 2026-Q1" />
+              <input value={newReport.period} onChange={(e) => setNewReport((prev) => ({ ...prev, period: e.target.value }))} className="form-input" placeholder="예: 2026-Q1" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">마감일</label>
-              <input type="date" value={newReport.due_date || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, due_date: e.target.value || null }))} className="w-full rounded border px-2 py-1 text-sm" />
+              <input type="date" value={newReport.due_date || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, due_date: e.target.value || null }))} className="form-input" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
-              <select value={newReport.status || '예정'} onChange={(e) => setNewReport((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded border px-2 py-1 text-sm">
+              <select value={newReport.status || '예정'} onChange={(e) => setNewReport((prev) => ({ ...prev, status: e.target.value }))} className="form-input">
                 {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
-            <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="w-full rounded border px-2 py-1 text-sm" placeholder="선택 입력" />
+            <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="form-input" placeholder="선택 입력" />
           </div>
           <div className="flex gap-2">
             <button
@@ -365,15 +365,15 @@ export default function ReportsPage() {
                 {isEditing && editForm ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label><select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm">{REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}</select></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="w-full rounded border px-2 py-1 text-sm"><option value="">조합 미지정</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">기간</label><input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">마감일</label><input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="w-full rounded border px-2 py-1 text-sm">{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label><select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="form-input">{REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="form-input"><option value="">조합 미지정</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">기간</label><input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">마감일</label><input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="form-input">{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
                     </div>
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">제출일</label><input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="w-full rounded border px-2 py-1 text-sm" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="w-full rounded border px-2 py-1 text-sm" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">제출일</label><input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="form-input" /></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => updateMut.mutate({ id: row.id, data: { ...editForm, period: editForm.period.trim(), memo: editForm.memo?.trim() || null } })} className="primary-btn">저장</button>
@@ -496,4 +496,5 @@ export default function ReportsPage() {
     </div>
   )
 }
+
 

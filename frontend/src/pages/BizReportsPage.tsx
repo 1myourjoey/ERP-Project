@@ -353,7 +353,7 @@ export default function BizReportsPage() {
               type="number"
               value={yearFilter}
               onChange={(e) => setYearFilter(Number(e.target.value || new Date().getFullYear()))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             />
           </div>
           <div>
@@ -365,7 +365,7 @@ export default function BizReportsPage() {
                 setSelectedReportId(next)
                 setSelectedRequestId(null)
               }}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             >
               <option value="">보고 선택</option>
               {reports.map((row) => (
@@ -426,7 +426,7 @@ export default function BizReportsPage() {
                   <select
                     value={newReportForm.fund_id || ''}
                     onChange={(e) => setNewReportForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
-                    className="w-full rounded border px-2 py-1 text-sm"
+                    className="form-input"
                   >
                     <option value="">조합 선택</option>
                     {funds.map((fund) => (
@@ -440,7 +440,7 @@ export default function BizReportsPage() {
                     type="number"
                     value={newReportForm.report_year}
                     onChange={(e) => setNewReportForm((prev) => ({ ...prev, report_year: Number(e.target.value || new Date().getFullYear()) }))}
-                    className="w-full rounded border px-2 py-1 text-sm"
+                    className="form-input"
                   />
                 </div>
                 <div>
@@ -448,7 +448,7 @@ export default function BizReportsPage() {
                   <select
                     value={newReportForm.status || '작성중'}
                     onChange={(e) => setNewReportForm((prev) => ({ ...prev, status: e.target.value }))}
-                    className="w-full rounded border px-2 py-1 text-sm"
+                    className="form-input"
                   >
                     <option value="작성중">작성중</option>
                     <option value="검토중">검토중</option>
@@ -634,7 +634,7 @@ export default function BizReportsPage() {
                     <textarea
                       defaultValue={row.comment || ''}
                       placeholder="분기 코멘트"
-                      className="mt-2 w-full rounded border px-2 py-1 text-sm"
+                      className="form-input mt-2"
                       rows={2}
                       onBlur={(e) => updateRequestMut.mutate({ id: row.id, data: { comment: e.target.value || null } })}
                     />
@@ -824,3 +824,4 @@ export default function BizReportsPage() {
     </div>
   )
 }
+

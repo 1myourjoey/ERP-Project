@@ -48,8 +48,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   })
 
   return (
-    <div className="absolute right-0 top-full mt-2 z-50 w-[22rem] max-h-[480px] card-base shadow-xl flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--theme-border)]">
+    <div className="card-base absolute right-0 top-full z-50 mt-2 flex max-h-[480px] w-[22rem] flex-col p-0 shadow-xl">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <span className="text-sm font-semibold">알림</span>
         <button
           type="button"
@@ -61,15 +61,15 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
         </button>
       </div>
 
-      <div className="flex gap-1 px-3 py-2 border-b border-[var(--theme-border)]">
+      <div className="flex gap-1 border-b border-slate-200 px-3 py-2">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             className={`rounded px-2 py-1 text-xs transition-colors ${
               activeTab === tab.key
-                ? 'bg-[var(--theme-hover)] text-[var(--theme-text-primary)]'
-                : 'text-[var(--theme-text-secondary)] hover:bg-[var(--theme-hover)]'
+                ? 'bg-slate-100 text-slate-800'
+                : 'text-slate-500 hover:bg-slate-100'
             }`}
             onClick={() => setActiveTab(tab.key)}
           >
@@ -80,13 +80,13 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
-          <div className="px-4 py-10 text-center text-sm text-[var(--theme-text-secondary)]">
+          <div className="px-4 py-10 text-center text-sm text-slate-500">
             알림을 불러오는 중...
           </div>
         )}
 
         {!isLoading && (data?.notifications?.length || 0) === 0 && (
-          <div className="px-4 py-10 text-center text-sm text-[var(--theme-text-secondary)]">
+          <div className="px-4 py-10 text-center text-sm text-slate-500">
             알림이 없습니다.
           </div>
         )}

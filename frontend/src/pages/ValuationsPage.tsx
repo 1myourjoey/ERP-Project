@@ -127,7 +127,7 @@ function ValuationSimpleForm({
           <select
             value={value.fund_id || ''}
             onChange={(e) => onChange({ ...value, fund_id: Number(e.target.value) || 0 })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">조합 선택</option>
             {funds.map((fund) => (
@@ -149,7 +149,7 @@ function ValuationSimpleForm({
                 company_id: row?.company_id || value.company_id,
               })
             }}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">투자건 선택</option>
             {filteredInvestments.map((row) => (
@@ -163,7 +163,7 @@ function ValuationSimpleForm({
             type="date"
             value={value.as_of_date || todayIso()}
             onChange={(e) => onChange({ ...value, as_of_date: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -171,7 +171,7 @@ function ValuationSimpleForm({
           <select
             value={value.method || 'mark_to_market'}
             onChange={(e) => onChange({ ...value, method: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             {METHOD_OPTIONS.map((method) => (
               <option key={method} value={method}>{methodLabel(method)}</option>
@@ -184,7 +184,7 @@ function ValuationSimpleForm({
             type="number"
             value={value.value}
             onChange={(e) => onChange({ ...value, value: Number(e.target.value || 0) })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
             placeholder="평가금액"
           />
         </div>
@@ -486,7 +486,7 @@ export default function ValuationsPage() {
               <select
                 value={historyInvestmentId || ''}
                 onChange={(e) => setHistoryInvestmentId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="form-input"
               >
                 <option value="">투자건 선택</option>
                 {investments.map((row) => (
@@ -533,7 +533,7 @@ export default function ValuationsPage() {
                 <select
                   value={bulkFundId || ''}
                   onChange={(e) => setBulkFundId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">조합 선택</option>
                   {funds.map((fund) => (
@@ -547,7 +547,7 @@ export default function ValuationsPage() {
                   type="date"
                   value={bulkDate}
                   onChange={(e) => setBulkDate(e.target.value)}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 />
               </div>
             </div>
@@ -577,7 +577,7 @@ export default function ValuationsPage() {
                 <select
                   value={filters.fund_id || ''}
                   onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: e.target.value ? Number(e.target.value) : null }))}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">전체 조합</option>
                   {funds.map((fund) => (
@@ -590,7 +590,7 @@ export default function ValuationsPage() {
                 <select
                   value={filters.investment_id || ''}
                   onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">전체 투자건</option>
                   {investments.map((row) => (
@@ -603,7 +603,7 @@ export default function ValuationsPage() {
                 <select
                   value={filters.method}
                   onChange={(e) => setFilters((prev) => ({ ...prev, method: e.target.value }))}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">전체</option>
                   {METHOD_OPTIONS.map((method) => (
@@ -701,3 +701,4 @@ export default function ValuationsPage() {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -185,7 +185,7 @@ function TransactionForm({
           <select
             value={form.fund_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">조합 선택</option>
             {funds.map((fund) => (
@@ -200,7 +200,7 @@ function TransactionForm({
           <select
             value={form.company_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">투자사 선택</option>
             {companies.map((company) => (
@@ -215,7 +215,7 @@ function TransactionForm({
           <select
             value={form.investment_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">투자건 선택</option>
             {filteredInvestments.map((investment) => (
@@ -231,7 +231,7 @@ function TransactionForm({
             type="date"
             value={form.transaction_date}
             onChange={(e) => setForm((prev) => ({ ...prev, transaction_date: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -240,7 +240,7 @@ function TransactionForm({
             type="date"
             value={form.settlement_date || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, settlement_date: e.target.value || null }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -252,7 +252,7 @@ function TransactionForm({
               const nextSubtype = (SUBTYPE_OPTIONS[nextType] || SUBTYPE_OPTIONS.other)[0]?.value || 'other'
               setForm((prev) => ({ ...prev, type: nextType, transaction_subtype: nextSubtype }))
             }}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             {TRANSACTION_TYPE_OPTIONS.map((type) => (
               <option key={type.value} value={type.value}>
@@ -266,7 +266,7 @@ function TransactionForm({
           <select
             value={form.transaction_subtype || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, transaction_subtype: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             {subtypeOptions.map((type) => (
               <option key={type.value} value={type.value}>
@@ -281,7 +281,7 @@ function TransactionForm({
             type="number"
             value={form.amount}
             onChange={(e) => setForm((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -289,7 +289,7 @@ function TransactionForm({
           <input
             value={form.counterparty || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, counterparty: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -300,7 +300,7 @@ function TransactionForm({
             type="number"
             value={form.shares_change ?? ''}
             onChange={(e) => setForm((prev) => ({ ...prev, shares_change: e.target.value ? Number(e.target.value) : null }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -311,7 +311,7 @@ function TransactionForm({
             type="number"
             value={form.realized_gain ?? ''}
             onChange={(e) => setForm((prev) => ({ ...prev, realized_gain: e.target.value ? Number(e.target.value) : null }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div className="md:col-span-2">
@@ -322,7 +322,7 @@ function TransactionForm({
             value={form.conversion_detail || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, conversion_detail: e.target.value }))}
             placeholder="예: 전환가 10,000원 / 5,000주"
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div className="md:col-span-4">
@@ -330,7 +330,7 @@ function TransactionForm({
           <input
             value={form.memo || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
       </div>
@@ -488,7 +488,7 @@ export default function TransactionsPage() {
             <select
               value={filters.fund_id || ''}
               onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             >
               <option value="">전체</option>
               {funds.map((fund) => (
@@ -503,7 +503,7 @@ export default function TransactionsPage() {
             <select
               value={filters.company_id || ''}
               onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             >
               <option value="">전체</option>
               {companies.map((company) => (
@@ -519,7 +519,7 @@ export default function TransactionsPage() {
               type="number"
               value={filters.investment_id || ''}
               onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             />
           </div>
           <div>
@@ -533,7 +533,7 @@ export default function TransactionsPage() {
                   transaction_subtype: '',
                 }))
               }
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             >
               <option value="">전체</option>
               {TRANSACTION_TYPE_OPTIONS.map((type) => (
@@ -548,7 +548,7 @@ export default function TransactionsPage() {
             <input
               value={filters.transaction_subtype}
               onChange={(e) => setFilters((prev) => ({ ...prev, transaction_subtype: e.target.value }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             />
           </div>
           <div>
@@ -557,7 +557,7 @@ export default function TransactionsPage() {
               type="date"
               value={filters.date_from}
               onChange={(e) => setFilters((prev) => ({ ...prev, date_from: e.target.value }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             />
           </div>
           <div>
@@ -566,7 +566,7 @@ export default function TransactionsPage() {
               type="date"
               value={filters.date_to}
               onChange={(e) => setFilters((prev) => ({ ...prev, date_to: e.target.value }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
             />
           </div>
           <div className="flex items-end">
@@ -746,3 +746,4 @@ export default function TransactionsPage() {
     </div>
   )
 }
+

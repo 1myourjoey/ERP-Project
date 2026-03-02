@@ -528,7 +528,7 @@ function ChecklistForm({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="예: 투자 심사 체크리스트"
-            className="w-full px-2 py-1 text-sm border rounded"
+            className="form-input"
           />
         </div>
 
@@ -540,7 +540,7 @@ function ChecklistForm({
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
                 placeholder="직접 입력"
-                className="w-full px-2 py-1 text-sm border rounded"
+                className="form-input"
               />
             </div>
             <button
@@ -566,7 +566,7 @@ function ChecklistForm({
                   setCategory(event.target.value)
                 }
               }}
-              className="w-full px-2 py-1 text-sm border rounded"
+              className="form-input"
             >
               <option value="">카테고리 선택</option>
               {CHECKLIST_CATEGORY_OPTIONS.map((option) => (
@@ -582,7 +582,7 @@ function ChecklistForm({
           <select
             value={investmentId}
             onChange={(event) => setInvestmentId(event.target.value ? Number(event.target.value) : '')}
-            className="w-full px-2 py-1 text-sm border rounded"
+            className="form-input"
           >
             <option value="">투자 연결 없음</option>
             {investments.map((investment) => (
@@ -631,7 +631,7 @@ function ItemForm({
           <input
             value={form.name}
             onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
             placeholder="예: 실사 보고서 확인"
           />
         </div>
@@ -642,7 +642,7 @@ function ItemForm({
               type="number"
               value={form.order}
               onChange={e => setForm(prev => ({ ...prev, order: Number(e.target.value || 1) }))}
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="form-input"
               placeholder="숫자"
             />
           </div>
@@ -660,7 +660,7 @@ function ItemForm({
           <input
             value={form.notes || ''}
             onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
             placeholder="선택 입력"
           />
         </div>
@@ -676,6 +676,7 @@ function ItemForm({
     </div>
   )
 }
+
 
 
 

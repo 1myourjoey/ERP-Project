@@ -520,12 +520,12 @@ function EventForm({
   return (
     <div className={`${compact ? '' : 'mb-3'} bg-gray-50 border border-gray-200 rounded p-2`}>
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">제목</label><input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="예: LP 정기 미팅" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">날짜</label><input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">시간</label><input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">소요시간(분)</label><input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">설명</label><input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="선택 입력" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">제목</label><input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="예: LP 정기 미팅" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">날짜</label><input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">시간</label><input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">소요시간(분)</label><input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">설명</label><input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
       </div>
       <div className="flex gap-2 mt-2">
         <button
@@ -588,6 +588,7 @@ function CompletionInfoModal({ task, onClose }: { task: Task; onClose: () => voi
     </div>
   )
 }
+
 
 
 

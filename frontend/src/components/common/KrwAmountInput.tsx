@@ -51,7 +51,7 @@ function formatKoreanAmount(value: number | null): string {
 export default function KrwAmountInput({
   value,
   onChange,
-  className = 'w-full rounded-lg border px-3 py-2 text-sm',
+  className = 'form-input',
   placeholder = '\uC22B\uC790\uB9CC \uC785\uB825',
   helperClassName = 'mt-1 text-[11px] text-gray-500',
 }: KrwAmountInputProps) {

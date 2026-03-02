@@ -17,9 +17,9 @@ import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { queryKeys } from '../lib/queryKeys'
 
 const SEVERITY_DOT: Record<string, string> = {
-  urgent: 'bg-[var(--color-danger)]',
-  warning: 'bg-[var(--color-warning)]',
-  info: 'bg-[var(--color-secondary)]',
+  urgent: 'bg-red-500',
+  warning: 'bg-amber-500',
+  info: 'bg-sky-500',
 }
 
 const CATEGORY_ICON = {
@@ -71,8 +71,8 @@ export default function NotificationItem({ notification, onClose }: Notification
   return (
     <button
       type="button"
-      className={`w-full text-left px-4 py-3 flex gap-3 border-b border-[var(--theme-border)] hover:bg-[var(--theme-hover)] ${
-        !notification.is_read ? 'bg-[var(--theme-hover)]/50' : ''
+      className={`flex w-full gap-3 border-b border-slate-200 px-4 py-3 text-left hover:bg-slate-50 ${
+        !notification.is_read ? 'bg-slate-50/80' : ''
       }`}
       onClick={handleClick}
     >
@@ -82,13 +82,13 @@ export default function NotificationItem({ notification, onClose }: Notification
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5">
-          <Icon size={14} className="text-[var(--theme-text-secondary)]" />
-          <span className="text-sm font-medium truncate">{notification.title}</span>
+          <Icon size={14} className="text-slate-500" />
+          <span className="truncate text-sm font-medium text-slate-800">{notification.title}</span>
         </div>
         {notification.message && (
-          <p className="text-xs text-[var(--theme-text-secondary)] line-clamp-2">{notification.message}</p>
+          <p className="line-clamp-2 text-xs text-slate-500">{notification.message}</p>
         )}
-        <span className="text-[10px] text-[var(--theme-text-secondary)] mt-1 block">
+        <span className="mt-1 block text-[10px] text-slate-400">
           {notification.created_at ? formatRelativeTime(notification.created_at) : '-'}
         </span>
       </div>

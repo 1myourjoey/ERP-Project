@@ -185,7 +185,7 @@ function GPEntityForm({
           <input
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -193,7 +193,7 @@ function GPEntityForm({
           <select
             value={form.entity_type}
             onChange={(e) => setForm((prev) => ({ ...prev, entity_type: e.target.value as GPEntityInput['entity_type'] }))}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           >
             {ENTITY_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -207,7 +207,7 @@ function GPEntityForm({
           <input
             value={form.business_number || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, business_number: e.target.value }))}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -215,7 +215,7 @@ function GPEntityForm({
           <input
             value={form.representative || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, representative: e.target.value }))}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
         <div className="md:col-span-2">
@@ -223,7 +223,7 @@ function GPEntityForm({
           <input
             value={form.address || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="form-input"
           />
         </div>
       </div>
@@ -823,3 +823,4 @@ export default function FundsPage() {
     </div>
   )
 }
+

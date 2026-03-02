@@ -105,10 +105,12 @@ export function ConfirmDialog({
             <h3 className="text-base font-semibold">{title}</h3>
           </div>
 
-          <p className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>{message}</p>
+          <p className="text-sm text-slate-600">{message}</p>
           {detail && (
             <div className="warning-banner mt-3">
-              <div className="info-banner-icon">!</div>
+              <div className="info-banner-icon">
+                <AlertTriangle size={14} />
+              </div>
               <div className="info-banner-text text-xs">{detail}</div>
             </div>
           )}

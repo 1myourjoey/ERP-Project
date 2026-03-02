@@ -523,6 +523,17 @@ input[type="radio"] {
   line-height: 1;
 }
 
+.empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .empty-emoji-state .message {
   font-size: 14px;
   color: var(--color-text-secondary);

@@ -25,7 +25,7 @@ import {
   type UserRole,
   type UserUpdateInput,
 } from '../lib/api'
-import { labelRole } from '../lib/labels'
+import { labelRole, labelStatus } from '../lib/labels'
 
 const ROLE_OPTIONS: UserRole[] = ['master', 'admin', 'manager', 'viewer']
 const ROUTE_KEYS = [
@@ -310,7 +310,7 @@ export default function UsersPage() {
           <div className="space-y-2">
             {invitations.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2 text-sm">
-                <p>{row.name || row.email || '-'} · {labelRole(row.role)} · {row.status} · {toDateLabel(row.expires_at)}</p>
+                <p>{row.name || row.email || '-'} · {labelRole(row.role)} · {labelStatus(row.status)} · {toDateLabel(row.expires_at)}</p>
                 <div className="flex gap-2">
                   {row.status === 'pending' && (
                     <>

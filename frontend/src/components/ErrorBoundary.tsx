@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <p className="text-lg font-semibold" style={{ color: 'var(--color-danger)' }}>
                 페이지 로딩 중 오류가 발생했습니다
               </p>
-              <p className="mt-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+              <p className="mt-2 text-sm text-slate-500">
                 {this.state.error?.message}
               </p>
               <button

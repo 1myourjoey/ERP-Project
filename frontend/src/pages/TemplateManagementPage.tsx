@@ -35,30 +35,30 @@ const DEFAULT_OFFICIAL_CUSTOM: TemplateCustomData = {
     fax: '02-0000-0000',
   },
   body_text:
-    'Please review the requested update for {{fund_name}} and confirm the payment deadline for this notice.',
+    '{{fund_name}} 관련 업데이트 내용을 확인하시고 납입 기한을 검토해 주시기 바랍니다.',
   payment_info: {
     unit_price: '1,000,000',
-    bank_account: 'Bank account information',
+    bank_account: '납입 계좌 정보',
     note: '',
   },
-  attachments: [{ no: '1', name: 'Fund Agreement', ref: 'Attachment 1', stamp_required: false }],
-  required_documents_text: 'Copy of ID, personal seal certificate',
-  cover_attachments: ['General assembly notice'],
+  attachments: [{ no: '1', name: '조합 계약서', ref: '별첨 1', stamp_required: false }],
+  required_documents_text: '신분증 사본, 인감증명서',
+  cover_attachments: ['결성총회 소집통지서'],
 }
 
 const DEFAULT_ASSEMBLY_CUSTOM: TemplateCustomData = {
-  greeting: 'Thank you for your continued support.',
+  greeting: '항상 조합 운용에 협조해 주셔서 감사합니다.',
   regulation_article: 'Article 15',
   body_text:
-    'According to {{regulation_article}}, we are scheduling the assembly for {{fund_name}}. Please review and vote.',
-  agendas: ['Agenda 1: Confirm and approve the proposal'],
+    '{{regulation_article}}에 따라 {{fund_name}} 관련 안건에 대해 총회를 개최하오니 검토 후 의결해 주시기 바랍니다.',
+  agendas: ['안건 1: 제안사항 승인 여부'],
 }
 
 const DEFAULT_WRITTEN_RESOLUTION_CUSTOM: TemplateCustomData = {
   introduction_text:
-    'Because direct attendance is difficult, this written resolution is requested for the following agenda.',
-  agendas: ['Agenda 1: Confirm and approve the proposal'],
-  vote_note: '*Mark agree/disagree clearly for each item.',
+    '직접 참석이 어려워 아래 안건에 대해 서면결의를 요청드립니다.',
+  agendas: ['안건 1: 제안사항 승인 여부'],
+  vote_note: '*각 안건별 찬반을 명확히 표시해 주세요.',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -246,10 +246,10 @@ export default function TemplateManagementPage() {
       const parsed = parseCustomData(updatedTemplate.custom_data)
       setEditData(cloneCustomData(parsed))
       queryClient.invalidateQueries({ queryKey: ['documentTemplates'] })
-      addToast('success', 'Template settings saved.')
+      addToast('success', '템플릿 설정을 저장했습니다.')
     },
     onError: () => {
-      addToast('error', 'Failed to save template settings.')
+      addToast('error', '템플릿 설정 저장에 실패했습니다.')
     },
   })
 
@@ -271,7 +271,7 @@ export default function TemplateManagementPage() {
       setResolvedVariables(response.variables)
     },
     onError: () => {
-      addToast('error', 'Failed to resolve template variables.')
+      addToast('error', '템플릿 변수 확인에 실패했습니다.')
     },
   })
 
@@ -302,7 +302,7 @@ export default function TemplateManagementPage() {
       })
       downloadBlob(blob, `preview_${selectedTemplate.name}.docx`)
     } catch {
-      addToast('error', 'Failed to generate preview.')
+      addToast('error', '미리보기 생성에 실패했습니다.')
     }
   }
 
@@ -343,12 +343,12 @@ export default function TemplateManagementPage() {
   const handleResolveWizardVariables = async () => {
     const payload = buildWizardPayload()
     if (!payload) {
-      addToast('warning', 'Select template, fund, and LP before resolving variables.')
+      addToast('warning', '변수 확인 전 템플릿, 조합, LP를 선택하세요.')
       return
     }
     try {
       await resolveVariablesMutation.mutateAsync(payload)
-      addToast('success', 'Variables loaded from Fund/LP/GP data.')
+      addToast('success', 'Fund/LP/GP 데이터에서 변수를 불러왔습니다.')
     } catch {
       // handled in mutation
     }
@@ -357,7 +357,7 @@ export default function TemplateManagementPage() {
   const handleWizardPreview = async () => {
     const payload = buildWizardPayload()
     if (!payload) {
-      addToast('warning', 'Select template, fund, and LP before preview.')
+      addToast('warning', '미리보기 전 템플릿, 조합, LP를 선택하세요.')
       return
     }
     try {
@@ -371,7 +371,7 @@ export default function TemplateManagementPage() {
   const handleWizardGenerate = async () => {
     const payload = buildWizardPayload()
     if (!payload) {
-      addToast('warning', 'Select template, fund, and LP before generate.')
+      addToast('warning', '생성 전 템플릿, 조합, LP를 선택하세요.')
       return
     }
 
@@ -390,9 +390,9 @@ export default function TemplateManagementPage() {
       const generated = await wizardGenerateSingleMutation.mutateAsync(payload)
       const blob = await downloadTemplateGeneratedDocument(generated.document_id)
       downloadBlob(blob, generated.filename)
-      addToast('success', 'Document generated and downloaded.')
+      addToast('success', '문서를 생성하고 다운로드했습니다.')
     } catch {
-      addToast('error', 'Failed to generate document.')
+      addToast('error', '문서 생성에 실패했습니다.')
     }
   }
 
@@ -426,8 +426,8 @@ export default function TemplateManagementPage() {
     <div className="page-container space-y-4">
       <div className="page-header">
         <div>
-      <h2 className="page-title">🧩 Template Management</h2>
-          <p className="page-subtitle">Edit official templates and preview output before generating documents.</p>
+      <h2 className="page-title">템플릿 관리</h2>
+          <p className="page-subtitle">공문/결의서 템플릿을 수정하고 생성 전 미리보기를 확인하세요.</p>
         </div>
       </div>
 
@@ -436,13 +436,13 @@ export default function TemplateManagementPage() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="card-base space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-700">Template List</p>
+            <p className="text-sm font-semibold text-gray-700">템플릿 목록</p>
             <span className="text-xs text-gray-400">{templates.length}</span>
           </div>
           {isLoading ? (
             <PageLoading />
           ) : templates.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">No templates found.</p>
+            <p className="py-6 text-center text-sm text-gray-400">등록된 템플릿이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {templates.map((template) => {
@@ -458,7 +458,7 @@ export default function TemplateManagementPage() {
                     <p className="text-sm font-semibold text-gray-800">{template.name}</p>
                     <p className="mt-1 text-xs text-gray-500">{template.category}</p>
                     <p className="mt-2 text-[11px] text-gray-400">
-                      Updated: {formatTemplateDate(template.updated_at ?? template.created_at)}
+                      수정일: {formatTemplateDate(template.updated_at ?? template.created_at)}
                     </p>
                   </button>
                 )
@@ -472,7 +472,7 @@ export default function TemplateManagementPage() {
             isLoading ? (
               <PageLoading />
             ) : (
-              <p className="py-8 text-center text-sm text-gray-400">Select a template to continue.</p>
+              <p className="py-8 text-center text-sm text-gray-400">템플릿을 선택하면 상세 화면이 표시됩니다.</p>
             )
           ) : (
             <>
@@ -480,7 +480,7 @@ export default function TemplateManagementPage() {
                 <div className="space-y-1">
                   <p className="text-xl font-bold text-gray-800">{selectedTemplate.name}</p>
                   <p className="text-sm text-gray-500">
-                    {selectedTemplate.description?.trim() || 'No description'}
+                    {selectedTemplate.description?.trim() || '설명 없음'}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -496,7 +496,7 @@ export default function TemplateManagementPage() {
                     className="secondary-btn"
                     disabled={previewMutation.isPending}
                   >
-                    {previewMutation.isPending ? 'Previewing...' : 'Preview DOCX'}
+                    {previewMutation.isPending ? '미리보기 생성 중...' : 'DOCX 미리보기'}
                   </button>
                   <button
                     onClick={handleSave}
@@ -506,7 +506,7 @@ export default function TemplateManagementPage() {
                     {saveMutation.isPending ? 'Saving...' : 'Save'}
                   </button>
                   <button onClick={() => setEditorOpen(true)} className="primary-btn">
-                    Open Editor
+                    편집기 열기
                   </button>
                 </div>
               </div>
@@ -534,7 +534,7 @@ export default function TemplateManagementPage() {
 
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <label htmlFor="preview-fund" className="text-xs font-semibold uppercase text-gray-500">
-                    Preview Fund
+                    미리보기 기준 조합
                   </label>
                   <select
                     id="preview-fund"
@@ -542,7 +542,7 @@ export default function TemplateManagementPage() {
                     onChange={(event) => setPreviewFundId(event.target.value ? Number(event.target.value) : '')}
                     className="mt-2 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                   >
-                    <option value="">No fund context</option>
+                    <option value="">조합 컨텍스트 없음</option>
                     {funds.map((fund) => (
                       <option key={fund.id} value={fund.id}>
                         {fund.name}
@@ -550,7 +550,7 @@ export default function TemplateManagementPage() {
                     ))}
                   </select>
                   <p className="mt-2 text-xs text-gray-500">
-                    Fund data will be used for variable substitution during preview.
+                    미리보기 시 조합 데이터가 변수 치환에 사용됩니다.
                   </p>
                 </div>
               </div>
@@ -558,7 +558,7 @@ export default function TemplateManagementPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-3">
                 <p className="text-xs font-semibold uppercase text-gray-500">Variables</p>
                 {variables.length === 0 ? (
-                  <p className="mt-2 text-sm text-gray-500">No variable metadata is registered.</p>
+                  <p className="mt-2 text-sm text-gray-500">등록된 변수 메타데이터가 없습니다.</p>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {variables.map((variable) => (
@@ -576,26 +576,26 @@ export default function TemplateManagementPage() {
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">Document Generation Wizard</p>
-                    <p className="text-xs text-gray-500">Step 1-4 flow for single or all-LP document generation.</p>
+                    <p className="text-sm font-semibold text-gray-800">문서 생성 마법사</p>
+                    <p className="text-xs text-gray-500">단일 LP 또는 전체 LP 문서 생성을 1~4단계로 진행합니다.</p>
                   </div>
                   <button
                     onClick={handleResolveWizardVariables}
                     className="secondary-btn"
                     disabled={!canRunWizard || resolveVariablesMutation.isPending}
                   >
-                    {resolveVariablesMutation.isPending ? 'Loading Variables...' : 'Load Variables'}
+                    {resolveVariablesMutation.isPending ? '변수 로딩 중...' : '변수 불러오기'}
                   </button>
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
                   <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <p className="text-xs font-semibold uppercase text-gray-500">Step 1. Template</p>
+                    <p className="text-xs font-semibold uppercase text-gray-500">1단계. 템플릿</p>
                     <p className="mt-2 text-sm font-semibold text-gray-800">{selectedTemplate.name}</p>
                     <p className="mt-1 text-xs text-gray-500">{selectedTemplate.category}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {displayedMarkerKeys.length === 0 ? (
-                        <span className="text-xs text-gray-400">No marker metadata</span>
+                        <span className="text-xs text-gray-400">마커 메타데이터 없음</span>
                       ) : (
                         displayedMarkerKeys.slice(0, 10).map((marker) => (
                           <span
@@ -607,20 +607,20 @@ export default function TemplateManagementPage() {
                         ))
                       )}
                       {displayedMarkerKeys.length > 10 && (
-                        <span className="text-[11px] text-gray-500">+{displayedMarkerKeys.length - 10} more</span>
+                        <span className="text-[11px] text-gray-500">+{displayedMarkerKeys.length - 10}개 더보기</span>
                       )}
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <p className="text-xs font-semibold uppercase text-gray-500">Step 2. Target</p>
-                    <label className="mt-2 block text-xs text-gray-500">Fund</label>
+                    <p className="text-xs font-semibold uppercase text-gray-500">2단계. 대상 선택</p>
+                    <label className="mt-2 block text-xs text-gray-500">조합</label>
                     <select
                       value={wizardFundId}
                       onChange={(event) => setWizardFundId(event.target.value ? Number(event.target.value) : '')}
                       className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                     >
-                      <option value="">Select fund</option>
+                      <option value="">조합 선택</option>
                       {funds.map((fund) => (
                         <option key={fund.id} value={fund.id}>
                           {fund.name}
@@ -636,7 +636,7 @@ export default function TemplateManagementPage() {
                           checked={wizardMode === 'single'}
                           onChange={() => setWizardMode('single')}
                         />
-                        Single LP
+                        단일 LP
                       </label>
                       <label className="inline-flex items-center gap-2">
                         <input
@@ -645,7 +645,7 @@ export default function TemplateManagementPage() {
                           checked={wizardMode === 'bulk'}
                           onChange={() => setWizardMode('bulk')}
                         />
-                        Bulk (All LP)
+                        일괄(전체 LP)
                       </label>
                     </div>
 
@@ -657,7 +657,7 @@ export default function TemplateManagementPage() {
                           onChange={(event) => setWizardLpId(event.target.value ? Number(event.target.value) : '')}
                           className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                         >
-                          <option value="">Select LP</option>
+                          <option value="">LP 선택</option>
                           {wizardLps.map((lp) => (
                             <option key={lp.id} value={lp.id}>
                               {lp.name}
@@ -666,14 +666,14 @@ export default function TemplateManagementPage() {
                         </select>
                       </>
                     ) : (
-                      <p className="mt-2 text-xs text-gray-500">Bulk will generate one DOCX per LP in this fund.</p>
+                      <p className="mt-2 text-xs text-gray-500">일괄 생성 시 해당 조합의 LP별 DOCX가 1개씩 생성됩니다.</p>
                     )}
                   </div>
                 </div>
 
                 <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">Step 3. Variables</p>
-                  <label className="mt-2 block text-xs text-gray-500">Extra Vars (one per line, key=value)</label>
+                  <p className="text-xs font-semibold uppercase text-gray-500">3단계. 변수 확인</p>
+                  <label className="mt-2 block text-xs text-gray-500">추가 변수 (한 줄에 하나씩, key=value)</label>
                   <textarea
                     value={extraVarsText}
                     onChange={(event) => setExtraVarsText(event.target.value)}
@@ -683,7 +683,7 @@ export default function TemplateManagementPage() {
 
                   <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                     {displayedMarkerKeys.length === 0 ? (
-                      <p className="text-sm text-gray-500">No markers to edit.</p>
+                      <p className="text-sm text-gray-500">편집할 마커가 없습니다.</p>
                     ) : (
                       displayedMarkerKeys.map((key) => (
                         <label key={key} className="space-y-1">
@@ -709,14 +709,14 @@ export default function TemplateManagementPage() {
                 </div>
 
                 <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">Step 4. Preview & Generate</p>
+                  <p className="text-xs font-semibold uppercase text-gray-500">4단계. 미리보기 및 생성</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       onClick={handleWizardPreview}
                       className="secondary-btn"
                       disabled={!canRunWizard || wizardPreviewMutation.isPending}
                     >
-                      {wizardPreviewMutation.isPending ? 'Previewing...' : 'Preview'}
+                      {wizardPreviewMutation.isPending ? '미리보기 생성 중...' : '미리보기'}
                     </button>
                     <button
                       onClick={handleWizardGenerate}
@@ -728,10 +728,10 @@ export default function TemplateManagementPage() {
                       }
                     >
                       {wizardGenerateSingleMutation.isPending || wizardGenerateBulkMutation.isPending
-                        ? 'Generating...'
+                        ? '생성 중...'
                         : wizardMode === 'bulk'
-                          ? 'Generate Bulk'
-                          : 'Generate & Download'}
+                          ? '일괄 생성'
+                          : '생성 후 다운로드'}
                     </button>
                   </div>
 
@@ -753,7 +753,7 @@ export default function TemplateManagementPage() {
                               downloadBlob(blob, item.filename)
                             }}
                           >
-                            Download
+                            다운로드
                           </button>
                         </div>
                       ))}

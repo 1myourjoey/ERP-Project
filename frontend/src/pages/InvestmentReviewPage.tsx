@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -98,7 +98,7 @@ function ReviewForm({
           <input
             value={value.company_name}
             onChange={(e) => onChange({ ...value, company_name: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ function ReviewForm({
           <input
             value={value.sector || ''}
             onChange={(e) => onChange({ ...value, sector: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -115,7 +115,7 @@ function ReviewForm({
             value={value.stage || ''}
             onChange={(e) => onChange({ ...value, stage: e.target.value })}
             placeholder="Seed / Pre-A / Series A"
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -123,7 +123,7 @@ function ReviewForm({
           <input
             value={value.reviewer || ''}
             onChange={(e) => onChange({ ...value, reviewer: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -131,7 +131,7 @@ function ReviewForm({
           <input
             value={value.deal_source || ''}
             onChange={(e) => onChange({ ...value, deal_source: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -139,7 +139,7 @@ function ReviewForm({
           <select
             value={value.fund_id || ''}
             onChange={(e) => onChange({ ...value, fund_id: e.target.value ? Number(e.target.value) : null })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">선택</option>
             {funds.map((fund) => (
@@ -155,7 +155,7 @@ function ReviewForm({
             type="number"
             value={value.target_amount ?? ''}
             onChange={(e) => onChange({ ...value, target_amount: parseNumber(e.target.value) })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -164,7 +164,7 @@ function ReviewForm({
             value={value.instrument || ''}
             onChange={(e) => onChange({ ...value, instrument: e.target.value })}
             placeholder="보통주/RCPS/CB"
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -172,7 +172,7 @@ function ReviewForm({
           <select
             value={value.decision_result || ''}
             onChange={(e) => onChange({ ...value, decision_result: e.target.value })}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           >
             <option value="">미정</option>
             <option value="승인">승인</option>
@@ -187,7 +187,7 @@ function ReviewForm({
             value={value.review_opinion || ''}
             onChange={(e) => onChange({ ...value, review_opinion: e.target.value })}
             rows={3}
-            className="w-full rounded border px-2 py-1 text-sm"
+            className="form-input"
           />
         </div>
       </div>
@@ -650,7 +650,7 @@ export default function InvestmentReviewPage() {
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="코멘트 입력"
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     />
                     <button
                       className="secondary-btn"
@@ -671,3 +671,4 @@ export default function InvestmentReviewPage() {
     </div>
   )
 }
+

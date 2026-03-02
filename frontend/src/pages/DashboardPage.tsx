@@ -1,5 +1,6 @@
-﻿import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -155,13 +156,13 @@ export default function DashboardPage() {
   const baseDate = baseData?.date ?? new Date().toISOString().slice(0, 10)
   const thisWeekRangeLabel = useMemo(() => weekRangeLabelMondayToSunday(baseDate), [baseDate])
   const popupTitle = useMemo(() => {
-    if (popupSection === 'today') return '📋 오늘 업무'
-    if (popupSection === 'tomorrow') return '📆 내일 업무'
-    if (popupSection === 'this_week') return `📅 이번 주 업무 (${thisWeekRangeLabel})`
-    if (popupSection === 'workflows') return '🔄 진행 워크플로'
-    if (popupSection === 'documents') return '📁 미수집 서류'
-    if (popupSection === 'reports') return '📊 보고 마감'
-    return '✅ 오늘 완료'
+    if (popupSection === 'today') return '오늘 업무'
+    if (popupSection === 'tomorrow') return '내일 업무'
+    if (popupSection === 'this_week') return `이번 주 업무 (${thisWeekRangeLabel})`
+    if (popupSection === 'workflows') return '진행 워크플로'
+    if (popupSection === 'documents') return '미수집 서류'
+    if (popupSection === 'reports') return '보고 마감'
+    return '오늘 완료'
   }, [popupSection, thisWeekRangeLabel])
 
   const openQuickAdd = useCallback((target: 'today' | 'tomorrow', fundId?: number | null) => {
@@ -256,7 +257,9 @@ export default function DashboardPage() {
 
         {briefingData.urgent_notifications.length > 0 && (
           <div className="warning-banner">
-            <div className="info-banner-icon">⚠</div>
+            <div className="info-banner-icon">
+              <AlertTriangle size={14} />
+            </div>
             <div className="info-banner-text">
               긴급 알림 {briefingData.urgent_notifications.length}건
             </div>

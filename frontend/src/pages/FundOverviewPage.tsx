@@ -1,8 +1,11 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { BarChart3, CalendarDays, Download } from 'lucide-react'
+
 import EmptyState from '../components/EmptyState'
 import { fetchFundOverview, type FundOverviewItem } from '../lib/api'
+import { queryKeys } from '../lib/queryKeys'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -30,8 +33,13 @@ function formatPercent(value: number | null | undefined): string {
   return `${formatNumber(value, 2)}%`
 }
 
+function textOrDash(value: string | null | undefined): string {
+  if (!value) return '-'
+  return value
+}
+
 function getRatioClass(value: number | null | undefined): string {
-  if (value == null) return 'text-gray-600'
+  if (value == null) return 'text-slate-600'
   if (value > 80) return 'text-red-600'
   if (value > 50) return 'text-amber-600'
   return 'text-emerald-600'
@@ -42,7 +50,7 @@ export default function FundOverviewPage() {
   const [referenceDate, setReferenceDate] = useState<string>(todayIso())
 
   const { data, isLoading } = useQuery({
-    queryKey: ['fundOverview', referenceDate],
+    queryKey: [...queryKeys.funds.overview, referenceDate],
     queryFn: () => fetchFundOverview(referenceDate),
   })
 
@@ -82,144 +90,177 @@ export default function FundOverviewPage() {
     [totals],
   )
 
+  const tableHeadClass = 'table-head-cell whitespace-nowrap break-keep text-[11px] font-semibold leading-tight'
+  const tableBodyClass = 'table-body-cell whitespace-nowrap'
+  const tableNumberClass = `${tableBodyClass} text-right tabular-nums`
+
   return (
-    <div className="page-container space-y-6">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">조합 개요</h2>
-          <p className="page-subtitle">기준일 기준 조합별 핵심 지표를 비교합니다.</p>
+    <div className="page-container space-y-5">
+      <div className="page-header gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="page-title">투자개요</h2>
+          <p className="page-subtitle">기준일 기준 조합별 핵심 지표를 한눈에 비교합니다.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-700">
-            <span className="whitespace-nowrap">기준일</span>
+        <div className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:w-auto">
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <label
+              htmlFor="fund-overview-reference-date"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-slate-600"
+            >
+              <CalendarDays size={13} />
+              기준일
+            </label>
             <input
+              id="fund-overview-reference-date"
               type="date"
               value={referenceDate}
               onChange={(event) => setReferenceDate(event.target.value)}
-              className="form-input min-w-[170px]"
+              className="form-input h-9 w-[180px] min-w-[180px] bg-white"
             />
-          </label>
-          <button onClick={downloadExcel} className="primary-btn">
-            엑셀 다운로드
-          </button>
+            <button onClick={downloadExcel} className="primary-btn h-9 w-auto gap-1 whitespace-nowrap px-3">
+              <Download size={14} />
+              엑셀 다운로드
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="info-banner">
-        <div className="info-banner-icon" aria-hidden="true">ℹ️</div>
-        <p className="info-banner-text">조합을 클릭하여 상세 정보를 확인하세요.</p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpiCards.map((card) => (
-          <div key={card.label} className="card-base p-4">
-            <p className="text-xs text-gray-500">{card.label}</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{card.value}</p>
+          <div key={card.label} className="card-base !p-[10px]">
+            <p className="truncate text-[11px] font-medium text-slate-500">{card.label}</p>
+            <p
+              className="mt-1 truncate whitespace-nowrap text-base font-semibold leading-tight text-slate-900 sm:text-[17px]"
+              title={card.value}
+            >
+              {card.value}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="card-base overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-800">조합 비교표</h3>
-          <p className="text-xs text-gray-500">기준일: {effectiveReferenceDate} / 단위: 백만원</p>
+        <div className="flex flex-col items-start justify-between gap-1 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:gap-2">
+          <h3 className="text-sm font-semibold text-slate-800">조합 비교표</h3>
+          <p className="text-xs text-slate-500 sm:whitespace-nowrap">
+            기준일: {effectiveReferenceDate} · 단위: 백만원 · 총 {funds.length.toLocaleString('ko-KR')}개
+          </p>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-gray-500">데이터를 불러오는 중...</div>
+          <div className="p-8 text-center text-sm text-slate-500">데이터를 불러오는 중...</div>
         ) : funds.length === 0 ? (
-          <EmptyState emoji="🏦" message="표시할 조합이 없어요" className="py-10" />
+          <EmptyState icon={<BarChart3 size={20} />} message="표시할 조합이 없습니다." className="py-10" />
         ) : (
-          <div className="max-h-[calc(100vh-320px)] overflow-auto">
-            <table className="min-w-[1800px] w-full text-sm">
-              <thead className="table-head-row sticky top-0 z-20 border-b border-gray-200">
-                <tr>
-                  <th className="table-head-cell sticky left-0 z-30 bg-gray-50">NO</th>
-                  <th className="table-head-cell">조합명</th>
-                  <th className="table-head-cell">조합 구분</th>
-                  <th className="table-head-cell">상태</th>
-                  <th className="table-head-cell">대표 펀드매니저</th>
-                  <th className="table-head-cell">등록(성립)일</th>
-                  <th className="table-head-cell">투자기간 종료일</th>
-                  <th className="table-head-cell">투자기간 경과율</th>
-                  <th className="table-head-cell">청산시기(예정)</th>
-                  <th className="table-head-cell text-right">약정총액</th>
-                  <th className="table-head-cell text-right">납입총액</th>
-                  <th className="table-head-cell text-right">납입비율</th>
-                  <th className="table-head-cell text-right">GP출자금</th>
-                  <th className="table-head-cell text-right">투자총액</th>
-                  <th className="table-head-cell text-right">미투자액</th>
-                  <th className="table-head-cell text-right">투자자산</th>
-                  <th className="table-head-cell text-right">투자업체수</th>
-                  <th className="table-head-cell text-right">진행 워크플로</th>
-                  <th className="table-head-cell text-right">미완료 업무</th>
-                  <th className="table-head-cell text-right">기준수익률(규약)</th>
-                  <th className="table-head-cell">잔존기간</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funds.map((fund: FundOverviewItem) => (
-                  <tr
-                    key={fund.id}
-                    onClick={() => navigate(`/funds/${fund.id}`)}
-                    className="cursor-pointer border-t border-gray-100 hover:bg-gray-50"
-                  >
-                    <td className="table-body-cell sticky left-0 z-10 bg-white font-medium">{fund.no}</td>
-                    <td className="table-body-cell font-medium text-gray-900">{fund.name}</td>
-                    <td className="table-body-cell text-gray-700">{fund.fund_type}</td>
-                    <td className="table-body-cell">
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                        {fund.status || '-'}
-                      </span>
-                    </td>
-                    <td className="table-body-cell text-gray-700">{fund.fund_manager || '-'}</td>
-                    <td className="table-body-cell text-gray-600">{fund.registration_date || fund.formation_date || '-'}</td>
-                    <td className="table-body-cell text-gray-600">{fund.investment_period_end || '-'}</td>
-                    <td className={`table-body-cell font-medium ${getRatioClass(fund.investment_period_progress)}`}>
-                      <div>{formatPercent(fund.investment_period_progress)}</div>
-                      <div className="mt-1 h-1.5 w-full rounded-full bg-gray-100">
-                        <div
-                          className="h-1.5 rounded-full bg-blue-500"
-                          style={{ width: `${Math.max(0, Math.min(100, fund.investment_period_progress || 0))}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="table-body-cell text-gray-600">{fund.maturity_date || '-'}</td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.commitment_total)}</td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.total_paid_in)}</td>
-                    <td className={`table-body-cell text-right font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
-                      {formatPercent(fund.paid_in_ratio)}
-                    </td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.gp_commitment)}</td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.total_invested)}</td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.uninvested)}</td>
-                    <td className="table-body-cell text-right">{formatMillion(fund.investment_assets)}</td>
-                    <td className="table-body-cell text-right">{formatNumber(fund.company_count)}</td>
-                    <td className="table-body-cell text-right">{formatNumber(fund.active_workflow_count)}</td>
-                    <td className="table-body-cell text-right">{formatNumber(fund.pending_task_count)}</td>
-                    <td className="table-body-cell text-right">{formatPercent(fund.hurdle_rate)}</td>
-                    <td className="table-body-cell text-gray-700">{fund.remaining_period || '-'}</td>
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-30 w-5 bg-gradient-to-l from-white to-transparent" aria-hidden="true" />
+            <div className="max-h-[calc(100vh-330px)] overflow-auto">
+              <table className="w-max min-w-[2080px] text-sm">
+                <thead className="table-head-row sticky top-0 z-20 border-b border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className={`${tableHeadClass} sticky left-0 z-30 min-w-[58px] bg-slate-50 text-center`}>NO</th>
+                    <th className={`${tableHeadClass} min-w-[220px]`}>조합명</th>
+                    <th className={`${tableHeadClass} min-w-[120px]`}>조합 구분</th>
+                    <th className={`${tableHeadClass} min-w-[100px]`}>상태</th>
+                    <th className={`${tableHeadClass} min-w-[140px]`}>대표 펀드매니저</th>
+                    <th className={`${tableHeadClass} min-w-[120px]`}>등록(성립)일</th>
+                    <th className={`${tableHeadClass} min-w-[120px]`}>투자기간 종료일</th>
+                    <th className={`${tableHeadClass} min-w-[130px]`}>투자기간 경과율</th>
+                    <th className={`${tableHeadClass} min-w-[120px]`}>청산시기(예정)</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>약정총액</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>납입총액</th>
+                    <th className={`${tableHeadClass} min-w-[96px] text-right`}>납입비율</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>GP출자금</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>투자총액</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>미투자액</th>
+                    <th className={`${tableHeadClass} min-w-[118px] text-right`}>투자자산</th>
+                    <th className={`${tableHeadClass} min-w-[96px] text-right`}>투자업체수</th>
+                    <th className={`${tableHeadClass} min-w-[112px] text-right`}>진행 워크플로</th>
+                    <th className={`${tableHeadClass} min-w-[108px] text-right`}>미완료 업무</th>
+                    <th className={`${tableHeadClass} min-w-[126px] text-right`}>기준수익률(규약)</th>
+                    <th className={`${tableHeadClass} min-w-[120px]`}>잔존기간</th>
                   </tr>
-                ))}
-                <tr className="sticky bottom-0 z-20 border-t-2 border-gray-900 bg-gray-100 font-semibold text-gray-900 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-                  <td className="sticky left-0 z-30 bg-gray-100 px-3 py-3" colSpan={9}>
-                    합계
-                  </td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.commitment_total)}</td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.total_paid_in)}</td>
-                  <td className="px-3 py-3 text-right">-</td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.gp_commitment)}</td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.total_invested)}</td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.uninvested)}</td>
-                  <td className="px-3 py-3 text-right">{formatMillion(totals?.investment_assets)}</td>
-                  <td className="px-3 py-3 text-right">{formatNumber(totals?.company_count)}</td>
-                  <td className="px-3 py-3 text-right">{formatNumber(totals?.active_workflow_count)}</td>
-                  <td className="px-3 py-3 text-right">{formatNumber(totals?.pending_task_count)}</td>
-                  <td className="px-3 py-3 text-right">-</td>
-                  <td className="px-3 py-3 text-right">-</td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {funds.map((fund: FundOverviewItem) => (
+                    <tr
+                      key={fund.id}
+                      onClick={() => navigate(`/funds/${fund.id}`)}
+                      className="group cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                    >
+                      <td className={`${tableBodyClass} sticky left-0 z-10 bg-white text-center font-medium group-hover:bg-slate-50`}>
+                        {fund.no}
+                      </td>
+                      <td className={`${tableBodyClass} font-medium text-slate-900`}>
+                        <span className="block max-w-[220px] truncate" title={fund.name}>
+                          {fund.name}
+                        </span>
+                      </td>
+                      <td className={`${tableBodyClass} text-slate-700`}>
+                        <span className="block max-w-[120px] truncate" title={textOrDash(fund.fund_type)}>
+                          {textOrDash(fund.fund_type)}
+                        </span>
+                      </td>
+                      <td className={tableBodyClass}>
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                          {textOrDash(fund.status)}
+                        </span>
+                      </td>
+                      <td className={`${tableBodyClass} text-slate-700`}>
+                        <span className="block max-w-[140px] truncate" title={textOrDash(fund.fund_manager)}>
+                          {textOrDash(fund.fund_manager)}
+                        </span>
+                      </td>
+                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.registration_date || fund.formation_date)}</td>
+                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.investment_period_end)}</td>
+                      <td className={`${tableBodyClass} min-w-[130px]`}>
+                        <div className={`font-semibold ${getRatioClass(fund.investment_period_progress)}`}>
+                          {formatPercent(fund.investment_period_progress)}
+                        </div>
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
+                          <div
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{ width: `${Math.max(0, Math.min(100, fund.investment_period_progress || 0))}%` }}
+                          />
+                        </div>
+                      </td>
+                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.maturity_date)}</td>
+                      <td className={tableNumberClass}>{formatMillion(fund.commitment_total)}</td>
+                      <td className={tableNumberClass}>{formatMillion(fund.total_paid_in)}</td>
+                      <td className={`${tableNumberClass} font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
+                        {formatPercent(fund.paid_in_ratio)}
+                      </td>
+                      <td className={tableNumberClass}>{formatMillion(fund.gp_commitment)}</td>
+                      <td className={tableNumberClass}>{formatMillion(fund.total_invested)}</td>
+                      <td className={tableNumberClass}>{formatMillion(fund.uninvested)}</td>
+                      <td className={tableNumberClass}>{formatMillion(fund.investment_assets)}</td>
+                      <td className={tableNumberClass}>{formatNumber(fund.company_count)}</td>
+                      <td className={tableNumberClass}>{formatNumber(fund.active_workflow_count)}</td>
+                      <td className={tableNumberClass}>{formatNumber(fund.pending_task_count)}</td>
+                      <td className={tableNumberClass}>{formatPercent(fund.hurdle_rate)}</td>
+                      <td className={`${tableBodyClass} text-slate-700`}>{textOrDash(fund.remaining_period)}</td>
+                    </tr>
+                  ))}
+                  <tr className="sticky bottom-0 z-20 border-t-2 border-slate-900 bg-slate-100 font-semibold text-slate-900 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
+                    <td className="sticky left-0 z-30 bg-slate-100 px-3 py-3 whitespace-nowrap" colSpan={9}>
+                      합계
+                    </td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.commitment_total)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.total_paid_in)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">-</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.gp_commitment)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.total_invested)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.uninvested)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.investment_assets)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatNumber(totals?.company_count)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatNumber(totals?.active_workflow_count)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">{formatNumber(totals?.pending_task_count)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">-</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

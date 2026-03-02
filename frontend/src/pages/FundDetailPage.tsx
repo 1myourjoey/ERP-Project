@@ -738,7 +738,7 @@ function LPForm({
                 address: selected.address || '',
               }))
             }}
-            className="w-full px-2 py-1 text-sm border rounded"
+            className="form-input"
           >
             <option value="">주소록 선택</option>
             {addressBooks.map((book) => (
@@ -749,10 +749,10 @@ function LPForm({
             ))}
           </select>
         </div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="form-input" /></div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">LP 유형</label>
-          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-2 py-1 text-sm border rounded">
+          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="form-input">
             {LP_TYPE_OPTIONS.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
@@ -764,7 +764,7 @@ function LPForm({
             value={form.commitment ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, commitment: next }))}
             placeholder="약정액"
-            className="w-full px-2 py-1 text-sm border rounded"
+            className="form-input"
           />
         </div>
         <div>
@@ -773,12 +773,12 @@ function LPForm({
             value={form.paid_in ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, paid_in: next }))}
             placeholder="납입액"
-            className="w-full px-2 py-1 text-sm border rounded"
+            className="form-input"
           />
         </div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="w-full px-2 py-1 text-sm border rounded" /></div>
-        <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-gray-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="w-full px-2 py-1 text-sm border rounded" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="form-input" /></div>
+        <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-gray-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="form-input" /></div>
       </div>
       <div className="flex gap-2">
         <button
@@ -2400,7 +2400,7 @@ export default function FundDetailPage() {
                       type="date"
                       value={newDistribution.dist_date}
                       onChange={(event) => setNewDistribution((prev) => ({ ...prev, dist_date: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     />
                   </div>
                   <div>
@@ -2408,7 +2408,7 @@ export default function FundDetailPage() {
                     <select
                       value={newDistribution.dist_type}
                       onChange={(event) => setNewDistribution((prev) => ({ ...prev, dist_type: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     >
                       {DIST_TYPE_OPTIONS.map((type) => (
                         <option key={type} value={type}>{labelDistributionType(type)}</option>
@@ -2422,7 +2422,7 @@ export default function FundDetailPage() {
                       onChange={(next) =>
                         setNewDistribution((prev) => ({ ...prev, principal_total: next ?? 0 }))
                       }
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                       helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
@@ -2433,7 +2433,7 @@ export default function FundDetailPage() {
                       onChange={(next) =>
                         setNewDistribution((prev) => ({ ...prev, profit_total: next ?? 0 }))
                       }
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                       helperClassName="mt-1 text-[10px] text-gray-500"
                     />
                   </div>
@@ -2498,7 +2498,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditDistribution((prev) => (prev ? { ...prev, dist_date: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             />
                           </div>
                           <div>
@@ -2508,7 +2508,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditDistribution((prev) => (prev ? { ...prev, dist_type: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             >
                               {DIST_TYPE_OPTIONS.map((type) => (
                                 <option key={type} value={type}>{labelDistributionType(type)}</option>
@@ -2524,7 +2524,7 @@ export default function FundDetailPage() {
                                   prev ? { ...prev, principal_total: next ?? 0 } : prev
                                 )
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                               helperClassName="mt-1 text-[10px] text-gray-500"
                             />
                           </div>
@@ -2537,7 +2537,7 @@ export default function FundDetailPage() {
                                   prev ? { ...prev, profit_total: next ?? 0 } : prev
                                 )
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                               helperClassName="mt-1 text-[10px] text-gray-500"
                             />
                           </div>
@@ -2583,7 +2583,7 @@ export default function FundDetailPage() {
                                 onChange={(event) =>
                                   setNewDistributionItem((prev) => ({ ...prev, lp_id: Number(event.target.value) || 0 }))
                                 }
-                                className="w-full rounded border px-2 py-1 text-sm"
+                                className="form-input"
                               >
                                 <option value="">LP</option>
                                 {(fundDetail.lps ?? []).map((lp) => (
@@ -2598,7 +2598,7 @@ export default function FundDetailPage() {
                                 onChange={(next) =>
                                   setNewDistributionItem((prev) => ({ ...prev, principal: next ?? 0 }))
                                 }
-                                className="w-full rounded border px-2 py-1 text-sm"
+                                className="form-input"
                                 helperClassName="mt-1 text-[10px] text-gray-500"
                               />
                             </div>
@@ -2609,7 +2609,7 @@ export default function FundDetailPage() {
                                 onChange={(next) =>
                                   setNewDistributionItem((prev) => ({ ...prev, profit: next ?? 0 }))
                                 }
-                                className="w-full rounded border px-2 py-1 text-sm"
+                                className="form-input"
                                 helperClassName="mt-1 text-[10px] text-gray-500"
                               />
                             </div>
@@ -2640,7 +2640,7 @@ export default function FundDetailPage() {
                                             prev ? { ...prev, principal: next ?? 0 } : prev
                                           )
                                         }
-                                        className="w-full rounded border px-2 py-1 text-sm"
+                                        className="form-input"
                                         helperClassName="mt-1 text-[10px] text-gray-500"
                                       />
                                     </div>
@@ -2653,7 +2653,7 @@ export default function FundDetailPage() {
                                             prev ? { ...prev, profit: next ?? 0 } : prev
                                           )
                                         }
-                                        className="w-full rounded border px-2 py-1 text-sm"
+                                        className="form-input"
                                         helperClassName="mt-1 text-[10px] text-gray-500"
                                       />
                                     </div>
@@ -2784,7 +2784,7 @@ export default function FundDetailPage() {
                         value={row.label}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
                         placeholder="표시명"
-                        className="w-full rounded border px-2 py-1 text-sm"
+                        className="form-input"
                       />
                     </div>
                     <div className="md:col-span-4">
@@ -2814,7 +2814,7 @@ export default function FundDetailPage() {
                         value={row.memo || ''}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
                         placeholder="메모 / 조항"
-                        className="w-full rounded border px-2 py-1 text-sm"
+                        className="form-input"
                       />
                     </div>
                     <button
@@ -2903,7 +2903,7 @@ export default function FundDetailPage() {
                         value={row.category}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, category: e.target.value } : item))}
                         placeholder="카테고리"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="form-input"
                       />
                     </div>
                     <div className="md:col-span-3">
@@ -2912,7 +2912,7 @@ export default function FundDetailPage() {
                         value={row.label}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
                         placeholder="조항"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="form-input"
                       />
                     </div>
                     <div className="md:col-span-5">
@@ -2921,7 +2921,7 @@ export default function FundDetailPage() {
                         value={row.value}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, value: e.target.value } : item))}
                         placeholder="내용"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="form-input"
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -2930,7 +2930,7 @@ export default function FundDetailPage() {
                         value={row.article_ref || ''}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, article_ref: e.target.value } : item))}
                         placeholder="조문"
-                        className="w-full px-2 py-1 text-sm border rounded"
+                        className="form-input"
                       />
                     </div>
                     <div className="md:col-span-2 flex gap-1">
@@ -3000,7 +3000,7 @@ export default function FundDetailPage() {
                       type="date"
                       value={newAssembly.date}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, date: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     />
                   </div>
                   <div>
@@ -3008,7 +3008,7 @@ export default function FundDetailPage() {
                     <select
                       value={newAssembly.type}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, type: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     >
                       {ASSEMBLY_TYPE_OPTIONS.map((type) => (
                         <option key={type} value={type}>{labelAssemblyType(type)}</option>
@@ -3020,7 +3020,7 @@ export default function FundDetailPage() {
                     <select
                       value={newAssembly.status || ''}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, status: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                     >
                       {ASSEMBLY_STATUS_OPTIONS.map((status) => (
                         <option key={status} value={status}>{labelStatus(status)}</option>
@@ -3032,7 +3032,7 @@ export default function FundDetailPage() {
                     <input
                       value={newAssembly.agenda || ''}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, agenda: event.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="form-input"
                       placeholder="선택 입력"
                     />
                   </div>
@@ -3089,7 +3089,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditAssembly((prev) => (prev ? { ...prev, date: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             />
                           </div>
                           <div>
@@ -3099,7 +3099,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditAssembly((prev) => (prev ? { ...prev, type: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             >
                               {ASSEMBLY_TYPE_OPTIONS.map((type) => (
                                 <option key={type} value={type}>{labelAssemblyType(type)}</option>
@@ -3113,7 +3113,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditAssembly((prev) => (prev ? { ...prev, status: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             >
                               {ASSEMBLY_STATUS_OPTIONS.map((status) => (
                                 <option key={status} value={status}>{labelStatus(status)}</option>
@@ -3127,7 +3127,7 @@ export default function FundDetailPage() {
                               onChange={(event) =>
                                 setEditAssembly((prev) => (prev ? { ...prev, agenda: event.target.value } : prev))
                               }
-                              className="w-full rounded border px-2 py-1 text-sm"
+                              className="form-input"
                             />
                           </div>
                           <div className="flex gap-1">
@@ -3449,4 +3449,5 @@ export default function FundDetailPage() {
     </div>
   )
 }
+
 

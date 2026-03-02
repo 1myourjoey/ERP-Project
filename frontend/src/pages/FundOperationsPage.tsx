@@ -176,7 +176,7 @@ export default function FundOperationsPage() {
                     setSelectedCapitalCallId(null)
                     setSelectedDistributionId(null)
                   }}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">조합 선택</option>
                   {funds.map((fund) => (
@@ -220,7 +220,7 @@ export default function FundOperationsPage() {
                 <select
                   value={selectedCapitalCallId || ''}
                   onChange={(e) => setSelectedCapitalCallId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">출자요청 선택</option>
                   {capitalCalls.map((row) => (
@@ -294,7 +294,7 @@ export default function FundOperationsPage() {
                 <select
                   value={selectedDistributionId || ''}
                   onChange={(e) => setSelectedDistributionId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full rounded border px-2 py-1 text-sm"
+                  className="form-input"
                 >
                   <option value="">배분 선택</option>
                   {distributions.map((row) => (
@@ -345,3 +345,4 @@ export default function FundOperationsPage() {
     </div>
   )
 }
+

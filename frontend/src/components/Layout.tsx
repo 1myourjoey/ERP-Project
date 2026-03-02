@@ -76,6 +76,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
     label: '펀드',
     items: [
       { to: '/funds', label: '펀드', icon: Building2 },
+      { to: '/fund-overview', label: '투자개요', icon: BarChart3 },
       { to: '/investments', label: '투자', icon: PieChart },
       { to: '/exits', label: '엑시트', icon: TrendingDown },
     ],
@@ -86,6 +87,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
       { to: '/accounting', label: '회계', icon: Calculator },
       { to: '/fee-management', label: '수수료', icon: Landmark },
       { to: '/cashflow', label: '현금흐름', icon: LineChart },
+      { to: '/provisional-fs', label: '가결산', icon: BarChart3 },
     ],
   },
   {
@@ -279,7 +281,7 @@ export default function Layout() {
                             }`}
                           >
                             <Icon size={16} />
-                            <span>{label}</span>
+                            <span className="whitespace-nowrap">{label}</span>
                           </NavLink>
                         )
                       })}
