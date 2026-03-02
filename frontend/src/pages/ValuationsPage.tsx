@@ -512,7 +512,7 @@ export default function ValuationsPage() {
                         <span>{toDateLabel(row.valuation_date || row.as_of_date)}</span>
                         <span>{formatKRW(value)}</span>
                       </div>
-                      <div className="h-2 rounded bg-[#fff7d6]">
+                      <div className="h-2 rounded bg-[#f5f9ff]">
                         <div className="h-2 rounded bg-[#558ef8]" style={{ width: `${width}%` }} />
                       </div>
                       <div className="mt-1 text-[11px] text-[#64748b]">

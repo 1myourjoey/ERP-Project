@@ -123,15 +123,15 @@ function DashboardRightPanel({
       {quickCollapsed ? (
         <div className="card-base dashboard-card">
           <div className="flex flex-wrap gap-3 text-xs text-[#64748b]">
-            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">조합 {uniqueFunds.length}건</span>
-            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">보고 마감 {reports.length}건</span>
-            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
-            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
+            <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1">조합 {uniqueFunds.length}건</span>
+            <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1">보고 마감 {reports.length}건</span>
+            <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
+            <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
           </div>
         </div>
       ) : (
         <>
-          <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-0.5">
+          <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-0.5">
             {RIGHT_TABS.map((tab) => {
               const count = tabCount[tab.key]
               return (
@@ -337,7 +337,7 @@ function DashboardRightPanel({
       <div className="card-base dashboard-card">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-emerald-700">완료 업무</h3>
-          <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-0.5 text-xs">
+          <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-0.5 text-xs">
             {(['today', 'this_week', 'last_week'] as const).map((key) => (
               <button
                 key={key}

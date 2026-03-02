@@ -228,7 +228,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="rounded-lg p-1.5 text-[#fff7d6] hover:bg-[#558ef8]/20 md:hidden"
+              className="rounded-lg p-1.5 text-[#f5f9ff] hover:bg-[#558ef8]/20 md:hidden"
               aria-label="메뉴 열기"
             >
               <Menu size={20} />
@@ -296,7 +296,7 @@ export default function Layout() {
             <div className="relative">
               <button
                 type="button"
-                className="icon-btn relative !text-[#fff7d6] hover:!bg-[#558ef8]/20 hover:!text-white"
+                className="icon-btn relative !text-[#f5f9ff] hover:!bg-[#558ef8]/20 hover:!text-white"
                 aria-label={`알림 ${unreadCount}건`}
                 onClick={() => {
                   setOpenDropdown(null)
@@ -315,7 +315,7 @@ export default function Layout() {
             </div>
             <button
               onClick={() => setSearchOpen(true)}
-              className="secondary-btn btn-sm gap-2 !border-[#d8e5fb] !bg-[#fff7d6] !text-[#0f1f3d] hover:!bg-white"
+              className="secondary-btn btn-sm gap-2 !border-[#d8e5fb] !bg-[#f5f9ff] !text-[#0f1f3d] hover:!bg-white"
             >
               <Search size={14} />
               <span className="hidden sm:inline">검색</span>
@@ -328,7 +328,7 @@ export default function Layout() {
                   setNotificationPanelOpen(false)
                   setUserMenuOpen((prev) => !prev)
                 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#d8e5fb] bg-[#fff7d6] px-2 py-1.5 text-xs text-[#0f1f3d] hover:bg-white"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-1.5 text-xs text-[#0f1f3d] hover:bg-white"
               >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
@@ -380,7 +380,7 @@ export default function Layout() {
               <img src="/logo.svg" alt="V:ON" className="h-6 w-auto" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#fff7d6]"
+                className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#f5f9ff]"
                 aria-label="메뉴 닫기"
               >
                 <X size={20} />

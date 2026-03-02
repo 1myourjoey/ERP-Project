@@ -75,7 +75,7 @@ function eventTone(event: CalendarEvent) {
   if (tone === 'overdue') return 'tag tag-red'
   if (tone === 'today') return 'rounded bg-orange-100 px-2 py-1 text-orange-700'
   if (tone === 'this_week') return 'rounded bg-amber-100 px-2 py-1 text-amber-700'
-  if (tone === 'none') return 'rounded bg-[#fff7d6] px-2 py-1 text-[#64748b]'
+  if (tone === 'none') return 'rounded bg-[#f5f9ff] px-2 py-1 text-[#64748b]'
   return 'tag tag-blue'
 }
 
@@ -197,13 +197,13 @@ export default function CalendarPage() {
             </select>
           </div>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
             onClick={() => setView('calendar')}
           >
             월별
           </button>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
             onClick={() => setView('list')}
           >
             리스트
@@ -234,21 +234,21 @@ export default function CalendarPage() {
           <div className="card-base flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                className="px-2 py-1 text-sm bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
+                className="px-2 py-1 text-sm bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
               >
                 &lt;
               </button>
               <h3 className="text-sm font-semibold text-[#0f1f3d]">{monthLabel}</h3>
               <button
-                className="px-2 py-1 text-sm bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
+                className="px-2 py-1 text-sm bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
               >
                 &gt;
               </button>
             </div>
             <button
-              className="text-xs px-2 py-1 bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
+              className="text-xs px-2 py-1 bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
               onClick={() => {
                 const now = new Date()
                 setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))

@@ -114,8 +114,8 @@ export default function CashFlowPage() {
               onClick={() => setSelectedFundId(item.fund_id)}
               className={`rounded border px-3 py-2 text-left transition-colors ${
                 selectedFundId === item.fund_id
-                  ? 'border-[var(--color-primary)] bg-[#fff7d6]'
-                  : 'border-[#d8e5fb] hover:bg-[#fff7d6]'
+                  ? 'border-[var(--color-primary)] bg-[#f5f9ff]'
+                  : 'border-[#d8e5fb] hover:bg-[#f5f9ff]'
               }`}
             >
               <p className="text-xs text-[#64748b]">{item.fund_name}</p>

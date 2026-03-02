@@ -486,7 +486,7 @@ export default function InvestmentDetailPage() {
                         <p className="text-sm font-medium text-[#0f1f3d]">{checklist.name}</p>
                         <span className="text-xs text-[#64748b]">{checklist.checked_items}/{checklist.total_items}</span>
                       </div>
-                      <div className="mt-1 h-2 w-full rounded-full bg-[#fff7d6]">
+                      <div className="mt-1 h-2 w-full rounded-full bg-[#f5f9ff]">
                         <div className="h-2 rounded-full bg-[#558ef8]" style={{ width: `${progress}%` }} />
                       </div>
                     </button>
@@ -673,7 +673,7 @@ export default function InvestmentDetailPage() {
                       <td className="px-2 py-2">
                         <div className="flex gap-1">
                           <button
-                            className="rounded bg-[#fff7d6] px-2 py-0.5 text-xs"
+                            className="rounded bg-[#f5f9ff] px-2 py-0.5 text-xs"
                             onClick={() => setEditingVoteId(record.id)}
                           >
                             수정
@@ -733,7 +733,7 @@ export default function InvestmentDetailPage() {
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#64748b]">기준 투자금</label>
-                  <input value={formatNumber(exitSimulation.invested)} disabled className="w-full rounded border bg-[#fff7d6] px-2 py-1 text-sm" />
+                  <input value={formatNumber(exitSimulation.invested)} disabled className="w-full rounded border bg-[#f5f9ff] px-2 py-1 text-sm" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#64748b]">회수 배수(MOIC)</label>

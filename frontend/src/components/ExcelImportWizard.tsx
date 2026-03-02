@@ -75,7 +75,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
             {[1, 2, 3].map((value) => (
               <div
                 key={value}
-                className={`rounded-full px-2 py-1 ${step === value ? 'bg-[#fff7d6] font-semibold' : 'bg-[#f5f9ff]'}`}
+                className={`rounded-full px-2 py-1 ${step === value ? 'bg-[#f5f9ff] font-semibold' : 'bg-[#f5f9ff]'}`}
               >
                 Step {value}
               </div>

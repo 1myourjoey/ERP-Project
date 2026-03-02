@@ -116,7 +116,7 @@ export default function SearchModal({
               placeholder="업무, 워크플로, 펀드 검색..."
               className="w-full bg-transparent text-sm outline-none"
             />
-            <button className="rounded p-1 text-[#94a3b8] hover:bg-[#fff7d6] hover:text-[#0f1f3d]" onClick={handleClose}>
+            <button className="rounded p-1 text-[#94a3b8] hover:bg-[#f5f9ff] hover:text-[#0f1f3d]" onClick={handleClose}>
               <X size={16} />
             </button>
           </div>
@@ -153,7 +153,7 @@ export default function SearchModal({
                           navigate(item.url)
                           handleClose()
                         }}
-                        className="w-full rounded-lg px-2 py-2 text-left hover:bg-[#fff7d6]"
+                        className="w-full rounded-lg px-2 py-2 text-left hover:bg-[#f5f9ff]"
                       >
                         <div className="flex items-center gap-2">
                           <ItemIcon size={14} className="shrink-0 text-[#94a3b8]" />

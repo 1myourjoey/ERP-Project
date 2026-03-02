@@ -120,7 +120,7 @@ export default function FileAttachmentPanel({
           <Paperclip size={14} className="text-[#64748b]" />
           {label}
         </p>
-        <span className="rounded-full bg-[#fff7d6] px-2 py-0.5 text-[11px] text-[#64748b]">
+        <span className="rounded-full bg-[#f5f9ff] px-2 py-0.5 text-[11px] text-[#64748b]">
           {normalizedIds.length}건
         </span>
       </div>

@@ -104,7 +104,7 @@ export default function CompleteModal({
           <p className="mb-1 text-sm text-[#0f1f3d]">{task.title}</p>
           <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
             {task.fund_name && <p className="text-[#558ef8]">{task.fund_name}</p>}
-            {task.category && <p className="rounded-full bg-[#fff7d6] px-2 py-0.5 text-[#64748b]">{task.category}</p>}
+            {task.category && <p className="rounded-full bg-[#f5f9ff] px-2 py-0.5 text-[#64748b]">{task.category}</p>}
           </div>
 
           <div className="mb-3 overflow-hidden rounded-lg border border-amber-200 bg-amber-50">

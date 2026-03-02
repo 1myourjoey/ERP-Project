@@ -440,7 +440,7 @@ function FundForm({
                   </p>
                   <button
                     onClick={() => setLps((prev) => prev.filter((row) => row._id !== lp._id))}
-                    className="rounded border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#fff7d6]"
+                    className="rounded border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#f5f9ff]"
                   >
                     삭제
                   </button>
@@ -736,7 +736,7 @@ export default function FundsPage() {
             {migrationValidation.errors.length > 0 && (
               <div className="mt-2 max-h-48 overflow-auto rounded border border-[#d8e5fb] bg-white">
                 <table className="w-full text-xs">
-                  <thead className="bg-[#fff7d6] text-[#64748b]">
+                  <thead className="bg-[#f5f9ff] text-[#64748b]">
                     <tr>
                       <th className="px-2 py-1 text-left">row</th>
                       <th className="px-2 py-1 text-left">column</th>

@@ -18,7 +18,7 @@
   /* Brand */
   --color-primary: #0f1f3d;
   --color-primary-dark: #0a1630;
-  --color-primary-light: #fff7d6;
+  --color-primary-light: #f5f9ff;
   --color-accent: #558ef8;
   --color-accent-strong: #3f79e0;
   --color-danger: #bfa5a7;
@@ -27,7 +27,7 @@
   /* Neutral */
   --color-bg: #f5f9ff;
   --color-surface: #ffffff;
-  --color-surface-subtle: #fff7d6;
+  --color-surface-subtle: #f5f9ff;
   --color-border: #d8e5fb;
   --color-border-strong: #bfcff0;
   --color-text: #0f1f3d;
@@ -52,7 +52,7 @@
   --tag-purple-text: #5846a0;
   --tag-indigo-bg: #ebefff;
   --tag-indigo-text: #2f4f96;
-  --tag-gray-bg: #fff7d6;
+  --tag-gray-bg: #f5f9ff;
   --tag-gray-text: #475569;
   --tag-emerald-bg: #e8f4ef;
   --tag-emerald-text: #1f5b45;
@@ -406,7 +406,7 @@ input[type="radio"] {
 
 .app-nav-link.active {
   color: var(--color-primary);
-  background-color: #fff7d6;
+  background-color: #f5f9ff;
 }
 
 .app-dropdown {
@@ -569,7 +569,7 @@ input[type="radio"] {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: #fff7d6;
+  background: #f5f9ff;
   color: #475569;
 }
 

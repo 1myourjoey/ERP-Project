@@ -55,7 +55,7 @@ import { resolveDeadlineTone, type TaskDeadlineTone } from '../lib/taskUrgency'
 const QUADRANTS = [
   { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-[#9fb7e5]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#0f1f3d]' },
   { key: 'Q2', label: '중요·비긴급 (Q2)', color: 'border-[#9fb7e5]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#558ef8]' },
-  { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-[#d9c89a]', bg: 'bg-[#fff7d6]', badge: 'bg-[#1a3660]' },
+  { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-[#d9c89a]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#1a3660]' },
   { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-[#bfcff0]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#64748b]' },
 ] as const
 
@@ -1872,7 +1872,7 @@ export default function TaskBoardPage() {
       />
 
       <div className="mt-4 space-y-5">
-        <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-1">
+        <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-1">
           {VIEW_TABS.map((tab) => (
             <button
               key={tab.key}

@@ -16,7 +16,7 @@ function statusLabel(item: ProvisionalFSOverviewItem): string {
 function statusClass(status: string): string {
   if (status === 'confirmed') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (status === 'needs_mapping') return 'bg-amber-50 text-amber-700 border-amber-200'
-  if (status === 'not_started') return 'bg-[#fff7d6] text-[#64748b] border-[#d8e5fb]'
+  if (status === 'not_started') return 'bg-[#f5f9ff] text-[#64748b] border-[#d8e5fb]'
   return 'bg-[#f5f9ff] text-[#1a3660] border-[#c5d8fb]'
 }
 
@@ -54,7 +54,7 @@ export default function FSOverview({ yearMonth }: { yearMonth: string }) {
           <span className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">
             수동매핑 {data.summary.needs_mapping_count}
           </span>
-          <span className="rounded border border-[#d8e5fb] bg-[#fff7d6] px-2 py-1 text-[#0f1f3d]">
+          <span className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-1 text-[#0f1f3d]">
             미입력 {data.summary.not_started_count}
           </span>
         </div>

@@ -98,11 +98,11 @@ function toDateLabel(value: string | null | undefined) {
 }
 
 function statusBadgeClass(status: string | null | undefined) {
-  if (!status) return 'bg-[#fff7d6] text-[#0f1f3d]'
+  if (!status) return 'bg-[#f5f9ff] text-[#0f1f3d]'
   if (status.includes('완료') || status.includes('제출')) return 'bg-emerald-50 text-emerald-700'
   if (status.includes('검토')) return 'bg-amber-50 text-amber-700'
   if (status.includes('요청')) return 'bg-[#f5f9ff] text-[#1a3660]'
-  return 'bg-[#fff7d6] text-[#0f1f3d]'
+  return 'bg-[#f5f9ff] text-[#0f1f3d]'
 }
 
 function downloadGeneratedFile(payload: BizReportGenerationResponse) {
@@ -734,7 +734,7 @@ export default function BizReportsPage() {
                             <td key={`${row.request_id}-${col.key}`} className="px-3 py-2 text-center">
                               <button
                                 type="button"
-                                className="rounded px-2 py-1 text-base hover:bg-[#fff7d6] disabled:opacity-50"
+                                className="rounded px-2 py-1 text-base hover:bg-[#f5f9ff] disabled:opacity-50"
                                 disabled={isUpdating}
                                 title={`${col.label}: ${value}`}
                                 onClick={() =>

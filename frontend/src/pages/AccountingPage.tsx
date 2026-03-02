@@ -408,10 +408,10 @@ export default function AccountingPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>계정과목</button>
-        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>전표</button>
-        <button onClick={() => setTab('ledger')} className={`rounded px-3 py-1.5 text-sm ${tab === 'ledger' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>계정별 원장</button>
-        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>합계잔액</button>
+        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>계정과목</button>
+        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>전표</button>
+        <button onClick={() => setTab('ledger')} className={`rounded px-3 py-1.5 text-sm ${tab === 'ledger' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>계정별 원장</button>
+        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>합계잔액</button>
       </div>
 
       {tab === 'accounts' && (

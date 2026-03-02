@@ -1903,7 +1903,7 @@ export default function FundDetailPage() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-[#fff7d6] font-semibold text-[#0f1f3d] shadow' : 'text-[#64748b] hover:bg-[#f5f9ff] hover:text-[#0f1f3d]'}`}
+                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-[#f5f9ff] font-semibold text-[#0f1f3d] shadow' : 'text-[#64748b] hover:bg-[#f5f9ff] hover:text-[#0f1f3d]'}`}
                 >
                   {tab.label}
                 </button>
@@ -1926,7 +1926,7 @@ export default function FundDetailPage() {
                   <p className="text-sm text-[#64748b] mt-0.5">{fundDetail.type} | {labelStatus(fundDetail.status)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-[#fff7d6] rounded hover:bg-[#f5f9ff] flex items-center gap-1"><Pencil size={12} />수정</button>
+                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-[#f5f9ff] rounded hover:bg-[#f5f9ff] flex items-center gap-1"><Pencil size={12} />수정</button>
                   <button onClick={() => { if (confirm('이 조합을 삭제하시겠습니까?')) deleteFundMut.mutate(fundId) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 flex items-center gap-1"><Trash2 size={12} />삭제</button>
                 </div>
               </div>
@@ -1994,7 +1994,7 @@ export default function FundDetailPage() {
                       }
                       className={`rounded-lg border px-3 py-2 text-sm text-left transition ${
                         isAdded
-                          ? 'border-[#d8e5fb] bg-[#fff7d6] text-[#64748b] cursor-not-allowed'
+                          ? 'border-[#d8e5fb] bg-[#f5f9ff] text-[#64748b] cursor-not-allowed'
                           : 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660] hover:bg-[#e6efff]'
                       } ${addFormationWorkflowMut.isPending && !isPendingThisButton ? 'opacity-70' : ''}`}
                     >
@@ -2130,7 +2130,7 @@ export default function FundDetailPage() {
                 </div>
 
                 {formationTemplateModal.slotKey === '결성총회 개최' && (
-                  <div className="mt-3 rounded-lg border border-[#c5d8fb] bg-[#fff7d6] px-3 py-2 text-xs text-[#1a3660]">
+                  <div className="mt-3 rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-2 text-xs text-[#1a3660]">
                     결성총회 관련 템플릿은 내부 단계명에
                     {' '}
                     <strong>출자금 납입 확인</strong>
@@ -2355,7 +2355,7 @@ export default function FundDetailPage() {
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : transfer.status === 'cancelled'
                                   ? 'bg-red-100 text-red-700'
-                                  : 'bg-[#fff7d6] text-[#1a3660]'
+                                  : 'bg-[#f5f9ff] text-[#1a3660]'
                             }`}
                           >
                             {LP_TRANSFER_STATUS_LABEL[transfer.status] || transfer.status}
@@ -2945,7 +2945,7 @@ export default function FundDetailPage() {
                             return next
                           })
                         }}
-                        className="px-2 py-1 text-xs rounded bg-[#fff7d6] hover:bg-[#f5f9ff]"
+                        className="px-2 py-1 text-xs rounded bg-[#f5f9ff] hover:bg-[#f5f9ff]"
                         title="위로"
                       >
                         ↑
@@ -2961,7 +2961,7 @@ export default function FundDetailPage() {
                             return next
                           })
                         }}
-                        className="px-2 py-1 text-xs rounded bg-[#fff7d6] hover:bg-[#f5f9ff]"
+                        className="px-2 py-1 text-xs rounded bg-[#f5f9ff] hover:bg-[#f5f9ff]"
                         title="아래로"
                       >
                         ↓

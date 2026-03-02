@@ -110,7 +110,7 @@ function categoryBadgeClass(category: string): string {
     case '서류관리':
       return 'bg-orange-50 text-orange-700'
     default:
-      return 'bg-[#fff7d6] text-[#64748b]'
+      return 'bg-[#f5f9ff] text-[#64748b]'
   }
 }
 

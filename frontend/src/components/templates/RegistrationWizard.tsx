@@ -276,7 +276,7 @@ export default function RegistrationWizard({ onRegistered }: RegistrationWizardP
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
                 {existingMarkers.map((marker) => (
-                  <span key={marker} className="rounded-full border border-[#e7ddb6] bg-[#fff7d6] px-2 py-0.5 text-xs text-[#0f1f3d]">
+                  <span key={marker} className="rounded-full border border-[#e7ddb6] bg-[#f5f9ff] px-2 py-0.5 text-xs text-[#0f1f3d]">
                     {marker}
                   </span>
                 ))}

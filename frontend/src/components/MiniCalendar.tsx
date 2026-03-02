@@ -83,7 +83,7 @@ function statusBadge(event: CalendarEvent, today: Date): { text: string; classNa
   if (event.status === 'pending') {
     return { text: '진행중', className: 'rounded-full bg-[#e6efff] px-1.5 py-0.5 text-[10px] font-semibold text-[#1a3660]' }
   }
-  return { text: labelStatus(event.status), className: 'rounded-full bg-[#fff7d6] px-1.5 py-0.5 text-[10px] font-semibold text-[#64748b]' }
+  return { text: labelStatus(event.status), className: 'rounded-full bg-[#f5f9ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#64748b]' }
 }
 
 export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalendarProps) {

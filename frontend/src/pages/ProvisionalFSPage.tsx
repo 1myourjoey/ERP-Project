@@ -543,13 +543,13 @@ export default function ProvisionalFSPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('sfp')}
-                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'sfp' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
+                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'sfp' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
               >
                 SFP
               </button>
               <button
                 onClick={() => setActiveTab('is')}
-                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'is' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
+                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'is' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
               >
                 IS
               </button>

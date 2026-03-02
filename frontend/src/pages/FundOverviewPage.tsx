@@ -202,7 +202,7 @@ export default function FundOverviewPage() {
                         </span>
                       </td>
                       <td className={tableBodyClass}>
-                        <span className="inline-flex whitespace-nowrap rounded-full bg-[#fff7d6] px-2 py-0.5 text-xs text-[#0f1f3d]">
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-[#f5f9ff] px-2 py-0.5 text-xs text-[#0f1f3d]">
                           {textOrDash(fund.status)}
                         </span>
                       </td>
@@ -217,7 +217,7 @@ export default function FundOverviewPage() {
                         <div className={`font-semibold ${getRatioClass(fund.investment_period_progress)}`}>
                           {formatPercent(fund.investment_period_progress)}
                         </div>
-                        <div className="mt-1 h-1.5 w-full rounded-full bg-[#fff7d6]">
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-[#f5f9ff]">
                           <div
                             className="h-1.5 rounded-full bg-[#558ef8]"
                             style={{ width: `${Math.max(0, Math.min(100, fund.investment_period_progress || 0))}%` }}
@@ -241,8 +241,8 @@ export default function FundOverviewPage() {
                       <td className={`${tableBodyClass} text-[#0f1f3d]`}>{textOrDash(fund.remaining_period)}</td>
                     </tr>
                   ))}
-                  <tr className="sticky bottom-0 z-20 border-t-2 border-[#0f1f3d] bg-[#fff7d6] font-semibold text-[#0f1f3d] shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-                    <td className="sticky left-0 z-30 bg-[#fff7d6] px-3 py-3 whitespace-nowrap" colSpan={9}>
+                  <tr className="sticky bottom-0 z-20 border-t-2 border-[#0f1f3d] bg-[#f5f9ff] font-semibold text-[#0f1f3d] shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
+                    <td className="sticky left-0 z-30 bg-[#f5f9ff] px-3 py-3 whitespace-nowrap" colSpan={9}>
                       합계
                     </td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.commitment_total)}</td>

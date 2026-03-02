@@ -143,7 +143,7 @@ function DashboardWorkflowPanel({
           onClick={() => setFilter('all')}
           className={`rounded-full border px-2.5 py-1 ${
             filter === 'all'
-              ? 'border-[#bfcff0] bg-[#fff7d6] text-[#0f1f3d]'
+              ? 'border-[#bfcff0] bg-[#f5f9ff] text-[#0f1f3d]'
               : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >

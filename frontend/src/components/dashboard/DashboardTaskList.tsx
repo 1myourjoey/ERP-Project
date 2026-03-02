@@ -58,7 +58,7 @@ function DashboardTaskList({
           <span className="text-xs text-[#64748b]">{tasks.length}건</span>
           <button
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded p-1 hover:bg-[#fff7d6]"
+            className="rounded p-1 hover:bg-[#f5f9ff]"
           >
             <ChevronDown
               size={14}
@@ -109,7 +109,7 @@ function DashboardTaskList({
                               onQuickComplete(task)
                             }}
                             disabled={completingTaskId === task.id}
-                            className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#fff7d6] disabled:opacity-60"
+                            className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#f5f9ff] disabled:opacity-60"
                           >
                             {completingTaskId === task.id ? '처리중' : '완료'}
                           </button>
@@ -156,7 +156,7 @@ function DashboardTaskList({
                                     onQuickComplete(task)
                                   }}
                                   disabled={completingTaskId === task.id}
-                                  className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#fff7d6] disabled:opacity-60"
+                                  className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#f5f9ff] disabled:opacity-60"
                                 >
                                   {completingTaskId === task.id ? '처리중' : '완료'}
                                 </button>

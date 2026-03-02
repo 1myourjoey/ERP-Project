@@ -72,7 +72,7 @@ function statusBadgeClass(status: string): string {
   if (status === '요청' || status === '작성중' || status === '예정') {
     return 'rounded bg-[#e6efff] px-2 py-0.5 text-xs font-medium text-[#1a3660]'
   }
-  return 'rounded bg-[#fff7d6] px-2 py-0.5 text-xs font-medium text-[#0f1f3d]'
+  return 'rounded bg-[#f5f9ff] px-2 py-0.5 text-xs font-medium text-[#0f1f3d]'
 }
 
 function severityBadgeClass(severity: string): string {
@@ -341,7 +341,7 @@ export default function ReportsPage() {
                           {cell ? (
                             <span className={statusBadgeClass(cell.status)}>{labelStatus(cell.status)}</span>
                           ) : (
-                            <span className="rounded bg-[#fff7d6] px-2 py-0.5 text-xs text-[#64748b]">미등록</span>
+                            <span className="rounded bg-[#f5f9ff] px-2 py-0.5 text-xs text-[#64748b]">미등록</span>
                           )}
                         </td>
                       )

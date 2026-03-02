@@ -19,7 +19,7 @@ function timelineDotClass(result: string): string {
   if (result === 'pass') return 'border-green-300 bg-green-100'
   if (result === 'warning') return 'border-amber-300 bg-amber-100'
   if (result === 'fail' || result === 'error') return 'border-red-300 bg-red-100'
-  return 'border-[#bfcff0] bg-[#fff7d6]'
+  return 'border-[#bfcff0] bg-[#f5f9ff]'
 }
 
 function checkedAtLabel(value: string | null): string {

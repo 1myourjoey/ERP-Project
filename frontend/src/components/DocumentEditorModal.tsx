@@ -634,12 +634,12 @@ export default function DocumentEditorModal({
             <h3 className="text-base font-semibold text-[#0f1f3d]">{template.name}</h3>
             <p className="text-xs text-[#64748b]">WYSIWYG 문서 편집</p>
           </div>
-          <button ref={closeButtonRef} onClick={onClose} type="button" className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#fff7d6] hover:text-[#0f1f3d]" aria-label="닫기">
+          <button ref={closeButtonRef} onClick={onClose} type="button" className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#f5f9ff] hover:text-[#0f1f3d]" aria-label="닫기">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#fff7d6] px-3 py-4 md:px-6">
+        <div className="flex-1 overflow-y-auto bg-[#f5f9ff] px-3 py-4 md:px-6">
           {templateKind === 'official' && <OfficialLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
           {templateKind === 'assembly' && <AssemblyLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
           {templateKind === 'resolution' && <ResolutionLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
@@ -663,7 +663,7 @@ export default function DocumentEditorModal({
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="rounded-md bg-[#fff7d6] px-2 py-1 text-xs text-[#64748b]">현재 배율 {Math.round(effectiveTuning.scale * 100)}%</span>
+              <span className="rounded-md bg-[#f5f9ff] px-2 py-1 text-xs text-[#64748b]">현재 배율 {Math.round(effectiveTuning.scale * 100)}%</span>
               <button type="button" className="secondary-btn px-2 py-1 text-xs" onClick={optimizeToSinglePage}>A4 최적화</button>
               <button
                 type="button"

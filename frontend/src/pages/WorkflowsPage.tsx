@@ -274,7 +274,7 @@ function periodicCategoryClass(value: string): string {
   if (normalized.includes('분기')) return 'border-sky-200 bg-sky-100 text-sky-700'
   if (normalized.includes('영업')) return 'border-emerald-200 bg-emerald-100 text-emerald-700'
   if (normalized.includes('총회')) return 'border-indigo-200 bg-indigo-100 text-indigo-700'
-  return 'border-[#d8e5fb] bg-[#fff7d6] text-[#0f1f3d]'
+  return 'border-[#d8e5fb] bg-[#f5f9ff] text-[#0f1f3d]'
 }
 
 function escapeHtml(value: string): string {
@@ -1948,7 +1948,7 @@ function InstanceList({
     <div className="space-y-2.5">
       {activeSummary && (
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-[#fff7d6] px-2.5 py-1 font-medium text-[#64748b]">
+          <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1 font-medium text-[#64748b]">
             전체 {activeSummary.total}건
           </span>
           {activeSummary.overdue > 0 && (
@@ -2140,7 +2140,7 @@ function InstanceList({
                             disabled={completeMut.isPending}
                           />
                         ) : (
-                          <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-[#d8e5fb] bg-[#fff7d6]" />
+                          <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-[#d8e5fb] bg-[#f5f9ff]" />
                         )
                       ) : (
                         <span className="w-4" />
@@ -2292,7 +2292,7 @@ function InstanceList({
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-[12px] font-medium text-[#0f1f3d]">
                                         {doc.name}
-                                        <span className={`ml-1 rounded px-1 py-0.5 text-xs ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-[#fff7d6] text-[#64748b]'}`}>
+                                        <span className={`ml-1 rounded px-1 py-0.5 text-xs ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-[#f5f9ff] text-[#64748b]'}`}>
                                           {doc.required ? '필수' : '선택'}
                                         </span>
                                       </p>
@@ -3171,7 +3171,7 @@ export default function WorkflowsPage() {
                   <div key={category} className="space-y-1">
                     <button
                       onClick={() => toggleCategory(category)}
-                      className="flex w-full items-center justify-between rounded-lg bg-[#f5f9ff] px-2 py-1 text-left hover:bg-[#fff7d6]"
+                      className="flex w-full items-center justify-between rounded-lg bg-[#f5f9ff] px-2 py-1 text-left hover:bg-[#f5f9ff]"
                     >
                       <div className="flex items-center gap-1">
                         <ChevronRight

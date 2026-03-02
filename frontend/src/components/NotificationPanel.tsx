@@ -68,8 +68,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
             type="button"
             className={`rounded px-2 py-1 text-xs transition-colors ${
               activeTab === tab.key
-                ? 'bg-[#fff7d6] text-[#0f1f3d]'
-                : 'text-[#64748b] hover:bg-[#fff7d6]'
+                ? 'bg-[#f5f9ff] text-[#0f1f3d]'
+                : 'text-[#64748b] hover:bg-[#f5f9ff]'
             }`}
             onClick={() => setActiveTab(tab.key)}
           >

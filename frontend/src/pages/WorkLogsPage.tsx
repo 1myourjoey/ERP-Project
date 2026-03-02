@@ -212,7 +212,7 @@ const WorkLogEntry = memo(function WorkLogEntry({
         onClick={() => setExpanded((prev) => !prev)}
         className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[#f5f9ff]"
       >
-        <span className="shrink-0 rounded bg-[#fff7d6] px-2 py-0.5 text-xs font-medium text-[#64748b]">{log.category}</span>
+        <span className="shrink-0 rounded bg-[#f5f9ff] px-2 py-0.5 text-xs font-medium text-[#64748b]">{log.category}</span>
         <span className="flex-1 truncate text-sm text-[#0f1f3d]">{log.title}</span>
         <div className="shrink-0 flex items-center gap-2 text-xs text-[#64748b]">
           {log.actual_time && (
@@ -339,7 +339,7 @@ function renderInsights(insights: WorkLogInsights) {
               return (
                 <div key={category} className="flex items-center gap-3">
                   <span className="w-20 truncate text-xs text-[#64748b]">{category}</span>
-                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-[#fff7d6]">
+                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-[#f5f9ff]">
                     <div className="h-full rounded-full bg-[#558ef8]" style={{ width: `${percent}%` }} />
                   </div>
                   <span className="w-12 text-right text-xs text-[#64748b]">{count as number}건</span>
@@ -485,7 +485,7 @@ export default function WorkLogsPage() {
         )}
       </div>
 
-      <div className="mb-4 flex gap-1 rounded-lg bg-[#fff7d6] p-0.5">
+      <div className="mb-4 flex gap-1 rounded-lg bg-[#f5f9ff] p-0.5">
         <button
           onClick={() => setActiveTab('logs')}
           className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'logs' ? 'bg-white font-medium text-[#0f1f3d] shadow' : 'text-[#64748b]'}`}
@@ -505,7 +505,7 @@ export default function WorkLogsPage() {
           <div className="mb-4 flex flex-wrap gap-1">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${!categoryFilter ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#64748b] hover:bg-[#d8e5fb]'}`}
+              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${!categoryFilter ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#64748b] hover:bg-[#d8e5fb]'}`}
             >
               전체
             </button>
@@ -513,7 +513,7 @@ export default function WorkLogsPage() {
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category)}
-                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${categoryFilter === category ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#64748b] hover:bg-[#d8e5fb]'}`}
+                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${categoryFilter === category ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#64748b] hover:bg-[#d8e5fb]'}`}
               >
                 {category}
               </button>
@@ -581,7 +581,7 @@ export default function WorkLogsPage() {
 
       {activeTab === 'insights' && (
         <>
-          <div className="mb-4 flex gap-1 rounded-lg bg-[#fff7d6] p-0.5">
+          <div className="mb-4 flex gap-1 rounded-lg bg-[#f5f9ff] p-0.5">
             {([
               ['week', '최근 1주'],
               ['month', '최근 1달'],

@@ -89,7 +89,7 @@ function scopeMeta(scope?: string): { icon: string; label: string; className: st
   return {
     icon: '🌐',
     label: '공통 법령',
-    className: 'border-[#d8e5fb] bg-[#fff7d6] text-[#0f1f3d]',
+    className: 'border-[#d8e5fb] bg-[#f5f9ff] text-[#0f1f3d]',
   }
 }
 
@@ -529,7 +529,7 @@ export default function CompliancePage() {
                       한도: <span className="font-semibold">{llmUsage.limit_tokens.toLocaleString()}</span> | 잔여:{' '}
                       <span className="font-semibold">{(llmUsage.remaining_tokens ?? 0).toLocaleString()}</span>
                     </p>
-                    <div className="h-2 overflow-hidden rounded-full bg-[#fff7d6]">
+                    <div className="h-2 overflow-hidden rounded-full bg-[#f5f9ff]">
                       <div
                         className={`h-full rounded-full ${
                           usageProgress >= 90 ? 'bg-red-500' : usageProgress >= 70 ? 'bg-amber-500' : 'bg-[#558ef8]'
@@ -654,7 +654,7 @@ export default function CompliancePage() {
                 <p className="mt-2">
                   {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} 토큰
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#fff7d6]">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f5f9ff]">
                   <div
                     className={`h-full rounded-full ${
                       dashboardLlmUsageProgress >= 90

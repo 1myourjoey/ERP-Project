@@ -271,9 +271,9 @@ export default function UsersPage() {
 
       <div className="card-base">
         <div className="mb-3 flex gap-2 text-xs">
-          <button onClick={() => setTab('active')} className={`rounded px-3 py-1.5 ${tab === 'active' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>활성 사용자 ({activeUsers.length})</button>
-          <button onClick={() => setTab('pending')} className={`rounded px-3 py-1.5 ${tab === 'pending' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>승인 대기 ({pendingUsers.length})</button>
-          <button onClick={() => setTab('invites')} className={`rounded px-3 py-1.5 ${tab === 'invites' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>초대 관리 ({invitations.length})</button>
+          <button onClick={() => setTab('active')} className={`rounded px-3 py-1.5 ${tab === 'active' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>활성 사용자 ({activeUsers.length})</button>
+          <button onClick={() => setTab('pending')} className={`rounded px-3 py-1.5 ${tab === 'pending' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>승인 대기 ({pendingUsers.length})</button>
+          <button onClick={() => setTab('invites')} className={`rounded px-3 py-1.5 ${tab === 'invites' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>초대 관리 ({invitations.length})</button>
         </div>
 
         {tab === 'active' && (usersLoading ? <PageLoading /> : activeUsers.length === 0 ? <EmptyState emoji="👤" message="활성 사용자 없음" className="py-8" /> : (
