@@ -1,4 +1,4 @@
-import EmptyState from '../EmptyState'
+﻿import EmptyState from '../EmptyState'
 import PageLoading from '../PageLoading'
 import { type ComplianceDashboardAmendmentAlert } from '../../lib/api'
 
@@ -41,23 +41,23 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
   return (
     <div className="card-base">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">법령 개정 알림</h3>
-        <span className="text-xs text-gray-500">{rows.length}건</span>
+        <h3 className="text-sm font-semibold text-slate-800">법령 개정 알림</h3>
+        <span className="text-xs text-slate-500">{rows.length}건</span>
       </div>
 
       <div className="space-y-2">
         {rows.map((row) => {
           const badge = dDayBadge(row.days_remaining)
           return (
-            <div key={row.id} className="rounded-xl border border-gray-200 bg-white/70 p-3">
+            <div key={row.id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-800">{row.law_name || '-'}</p>
+                <p className="text-sm font-semibold text-slate-800">{row.law_name || '-'}</p>
                 <span className={badge.className}>{badge.label}</span>
               </div>
-              <p className="mt-1 text-xs text-gray-600">
+              <p className="mt-1 text-xs text-slate-600">
                 시행일: {dateLabel(row.effective_date)} {row.version ? `| ${row.version}` : ''}
               </p>
-              <p className="mt-2 text-xs text-gray-700">{row.summary || '-'}</p>
+              <p className="mt-2 text-xs text-slate-700">{row.summary || '-'}</p>
             </div>
           )
         })}
@@ -65,3 +65,4 @@ export default function AmendmentAlerts({ rows, isLoading = false }: AmendmentAl
     </div>
   )
 }
+

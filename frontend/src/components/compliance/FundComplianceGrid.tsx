@@ -1,4 +1,4 @@
-import EmptyState from '../EmptyState'
+﻿import EmptyState from '../EmptyState'
 import PageLoading from '../PageLoading'
 import { type ComplianceDashboardFundStatusItem } from '../../lib/api'
 
@@ -46,12 +46,12 @@ export default function FundComplianceGrid({
   return (
     <div className="card-base overflow-auto">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-800">조합별 준수 현황</h3>
-        <span className="text-xs text-gray-500">{rows.length}개 조합</span>
+        <h3 className="text-sm font-semibold text-slate-800">조합별 준수 현황</h3>
+        <span className="text-xs text-slate-500">{rows.length}개 조합</span>
       </div>
 
       <table className="min-w-[760px] w-full text-sm">
-        <thead className="bg-gray-50 text-xs text-gray-500">
+        <thead className="bg-slate-50 text-xs text-slate-500">
           <tr>
             <th className="px-3 py-2 text-left">조합</th>
             <th className="px-3 py-2 text-left">점검 규칙 수</th>
@@ -67,15 +67,15 @@ export default function FundComplianceGrid({
             const active = selectedFundId !== '' && Number(selectedFundId) === row.fund_id
             return (
               <tr key={row.fund_id} className={active ? 'bg-blue-50/70' : ''}>
-                <td className="px-3 py-2 font-medium text-gray-800">{row.fund_name}</td>
-                <td className="px-3 py-2 text-gray-700">{row.total_rules}</td>
+                <td className="px-3 py-2 font-medium text-slate-800">{row.fund_name}</td>
+                <td className="px-3 py-2 text-slate-700">{row.total_rules}</td>
                 <td className="px-3 py-2">
                   <span className={rateClass(row.compliance_rate)}>{row.compliance_rate.toFixed(1)}%</span>
                 </td>
                 <td className="px-3 py-2">
                   <span className={violations > 0 ? 'tag tag-red' : 'tag tag-green'}>{violations}</span>
                 </td>
-                <td className="px-3 py-2 text-xs text-gray-600">{lastCheckedLabel(row.last_checked)}</td>
+                <td className="px-3 py-2 text-xs text-slate-600">{lastCheckedLabel(row.last_checked)}</td>
                 <td className="px-3 py-2">
                   <button
                     className="secondary-btn btn-sm"
@@ -93,3 +93,4 @@ export default function FundComplianceGrid({
     </div>
   )
 }
+

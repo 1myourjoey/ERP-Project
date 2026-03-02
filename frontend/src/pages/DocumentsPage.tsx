@@ -33,8 +33,8 @@ function dueBadge(daysRemaining: number | null) {
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="card-base">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-xl font-bold text-gray-800">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-bold text-slate-800">{value}</p>
     </div>
   )
 }
@@ -115,7 +115,7 @@ export default function DocumentsPage() {
       <div className="card-base">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
             <select value={status} onChange={e => setStatus(e.target.value)} className="form-input">
               <option value="">전체 상태</option>
               <option value="pending">미수집</option>
@@ -125,7 +125,7 @@ export default function DocumentsPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
             <select value={fundId} onChange={e => setFundId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">전체 조합</option>
               {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
@@ -133,7 +133,7 @@ export default function DocumentsPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">회사</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">회사</label>
             <select value={companyId} onChange={e => setCompanyId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">전체 회사</option>
               {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
@@ -142,12 +142,12 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {isLoading ? (
           <PageLoading />
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs">
+            <thead className="bg-slate-50 text-slate-600 text-xs">
               <tr>
                 <th className="px-3 py-2 text-left">서류명</th>
                 <th className="px-3 py-2 text-left">투자건(회사명)</th>
@@ -163,12 +163,12 @@ export default function DocumentsPage() {
                 const badge = dueBadge(doc.days_remaining)
                 const isUpdating = updateStatusMut.isPending && updateStatusMut.variables?.doc.id === doc.id
                 return (
-                  <tr key={doc.id} className="border-t border-gray-100">
+                  <tr key={doc.id} className="border-t border-slate-100">
                     <td className="px-3 py-2">{doc.document_name}</td>
                     <td className="px-3 py-2">{doc.company_name}</td>
                     <td className="px-3 py-2">{doc.fund_name}</td>
                     <td className="px-3 py-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">상태</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">상태</label>
                       <select
                         value={doc.status}
                         disabled={isUpdating}
@@ -201,10 +201,10 @@ export default function DocumentsPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-700">자동 생성 문서 이력</h3>
-          <span className="text-xs text-gray-500">{generatedDocs.length}건</span>
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-700">자동 생성 문서 이력</h3>
+          <span className="text-xs text-slate-500">{generatedDocs.length}건</span>
         </div>
         {generatedLoading ? (
           <PageLoading />
@@ -213,7 +213,7 @@ export default function DocumentsPage() {
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 text-xs">
+              <thead className="bg-slate-50 text-slate-600 text-xs">
                 <tr>
                   <th className="px-3 py-2 text-left">생성일</th>
                   <th className="px-3 py-2 text-left">문서명</th>
@@ -223,7 +223,7 @@ export default function DocumentsPage() {
               </thead>
               <tbody>
                 {generatedDocs.map((doc) => (
-                  <tr key={doc.id} className="border-t border-gray-100">
+                  <tr key={doc.id} className="border-t border-slate-100">
                     <td className="px-3 py-2">{toDateTime(doc.created_at)}</td>
                     <td className="px-3 py-2">{doc.filename}</td>
                     <td className="px-3 py-2">
@@ -251,6 +251,7 @@ export default function DocumentsPage() {
     </div>
   )
 }
+
 
 
 

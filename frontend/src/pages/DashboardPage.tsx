@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+﻿import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -245,7 +245,7 @@ export default function DashboardPage() {
 
       <div className="card-base space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-700">오늘의 브리핑</h3>
+          <h3 className="text-sm font-semibold text-slate-700">오늘의 브리핑</h3>
           <div className="text-xs text-slate-500">
             예상 작업시간: {baseData.today.total_estimated_time || '0m'}
           </div>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
                 <button
                   key={item.id}
                   type="button"
-                  className="rounded border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                  className="secondary-btn"
                   onClick={() => navigate(item.action_url || '/dashboard')}
                 >
                   <p className="text-sm font-medium text-slate-800">{item.title}</p>
@@ -448,3 +448,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

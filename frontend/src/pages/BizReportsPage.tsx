@@ -98,11 +98,11 @@ function toDateLabel(value: string | null | undefined) {
 }
 
 function statusBadgeClass(status: string | null | undefined) {
-  if (!status) return 'bg-gray-100 text-gray-700'
+  if (!status) return 'bg-slate-100 text-slate-700'
   if (status.includes('완료') || status.includes('제출')) return 'bg-emerald-50 text-emerald-700'
   if (status.includes('검토')) return 'bg-amber-50 text-amber-700'
   if (status.includes('요청')) return 'bg-blue-50 text-blue-700'
-  return 'bg-gray-100 text-gray-700'
+  return 'bg-slate-100 text-slate-700'
 }
 
 function downloadGeneratedFile(payload: BizReportGenerationResponse) {
@@ -321,25 +321,25 @@ export default function BizReportsPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveTab('matrix')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'matrix' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'matrix' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           보고 매트릭스
         </button>
         <button
           onClick={() => setActiveTab('detail')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'detail' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'detail' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           보고 상세/검토
         </button>
         <button
           onClick={() => setActiveTab('doc_collection')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'doc_collection' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'doc_collection' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           서류 수집
         </button>
         <button
           onClick={() => setActiveTab('generate')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'generate' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'generate' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           보고서 생성
         </button>
@@ -348,7 +348,7 @@ export default function BizReportsPage() {
       <div className="card-base">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">연도</label>
             <input
               type="number"
               value={yearFilter}
@@ -357,7 +357,7 @@ export default function BizReportsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">보고 선택</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">보고 선택</label>
             <select
               value={selectedReportId || ''}
               onChange={(e) => {
@@ -375,7 +375,7 @@ export default function BizReportsPage() {
               ))}
             </select>
           </div>
-          <div className="md:col-span-3 rounded bg-gray-50 p-2 text-xs text-gray-600">
+          <div className="md:col-span-3 rounded bg-slate-50 p-2 text-xs text-slate-600">
             선택 보고 상태: {selectedReportId ? (reportMap.get(selectedReportId)?.status || '-') : '미선택'} ·
             제출일: {selectedReportId ? toDateLabel(reportMap.get(selectedReportId)?.submission_date) : '-'}
           </div>
@@ -385,13 +385,13 @@ export default function BizReportsPage() {
       {activeTab === 'matrix' && (
         <>
           <div className="card-base overflow-hidden">
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">조합 × 분기 보고 매트릭스</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">조합 × 분기 보고 매트릭스</h3>
             {!matrixData?.rows?.length ? (
               <EmptyState emoji="📊" message="매트릭스 데이터가 없습니다." className="py-8" />
             ) : (
               <div className="overflow-auto">
                 <table className="min-w-[760px] w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left">조합</th>
                       <th className="px-3 py-2 text-center">1Q</th>
@@ -403,7 +403,7 @@ export default function BizReportsPage() {
                   <tbody className="divide-y">
                     {matrixData.rows.map((row) => (
                       <tr key={row.fund_id}>
-                        <td className="px-3 py-2 font-medium text-gray-800">{row.fund_name}</td>
+                        <td className="px-3 py-2 font-medium text-slate-800">{row.fund_name}</td>
                         {row.cells.map((cell) => (
                           <td key={`${row.fund_id}-${cell.quarter}`} className="px-3 py-2 text-center">
                             <span className={`rounded px-2 py-0.5 text-xs ${statusBadgeClass(cell.status)}`}>{cell.status}</span>
@@ -419,10 +419,10 @@ export default function BizReportsPage() {
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="card-base">
-              <h3 className="mb-2 text-sm font-semibold text-gray-700">영업보고 생성</h3>
+              <h3 className="mb-2 text-sm font-semibold text-slate-700">영업보고 생성</h3>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
                   <select
                     value={newReportForm.fund_id || ''}
                     onChange={(e) => setNewReportForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
@@ -435,7 +435,7 @@ export default function BizReportsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">연도</label>
                   <input
                     type="number"
                     value={newReportForm.report_year}
@@ -444,7 +444,7 @@ export default function BizReportsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
                   <select
                     value={newReportForm.status || '작성중'}
                     onChange={(e) => setNewReportForm((prev) => ({ ...prev, status: e.target.value }))}
@@ -472,7 +472,7 @@ export default function BizReportsPage() {
             </div>
 
             <div className="card-base">
-              <h3 className="mb-2 text-sm font-semibold text-gray-700">템플릿 관리</h3>
+              <h3 className="mb-2 text-sm font-semibold text-slate-700">템플릿 관리</h3>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <input
                   value={newTemplateForm.name}
@@ -504,7 +504,7 @@ export default function BizReportsPage() {
               </button>
               <div className="mt-2 space-y-1">
                 {templates.slice(0, 5).map((tpl) => (
-                  <div key={tpl.id} className="rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                  <div key={tpl.id} className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
                     {tpl.name} · {tpl.report_type}
                   </div>
                 ))}
@@ -513,7 +513,7 @@ export default function BizReportsPage() {
           </div>
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">영업보고 목록</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">영업보고 목록</h3>
             {reportsLoading ? (
               <PageLoading />
             ) : !reports.length ? (
@@ -521,13 +521,13 @@ export default function BizReportsPage() {
             ) : (
               <div className="space-y-2">
                 {reports.map((report) => (
-                  <div key={report.id} className="rounded border border-gray-200 p-2">
+                  <div key={report.id} className="rounded border border-slate-200 p-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">
+                        <p className="text-sm font-medium text-slate-800">
                           #{report.id} · {report.fund_name || `조합 ${report.fund_id}`} · {report.report_year}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-slate-500">
                           NAV {formatKRW(Number(report.fund_nav || 0))} · IRR {report.irr != null ? `${report.irr}%` : '-'}
                         </p>
                       </div>
@@ -555,7 +555,7 @@ export default function BizReportsPage() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div className="card-base">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-700">투자사 데이터 요청</h3>
+              <h3 className="text-sm font-semibold text-slate-700">투자사 데이터 요청</h3>
               <button
                 onClick={() => selectedReportId && generateRequestsMut.mutate(selectedReportId)}
                 disabled={!selectedReportId || generateRequestsMut.isPending}
@@ -574,11 +574,11 @@ export default function BizReportsPage() {
             ) : (
               <div className="space-y-2">
                 {requestRows.map((row) => (
-                  <div key={row.id} className="rounded border border-gray-200 p-2">
+                  <div key={row.id} className="rounded border border-slate-200 p-2">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{row.investment_name || `투자건 ${row.investment_id}`}</p>
-                        <p className="text-xs text-gray-500">요청일 {toDateLabel(row.request_date)} · 마감일 {toDateLabel(row.deadline)}</p>
+                        <p className="text-sm font-medium text-slate-800">{row.investment_name || `투자건 ${row.investment_id}`}</p>
+                        <p className="text-xs text-slate-500">요청일 {toDateLabel(row.request_date)} · 마감일 {toDateLabel(row.deadline)}</p>
                       </div>
                       <div className="flex gap-1">
                         <button
@@ -645,24 +645,24 @@ export default function BizReportsPage() {
           </div>
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">특이점/코멘트 Diff</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">특이점/코멘트 Diff</h3>
             {!selectedRequestId ? (
               <EmptyState emoji="🔎" message="요청 건 상세를 선택해 주세요." className="py-8" />
             ) : (
               <>
-                <div className="mb-2 rounded border border-gray-200 p-2">
-                  <p className="mb-1 text-xs font-medium text-gray-600">코멘트 변경 비교</p>
+                <div className="mb-2 rounded border border-slate-200 p-2">
+                  <p className="mb-1 text-xs font-medium text-slate-600">코멘트 변경 비교</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <div className="rounded bg-gray-50 p-2">
-                      <p className="mb-1 text-[11px] text-gray-500">이전 분기</p>
-                      <p className="text-sm text-gray-700">{commentDiff?.previous_comment || '-'}</p>
+                    <div className="rounded bg-slate-50 p-2">
+                      <p className="mb-1 text-[11px] text-slate-500">이전 분기</p>
+                      <p className="text-sm text-slate-700">{commentDiff?.previous_comment || '-'}</p>
                     </div>
                     <div className="rounded bg-blue-50 p-2">
-                      <p className="mb-1 text-[11px] text-gray-500">현재 분기</p>
-                      <p className="text-sm text-gray-700">{commentDiff?.current_comment || '-'}</p>
+                      <p className="mb-1 text-[11px] text-slate-500">현재 분기</p>
+                      <p className="text-sm text-slate-700">{commentDiff?.current_comment || '-'}</p>
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">변경 여부: {commentDiff?.changed ? '변경됨' : '동일'}</p>
+                  <p className="mt-1 text-xs text-slate-500">변경 여부: {commentDiff?.changed ? '변경됨' : '동일'}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -670,10 +670,10 @@ export default function BizReportsPage() {
                     <EmptyState emoji="✅" message="감지된 특이점이 없습니다." className="py-6" />
                   ) : (
                     anomalies.map((row) => (
-                      <div key={row.id} className="rounded border border-gray-200 p-2">
-                        <p className="text-sm font-medium text-gray-800">{row.anomaly_type}</p>
-                        <p className="text-xs text-gray-500">심각도: {row.severity}</p>
-                        <p className="mt-1 text-sm text-gray-700">{row.detail || '-'}</p>
+                      <div key={row.id} className="rounded border border-slate-200 p-2">
+                        <p className="text-sm font-medium text-slate-800">{row.anomaly_type}</p>
+                        <p className="text-xs text-slate-500">심각도: {row.severity}</p>
+                        <p className="mt-1 text-sm text-slate-700">{row.detail || '-'}</p>
                       </div>
                     ))
                   )}
@@ -694,14 +694,14 @@ export default function BizReportsPage() {
             <EmptyState emoji="📄" message="서류 수집 데이터가 없습니다." className="py-8" />
           ) : (
             <div className="space-y-3">
-              <div className="rounded border border-gray-200 bg-gray-50 p-3">
-                <p className="text-sm font-semibold text-gray-800">
+              <div className="rounded border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-semibold text-slate-800">
                   {docCollection.fund_name} · {docCollection.quarter} 서류 수집 현황
                 </p>
-                <p className="mt-1 text-xs text-gray-600">
+                <p className="mt-1 text-xs text-slate-600">
                   진행률 {docCollection.completed_companies}/{docCollection.total_companies} 기업 완료 ({docCollection.completion_pct}%)
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded bg-gray-200">
+                <div className="mt-2 h-2 overflow-hidden rounded bg-slate-200">
                   <div
                     className="h-2 rounded bg-blue-500"
                     style={{ width: `${Math.max(0, Math.min(100, docCollection.completion_pct || 0))}%` }}
@@ -709,9 +709,9 @@ export default function BizReportsPage() {
                 </div>
               </div>
 
-              <div className="overflow-auto rounded border border-gray-200">
+              <div className="overflow-auto rounded border border-slate-200">
                 <table className="min-w-[980px] w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left">기업명</th>
                       {DOC_COLUMNS.map((col) => (
@@ -722,8 +722,8 @@ export default function BizReportsPage() {
                   </thead>
                   <tbody className="divide-y">
                     {docCollection.companies.map((row) => (
-                      <tr key={row.request_id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 font-medium text-gray-800">{row.company_name}</td>
+                      <tr key={row.request_id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium text-slate-800">{row.company_name}</td>
                         {DOC_COLUMNS.map((col) => {
                           const value = row.docs[col.key]
                           const isUpdating =
@@ -734,7 +734,7 @@ export default function BizReportsPage() {
                             <td key={`${row.request_id}-${col.key}`} className="px-3 py-2 text-center">
                               <button
                                 type="button"
-                                className="rounded px-2 py-1 text-base hover:bg-gray-100 disabled:opacity-50"
+                                className="rounded px-2 py-1 text-base hover:bg-slate-100 disabled:opacity-50"
                                 disabled={isUpdating}
                                 title={`${col.label}: ${value}`}
                                 onClick={() =>
@@ -750,12 +750,12 @@ export default function BizReportsPage() {
                             </td>
                           )
                         })}
-                        <td className="px-3 py-2 text-sm text-gray-700">{row.status}</td>
+                        <td className="px-3 py-2 text-sm text-slate-700">{row.status}</td>
                       </tr>
                     ))}
                     {docCollection.companies.length === 0 && (
                       <tr>
-                        <td className="px-3 py-8 text-center text-sm text-gray-400" colSpan={DOC_COLUMNS.length + 2}>
+                        <td className="px-3 py-8 text-center text-sm text-slate-500" colSpan={DOC_COLUMNS.length + 2}>
                           투자사 요청 데이터가 없습니다.
                         </td>
                       </tr>
@@ -787,16 +787,16 @@ export default function BizReportsPage() {
 
       {activeTab === 'generate' && (
         <div className="card-base">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">보고서 생성</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">보고서 생성</h3>
           {!selectedReportId ? (
             <EmptyState emoji="📁" message="상단에서 보고를 선택해 주세요." className="py-8" />
           ) : (
             <>
-              <div className="mb-3 rounded border border-gray-200 p-3">
-                <p className="text-sm font-medium text-gray-800">
+              <div className="mb-3 rounded border border-slate-200 p-3">
+                <p className="text-sm font-medium text-slate-800">
                   #{selectedReportId} · {reportMap.get(selectedReportId)?.fund_name || `조합 ${reportMap.get(selectedReportId)?.fund_id}`}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   보고연도 {reportMap.get(selectedReportId)?.report_year} · 상태 {reportMap.get(selectedReportId)?.status}
                 </p>
               </div>
@@ -824,4 +824,7 @@ export default function BizReportsPage() {
     </div>
   )
 }
+
+
+
 

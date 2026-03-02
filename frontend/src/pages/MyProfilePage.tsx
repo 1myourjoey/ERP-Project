@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import GoogleLoginButton from '../components/GoogleLoginButton'
@@ -106,11 +106,11 @@ export default function MyProfilePage() {
       </div>
 
       <form onSubmit={onSubmitProfile} className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-gray-800">기본 정보</h3>
+        <h3 className="text-sm font-semibold text-slate-800">기본 정보</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="form-label text-xs">아이디</label>
-            <input value={user?.username || ''} disabled className="form-input bg-gray-50" />
+            <input value={user?.username || ''} disabled className="form-input bg-slate-50" />
           </div>
           <div>
             <label className="form-label text-xs">이름</label>
@@ -139,7 +139,7 @@ export default function MyProfilePage() {
       </form>
 
       <form onSubmit={onSubmitPassword} className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-gray-800">비밀번호 변경</h3>
+        <h3 className="text-sm font-semibold text-slate-800">비밀번호 변경</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className="form-label text-xs">현재 비밀번호</label>
@@ -179,17 +179,17 @@ export default function MyProfilePage() {
       </form>
 
       <div className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-gray-800">Google 계정 연동</h3>
+        <h3 className="text-sm font-semibold text-slate-800">Google 계정 연동</h3>
         {user?.google_id ? (
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-gray-600">Google 계정이 연동되어 있습니다.</p>
+            <p className="text-xs text-slate-600">Google 계정이 연동되어 있습니다.</p>
             <button onClick={onUnlinkGoogle} disabled={googleBusy} className="secondary-btn disabled:opacity-60">
               {googleBusy ? '처리 중...' : '연동 해제'}
             </button>
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-gray-600">Google 계정을 연결할 수 있습니다.</p>
+            <p className="text-xs text-slate-600">Google 계정을 연결할 수 있습니다.</p>
             <GoogleLoginButton
               onSuccess={async (credential) => {
                 setGoogleBusy(true)
@@ -210,13 +210,13 @@ export default function MyProfilePage() {
 
       <div className="card-base flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-800">세션 관리</h3>
-          <p className="text-xs text-gray-600">현재 계정의 모든 기기 세션을 즉시 종료합니다.</p>
+          <h3 className="text-sm font-semibold text-slate-800">세션 관리</h3>
+          <p className="text-xs text-slate-600">현재 계정의 모든 기기 세션을 즉시 종료합니다.</p>
         </div>
         <button
           onClick={onLogoutAll}
           disabled={sessionBusy}
-          className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 disabled:opacity-60"
+          className="danger-btn"
         >
           {sessionBusy ? '처리 중...' : '모든 기기에서 로그아웃'}
         </button>
@@ -224,3 +224,4 @@ export default function MyProfilePage() {
     </div>
   )
 }
+

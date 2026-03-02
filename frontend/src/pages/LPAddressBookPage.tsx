@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -129,7 +129,7 @@ export default function LPAddressBookPage() {
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">{editing ? '주소록 수정' : '주소록 등록'}</h3>
+          <h3 className="text-sm font-semibold text-slate-700">{editing ? '주소록 수정' : '주소록 등록'}</h3>
           {editing && (
             <button
               onClick={() => {
@@ -216,7 +216,7 @@ export default function LPAddressBookPage() {
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-700">주소록 목록</h3>
+          <h3 className="text-sm font-semibold text-slate-700">주소록 목록</h3>
           <div className="flex items-center gap-2">
             <input
               value={keyword}
@@ -224,7 +224,7 @@ export default function LPAddressBookPage() {
               placeholder="이름/유형/사업자번호 검색"
               className="form-input-sm w-72"
             />
-            <label className="inline-flex items-center gap-1 text-xs text-gray-600">
+            <label className="inline-flex items-center gap-1 text-xs text-slate-600">
               <input
                 type="checkbox"
                 checked={showInactive}
@@ -236,9 +236,9 @@ export default function LPAddressBookPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-gray-500">불러오는 중...</p>
+          <p className="text-sm text-slate-500">불러오는 중...</p>
         ) : filteredBooks.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 주소록이 없습니다.</p>
+          <p className="text-sm text-slate-500">등록된 주소록이 없습니다.</p>
         ) : (
           <div className="overflow-auto rounded-lg border border-slate-200">
             <table className="min-w-full">
@@ -309,3 +309,4 @@ export default function LPAddressBookPage() {
     </div>
   )
 }
+

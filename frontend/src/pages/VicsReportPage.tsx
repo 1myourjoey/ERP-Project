@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -133,7 +133,7 @@ export default function VicsReportPage() {
       <div className="card-base">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
             <select className="form-input" value={fundId} onChange={(event) => setFundId(event.target.value ? Number(event.target.value) : '')}>
               <option value="">조합 선택</option>
               {funds.map((fund) => (
@@ -142,11 +142,11 @@ export default function VicsReportPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">연도</label>
             <input type="number" className="form-input" value={year} onChange={(event) => setYear(Number(event.target.value || now.getFullYear()))} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">월</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">월</label>
             <input type="number" min={1} max={12} className="form-input" value={month} onChange={(event) => setMonth(Number(event.target.value || 1))} />
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function VicsReportPage() {
           return (
             <div key={item.code} className="card-base">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-800">{item.title}</p>
+                <p className="text-sm font-semibold text-slate-800">{item.title}</p>
                 <span className={statusClass(row?.status || 'draft')}>{statusLabel(row?.status || 'draft')}</span>
               </div>
               <div className="flex flex-wrap gap-1">
@@ -205,7 +205,7 @@ export default function VicsReportPage() {
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-800">
+              <h3 className="text-sm font-semibold text-slate-800">
                 {selectedReport.report_code} 상세
               </h3>
               <div className="flex flex-wrap gap-1">
@@ -218,7 +218,7 @@ export default function VicsReportPage() {
             {selectedReport.report_code === '1308' && (
               <div className="overflow-auto">
                 <table className="min-w-[760px] w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left">기업명</th>
                       <th className="px-3 py-2 text-left">투자일</th>
@@ -245,13 +245,13 @@ export default function VicsReportPage() {
             )}
 
             {selectedReport.report_code !== '1308' && (
-              <pre className="overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+              <pre className="overflow-auto rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
                 {JSON.stringify(selectedReport.data_json, null, 2)}
               </pre>
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">불일치 원인 메모</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">불일치 원인 메모</label>
               <textarea
                 className="form-input"
                 rows={3}
@@ -274,3 +274,4 @@ export default function VicsReportPage() {
     </div>
   )
 }
+

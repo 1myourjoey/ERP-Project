@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, ChevronDown, Clock, FileWarning, Send } from 'lucide-react'
+import { Building2, CheckCircle2, ChevronDown, Clock, FileWarning, Send } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import EmptyState from '../EmptyState'
@@ -73,14 +73,26 @@ function DashboardRightPanel({
     staleTime: 60_000,
   })
 
+  const uniqueFunds = useMemo(() => {
+    const fundMap = new Map<number, FundSummary>()
+    for (const fund of funds) {
+      if (!fundMap.has(fund.id)) {
+        fundMap.set(fund.id, fund)
+      }
+    }
+    return Array.from(fundMap.values())
+  }, [funds])
+
+  const duplicateFundCount = funds.length - uniqueFunds.length
+
   const tabCount = useMemo(
     () => ({
-      funds: funds.length,
+      funds: uniqueFunds.length,
       notices: upcomingNotices.length,
       reports: reports.length,
       documents: missingDocuments.length,
     }),
-    [funds.length, upcomingNotices.length, reports.length, missingDocuments.length],
+    [uniqueFunds.length, upcomingNotices.length, reports.length, missingDocuments.length],
   )
 
   const filteredCompleted = useMemo(() => {
@@ -111,7 +123,7 @@ function DashboardRightPanel({
       {quickCollapsed ? (
         <div className="card-base dashboard-card">
           <div className="flex flex-wrap gap-3 text-xs text-slate-600">
-            <span className="rounded-full bg-slate-100 px-2.5 py-1">조합 {funds.length}건</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">조합 {uniqueFunds.length}건</span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1">보고 마감 {reports.length}건</span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
@@ -164,11 +176,16 @@ function DashboardRightPanel({
 
               {widgetsLoading ? (
                 <p className="py-8 text-center text-sm text-slate-500">조합 목록을 불러오는 중입니다...</p>
-              ) : funds.length === 0 ? (
-                <EmptyState emoji="🏦" message="등록된 조합이 없습니다." className="py-8" />
+              ) : uniqueFunds.length === 0 ? (
+                <EmptyState icon={<Building2 size={18} />} message="등록된 조합이 없습니다." className="py-8" />
               ) : (
                 <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-                  {funds.map((fund) => (
+                  {duplicateFundCount > 0 && (
+                    <p className="rounded bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                      중복 조합 {duplicateFundCount}건은 통합하여 표시합니다.
+                    </p>
+                  )}
+                  {uniqueFunds.map((fund) => (
                     <button
                       key={fund.id}
                       onClick={() => navigate(`/funds/${fund.id}`)}
@@ -193,7 +210,7 @@ function DashboardRightPanel({
               {noticesLoading ? (
                 <p className="py-8 text-center text-sm text-slate-500">공지 일정을 불러오는 중입니다...</p>
               ) : upcomingNotices.length === 0 ? (
-                <EmptyState emoji="📎" message="다가오는 공지 기한이 없습니다." className="py-8" />
+                <EmptyState icon={<Clock size={18} />} message="다가오는 공지 기한이 없습니다." className="py-8" />
               ) : (
                 <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
                   {upcomingNotices.map((notice) => {
@@ -215,7 +232,7 @@ function DashboardRightPanel({
                         className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-slate-800">
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
                             {notice.fund_name} | {notice.notice_label}
                             {isPeriodicRow(notice.source_label, notice.notice_label) && (
                               <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
@@ -223,7 +240,7 @@ function DashboardRightPanel({
                           </p>
                           {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="feed-card-meta">
+                        <p className="feed-card-meta truncate">
                           {notice.source_label ? `${notice.source_label} ` : ''}
                           {notice.workflow_instance_name}
                         </p>
@@ -241,7 +258,7 @@ function DashboardRightPanel({
               {widgetsLoading ? (
                 <p className="py-8 text-center text-sm text-slate-500">보고 마감 목록을 불러오는 중입니다...</p>
               ) : reports.length === 0 ? (
-                <EmptyState emoji="📤" message="임박한 보고 마감이 없습니다." className="py-8" />
+                <EmptyState icon={<Send size={18} />} message="임박한 보고 마감이 없습니다." className="py-8" />
               ) : (
                 <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
                   {reports.map((report) => {
@@ -263,7 +280,7 @@ function DashboardRightPanel({
                         className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="feed-card-title">
+                          <p className="feed-card-title min-w-0 flex-1 truncate">
                             {report.source_label ? `${report.source_label} ` : ''}
                             {report.report_target} | {report.period}
                             {isPeriodicRow(report.source_label, report.report_target) && (
@@ -272,7 +289,7 @@ function DashboardRightPanel({
                           </p>
                           {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="feed-card-meta">
+                        <p className="feed-card-meta truncate">
                           {report.fund_name || '조합 공통'} | {labelStatus(report.status)}
                         </p>
                       </button>
@@ -288,7 +305,7 @@ function DashboardRightPanel({
               {widgetsLoading ? (
                 <p className="py-8 text-center text-sm text-slate-500">미수집 서류를 불러오는 중입니다...</p>
               ) : missingDocuments.length === 0 ? (
-                <EmptyState emoji="🧾" message="미수집 서류가 없습니다." className="py-8" />
+                <EmptyState icon={<FileWarning size={18} />} message="미수집 서류가 없습니다." className="py-8" />
               ) : (
                 <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
                   {missingDocuments.map((doc) => {
@@ -300,10 +317,10 @@ function DashboardRightPanel({
                         className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="feed-card-title">{doc.document_name}</p>
+                          <p className="feed-card-title min-w-0 flex-1 truncate">{doc.document_name}</p>
                           {badge && <span className={badge.className}>{badge.text}</span>}
                         </div>
-                        <p className="feed-card-meta">
+                        <p className="feed-card-meta truncate">
                           {doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}
                         </p>
                         <p className="mt-0.5 text-[11px] text-slate-500">마감 {formatShortDate(doc.due_date)}</p>
@@ -335,25 +352,25 @@ function DashboardRightPanel({
           </div>
         </div>
 
-        <p className="mb-2 text-xs text-slate-400">
+        <p className="mb-2 text-xs text-slate-500">
           오늘 {completedTodayCount}건 · 이번 주 {completedThisWeekCount}건
         </p>
         {completedLoading ? (
           <p className="py-6 text-center text-sm text-slate-500">완료 업무를 불러오는 중입니다...</p>
         ) : filteredCompleted.length === 0 ? (
-          <EmptyState emoji="✅" message="완료된 업무가 없습니다." className="py-6" />
+          <EmptyState icon={<CheckCircle2 size={18} />} message="완료된 업무가 없습니다." className="py-6" />
         ) : (
           <div className="max-h-44 space-y-1 overflow-y-auto">
             {filteredCompleted.map((task) => (
               <div key={task.id} className="flex items-center justify-between text-sm">
                 <button
                   onClick={() => onOpenTask(task, true)}
-                  className="truncate text-left text-slate-400 line-through hover:text-blue-600"
+                  className="truncate text-left text-slate-600 line-through hover:text-blue-600"
                 >
                   {task.title}
                 </button>
                 <div className="ml-2 flex items-center gap-2">
-                  {task.actual_time && <span className="text-xs text-slate-400">{task.actual_time}</span>}
+                  {task.actual_time && <span className="text-xs text-slate-500">{task.actual_time}</span>}
                   <button onClick={() => onUndoComplete(task.id)} className="text-xs text-blue-500 hover:underline">
                     되돌리기
                   </button>

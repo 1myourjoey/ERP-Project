@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown, GitBranch } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ChevronDown, GitBranch } from 'lucide-react'
 
 import EmptyState from '../EmptyState'
 import type { ActiveWorkflow } from '../../lib/api'
@@ -15,6 +15,26 @@ interface DashboardWorkflowPanelProps {
   onOpenPipeline: () => void
 }
 
+type WorkflowFilter = 'all' | 'due_soon' | 'overdue'
+
+function daysUntil(value?: string | null): number | null {
+  if (!value) return null
+  const target = new Date(value)
+  if (Number.isNaN(target.getTime())) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000)
+}
+
+function dueTag(days: number): { text: string; className: string } {
+  if (days < 0) return { text: `지연 D+${Math.abs(days)}`, className: 'tag tag-red' }
+  if (days <= 3) return { text: `D-${days}`, className: 'tag tag-red' }
+  if (days <= 7) return { text: `D-${days}`, className: 'tag tag-amber' }
+  return { text: `D-${days}`, className: 'tag tag-gray' }
+}
+
 function DashboardWorkflowPanel({
   activeWorkflows,
   loading = false,
@@ -25,7 +45,35 @@ function DashboardWorkflowPanel({
   onOpenPipeline,
 }: DashboardWorkflowPanelProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  const workflowGroups = useMemo(() => groupWorkflows(activeWorkflows), [activeWorkflows])
+  const [filter, setFilter] = useState<WorkflowFilter>('all')
+
+  const overdueCount = useMemo(
+    () => activeWorkflows.filter((workflow) => (daysUntil(workflow.next_step_date) ?? 1) < 0).length,
+    [activeWorkflows],
+  )
+  const dueSoonCount = useMemo(
+    () =>
+      activeWorkflows.filter((workflow) => {
+        const days = daysUntil(workflow.next_step_date)
+        return days != null && days >= 0 && days <= 7
+      }).length,
+    [activeWorkflows],
+  )
+
+  const filteredWorkflows = useMemo(() => {
+    if (filter === 'overdue') {
+      return activeWorkflows.filter((workflow) => (daysUntil(workflow.next_step_date) ?? 1) < 0)
+    }
+    if (filter === 'due_soon') {
+      return activeWorkflows.filter((workflow) => {
+        const days = daysUntil(workflow.next_step_date)
+        return days != null && days >= 0 && days <= 7
+      })
+    }
+    return activeWorkflows
+  }, [activeWorkflows, filter])
+
+  const workflowGroups = useMemo(() => groupWorkflows(filteredWorkflows), [filteredWorkflows])
 
   const toggleGroup = (groupKey: string) => {
     setExpandedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }))
@@ -33,6 +81,9 @@ function DashboardWorkflowPanel({
 
   const renderWorkflowRow = (workflow: ActiveWorkflow) => {
     const { percent } = parseWorkflowProgress(workflow.progress)
+    const nextStepDays = daysUntil(workflow.next_step_date)
+    const nextStepBadge = nextStepDays != null ? dueTag(nextStepDays) : null
+
     return (
       <button
         key={workflow.id}
@@ -40,8 +91,11 @@ function DashboardWorkflowPanel({
         className="w-full cursor-pointer rounded-lg border border-slate-200 bg-white p-2 text-left hover:bg-slate-50"
       >
         <div className="flex items-center justify-between gap-1">
-          <p className="truncate text-sm font-medium text-slate-800">{workflow.name}</p>
-          <span className="tag tag-blue">{workflow.progress}</span>
+          <p className="min-w-0 truncate text-sm font-medium text-slate-800">{workflow.name}</p>
+          <div className="ml-2 flex items-center gap-1">
+            <span className="tag tag-blue">{workflow.progress}</span>
+            {nextStepBadge && <span className={nextStepBadge.className}>{nextStepBadge.text}</span>}
+          </div>
         </div>
         <p className="mt-0.5 truncate text-[11px] text-slate-500">
           {workflow.fund_name || workflow.gp_entity_name || '-'} | {workflow.company_name || '-'}
@@ -64,15 +118,15 @@ function DashboardWorkflowPanel({
 
   return (
     <div className="card-base dashboard-card">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <button
           onClick={onOpenPopup}
           className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-slate-700 hover:text-blue-600"
         >
           <GitBranch size={16} />
           진행 중인 워크플로
-          <span className="ml-auto text-xs text-slate-400">
-            {activeWorkflows.length}건 · {workflowGroups.length}그룹
+          <span className="ml-auto text-xs text-slate-500">
+            {filteredWorkflows.length}건 · {workflowGroups.length}그룹
           </span>
         </button>
         <button onClick={onOpenTaskBoard} className="secondary-btn btn-sm">
@@ -83,9 +137,52 @@ function DashboardWorkflowPanel({
         </button>
       </div>
 
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setFilter('all')}
+          className={`rounded-full border px-2.5 py-1 ${
+            filter === 'all'
+              ? 'border-slate-300 bg-slate-100 text-slate-700'
+              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+          }`}
+        >
+          전체 {activeWorkflows.length}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter('due_soon')}
+          className={`rounded-full border px-2.5 py-1 ${
+            filter === 'due_soon'
+              ? 'border-amber-200 bg-amber-50 text-amber-700'
+              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+          }`}
+        >
+          <span className="inline-flex items-center gap-1">
+            <CalendarClock size={12} />
+            임박 {dueSoonCount}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter('overdue')}
+          className={`rounded-full border px-2.5 py-1 ${
+            filter === 'overdue'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+          }`}
+        >
+          <span className="inline-flex items-center gap-1">
+            <AlertTriangle size={12} />
+            지연 {overdueCount}
+          </span>
+        </button>
+        <span className="ml-auto text-[11px] text-slate-500">기준: 다음 단계 예정일</span>
+      </div>
+
       {loading ? (
         <p className="py-8 text-center text-sm text-slate-500">워크플로를 불러오는 중입니다...</p>
-      ) : activeWorkflows.length > 0 ? (
+      ) : filteredWorkflows.length > 0 ? (
         <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
           {workflowGroups.map((group) => {
             if (group.workflows.length === 1) {
@@ -105,7 +202,7 @@ function DashboardWorkflowPanel({
                   className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
                 >
                   <div className="flex items-center gap-2">
-                    <p className="flex-1 truncate text-sm font-semibold text-slate-700">{group.groupLabel}</p>
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{group.groupLabel}</p>
                     <span className="text-xs text-slate-600">{group.workflows.length}건</span>
                     <ChevronDown
                       size={14}
@@ -127,8 +224,8 @@ function DashboardWorkflowPanel({
         </div>
       ) : (
         <EmptyState
-          emoji="🔄"
-          message="진행 중인 워크플로가 없습니다."
+          icon={<GitBranch size={18} />}
+          message={filter === 'all' ? '진행 중인 워크플로가 없습니다.' : '선택한 조건의 워크플로가 없습니다.'}
           action={onOpenWorkflowPage}
           actionLabel="워크플로 시작"
           className="py-8"

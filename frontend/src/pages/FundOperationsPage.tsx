@@ -167,7 +167,7 @@ export default function FundOperationsPage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
                 <select
                   value={selectedFundId || ''}
                   onChange={(e) => {
@@ -184,14 +184,14 @@ export default function FundOperationsPage() {
                   ))}
                 </select>
               </div>
-              <div className="rounded bg-gray-50 p-2">
-                <p className="text-xs text-gray-500">총 약정액</p>
-                <p className="text-sm font-semibold text-gray-800">{formatKRW(totals.commitment)}</p>
+              <div className="rounded bg-slate-50 p-2">
+                <p className="text-xs text-slate-500">총 약정액</p>
+                <p className="text-sm font-semibold text-slate-800">{formatKRW(totals.commitment)}</p>
               </div>
-              <div className="rounded bg-gray-50 p-2">
-                <p className="text-xs text-gray-500">누적 납입액</p>
-                <p className="text-sm font-semibold text-gray-800">{formatKRW(totals.paidIn)}</p>
-                <p className="text-[11px] text-gray-500">납입률 {totals.paidInRatio.toFixed(1)}%</p>
+              <div className="rounded bg-slate-50 p-2">
+                <p className="text-xs text-slate-500">누적 납입액</p>
+                <p className="text-sm font-semibold text-slate-800">{formatKRW(totals.paidIn)}</p>
+                <p className="text-[11px] text-slate-500">납입률 {totals.paidInRatio.toFixed(1)}%</p>
               </div>
               <div className="rounded bg-red-50 p-2">
                 <p className="text-xs text-red-600">미납 LP / 미납액</p>
@@ -203,7 +203,7 @@ export default function FundOperationsPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="card-base">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-gray-700">출자요청 LP 상세</h3>
+                <h3 className="text-sm font-semibold text-slate-700">출자요청 LP 상세</h3>
                 <div className="flex gap-1">
                   <button
                     onClick={() => generateCallDetailsMut.mutate(true)}
@@ -216,7 +216,7 @@ export default function FundOperationsPage() {
               </div>
 
               <div className="mb-2">
-                <label className="mb-1 block text-xs font-medium text-gray-600">출자요청 선택</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">출자요청 선택</label>
                 <select
                   value={selectedCapitalCallId || ''}
                   onChange={(e) => setSelectedCapitalCallId(e.target.value ? Number(e.target.value) : null)}
@@ -244,11 +244,11 @@ export default function FundOperationsPage() {
                     const callAmount = Number(row.call_amount || 0)
                     const unpaid = Math.max(callAmount - paidAmount, 0)
                     return (
-                      <div key={row.id} className="rounded-lg border border-gray-200 p-2">
+                      <div key={row.id} className="rounded-lg border border-slate-200 p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="text-sm font-medium text-gray-800">{row.lp_name || `LP #${row.lp_id}`}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-sm font-medium text-slate-800">{row.lp_name || `LP #${row.lp_id}`}</p>
+                            <p className="text-xs text-slate-500">
                               호출액 {formatKRW(callAmount)} · 납입액 {formatKRW(paidAmount)} · 미납 {formatKRW(unpaid)}
                             </p>
                           </div>
@@ -279,7 +279,7 @@ export default function FundOperationsPage() {
 
             <div className="card-base">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-gray-700">배분 LP 상세</h3>
+                <h3 className="text-sm font-semibold text-slate-700">배분 LP 상세</h3>
                 <button
                   onClick={() => generateDistributionDetailsMut.mutate(true)}
                   disabled={!selectedDistributionId || generateDistributionDetailsMut.isPending}
@@ -290,7 +290,7 @@ export default function FundOperationsPage() {
               </div>
 
               <div className="mb-2">
-                <label className="mb-1 block text-xs font-medium text-gray-600">배분 선택</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">배분 선택</label>
                 <select
                   value={selectedDistributionId || ''}
                   onChange={(e) => setSelectedDistributionId(e.target.value ? Number(e.target.value) : null)}
@@ -314,11 +314,11 @@ export default function FundOperationsPage() {
               ) : (
                 <div className="space-y-2">
                   {distributionDetails.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-gray-200 p-2">
+                    <div key={row.id} className="rounded-lg border border-slate-200 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{row.lp_name || `LP #${row.lp_id}`}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-slate-800">{row.lp_name || `LP #${row.lp_id}`}</p>
+                          <p className="text-xs text-slate-500">
                             배분액 {formatKRW(Number(row.distribution_amount || 0))} · 유형 {row.distribution_type}
                           </p>
                         </div>
@@ -345,4 +345,5 @@ export default function FundOperationsPage() {
     </div>
   )
 }
+
 

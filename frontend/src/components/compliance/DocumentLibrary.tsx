@@ -201,7 +201,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     <div className="space-y-4">
       <div className="card-base">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800">법률 문서 라이브러리</h3>
+          <h3 className="text-sm font-semibold text-slate-800">법률 문서 라이브러리</h3>
           <span className="tag tag-indigo">총 {totalChunks} 청크</span>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
@@ -244,7 +244,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
         {isGuidelines && (
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="md:col-span-1">
-              <span className="mb-1 block text-xs font-medium text-gray-600">조합 유형</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">조합 유형</span>
               {fundTypeOptions.length > 0 ? (
                 <select
                   className="form-input"
@@ -273,7 +273,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
         {isFundScoped && (
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="md:col-span-1">
-              <span className="mb-1 block text-xs font-medium text-gray-600">귀속 조합</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">귀속 조합</span>
               <select
                 className="form-input"
                 value={selectedFundId ?? ''}
@@ -328,8 +328,8 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
 
       <div className="card-base">
         <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-800">인덱싱 현황</h4>
-          {isStatsLoading && <span className="text-xs text-gray-500">집계 중...</span>}
+          <h4 className="text-sm font-semibold text-slate-800">인덱싱 현황</h4>
+          {isStatsLoading && <span className="text-xs text-slate-500">집계 중...</span>}
         </div>
         <div className="flex flex-wrap gap-2">
           {statRows.map((row) => (
@@ -341,7 +341,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       </div>
 
       <div className="card-base overflow-auto">
-        <h4 className="mb-2 text-sm font-semibold text-gray-800">등록 문서</h4>
+        <h4 className="mb-2 text-sm font-semibold text-slate-800">등록 문서</h4>
         {isDocumentsLoading ? (
           <PageLoading />
         ) : documents.length === 0 ? (
@@ -401,10 +401,10 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       {submittedQuery && (
         <div className="card-base">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-gray-800">
+            <h4 className="text-sm font-semibold text-slate-800">
               검색 결과: <span className="text-blue-700">{submittedQuery}</span>
             </h4>
-            {isSearchLoading && <span className="text-xs text-gray-500">검색 중...</span>}
+            {isSearchLoading && <span className="text-xs text-slate-500">검색 중...</span>}
           </div>
           {!isSearchLoading && (searchResult?.results.length ?? 0) === 0 ? (
             <EmptyState emoji="s" message="검색 결과가 없습니다." className="py-8" />
@@ -414,13 +414,13 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
                 const metadata = result.metadata as Record<string, unknown>
                 const scope = normalizeScope(metadata?.scope)
                 return (
-                  <div key={result.id} className="rounded-xl border border-gray-200 bg-white/70 p-3">
+                  <div key={result.id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <span className="tag tag-purple">{typeLabel(result.collection)}</span>
                       {scopeBadge(scope)}
-                      <span className="text-xs text-gray-500">유사도 {similarityLabel(result.distance)}</span>
+                      <span className="text-xs text-slate-500">유사도 {similarityLabel(result.distance)}</span>
                     </div>
-                    <p className="max-h-20 overflow-hidden text-sm text-gray-700">{result.text}</p>
+                    <p className="max-h-20 overflow-hidden text-sm text-slate-700">{result.text}</p>
                   </div>
                 )
               })}
@@ -431,4 +431,5 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     </div>
   )
 }
+
 

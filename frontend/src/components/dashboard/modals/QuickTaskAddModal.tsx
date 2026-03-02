@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+﻿import { memo, useState } from 'react'
 
 import { linkAttachment, linkAttachmentToTask, type FundSummary, type GPEntity, type Task, type TaskCreate } from '../../../lib/api'
 import TaskAttachmentSection from '../../common/TaskAttachmentSection'
@@ -41,14 +41,14 @@ function QuickTaskAddModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
           <h3 className="mb-1 text-lg font-semibold">빠른 업무 추가</h3>
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-3 text-xs text-slate-500">
             마감일: {defaultDate}
             {defaultDate !== baseDate && <span className="ml-1 text-blue-500">(내일)</span>}
           </p>
 
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">업무 제목</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">업무 제목</label>
               <input
                 autoFocus
                 value={title}
@@ -60,43 +60,43 @@ function QuickTaskAddModal({
                   setIsReport(detected.is_report)
                 }}
                 placeholder="예: 정기 보고서 작성"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input
                   type="checkbox"
                   checked={isNotice}
                   onChange={(event) => setIsNotice(event.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-slate-300"
                 />
                 통지
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input
                   type="checkbox"
                   checked={isReport}
                   onChange={(event) => setIsReport(event.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-slate-300"
                 />
                 보고
               </label>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-gray-500">예상 시간</label>
+              <label className="mb-1 block text-xs text-slate-500">예상 시간</label>
               <TimeSelect value={estimatedTime} onChange={setEstimatedTime} />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">카테고리</label>
+                <label className="mb-1 block text-xs text-slate-500">카테고리</label>
                 <select
                   value={category}
                   onChange={(event) => setCategory(event.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                 >
                   <option value="">선택</option>
                   {TASK_CATEGORY_OPTIONS.map((option) => (
@@ -108,11 +108,11 @@ function QuickTaskAddModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-gray-500">관련 대상</label>
+                <label className="mb-1 block text-xs text-slate-500">관련 대상</label>
                 <select
                   value={relatedTarget}
                   onChange={(event) => setRelatedTarget(event.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                 >
                   <option value="">선택</option>
                   {gpEntities.length > 0 && (
@@ -191,3 +191,4 @@ function QuickTaskAddModal({
 }
 
 export default memo(QuickTaskAddModal)
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -79,9 +79,9 @@ function CompanyReviewCard({
   })
 
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
+    <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-gray-800">{row.company_name}</p>
+        <p className="text-sm font-semibold text-slate-800">{row.company_name}</p>
         <div className="flex items-center gap-1 text-xs">
           <span className="tag tag-gray">등급 {row.asset_rating || '-'}</span>
           <span className="tag tag-gray">손상 {row.impairment_type || '-'}</span>
@@ -90,7 +90,7 @@ function CompanyReviewCard({
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">분기 매출</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">분기 매출</label>
           <input
             type="number"
             className="form-input"
@@ -99,7 +99,7 @@ function CompanyReviewCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">분기 순이익</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">분기 순이익</label>
           <input
             type="number"
             className="form-input"
@@ -108,7 +108,7 @@ function CompanyReviewCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">자본총계</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">자본총계</label>
           <input
             type="number"
             className="form-input"
@@ -116,15 +116,15 @@ function CompanyReviewCard({
             onChange={(event) => setDraft((prev) => ({ ...prev, total_equity: event.target.value ? Number(event.target.value) : null }))}
           />
         </div>
-        <div className="rounded bg-gray-50 px-2 py-2 text-xs text-gray-600">
+        <div className="rounded bg-slate-50 px-2 py-2 text-xs text-slate-600">
           추정 투자원금
-          <p className="mt-1 font-semibold text-gray-800">{formatKRW(row.paid_in_capital)}</p>
+          <p className="mt-1 font-semibold text-slate-800">{formatKRW(row.paid_in_capital)}</p>
         </div>
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">건전성 등급</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">건전성 등급</label>
           <select
             className="form-input"
             value={draft.asset_rating}
@@ -138,7 +138,7 @@ function CompanyReviewCard({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">손상 유형</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">손상 유형</label>
           <select
             className="form-input"
             value={draft.impairment_type}
@@ -150,7 +150,7 @@ function CompanyReviewCard({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">손상금액</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">손상금액</label>
           <input
             type="number"
             className="form-input"
@@ -159,7 +159,7 @@ function CompanyReviewCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">투자 의견</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">투자 의견</label>
           <select
             className="form-input"
             value={draft.investment_opinion}
@@ -175,7 +175,7 @@ function CompanyReviewCard({
 
       <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">주요 이슈</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">주요 이슈</label>
           <textarea
             rows={2}
             className="form-input"
@@ -184,7 +184,7 @@ function CompanyReviewCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">후속 조치</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">후속 조치</label>
           <textarea
             rows={2}
             className="form-input"
@@ -353,10 +353,10 @@ export default function InternalReviewPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">내부보고회 생성</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">내부보고회 생성</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
             <select
               className="form-input"
               value={fundId}
@@ -369,7 +369,7 @@ export default function InternalReviewPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">연도</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">연도</label>
             <input
               type="number"
               className="form-input"
@@ -378,7 +378,7 @@ export default function InternalReviewPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">분기</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">분기</label>
             <select
               className="form-input"
               value={quarter}
@@ -409,7 +409,7 @@ export default function InternalReviewPage() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="card-base">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">목록</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">목록</h3>
           {listLoading ? (
             <PageLoading />
           ) : !sortedRows.length ? (
@@ -420,14 +420,14 @@ export default function InternalReviewPage() {
                 <button
                   key={row.id}
                   type="button"
-                  className={`w-full rounded border p-2 text-left ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}
+                  className={`w-full rounded border p-2 text-left ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}
                   onClick={() => navigate(`/internal-reviews/${row.id}`)}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-gray-800">{row.fund_name}</p>
+                    <p className="text-sm font-medium text-slate-800">{row.fund_name}</p>
                     <span className={badgeClass(row.status)}>{statusLabel(row.status)}</span>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">{row.year}년 {row.quarter}분기 · 기준일 {row.reference_date || '-'}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.year}년 {row.quarter}분기 · 기준일 {row.reference_date || '-'}</p>
                 </button>
               ))}
             </div>
@@ -443,10 +443,10 @@ export default function InternalReviewPage() {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-semibold text-gray-800">
+                  <h3 className="text-base font-semibold text-slate-800">
                     {detail.fund_name} · {detail.year}년 {detail.quarter}분기
                   </h3>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     기준일 {detail.reference_date || '-'} · 보고회일 {detail.review_date || '-'} · 의무연결 {detail.obligation_id || '-'}
                   </p>
                 </div>
@@ -513,3 +513,4 @@ export default function InternalReviewPage() {
     </div>
   )
 }
+

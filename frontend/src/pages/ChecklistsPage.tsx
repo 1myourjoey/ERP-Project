@@ -273,7 +273,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-800">☑️ 체크리스트(레거시)</h3>
+          <h3 className="text-base font-semibold text-slate-800">☑️ 체크리스트(레거시)</h3>
           <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
             + 체크리스트
           </button>
@@ -322,16 +322,16 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700">체크리스트 목록</h3>
+            <h3 className="text-sm font-semibold text-slate-700">체크리스트 목록</h3>
           </div>
 
           <div className="mb-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">체크리스트 검색</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">체크리스트 검색</label>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="이름/카테고리로 검색"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -356,9 +356,9 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                     setSelectedId(cl.id)
                     setEditingChecklist(false)
                   }}
-                  className={`w-full rounded border p-3 text-left ${selectedId === cl.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                  className={`w-full rounded border p-3 text-left ${selectedId === cl.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
                 >
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-slate-800">
                     {cl.name}
                     {convertedChecklistIds.has(cl.id) && (
                       <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
@@ -366,7 +366,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
+                  <p className="text-xs text-slate-500">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
                 </button>
               ))}
               {!filteredChecklists.length && <EmptyState emoji="☑️" message="체크리스트가 없어요" className="py-8" />}
@@ -376,7 +376,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
 
         <div>
           {!selectedId || !checklist ? (
-            <div className="card-base text-sm text-gray-500">체크리스트를 선택하세요.</div>
+            <div className="card-base text-sm text-slate-500">체크리스트를 선택하세요.</div>
           ) : editingChecklist ? (
             <ChecklistForm
               investments={investmentOptions}
@@ -393,7 +393,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
             <div className="card-base">
                 <div className="flex items-center justify-between">
                   <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-slate-800">
                     {checklist.name}
                     {convertedChecklistIds.has(checklist.id) && (
                       <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
@@ -401,7 +401,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                       </span>
                     )}
                   </h3>
-                  <p className="text-sm text-gray-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
+                  <p className="text-sm text-slate-500">{checklist.category || '-'} | 진행률 {progress} | 연결 투자 {checklist.investment_id ? `#${checklist.investment_id}` : '없음'}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button className="secondary-btn" onClick={handleAddTaskFromChecklist}>업무에 추가</button>
@@ -414,11 +414,11 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                   </button>
                   <details className="relative">
                     <summary className="secondary-btn cursor-pointer list-none">더보기</summary>
-                    <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
-                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-50" onClick={() => navigate('/workflows?tab=templates')}>
+                    <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-50" onClick={() => navigate('/workflows?tab=templates')}>
                         워크플로우 이동
                       </button>
-                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-50" onClick={() => setEditingChecklist(true)}>
+                      <button className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-50" onClick={() => setEditingChecklist(true)}>
                         수정
                       </button>
                       <button
@@ -436,7 +436,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
 
               <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-700">항목</h4>
+                  <h4 className="text-sm font-semibold text-slate-700">항목</h4>
                   <button className="primary-btn" onClick={() => setShowItemCreate((v) => !v)}>+ 항목</button>
                 </div>
 
@@ -460,7 +460,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                       ) : (
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-center">
-                            <label className="mb-1 block text-[10px] font-medium text-gray-500">완료</label>
+                            <label className="mb-1 block text-[10px] font-medium text-slate-500">완료</label>
                             <input
                               type="checkbox"
                               checked={item.checked}
@@ -470,10 +470,10 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                             />
                           </div>
                           <div className="flex-1">
-                            <p className={`text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            <p className={`text-sm ${item.checked ? 'line-through text-slate-500' : 'text-slate-800'}`}>
                               {item.order}. {item.name}
                             </p>
-                            <p className="text-xs text-gray-500">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
+                            <p className="text-xs text-slate-500">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
                           </div>
                           <button className="secondary-btn" onClick={() => setEditingItemId(item.id)}>수정</button>
                           <button
@@ -520,10 +520,10 @@ function ChecklistForm({
   )
 
   return (
-    <div className="mb-3 rounded border border-gray-200 bg-gray-50 p-3">
+    <div className="mb-3 rounded border border-slate-200 bg-slate-50 p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">체크리스트 이름</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">체크리스트 이름</label>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -535,7 +535,7 @@ function ChecklistForm({
         {customCategory ? (
           <div className="flex gap-1">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">카테고리</label>
               <input
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
@@ -548,14 +548,14 @@ function ChecklistForm({
                 setCustomCategory(false)
                 if (!CHECKLIST_CATEGORY_OPTIONS.includes(category)) setCategory('')
               }}
-              className="px-2 text-xs text-gray-500 hover:text-gray-700"
+              className="px-2 text-xs text-slate-500 hover:text-slate-700"
             >
               목록
             </button>
           </div>
         ) : (
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">카테고리</label>
             <select
               value={category}
               onChange={(event) => {
@@ -578,7 +578,7 @@ function ChecklistForm({
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">연결 투자건</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">연결 투자건</label>
           <select
             value={investmentId}
             onChange={(event) => setInvestmentId(event.target.value ? Number(event.target.value) : '')}
@@ -624,10 +624,10 @@ function ItemForm({
   const [form, setForm] = useState<ChecklistItemInput>(initial)
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">항목 이름</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">항목 이름</label>
           <input
             value={form.name}
             onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
@@ -637,7 +637,7 @@ function ItemForm({
         </div>
         <div className="grid grid-cols-[120px_1fr] items-end gap-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">순서</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">순서</label>
             <input
               type="number"
               value={form.order}
@@ -656,7 +656,7 @@ function ItemForm({
           </label>
         </div>
         <div className="md:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
           <input
             value={form.notes || ''}
             onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
@@ -676,6 +676,7 @@ function ItemForm({
     </div>
   )
 }
+
 
 
 

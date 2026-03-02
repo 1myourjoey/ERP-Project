@@ -228,7 +228,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="rounded-lg p-1.5 text-gray-700 hover:bg-gray-100 md:hidden"
+              className="rounded-lg p-1.5 text-slate-700 hover:bg-slate-100 md:hidden"
               aria-label="메뉴 열기"
             >
               <Menu size={20} />
@@ -319,7 +319,7 @@ export default function Layout() {
             >
               <Search size={14} />
               <span className="hidden sm:inline">검색</span>
-              <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">Ctrl+Space</kbd>
+              <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">Ctrl+Space</kbd>
             </button>
             <div className="relative">
               <button
@@ -328,7 +328,7 @@ export default function Layout() {
                   setNotificationPanelOpen(false)
                   setUserMenuOpen((prev) => !prev)
                 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
               >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
@@ -344,9 +344,9 @@ export default function Layout() {
                   userMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 }`}
               >
-                <div className="mb-1 rounded-lg bg-gray-50 px-2.5 py-2">
-                  <p className="text-xs font-semibold text-gray-800">{user?.name}</p>
-                  <p className="text-[11px] text-gray-500">
+                <div className="mb-1 rounded-lg bg-slate-50 px-2.5 py-2">
+                  <p className="text-xs font-semibold text-slate-800">{user?.name}</p>
+                  <p className="text-[11px] text-slate-500">
                     {user?.username} · {ROLE_LABEL[user?.role || ''] || user?.role}
                   </p>
                 </div>
@@ -356,7 +356,7 @@ export default function Layout() {
                     setNotificationPanelOpen(false)
                     navigate('/profile')
                   }}
-                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                 >
                   내 프로필
                 </button>
@@ -380,7 +380,7 @@ export default function Layout() {
               <img src="/logo.svg" alt="V:ON" className="h-6 w-auto" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
                 aria-label="메뉴 닫기"
               >
                 <X size={20} />
@@ -390,7 +390,7 @@ export default function Layout() {
             <div className="space-y-5">
               {mobileGroups.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{group.label}</p>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.label}</p>
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const active = isPathActive(location.pathname, item.to)
@@ -400,7 +400,7 @@ export default function Layout() {
                           to={item.to}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`block rounded-xl px-3 py-2.5 text-sm ${
-                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           {item.label}
@@ -412,10 +412,10 @@ export default function Layout() {
               ))}
             </div>
 
-            <div className="mt-6 border-t border-gray-200 pt-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-700">{user?.name}</p>
-                <p className="text-[11px] text-gray-500">{user?.username}</p>
+            <div className="mt-6 border-t border-slate-200 pt-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold text-slate-700">{user?.name}</p>
+                <p className="text-[11px] text-slate-500">{user?.username}</p>
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => {
@@ -428,7 +428,7 @@ export default function Layout() {
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700"
+                    className="danger-btn"
                   >
                     로그아웃
                   </button>
@@ -451,4 +451,5 @@ export default function Layout() {
     </div>
   )
 }
+
 

@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+﻿import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchWorkflow, fetchWorkflowInstance, type Task } from '../../../lib/api'
@@ -43,12 +43,12 @@ function TaskDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">{task.title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-bold text-slate-900">{task.title}</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
             ×
           </button>
         </div>
-        <div className="space-y-2 text-sm text-gray-700">
+        <div className="space-y-2 text-sm text-slate-700">
           {task.deadline && (
             <div>
               <span className="font-medium">마감:</span> {new Date(task.deadline).toLocaleString('ko-KR')}
@@ -142,7 +142,7 @@ function TaskDetailModal({
           </button>
           <button
             onClick={onClose}
-            className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-300"
+            className="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-gray-300"
           >
             닫기
           </button>
@@ -153,3 +153,4 @@ function TaskDetailModal({
 }
 
 export default memo(TaskDetailModal)
+

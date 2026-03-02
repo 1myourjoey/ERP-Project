@@ -44,7 +44,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">조합명</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">조합명</label>
         <input
           value={form.name ?? ''}
           onChange={(e) => update('name', e.target.value)}
@@ -53,7 +53,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">조합유형</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">조합유형</label>
         <select
           value={form.type ?? FUND_TYPE_OPTIONS[0]}
           onChange={(e) => update('type', e.target.value)}
@@ -67,7 +67,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
         <select
           value={form.status || 'active'}
           onChange={(e) => update('status', e.target.value)}
@@ -81,7 +81,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">결성일</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">결성일</label>
         <input
           type="date"
           value={form.formation_date || ''}
@@ -90,7 +90,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">고유번호증 번호</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">고유번호증 번호</label>
         <input
           value={form.registration_number || ''}
           onChange={(e) => update('registration_number', e.target.value)}
@@ -99,7 +99,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">등록성립일</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">등록성립일</label>
         <input
           type="date"
           value={form.registration_date || ''}
@@ -109,7 +109,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
       </div>
       {form.status !== 'forming' && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">만기일</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">만기일</label>
           <input
             type="date"
             value={form.maturity_date || ''}
@@ -120,7 +120,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
       )}
       {(form.status === 'dissolved' || form.status === 'liquidated') && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">해산일</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">해산일</label>
           <input
             type="date"
             value={form.dissolution_date || ''}
@@ -130,7 +130,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         </div>
       )}
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">GP</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">GP</label>
         {hasGpOptions ? (
           <select
             value={form.gp || ''}
@@ -154,7 +154,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         )}
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">대표 펀드매니저</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">대표 펀드매니저</label>
         <input
           value={form.fund_manager || ''}
           onChange={(e) => update('fund_manager', e.target.value)}
@@ -163,7 +163,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">Co-GP</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">Co-GP</label>
         <input
           value={form.co_gp || ''}
           onChange={(e) => update('co_gp', e.target.value)}
@@ -172,7 +172,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">신탁사</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">신탁사</label>
         <input
           value={form.trustee || ''}
           onChange={(e) => update('trustee', e.target.value)}
@@ -181,7 +181,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">총 약정액</label>
         <KrwAmountInput
           value={form.commitment_total ?? null}
           onChange={(nextCommitment) => {
@@ -206,11 +206,11 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           }}
           className="form-input"
           placeholder="숫자만 입력"
-          helperClassName="mt-1 text-[11px] text-gray-500"
+          helperClassName="mt-1 text-[11px] text-slate-500"
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">GP 출자금</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">GP 출자금</label>
         <KrwAmountInput
           value={form.gp_commitment ?? null}
           onChange={(nextGpCommitment) => {
@@ -223,11 +223,11 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
           }}
           className="form-input"
           placeholder="숫자만 입력"
-          helperClassName="mt-1 text-[11px] text-gray-500"
+          helperClassName="mt-1 text-[11px] text-slate-500"
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">출자방식</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">출자방식</label>
         <select
           value={form.contribution_type || ''}
           onChange={(e) => update('contribution_type', e.target.value || null)}
@@ -242,7 +242,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">투자기간 종료일</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">투자기간 종료일</label>
         <input
           type="date"
           value={form.investment_period_end || ''}
@@ -251,7 +251,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">관리보수율(%)</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">관리보수율(%)</label>
         <input
           type="number"
           step="0.01"
@@ -262,7 +262,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">성과보수율(%)</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">성과보수율(%)</label>
         <input
           type="number"
           step="0.01"
@@ -273,7 +273,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">허들레이트(%)</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">허들레이트(%)</label>
         <input
           type="number"
           step="0.01"
@@ -284,7 +284,7 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">운용계좌번호</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">운용계좌번호</label>
         <input
           value={form.account_number || ''}
           onChange={(e) => update('account_number', e.target.value)}
@@ -295,4 +295,6 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
     </div>
   )
 }
+
+
 

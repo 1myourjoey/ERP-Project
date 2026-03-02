@@ -21,7 +21,7 @@ export default function TimeSelect({
 
   return (
     <div>
-      {inlineLabel ? <label className="mb-1 block text-xs font-medium text-gray-600">{inlineLabel}</label> : null}
+      {inlineLabel ? <label className="mb-1 block text-xs font-medium text-slate-600">{inlineLabel}</label> : null}
       <select
         value={isCustom ? '__custom__' : value}
         onChange={(e) => {
@@ -32,7 +32,7 @@ export default function TimeSelect({
           }
           onChange(e.target.value)
         }}
-        className={className || 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400'}
+        className={className || 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400'}
       >
         <option value="">{placeholder}</option>
         {TIME_OPTIONS.map((option) => (
@@ -43,4 +43,6 @@ export default function TimeSelect({
     </div>
   )
 }
+
+
 

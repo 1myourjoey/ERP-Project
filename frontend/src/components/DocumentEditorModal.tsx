@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Eye, RotateCcw, Save, X } from 'lucide-react'
 
 import type { DocumentTemplate, Fund } from '../lib/api'
@@ -139,7 +139,7 @@ function EditableText({
   if (editing) {
     return (
       <div>
-        <label className="mb-1 block text-[10px] font-medium text-gray-500">{placeholder || '입력'}</label>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">{placeholder || '입력'}</label>
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -191,7 +191,7 @@ function EditableTextarea({
   if (editing) {
     return (
       <div>
-        <label className="mb-1 block text-[10px] font-medium text-gray-500">{placeholder || '내용'}</label>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">{placeholder || '내용'}</label>
         <textarea
           value={value}
           rows={minRows}
@@ -264,7 +264,7 @@ function InlineAttachmentTable({
               <td><EditableText value={attachment.name} onChange={(next) => updateRow(index, { name: next })} placeholder="문서명" /></td>
               <td style={{ textAlign: 'center' }}><EditableText value={attachment.ref} onChange={(next) => updateRow(index, { ref: next })} placeholder="별첨" /></td>
               <td style={{ textAlign: 'center' }}>
-                <label className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                <label className="inline-flex items-center gap-1 text-[10px] text-slate-500">
                   날인
                   <input type="checkbox" checked={attachment.stamp_required} onChange={(event) => updateRow(index, { stamp_required: event.target.checked })} />
                 </label>
@@ -326,7 +326,7 @@ function InlineAgendaList({
         <div className="space-y-1">
           {agendas.map((agenda, index) => (
             <div key={`${index}-${agenda}`} className="flex items-center gap-2">
-              <span className="w-6 text-right text-xs text-gray-500">{index + 1}.</span>
+              <span className="w-6 text-right text-xs text-slate-500">{index + 1}.</span>
               <EditableText value={agenda} onChange={(next) => updateAgenda(index, next)} placeholder="안건 입력" className="flex-1" />
               <button onClick={() => removeAgenda(index)} type="button" className="text-xs text-red-500 hover:text-red-700">×</button>
             </div>
@@ -436,7 +436,7 @@ function AssemblyLayout({
   const agendas = asStringList(editData.agendas)
   return (
     <DocumentFrame previewStyle={previewStyle}>
-      <div className="text-right text-[11px] text-gray-500">[첨부 1] 결성총회 소집통지서</div>
+      <div className="text-right text-[11px] text-slate-500">[첨부 1] 결성총회 소집통지서</div>
       <div className="mt-2 text-center text-lg font-bold"><VariableChip text="{{fund_name}}" /></div>
       <div className="text-center text-xl font-bold">결성총회 소집통지서</div>
       <div className="mt-6"><EditableText value={String(editData.greeting ?? '')} onChange={(next) => setField('greeting', next)} placeholder="인사말" /></div>
@@ -463,7 +463,7 @@ function ResolutionLayout({
   const agendas = asStringList(editData.agendas)
   return (
     <DocumentFrame previewStyle={previewStyle}>
-      <div className="text-right text-[11px] text-gray-500">[별첨] 서면결의서</div>
+      <div className="text-right text-[11px] text-slate-500">[별첨] 서면결의서</div>
       <div className="mt-4"><EditableTextarea value={String(editData.introduction_text ?? '')} onChange={(next) => setField('introduction_text', next)} placeholder="도입 문구" minRows={4} /></div>
       <div className="mt-5"><InlineAgendaList agendas={agendas} onChange={(next) => setField('agendas', next)} title="안건 목록" addLabel="+ 안건 추가" tableMode /></div>
       <div className="mt-4"><EditableText value={String(editData.vote_note ?? '')} onChange={(next) => setField('vote_note', next)} placeholder="의결 안내 문구" /></div>
@@ -629,23 +629,23 @@ export default function DocumentEditorModal({
         className="mx-auto flex h-full max-h-[calc(100vh-16px)] w-full max-w-[1120px] min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:max-h-[calc(100vh-32px)] md:h-[88vh] md:max-h-[88vh] md:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">{template.name}</h3>
-            <p className="text-xs text-gray-500">WYSIWYG 문서 편집</p>
+            <h3 className="text-base font-semibold text-slate-900">{template.name}</h3>
+            <p className="text-xs text-slate-500">WYSIWYG 문서 편집</p>
           </div>
-          <button ref={closeButtonRef} onClick={onClose} type="button" className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="닫기">
+          <button ref={closeButtonRef} onClick={onClose} type="button" className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="닫기">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-gray-100 px-3 py-4 md:px-6">
+        <div className="flex-1 overflow-y-auto bg-slate-100 px-3 py-4 md:px-6">
           {templateKind === 'official' && <OfficialLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
           {templateKind === 'assembly' && <AssemblyLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
           {templateKind === 'resolution' && <ResolutionLayout editData={editData} setField={setField} previewStyle={previewStyle} />}
         </div>
 
-        <div className="border-t border-gray-200 bg-white px-4 py-3">
+        <div className="border-t border-slate-200 bg-white px-4 py-3">
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
             <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
               <p className="mb-1 text-xs font-semibold text-blue-700">변수 치트시트</p>
@@ -663,7 +663,7 @@ export default function DocumentEditorModal({
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600">현재 배율 {Math.round(effectiveTuning.scale * 100)}%</span>
+              <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">현재 배율 {Math.round(effectiveTuning.scale * 100)}%</span>
               <button type="button" className="secondary-btn px-2 py-1 text-xs" onClick={optimizeToSinglePage}>A4 최적화</button>
               <button
                 type="button"
@@ -677,11 +677,11 @@ export default function DocumentEditorModal({
               </button>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">미리보기 조합</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">미리보기 조합</label>
                 <select
                   value={previewFundId}
                   onChange={(event) => onPreviewFundIdChange(event.target.value ? Number(event.target.value) : '')}
-                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                  className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                 >
                   <option value="">미리보기용 조합 선택</option>
                   {funds.map((fund) => (
@@ -710,3 +710,4 @@ export default function DocumentEditorModal({
     </div>
   )
 }
+

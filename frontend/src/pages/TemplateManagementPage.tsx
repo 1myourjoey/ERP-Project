@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import RegistrationWizard from '../components/templates/RegistrationWizard'
@@ -436,13 +436,13 @@ export default function TemplateManagementPage() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="card-base space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-700">템플릿 목록</p>
-            <span className="text-xs text-gray-400">{templates.length}</span>
+            <p className="text-sm font-semibold text-slate-700">템플릿 목록</p>
+            <span className="text-xs text-slate-500">{templates.length}</span>
           </div>
           {isLoading ? (
             <PageLoading />
           ) : templates.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">등록된 템플릿이 없습니다.</p>
+            <p className="py-6 text-center text-sm text-slate-500">등록된 템플릿이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {templates.map((template) => {
@@ -452,12 +452,12 @@ export default function TemplateManagementPage() {
                     key={template.id}
                     onClick={() => handleTemplateClick(template)}
                     className={`w-full rounded-xl border p-3 text-left ${
-                      active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                      active ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
-                    <p className="text-sm font-semibold text-gray-800">{template.name}</p>
-                    <p className="mt-1 text-xs text-gray-500">{template.category}</p>
-                    <p className="mt-2 text-[11px] text-gray-400">
+                    <p className="text-sm font-semibold text-slate-800">{template.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{template.category}</p>
+                    <p className="mt-2 text-[11px] text-slate-500">
                       수정일: {formatTemplateDate(template.updated_at ?? template.created_at)}
                     </p>
                   </button>
@@ -472,14 +472,14 @@ export default function TemplateManagementPage() {
             isLoading ? (
               <PageLoading />
             ) : (
-              <p className="py-8 text-center text-sm text-gray-400">템플릿을 선택하면 상세 화면이 표시됩니다.</p>
+              <p className="py-8 text-center text-sm text-slate-500">템플릿을 선택하면 상세 화면이 표시됩니다.</p>
             )
           ) : (
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="text-xl font-bold text-gray-800">{selectedTemplate.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xl font-bold text-slate-800">{selectedTemplate.name}</p>
+                  <p className="text-sm text-slate-500">
                     {selectedTemplate.description?.trim() || '설명 없음'}
                   </p>
                 </div>
@@ -512,19 +512,19 @@ export default function TemplateManagementPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">Metadata</p>
-                  <dl className="mt-2 space-y-1 text-sm text-gray-700">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Metadata</p>
+                  <dl className="mt-2 space-y-1 text-sm text-slate-700">
                     <div className="flex justify-between gap-2">
-                      <dt className="text-gray-500">Category</dt>
+                      <dt className="text-slate-500">Category</dt>
                       <dd className="text-right">{selectedTemplate.category}</dd>
                     </div>
                     <div className="flex justify-between gap-2">
-                      <dt className="text-gray-500">Builder</dt>
+                      <dt className="text-slate-500">Builder</dt>
                       <dd className="text-right">{selectedTemplate.builder_name ?? '-'}</dd>
                     </div>
                     <div className="flex justify-between gap-2">
-                      <dt className="text-gray-500">Updated</dt>
+                      <dt className="text-slate-500">Updated</dt>
                       <dd className="text-right">
                         {formatTemplateDate(selectedTemplate.updated_at ?? selectedTemplate.created_at)}
                       </dd>
@@ -532,15 +532,15 @@ export default function TemplateManagementPage() {
                   </dl>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                  <label htmlFor="preview-fund" className="text-xs font-semibold uppercase text-gray-500">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <label htmlFor="preview-fund" className="text-xs font-semibold uppercase text-slate-500">
                     미리보기 기준 조합
                   </label>
                   <select
                     id="preview-fund"
                     value={previewFundId}
                     onChange={(event) => setPreviewFundId(event.target.value ? Number(event.target.value) : '')}
-                    className="mt-2 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                    className="mt-2 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                   >
                     <option value="">조합 컨텍스트 없음</option>
                     {funds.map((fund) => (
@@ -549,16 +549,16 @@ export default function TemplateManagementPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-slate-500">
                     미리보기 시 조합 데이터가 변수 치환에 사용됩니다.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-gray-500">Variables</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-xs font-semibold uppercase text-slate-500">Variables</p>
                 {variables.length === 0 ? (
-                  <p className="mt-2 text-sm text-gray-500">등록된 변수 메타데이터가 없습니다.</p>
+                  <p className="mt-2 text-sm text-slate-500">등록된 변수 메타데이터가 없습니다.</p>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {variables.map((variable) => (
@@ -573,11 +573,11 @@ export default function TemplateManagementPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">문서 생성 마법사</p>
-                    <p className="text-xs text-gray-500">단일 LP 또는 전체 LP 문서 생성을 1~4단계로 진행합니다.</p>
+                    <p className="text-sm font-semibold text-slate-800">문서 생성 마법사</p>
+                    <p className="text-xs text-slate-500">단일 LP 또는 전체 LP 문서 생성을 1~4단계로 진행합니다.</p>
                   </div>
                   <button
                     onClick={handleResolveWizardVariables}
@@ -589,13 +589,13 @@ export default function TemplateManagementPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <p className="text-xs font-semibold uppercase text-gray-500">1단계. 템플릿</p>
-                    <p className="mt-2 text-sm font-semibold text-gray-800">{selectedTemplate.name}</p>
-                    <p className="mt-1 text-xs text-gray-500">{selectedTemplate.category}</p>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">1단계. 템플릿</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-800">{selectedTemplate.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{selectedTemplate.category}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {displayedMarkerKeys.length === 0 ? (
-                        <span className="text-xs text-gray-400">마커 메타데이터 없음</span>
+                        <span className="text-xs text-slate-500">마커 메타데이터 없음</span>
                       ) : (
                         displayedMarkerKeys.slice(0, 10).map((marker) => (
                           <span
@@ -607,18 +607,18 @@ export default function TemplateManagementPage() {
                         ))
                       )}
                       {displayedMarkerKeys.length > 10 && (
-                        <span className="text-[11px] text-gray-500">+{displayedMarkerKeys.length - 10}개 더보기</span>
+                        <span className="text-[11px] text-slate-500">+{displayedMarkerKeys.length - 10}개 더보기</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <p className="text-xs font-semibold uppercase text-gray-500">2단계. 대상 선택</p>
-                    <label className="mt-2 block text-xs text-gray-500">조합</label>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase text-slate-500">2단계. 대상 선택</p>
+                    <label className="mt-2 block text-xs text-slate-500">조합</label>
                     <select
                       value={wizardFundId}
                       onChange={(event) => setWizardFundId(event.target.value ? Number(event.target.value) : '')}
-                      className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                     >
                       <option value="">조합 선택</option>
                       {funds.map((fund) => (
@@ -651,11 +651,11 @@ export default function TemplateManagementPage() {
 
                     {wizardMode === 'single' ? (
                       <>
-                        <label className="mt-2 block text-xs text-gray-500">LP</label>
+                        <label className="mt-2 block text-xs text-slate-500">LP</label>
                         <select
                           value={wizardLpId}
                           onChange={(event) => setWizardLpId(event.target.value ? Number(event.target.value) : '')}
-                          className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                         >
                           <option value="">LP 선택</option>
                           {wizardLps.map((lp) => (
@@ -666,28 +666,28 @@ export default function TemplateManagementPage() {
                         </select>
                       </>
                     ) : (
-                      <p className="mt-2 text-xs text-gray-500">일괄 생성 시 해당 조합의 LP별 DOCX가 1개씩 생성됩니다.</p>
+                      <p className="mt-2 text-xs text-slate-500">일괄 생성 시 해당 조합의 LP별 DOCX가 1개씩 생성됩니다.</p>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">3단계. 변수 확인</p>
-                  <label className="mt-2 block text-xs text-gray-500">추가 변수 (한 줄에 하나씩, key=value)</label>
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-slate-500">3단계. 변수 확인</p>
+                  <label className="mt-2 block text-xs text-slate-500">추가 변수 (한 줄에 하나씩, key=value)</label>
                   <textarea
                     value={extraVarsText}
                     onChange={(event) => setExtraVarsText(event.target.value)}
-                    className="mt-1 min-h-[72px] w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                    className="mt-1 min-h-[72px] w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                     placeholder="분기=2026년 1분기"
                   />
 
                   <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                     {displayedMarkerKeys.length === 0 ? (
-                      <p className="text-sm text-gray-500">편집할 마커가 없습니다.</p>
+                      <p className="text-sm text-slate-500">편집할 마커가 없습니다.</p>
                     ) : (
                       displayedMarkerKeys.map((key) => (
                         <label key={key} className="space-y-1">
-                          <span className="text-[11px] text-gray-500">
+                          <span className="text-[11px] text-slate-500">
                             {key}
                             {markerMetaByKey.get(key)?.description ? ` · ${markerMetaByKey.get(key)?.description}` : ''}
                           </span>
@@ -700,7 +700,7 @@ export default function TemplateManagementPage() {
                                 [key]: event.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                           />
                         </label>
                       ))
@@ -708,8 +708,8 @@ export default function TemplateManagementPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">4단계. 미리보기 및 생성</p>
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-slate-500">4단계. 미리보기 및 생성</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       onClick={handleWizardPreview}
@@ -740,11 +740,11 @@ export default function TemplateManagementPage() {
                       {bulkResults.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5"
+                          className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-medium text-gray-700">{item.filename}</p>
-                            <p className="text-[11px] text-gray-500">{item.document_number || '-'}</p>
+                            <p className="truncate text-xs font-medium text-slate-700">{item.filename}</p>
+                            <p className="text-[11px] text-slate-500">{item.document_number || '-'}</p>
                           </div>
                           <button
                             className="secondary-btn"
@@ -787,3 +787,4 @@ export default function TemplateManagementPage() {
     </div>
   )
 }
+

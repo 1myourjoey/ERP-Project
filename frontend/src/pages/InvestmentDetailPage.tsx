@@ -305,10 +305,10 @@ export default function InvestmentDetailPage() {
 
   return (
     <div className="page-container space-y-4">
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-slate-500">
         <Link to="/investments" className="hover:text-blue-600">투자 관리</Link>
         <span>/</span>
-        <span className="text-gray-900">{companyName === '-' ? `투자 #${investmentId}` : companyName}</span>
+        <span className="text-slate-900">{companyName === '-' ? `투자 #${investmentId}` : companyName}</span>
       </div>
       <div className="page-header">
         <div>
@@ -317,7 +317,7 @@ export default function InvestmentDetailPage() {
         </div>
       </div>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-slate-200">
         <div className="flex flex-wrap gap-4">
           {[
             { key: 'overview' as const, label: '① 투자 개요' },
@@ -332,7 +332,7 @@ export default function InvestmentDetailPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`border-b-2 pb-2 text-sm ${activeTab === tab.key
                 ? 'border-blue-600 font-semibold text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               {tab.label}
             </button>
@@ -343,13 +343,13 @@ export default function InvestmentDetailPage() {
       {isLoading ? (
         <PageLoading />
       ) : !selectedInvestment ? (
-        <p className="text-sm text-gray-500">투자를 찾을 수 없습니다.</p>
+        <p className="text-sm text-slate-500">투자를 찾을 수 없습니다.</p>
       ) : (
         <>
           {activeTab === 'overview' && (
             <div className="card-base space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">투자 #{selectedInvestment.id}</h2>
+              <h2 className="text-xl font-bold text-slate-900">투자 #{selectedInvestment.id}</h2>
               <div className="flex gap-2">
                 <button className="secondary-btn" onClick={() => setEditingInvestment(true)}>수정</button>
                 <button className="danger-btn" onClick={() => { if (confirm('이 투자를 삭제하시겠습니까?')) deleteInvestmentMut.mutate(investmentId) }}>삭제</button>
@@ -357,7 +357,7 @@ export default function InvestmentDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-              <div className="p-2 bg-gray-50 rounded">
+              <div className="p-2 bg-slate-50 rounded">
                 조합:{' '}
                 {selectedInvestment.fund_id ? (
                   <button
@@ -370,20 +370,20 @@ export default function InvestmentDetailPage() {
                   '-'
                 )}
               </div>
-              <div className="p-2 bg-gray-50 rounded">회사: {companyName}</div>
-              <div className="p-2 bg-gray-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
-              <div className="p-2 bg-gray-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">기존 지분율: {selectedInvestment.contribution_rate || '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">투자 라운드: {selectedInvestment.round || '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">프리머니 밸류: {selectedInvestment.valuation_pre?.toLocaleString?.() ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">포스트머니 밸류: {selectedInvestment.valuation_post?.toLocaleString?.() ?? '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">지분율: {selectedInvestment.ownership_pct != null ? `${selectedInvestment.ownership_pct}%` : '-'}</div>
-              <div className="p-2 bg-gray-50 rounded">이사회 참여: {selectedInvestment.board_seat || '-'}</div>
-              <div className="p-2 bg-gray-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">회사: {companyName}</div>
+              <div className="p-2 bg-slate-50 rounded">상태: {labelStatus(selectedInvestment.status || 'active')}</div>
+              <div className="p-2 bg-slate-50 rounded">투자일: {selectedInvestment.investment_date || '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">투자금액: {selectedInvestment.amount?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">주식 수: {selectedInvestment.shares ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">주당 가격: {selectedInvestment.share_price?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">밸류에이션: {selectedInvestment.valuation?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">기존 지분율: {selectedInvestment.contribution_rate || '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">투자 라운드: {selectedInvestment.round || '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">프리머니 밸류: {selectedInvestment.valuation_pre?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">포스트머니 밸류: {selectedInvestment.valuation_post?.toLocaleString?.() ?? '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">지분율: {selectedInvestment.ownership_pct != null ? `${selectedInvestment.ownership_pct}%` : '-'}</div>
+              <div className="p-2 bg-slate-50 rounded">이사회 참여: {selectedInvestment.board_seat || '-'}</div>
+              <div className="p-2 bg-slate-50 rounded md:col-span-3">투자수단: {selectedInvestment.instrument || '-'}</div>
             </div>
             </div>
           )}
@@ -391,9 +391,9 @@ export default function InvestmentDetailPage() {
           {activeTab === 'workflows' && (
             <>
               <div className="card-base">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">연결된 워크플로우</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-2">연결된 워크플로우</h3>
             {!linkedWorkflows?.length ? (
-              <p className="text-sm text-gray-400">연결된 워크플로우 인스턴스가 없습니다.</p>
+              <p className="text-sm text-slate-500">연결된 워크플로우 인스턴스가 없습니다.</p>
             ) : (
               <div className="space-y-3">
                 {linkedWorkflows.map((instance) => {
@@ -439,7 +439,7 @@ export default function InvestmentDetailPage() {
                                   ? 'border-blue-300 bg-blue-50 text-blue-800'
                                   : isDone
                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                                    : 'border-gray-200 bg-white text-gray-700'
+                                    : 'border-slate-200 bg-white text-slate-700'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
@@ -467,9 +467,9 @@ export default function InvestmentDetailPage() {
               </div>
 
               <div className="card-base">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">체크리스트</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-2">체크리스트</h3>
             {!linkedChecklists?.length ? (
-              <p className="text-sm text-gray-400">연결된 체크리스트가 없습니다.</p>
+              <p className="text-sm text-slate-500">연결된 체크리스트가 없습니다.</p>
             ) : (
               <div className="space-y-2">
                 {linkedChecklists.map((checklist) => {
@@ -480,13 +480,13 @@ export default function InvestmentDetailPage() {
                     <button
                       key={checklist.id}
                       onClick={() => navigate('/checklists')}
-                      className="w-full text-left rounded border border-gray-200 p-2 hover:bg-gray-50"
+                      className="w-full text-left rounded border border-slate-200 p-2 hover:bg-slate-50"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-800">{checklist.name}</p>
-                        <span className="text-xs text-gray-500">{checklist.checked_items}/{checklist.total_items}</span>
+                        <p className="text-sm font-medium text-slate-800">{checklist.name}</p>
+                        <span className="text-xs text-slate-500">{checklist.checked_items}/{checklist.total_items}</span>
                       </div>
-                      <div className="mt-1 h-2 w-full rounded-full bg-gray-100">
+                      <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
                         <div className="h-2 rounded-full bg-blue-500" style={{ width: `${progress}%` }} />
                       </div>
                     </button>
@@ -501,7 +501,7 @@ export default function InvestmentDetailPage() {
           {activeTab === 'documents' && (
             <div className="card-base">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">서류</h3>
+              <h3 className="text-sm font-semibold text-slate-700">서류</h3>
               <button className="primary-btn" onClick={() => setShowDocForm(v => !v)}>+ 서류</button>
             </div>
 
@@ -515,8 +515,8 @@ export default function InvestmentDetailPage() {
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{doc.name}</p>
-                        <p className="text-xs text-gray-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
+                        <p className="text-sm font-medium text-slate-800">{doc.name}</p>
+                        <p className="text-xs text-slate-500">{doc.doc_type || '-'} | {labelStatus(doc.status || 'pending')} | 마감 {formatDate(doc.due_date)} | {doc.note || '-'}</p>
                       </div>
                       <div className="flex gap-1">
                         <button className="secondary-btn" onClick={() => setEditingDocId(doc.id)}>수정</button>
@@ -525,14 +525,14 @@ export default function InvestmentDetailPage() {
                     </div>
                   )}
                 </div>
-              )) : <p className="text-sm text-gray-400">서류가 없습니다.</p>}
+              )) : <p className="text-sm text-slate-500">서류가 없습니다.</p>}
             </div>
             </div>
           )}
           {activeTab === 'reviews' && (
             <div className="card-base space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">심의 이력</h3>
+                <h3 className="text-sm font-semibold text-slate-700">심의 이력</h3>
                 <button
                   className="secondary-btn"
                   onClick={() => navigate('/investment-reviews')}
@@ -541,21 +541,21 @@ export default function InvestmentDetailPage() {
                 </button>
               </div>
               {!linkedReviewHistory.length ? (
-                <p className="text-sm text-gray-400">연결된 심의 이력이 없습니다.</p>
+                <p className="text-sm text-slate-500">연결된 심의 이력이 없습니다.</p>
               ) : (
                 <div className="space-y-2">
                   {linkedReviewHistory.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                      <p className="text-sm font-medium text-gray-800">
+                    <div key={row.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-sm font-medium text-slate-800">
                         {row.company_name} · {row.status}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         단계 {row.stage || '-'} · 심사역 {row.reviewer || '-'} · 의결결과 {row.decision_result || '-'}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-xs text-slate-500">
                         희망투자금 {formatNumber(row.target_amount)} · 최근활동 {formatDate(row.recent_activity_at || row.updated_at)}
                       </p>
-                      <p className="mt-1 text-xs text-gray-600">{row.review_opinion || '-'}</p>
+                      <p className="mt-1 text-xs text-slate-600">{row.review_opinion || '-'}</p>
                     </div>
                   ))}
                 </div>
@@ -566,7 +566,7 @@ export default function InvestmentDetailPage() {
             <>
               <div className="card-base">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">가치평가</h3>
+              <h3 className="text-sm font-semibold text-slate-700">가치평가</h3>
               <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded" onClick={() => setShowValuationForm(v => !v)}>+ 가치평가</button>
             </div>
 
@@ -608,9 +608,9 @@ export default function InvestmentDetailPage() {
                   ) : (
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{formatDate(valuation.as_of_date)} | {valuation.method || '-'}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">평가금액 {formatNumber(valuation.value)} | 전기 {formatNumber(valuation.prev_value)} | 증감 {formatNumber(valuation.change_amount)} ({valuation.change_pct != null ? `${valuation.change_pct}%` : '-'})</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
+                        <p className="text-sm font-medium text-slate-800">{formatDate(valuation.as_of_date)} | {valuation.method || '-'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">평가금액 {formatNumber(valuation.value)} | 전기 {formatNumber(valuation.prev_value)} | 증감 {formatNumber(valuation.change_amount)} ({valuation.change_pct != null ? `${valuation.change_pct}%` : '-'})</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{valuation.instrument || '-'} | {valuation.evaluator || '-'} | {valuation.basis || '-'}</p>
                       </div>
                       <div className="flex gap-1">
                         <button className="secondary-btn" onClick={() => setEditingValuationId(valuation.id)}>수정</button>
@@ -619,13 +619,13 @@ export default function InvestmentDetailPage() {
                     </div>
                   )}
                 </div>
-              )) : <p className="text-sm text-gray-400">등록된 가치평가가 없습니다.</p>}
+              )) : <p className="text-sm text-slate-500">등록된 가치평가가 없습니다.</p>}
             </div>
               </div>
 
               <div className="card-base">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">의결권 행사 이력</h3>
+              <h3 className="text-sm font-semibold text-slate-700">의결권 행사 이력</h3>
               <button
                 className="rounded bg-emerald-600 px-2 py-1 text-xs text-white"
                 onClick={() => setShowVoteForm(v => !v)}
@@ -653,7 +653,7 @@ export default function InvestmentDetailPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-gray-600">
+                  <tr className="border-b text-left text-slate-600">
                     <th className="px-2 py-2">행사일</th>
                     <th className="px-2 py-2">의결 유형</th>
                     <th className="px-2 py-2">안건</th>
@@ -673,7 +673,7 @@ export default function InvestmentDetailPage() {
                       <td className="px-2 py-2">
                         <div className="flex gap-1">
                           <button
-                            className="rounded bg-gray-100 px-2 py-0.5 text-xs"
+                            className="rounded bg-slate-100 px-2 py-0.5 text-xs"
                             onClick={() => setEditingVoteId(record.id)}
                           >
                             수정
@@ -713,7 +713,7 @@ export default function InvestmentDetailPage() {
                   ])}
                   {!voteRecords?.length && (
                     <tr>
-                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-gray-400">
+                      <td colSpan={6} className="px-2 py-4 text-center text-sm text-slate-500">
                         의결권 행사 이력이 없습니다.
                       </td>
                     </tr>
@@ -727,28 +727,28 @@ export default function InvestmentDetailPage() {
 
           {activeTab === 'exit' && (
             <div className="card-base space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">회수 시뮬레이션</h3>
-              <p className="text-xs text-gray-500">가정 배수와 성과보수율을 기준으로 순회수금과 MOIC를 계산합니다.</p>
+              <h3 className="text-sm font-semibold text-slate-700">회수 시뮬레이션</h3>
+              <p className="text-xs text-slate-500">가정 배수와 성과보수율을 기준으로 순회수금과 MOIC를 계산합니다.</p>
 
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">기준 투자금</label>
-                  <input value={formatNumber(exitSimulation.invested)} disabled className="w-full rounded border bg-gray-100 px-2 py-1 text-sm" />
+                  <label className="mb-1 block text-xs font-medium text-slate-600">기준 투자금</label>
+                  <input value={formatNumber(exitSimulation.invested)} disabled className="w-full rounded border bg-slate-100 px-2 py-1 text-sm" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">회수 배수(MOIC)</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">회수 배수(MOIC)</label>
                   <input type="number" step="0.1" value={exitMultiple} onChange={(event) => setExitMultiple(Number(event.target.value || 0))} className="form-input" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">성과보수율(%)</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">성과보수율(%)</label>
                   <input type="number" step="0.1" value={exitFeeRate} onChange={(event) => setExitFeeRate(Number(event.target.value || 0))} className="form-input" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
-                <div className="rounded bg-gray-50 p-2">총 회수금(가정): {formatNumber(exitSimulation.gross)}</div>
-                <div className="rounded bg-gray-50 p-2">평가차익: {formatNumber(exitSimulation.gain)}</div>
-                <div className="rounded bg-gray-50 p-2">성과보수: {formatNumber(exitSimulation.fee)}</div>
+                <div className="rounded bg-slate-50 p-2">총 회수금(가정): {formatNumber(exitSimulation.gross)}</div>
+                <div className="rounded bg-slate-50 p-2">평가차익: {formatNumber(exitSimulation.gain)}</div>
+                <div className="rounded bg-slate-50 p-2">성과보수: {formatNumber(exitSimulation.fee)}</div>
                 <div className="rounded bg-blue-50 p-2 font-semibold text-blue-700">순회수금: {formatNumber(exitSimulation.net)}</div>
                 <div className="rounded bg-indigo-50 p-2 font-semibold text-indigo-700 md:col-span-2">
                   순 MOIC: {exitSimulation.moic == null ? '-' : `${exitSimulation.moic.toFixed(2)}x`}
@@ -782,22 +782,22 @@ export default function InvestmentDetailPage() {
 function InvestmentForm({ funds, companies, initial, onSubmit, onCancel }: { funds: Fund[]; companies: Company[]; initial: InvestmentInput; onSubmit: (data: InvestmentInput) => void; onCancel: () => void }) {
   const [form, setForm] = useState<InvestmentInput>(initial)
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-gray-50">
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="form-input"><option value="">조합 선택</option>{funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">회사</label><select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="form-input"><option value="">회사 선택</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">투자일</label><input type="date" value={form.investment_date || ''} onChange={e => setForm(prev => ({ ...prev, investment_date: e.target.value }))} className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">투자금액</label><input type="number" value={form.amount ?? ''} onChange={e => setForm(prev => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">주식 수</label><input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">주당 가격</label><input type="number" value={form.share_price ?? ''} onChange={e => setForm(prev => ({ ...prev, share_price: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">밸류에이션</label><input type="number" value={form.valuation ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">투자 라운드</label><input value={form.round || ''} onChange={e => setForm(prev => ({ ...prev, round: e.target.value }))} placeholder="예: Series A" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">프리머니 밸류</label><input type="number" value={form.valuation_pre ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_pre: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">포스트머니 밸류</label><input type="number" value={form.valuation_post ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_post: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">지분율(%)</label><input type="number" step="0.01" value={form.ownership_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, ownership_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">이사회 참여</label><input value={form.board_seat || ''} onChange={e => setForm(prev => ({ ...prev, board_seat: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">기존 지분율</label><input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">투자수단</label><input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: active" className="form-input" /></div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50">
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">조합</label><select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="form-input"><option value="">조합 선택</option>{funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">회사</label><select value={form.company_id || ''} onChange={e => setForm(prev => ({ ...prev, company_id: Number(e.target.value) }))} className="form-input"><option value="">회사 선택</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">투자일</label><input type="date" value={form.investment_date || ''} onChange={e => setForm(prev => ({ ...prev, investment_date: e.target.value }))} className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">투자금액</label><input type="number" value={form.amount ?? ''} onChange={e => setForm(prev => ({ ...prev, amount: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">주식 수</label><input type="number" value={form.shares ?? ''} onChange={e => setForm(prev => ({ ...prev, shares: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">주당 가격</label><input type="number" value={form.share_price ?? ''} onChange={e => setForm(prev => ({ ...prev, share_price: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">밸류에이션</label><input type="number" value={form.valuation ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">투자 라운드</label><input value={form.round || ''} onChange={e => setForm(prev => ({ ...prev, round: e.target.value }))} placeholder="예: Series A" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">프리머니 밸류</label><input type="number" value={form.valuation_pre ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_pre: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">포스트머니 밸류</label><input type="number" value={form.valuation_post ?? ''} onChange={e => setForm(prev => ({ ...prev, valuation_post: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">지분율(%)</label><input type="number" step="0.01" value={form.ownership_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, ownership_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">이사회 참여</label><input value={form.board_seat || ''} onChange={e => setForm(prev => ({ ...prev, board_seat: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">기존 지분율</label><input value={form.contribution_rate || ''} onChange={e => setForm(prev => ({ ...prev, contribution_rate: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">투자수단</label><input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">상태</label><input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: active" className="form-input" /></div>
       <div className="md:col-span-3 flex gap-2">
         <button className="primary-btn" onClick={() => { if (!form.fund_id || !form.company_id) return; onSubmit({ ...form, investment_date: form.investment_date || null, round: form.round?.trim() || null, board_seat: form.board_seat?.trim() || null, contribution_rate: form.contribution_rate?.trim() || null, instrument: form.instrument?.trim() || null }) }}>저장</button>
         <button className="secondary-btn" onClick={onCancel}>취소</button>
@@ -810,12 +810,12 @@ function DocumentForm({ initial, onSubmit, onCancel }: { initial: InvestmentDocu
   const [form, setForm] = useState<InvestmentDocumentInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-2 bg-gray-50 mb-2">
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">서류명</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 주주명부" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">유형</label><input value={form.doc_type || ''} onChange={e => setForm(prev => ({ ...prev, doc_type: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">마감일</label><input type="date" value={form.due_date || ''} onChange={e => setForm(prev => ({ ...prev, due_date: e.target.value || null }))} className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">비고</label><input value={form.note || ''} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-2 bg-slate-50 mb-2">
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">서류명</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 주주명부" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">유형</label><input value={form.doc_type || ''} onChange={e => setForm(prev => ({ ...prev, doc_type: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">상태</label><input value={form.status || ''} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">마감일</label><input type="date" value={form.due_date || ''} onChange={e => setForm(prev => ({ ...prev, due_date: e.target.value || null }))} className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">비고</label><input value={form.note || ''} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
       <div className="md:col-span-5 flex gap-2">
         <button className="primary-btn" onClick={() => { if (form.name.trim()) onSubmit({ ...form, name: form.name.trim(), due_date: form.due_date || null }) }}>저장</button>
         <button className="secondary-btn" onClick={onCancel}>취소</button>
@@ -836,9 +836,9 @@ function VoteRecordForm({
   const [form, setForm] = useState<VoteRecordInput>(initial)
 
   return (
-    <div className="mb-2 grid grid-cols-1 gap-2 rounded border bg-gray-50 p-2 md:grid-cols-5">
+    <div className="mb-2 grid grid-cols-1 gap-2 rounded border bg-slate-50 p-2 md:grid-cols-5">
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">의결 유형</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">의결 유형</label>
         <select
           value={form.vote_type}
           onChange={e => setForm(prev => ({ ...prev, vote_type: e.target.value }))}
@@ -850,7 +850,7 @@ function VoteRecordForm({
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">의결일</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">의결일</label>
         <input
           type="date"
           value={form.date || ''}
@@ -859,7 +859,7 @@ function VoteRecordForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">의결 결과</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">의결 결과</label>
         <select
           value={form.decision || ''}
           onChange={e => setForm(prev => ({ ...prev, decision: e.target.value }))}
@@ -872,7 +872,7 @@ function VoteRecordForm({
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">안건</label>
         <input
           value={form.agenda || ''}
           onChange={e => setForm(prev => ({ ...prev, agenda: e.target.value }))}
@@ -881,7 +881,7 @@ function VoteRecordForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
         <input
           value={form.memo || ''}
           onChange={e => setForm(prev => ({ ...prev, memo: e.target.value }))}
@@ -926,16 +926,16 @@ function ValuationForm({
   const [form, setForm] = useState<ValuationInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-gray-50 mb-2">
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">기준일</label><input type="date" value={form.as_of_date || ''} onChange={e => setForm(prev => ({ ...prev, as_of_date: e.target.value }))} className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">평가금액</label><input type="number" value={form.value ?? ''} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="숫자 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">전기 평가금액</label><input type="number" value={form.prev_value ?? ''} onChange={e => setForm(prev => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">평가 방법</label><input value={form.method || ''} onChange={e => setForm(prev => ({ ...prev, method: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">대상 증권</label><input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">평가기관</label><input value={form.evaluator || ''} onChange={e => setForm(prev => ({ ...prev, evaluator: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">증감액</label><input type="number" value={form.change_amount ?? ''} onChange={e => setForm(prev => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">증감률(%)</label><input type="number" step="0.01" value={form.change_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
-      <div><label className="mb-1 block text-xs font-medium text-gray-600">산정 근거</label><input value={form.basis || ''} onChange={e => setForm(prev => ({ ...prev, basis: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border rounded p-2 bg-slate-50 mb-2">
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">기준일</label><input type="date" value={form.as_of_date || ''} onChange={e => setForm(prev => ({ ...prev, as_of_date: e.target.value }))} className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">평가금액</label><input type="number" value={form.value ?? ''} onChange={e => setForm(prev => ({ ...prev, value: Number(e.target.value || 0) }))} placeholder="숫자 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">전기 평가금액</label><input type="number" value={form.prev_value ?? ''} onChange={e => setForm(prev => ({ ...prev, prev_value: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">평가 방법</label><input value={form.method || ''} onChange={e => setForm(prev => ({ ...prev, method: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">대상 증권</label><input value={form.instrument || ''} onChange={e => setForm(prev => ({ ...prev, instrument: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">평가기관</label><input value={form.evaluator || ''} onChange={e => setForm(prev => ({ ...prev, evaluator: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">증감액</label><input type="number" value={form.change_amount ?? ''} onChange={e => setForm(prev => ({ ...prev, change_amount: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">증감률(%)</label><input type="number" step="0.01" value={form.change_pct ?? ''} onChange={e => setForm(prev => ({ ...prev, change_pct: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
+      <div><label className="mb-1 block text-xs font-medium text-slate-600">산정 근거</label><input value={form.basis || ''} onChange={e => setForm(prev => ({ ...prev, basis: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
       <div className="md:col-span-3 flex gap-2">
         <button
           className="px-3 py-1 text-xs bg-indigo-600 text-white rounded"
@@ -960,6 +960,7 @@ function ValuationForm({
     </div>
   )
 }
+
 
 
 

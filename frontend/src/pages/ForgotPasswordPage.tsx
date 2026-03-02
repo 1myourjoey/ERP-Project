@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, type FormEvent } from 'react'
+﻿import { Suspense, lazy, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { forgotPassword } from '../lib/api'
@@ -34,8 +34,8 @@ export default function ForgotPasswordPage() {
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         {submitted ? (
           <div className="space-y-4 text-center">
-            <h1 className="text-xl font-semibold text-gray-900">요청 완료</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl font-semibold text-slate-900">요청 완료</h1>
+            <p className="text-sm text-slate-600">
               비밀번호 재설정 요청이 접수되었습니다.
               <br />
               관리자가 확인 후 안내할 예정입니다.
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
           <>
             <div className="mb-4 text-center">
               <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-              <h1 className="mt-3 text-lg font-semibold text-gray-900">비밀번호 찾기</h1>
+              <h1 className="mt-3 text-lg font-semibold text-slate-900">비밀번호 찾기</h1>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-3">
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            <p className="mt-4 text-center text-xs text-gray-500">
+            <p className="mt-4 text-center text-xs text-slate-500">
               <Link to="/login" className="text-blue-600 hover:underline">
                 로그인으로 돌아가기
               </Link>
@@ -80,3 +80,4 @@ export default function ForgotPasswordPage() {
     </div>
   )
 }
+

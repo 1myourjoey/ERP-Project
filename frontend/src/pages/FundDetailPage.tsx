@@ -233,9 +233,9 @@ function buildKeyTermDraft(fund: Fund | undefined): EditableKeyTerm[] {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-gray-200 bg-gray-50 rounded-xl p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-lg font-bold text-gray-800 mt-1">{value}</p>
+    <div className="border border-slate-200 bg-slate-50 rounded-xl p-3">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-lg font-bold text-slate-800 mt-1">{value}</p>
     </div>
   )
 }
@@ -412,28 +412,28 @@ function LPTransferModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-900">LP 양수양도</h3>
+          <h3 className="text-base font-semibold text-slate-900">LP 양수양도</h3>
           <button onClick={onCancel} className="secondary-btn">닫기</button>
         </div>
 
         <div className="space-y-3">
-          <div className="rounded border border-gray-200 bg-gray-50 p-2 text-sm">
-            양도인: <span className="font-medium text-gray-800">{fromLp.name}</span>
+          <div className="rounded border border-slate-200 bg-slate-50 p-2 text-sm">
+            양도인: <span className="font-medium text-slate-800">{fromLp.name}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">양도 금액</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">양도 금액</label>
               <KrwAmountInput
                 value={transferAmount}
                 onChange={(next) => setTransferAmount(next ?? 0)}
                 placeholder="숫자 입력"
                 className="w-full rounded border px-2 py-1.5 text-sm"
-                helperClassName="mt-1 text-[10px] text-gray-500"
+                helperClassName="mt-1 text-[10px] text-slate-500"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">양도일</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">양도일</label>
               <input
                 type="date"
                 value={transferDate}
@@ -443,7 +443,7 @@ function LPTransferModal({
             </div>
           </div>
 
-          <div className="rounded border border-gray-200 p-2">
+          <div className="rounded border border-slate-200 p-2">
             <div className="mb-2 flex items-center gap-3 text-xs">
               <label className="inline-flex items-center gap-1">
                 <input type="radio" checked={useExistingLp} onChange={() => setUseExistingLp(true)} />
@@ -457,7 +457,7 @@ function LPTransferModal({
 
             {useExistingLp ? (
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">양수 LP</label>
                 <select
                   value={toLpId}
                   onChange={(event) => setToLpId(event.target.value ? Number(event.target.value) : '')}
@@ -472,7 +472,7 @@ function LPTransferModal({
             ) : (
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP명</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">양수 LP명</label>
                   <input
                     value={toLpName}
                     onChange={(event) => setToLpName(event.target.value)}
@@ -481,7 +481,7 @@ function LPTransferModal({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">양수 LP 유형</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">양수 LP 유형</label>
                   <input
                     value={toLpType}
                     onChange={(event) => setToLpType(event.target.value)}
@@ -490,7 +490,7 @@ function LPTransferModal({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호/생년월일</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">사업자등록번호/생년월일</label>
                   <input
                     value={toLpBusinessNumber}
                     onChange={(event) => setToLpBusinessNumber(event.target.value)}
@@ -499,7 +499,7 @@ function LPTransferModal({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">주소</label>
                   <input
                     value={toLpAddress}
                     onChange={(event) => setToLpAddress(event.target.value)}
@@ -508,7 +508,7 @@ function LPTransferModal({
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-600">연락처</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">연락처</label>
                   <input
                     value={toLpContact}
                     onChange={(event) => setToLpContact(event.target.value)}
@@ -521,7 +521,7 @@ function LPTransferModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
@@ -559,17 +559,17 @@ function FundForm({
   return (
     <div className="card-base space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">조합 수정</h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        <h3 className="font-semibold text-slate-800">조합 수정</h3>
+        <button onClick={onCancel} className="text-slate-500 hover:text-slate-600"><X size={18} /></button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">조합명</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">조합명</label>
           <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">조합 유형</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">조합 유형</label>
           <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
             {FUND_TYPE_OPTIONS.map((type) => (
               <option key={type} value={type}>{type}</option>
@@ -577,7 +577,7 @@ function FundForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
           <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
             {FUND_STATUS_OPTIONS.map((status) => (
               <option key={status.value} value={status.value}>{status.label}</option>
@@ -585,39 +585,39 @@ function FundForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">결성일</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">결성일</label>
           <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         {form.status !== 'forming' && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">만기일</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">만기일</label>
             <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
           </div>
         )}
         {(form.status === 'dissolved' || form.status === 'liquidated') && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">해산일</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">해산일</label>
             <input type="date" value={form.dissolution_date || ''} onChange={e => setForm(prev => ({ ...prev, dissolution_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
           </div>
         )}
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">GP</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">GP</label>
           <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">대표 펀드매니저</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">대표 펀드매니저</label>
           <input value={form.fund_manager || ''} onChange={e => setForm(prev => ({ ...prev, fund_manager: e.target.value }))} placeholder="대표 펀드매니저" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Co-GP</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Co-GP</label>
           <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">신탁사</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">신탁사</label>
           <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">총 약정액</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">총 약정액</label>
           <KrwAmountInput
             value={form.commitment_total ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, commitment_total: next }))}
@@ -626,7 +626,7 @@ function FundForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">GP 출자금</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">GP 출자금</label>
           <KrwAmountInput
             value={form.gp_commitment ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, gp_commitment: next }))}
@@ -635,7 +635,7 @@ function FundForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">출자방식</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">출자방식</label>
           <select value={form.contribution_type || ''} onChange={e => setForm(prev => ({ ...prev, contribution_type: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg">
             <option value="">출자방식 선택</option>
             <option value="일시">일시</option>
@@ -644,23 +644,23 @@ function FundForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">투자기간 종료일</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">투자기간 종료일</label>
           <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">관리보수율(%)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">관리보수율(%)</label>
           <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">성과보수율(%)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">성과보수율(%)</label>
           <input type="number" step="0.01" value={form.performance_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, performance_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="성과보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">허들레이트(%)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">허들레이트(%)</label>
           <input type="number" step="0.01" value={form.hurdle_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, hurdle_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="허들레이트(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">운용계좌번호</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">운용계좌번호</label>
           <input value={form.account_number || ''} onChange={e => setForm(prev => ({ ...prev, account_number: e.target.value }))} placeholder="운용계좌번호" className="w-full px-3 py-2 text-sm border rounded-lg" />
         </div>
       </div>
@@ -713,10 +713,10 @@ function LPForm({
   )
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">주소록 매핑</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">주소록 매핑</label>
           <select
             value={selectedAddressBookId}
             onChange={(e) => {
@@ -749,9 +749,9 @@ function LPForm({
             ))}
           </select>
         </div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-slate-600">LP 이름</label><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="LP 이름" className="form-input" /></div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">LP 유형</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">LP 유형</label>
           <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="form-input">
             {LP_TYPE_OPTIONS.map((type) => (
               <option key={type} value={type}>{type}</option>
@@ -759,7 +759,7 @@ function LPForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">약정액</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">약정액</label>
           <KrwAmountInput
             value={form.commitment ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, commitment: next }))}
@@ -768,7 +768,7 @@ function LPForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">납입액</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">납입액</label>
           <KrwAmountInput
             value={form.paid_in ?? null}
             onChange={(next) => setForm((prev) => ({ ...prev, paid_in: next }))}
@@ -776,9 +776,9 @@ function LPForm({
             className="form-input"
           />
         </div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-gray-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="form-input" /></div>
-        <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-gray-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-slate-600">연락처</label><input value={form.contact || ''} onChange={e => setForm(prev => ({ ...prev, contact: e.target.value }))} placeholder="연락처" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-slate-600">사업자번호/생년월일</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="사업자번호/생년월일" className="form-input" /></div>
+        <div className="md:col-span-2"><label className="mb-1 block text-xs font-medium text-slate-600">주소</label><input value={form.address || ''} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="주소" className="form-input" /></div>
       </div>
       <div className="flex gap-2">
         <button
@@ -985,18 +985,18 @@ function CapitalCallWizard({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <h3 className="text-base font-semibold text-gray-900">출자 요청 위저드</h3>
+          <h3 className="text-base font-semibold text-slate-900">출자 요청 위저드</h3>
           <button onClick={onClose} className="secondary-btn">닫기</button>
         </div>
 
         <div className="space-y-4 px-5 py-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">납입일</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">납입일</label>
               <input type="date" value={callDate} onChange={(e) => setCallDate(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">출자 유형</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">출자 유형</label>
               <select value={callType} onChange={(e) => setCallType(e.target.value as 'initial' | 'additional' | 'regular')} className="w-full rounded border px-2 py-1.5 text-sm">
                 <option value="initial">최초 출자</option>
                 <option value="additional">수시 출자</option>
@@ -1004,7 +1004,7 @@ function CapitalCallWizard({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">요청 비율 (%)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">요청 비율 (%)</label>
               <input type="number" min={0} max={remainingPercent} value={requestPercent} onChange={(e) => setRequestPercent(Number(e.target.value || 0))} className="w-full rounded border px-2 py-1.5 text-sm" />
             </div>
           </div>
@@ -1018,13 +1018,13 @@ function CapitalCallWizard({
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-lg bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">총 약정</p>
-              <p className="text-sm font-semibold text-gray-800">{formatKRW(commitmentTotal)}</p>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">총 약정</p>
+              <p className="text-sm font-semibold text-slate-800">{formatKRW(commitmentTotal)}</p>
             </div>
-            <div className="rounded-lg bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">기납입</p>
-              <p className="text-sm font-semibold text-gray-800">{formatKRW(existingPaidIn)}</p>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">기납입</p>
+              <p className="text-sm font-semibold text-slate-800">{formatKRW(existingPaidIn)}</p>
             </div>
             <div className="rounded-lg bg-emerald-50 p-3">
               <p className="text-xs text-emerald-600">잔여 약정</p>
@@ -1032,9 +1032,9 @@ function CapitalCallWizard({
             </div>
           </div>
 
-          <div className="max-h-60 overflow-auto rounded border border-gray-200">
+          <div className="max-h-60 overflow-auto rounded border border-slate-200">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500">
+              <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
                   <th className="px-3 py-2 text-left">LP명</th>
                   <th className="px-3 py-2 text-right">약정금액</th>
@@ -1048,7 +1048,7 @@ function CapitalCallWizard({
                     <td className="px-3 py-2 text-right">{formatKRW(row.commitment)}</td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-block">
-                        <label className="mb-1 block text-[10px] font-medium text-gray-500">요청금액</label>
+                        <label className="mb-1 block text-[10px] font-medium text-slate-500">요청금액</label>
                         <KrwAmountInput
                           value={row.amount}
                           onChange={(next) => {
@@ -1062,9 +1062,9 @@ function CapitalCallWizard({
                           className={`w-36 rounded border px-2 py-1 text-right text-sm ${
                             row.amount > row.remaining ? 'border-red-500 bg-red-50' : ''
                           }`}
-                          helperClassName="mt-1 text-[10px] text-right text-gray-500"
+                          helperClassName="mt-1 text-[10px] text-right text-slate-500"
                         />
-                        <p className="mt-1 text-[10px] text-gray-500">최대 {formatKRW(row.remaining)}</p>
+                        <p className="mt-1 text-[10px] text-slate-500">최대 {formatKRW(row.remaining)}</p>
                         {row.amount > row.remaining && (
                           <p className="mt-1 text-[10px] text-red-600">미납액을 초과한 금액입니다.</p>
                         )}
@@ -1079,7 +1079,7 @@ function CapitalCallWizard({
 
         <div className="flex items-center justify-between border-t px-5 py-4">
           <div>
-            <p className="text-sm text-gray-600">총 요청금액: <span className="font-semibold text-gray-900">{formatKRW(totalAmount)}</span></p>
+            <p className="text-sm text-slate-600">총 요청금액: <span className="font-semibold text-slate-900">{formatKRW(totalAmount)}</span></p>
             {isTotalOverLimit ? <p className="text-xs text-red-600">총 요청금액이 잔여 약정을 초과했습니다.</p> : null}
             {isAnyLpOverLimit ? <p className="text-xs text-red-600">LP별 미납액 한도를 초과한 입력이 있습니다.</p> : null}
           </div>
@@ -1873,10 +1873,10 @@ export default function FundDetailPage() {
 
   return (
     <div className="page-container space-y-4">
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-slate-500">
         <Link to="/funds" className="hover:text-blue-600">조합 관리</Link>
         <span>/</span>
-        <span className="text-gray-900">{fundDetail?.name ?? `조합 #${fundId}`}</span>
+        <span className="text-slate-900">{fundDetail?.name ?? `조합 #${fundId}`}</span>
       </div>
       <div className="page-header">
         <div>
@@ -1888,7 +1888,7 @@ export default function FundDetailPage() {
       {isLoading ? (
         <PageLoading />
       ) : !fundDetail ? (
-        <p className="text-sm text-gray-500">조합을 찾을 수 없습니다.</p>
+        <p className="text-sm text-slate-500">조합을 찾을 수 없습니다.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1896,14 +1896,14 @@ export default function FundDetailPage() {
             <SummaryCard label="투자 건수" value={`${investments?.length ?? 0}건`} />
             <SummaryCard label="투자 금액 합계" value={formatKRW(totalInvestmentAmount)} />
           </div>
-          <div className="sticky top-0 z-10 mt-3 rounded-xl border border-gray-100 bg-white/95 p-2 backdrop-blur">
-            <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1">
+          <div className="sticky top-0 z-10 mt-3 rounded-xl border border-slate-100 bg-white/95 p-2 backdrop-blur">
+            <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
               {FUND_DETAIL_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   {tab.label}
                 </button>
@@ -1922,30 +1922,30 @@ export default function FundDetailPage() {
             <div className="card-base space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{fundDetail.name}</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">{fundDetail.type} | {labelStatus(fundDetail.status)}</p>
+                  <h2 className="text-xl font-bold text-slate-900">{fundDetail.name}</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">{fundDetail.type} | {labelStatus(fundDetail.status)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1"><Pencil size={12} />수정</button>
+                  <button onClick={() => setEditingFund(true)} className="px-2 py-1 text-xs bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"><Pencil size={12} />수정</button>
                   <button onClick={() => { if (confirm('이 조합을 삭제하시겠습니까?')) deleteFundMut.mutate(fundId) }} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 flex items-center gap-1"><Trash2 size={12} />삭제</button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                <div className="p-2 bg-gray-50 rounded">결성일: {fundDetail.formation_date || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">투자기간 종료일: {fundDetail.investment_period_end || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">만기일: {fundDetail.maturity_date || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">GP: {fundDetail.gp || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">대표 펀드매니저: {fundDetail.fund_manager || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">Co-GP: {fundDetail.co_gp || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">신탁사: {fundDetail.trustee || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">약정액: {formatKRW(fundDetail.commitment_total ?? null)}</div>
-                <div className="p-2 bg-gray-50 rounded">GP 출자금: {formatKRW(fundDetail.gp_commitment ?? null)}</div>
-                <div className="p-2 bg-gray-50 rounded">출자방식: {fundDetail.contribution_type || '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">관리보수율: {fundDetail.mgmt_fee_rate != null ? `${fundDetail.mgmt_fee_rate}%` : '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">성과보수율: {fundDetail.performance_fee_rate != null ? `${fundDetail.performance_fee_rate}%` : '-'}</div>
-                <div className="p-2 bg-gray-50 rounded">허들레이트: {fundDetail.hurdle_rate != null ? `${fundDetail.hurdle_rate}%` : '-'}</div>
-                <div className="p-2 bg-gray-50 rounded md:col-span-3">운용계좌번호: {fundDetail.account_number || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">결성일: {fundDetail.formation_date || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">투자기간 종료일: {fundDetail.investment_period_end || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">만기일: {fundDetail.maturity_date || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">GP: {fundDetail.gp || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">대표 펀드매니저: {fundDetail.fund_manager || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">Co-GP: {fundDetail.co_gp || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">신탁사: {fundDetail.trustee || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">약정액: {formatKRW(fundDetail.commitment_total ?? null)}</div>
+                <div className="p-2 bg-slate-50 rounded">GP 출자금: {formatKRW(fundDetail.gp_commitment ?? null)}</div>
+                <div className="p-2 bg-slate-50 rounded">출자방식: {fundDetail.contribution_type || '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">관리보수율: {fundDetail.mgmt_fee_rate != null ? `${fundDetail.mgmt_fee_rate}%` : '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">성과보수율: {fundDetail.performance_fee_rate != null ? `${fundDetail.performance_fee_rate}%` : '-'}</div>
+                <div className="p-2 bg-slate-50 rounded">허들레이트: {fundDetail.hurdle_rate != null ? `${fundDetail.hurdle_rate}%` : '-'}</div>
+                <div className="p-2 bg-slate-50 rounded md:col-span-3">운용계좌번호: {fundDetail.account_number || '-'}</div>
               </div>
             </div>
           ))}
@@ -1954,11 +1954,11 @@ export default function FundDetailPage() {
             <div className="card-base space-y-3">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700">결성 진행 컨트롤 패널</h3>
-                  <p className="text-xs text-gray-500">필요한 결성 워크플로를 개별로 추가하세요.</p>
+                  <h3 className="text-sm font-semibold text-slate-700">결성 진행 컨트롤 패널</h3>
+                  <p className="text-xs text-slate-500">필요한 결성 워크플로를 개별로 추가하세요.</p>
                 </div>
                 <div className="w-full md:w-56">
-                  <label className="mb-1 block text-xs font-medium text-gray-600">기준일</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">기준일</label>
                   <input
                     type="date"
                     value={formationWorkflowTriggerDate}
@@ -1994,7 +1994,7 @@ export default function FundDetailPage() {
                       }
                       className={`rounded-lg border px-3 py-2 text-sm text-left transition ${
                         isAdded
-                          ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                          ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
                           : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
                       } ${addFormationWorkflowMut.isPending && !isPendingThisButton ? 'opacity-70' : ''}`}
                     >
@@ -2012,53 +2012,53 @@ export default function FundDetailPage() {
           {isOverviewTab && (
             <>
               <div className="card-base space-y-3">
-                <h3 className="text-sm font-semibold text-gray-700">조합 요약</h3>
+                <h3 className="text-sm font-semibold text-slate-700">조합 요약</h3>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     약정/납입
-                    <p className="mt-1 font-semibold text-gray-900">
+                    <p className="mt-1 font-semibold text-slate-900">
                       {formatKRW(capitalCommitmentBase)} / {formatKRW(lpPaidInTotal)}
                     </p>
                   </div>
-                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     투자 포트폴리오
-                    <p className="mt-1 font-semibold text-gray-900">
+                    <p className="mt-1 font-semibold text-slate-900">
                       {(investments?.length ?? 0)}건 / {formatKRW(totalInvestmentAmount)}
                     </p>
                   </div>
-                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     진행 워크플로
-                    <p className="mt-1 font-semibold text-gray-900">
+                    <p className="mt-1 font-semibold text-slate-900">
                       {fundWorkflowInstances.filter((row) => row.status === 'active').length}건
                     </p>
                   </div>
-                  <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     미완료 업무
-                    <p className="mt-1 font-semibold text-gray-900">{pendingTasks.length}건</p>
+                    <p className="mt-1 font-semibold text-slate-900">{pendingTasks.length}건</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="rounded border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-xs font-semibold text-gray-600">최근 LP 변경</p>
+                  <div className="rounded border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-600">최근 LP 변경</p>
                     {lpTransfers.length === 0 ? (
-                      <p className="mt-1 text-xs text-gray-400">최근 변경 이력이 없습니다.</p>
+                      <p className="mt-1 text-xs text-slate-500">최근 변경 이력이 없습니다.</p>
                     ) : (
                       <div className="mt-1 space-y-1">
                         {[...lpTransfers]
                           .sort((a, b) => (b.id - a.id))
                           .slice(0, 5)
                           .map((row) => (
-                            <p key={row.id} className="text-xs text-gray-700">
+                            <p key={row.id} className="text-xs text-slate-700">
                               {toDate(row.transfer_date)} | {row.from_lp_name} → {row.to_lp_name || '신규 LP'} | {labelStatus(row.status)}
                             </p>
                           ))}
                       </div>
                     )}
                   </div>
-                  <div className="rounded border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-xs font-semibold text-gray-600">보고/문서 현황</p>
-                    <div className="mt-1 space-y-1 text-xs text-gray-700">
+                  <div className="rounded border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-600">보고/문서 현황</p>
+                    <div className="mt-1 space-y-1 text-xs text-slate-700">
                       <p>미수 서류: {missingDocs?.length ?? 0}건</p>
                       <p>미수령 보수: {feePendingCount}건</p>
                       <p>대기/진행 양수양도: {lpTransfers.filter((row) => row.status !== 'completed' && row.status !== 'cancelled').length}건</p>
@@ -2068,22 +2068,22 @@ export default function FundDetailPage() {
               </div>
 
               <div className="card-base">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">미수 서류</h3>
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">미수 서류</h3>
                 {!missingDocs?.length ? (
-                  <p className="text-sm text-gray-400">미수 서류가 없습니다.</p>
+                  <p className="text-sm text-slate-500">미수 서류가 없습니다.</p>
                 ) : (
                   <div className="space-y-2">
                     {missingDocs.map((doc) => (
-                      <div key={doc.id} className="border border-gray-100 rounded p-2">
+                      <div key={doc.id} className="border border-slate-100 rounded p-2">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-gray-800">{doc.document_name}</p>
+                          <p className="text-sm font-medium text-slate-800">{doc.document_name}</p>
                           {dueText(doc) && (
                             <span className={`${doc.days_remaining != null && doc.days_remaining < 0 ? 'tag tag-red' : 'tag tag-amber'}`}>
                               {dueText(doc)}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{doc.company_name} | {doc.note || '-'}</p>
                       </div>
                     ))}
                   </div>
@@ -2104,13 +2104,13 @@ export default function FundDetailPage() {
                 className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
-                <h3 className="text-base font-semibold text-gray-900">템플릿 선택</h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-slate-900">템플릿 선택</h3>
+                <p className="mt-1 text-sm text-slate-600">
                   [{formationTemplateModal.slotLabel}]에 매핑할 템플릿을 선택하세요.
                 </p>
 
                 <div className="mt-4 space-y-1">
-                  <label className="block text-xs font-medium text-gray-600">워크플로 템플릿</label>
+                  <label className="block text-xs font-medium text-slate-600">워크플로 템플릿</label>
                   <select
                     value={selectedFormationTemplateId}
                     onChange={(event) => {
@@ -2165,8 +2165,8 @@ export default function FundDetailPage() {
             <div className="card-base space-y-3">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700">자본 및 LP 현황</h3>
-                  <p className="text-xs text-gray-500">LP별 약정/납입 현황을 한 화면에서 관리합니다.</p>
+                  <h3 className="text-sm font-semibold text-slate-700">자본 및 LP 현황</h3>
+                  <p className="text-xs text-slate-500">LP별 약정/납입 현황을 한 화면에서 관리합니다.</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setShowCapCallWizard(true)} className="secondary-btn">+ 출자요청 위저드</button>
@@ -2186,11 +2186,11 @@ export default function FundDetailPage() {
                 </div>
               )}
 
-              <div className="overflow-auto rounded-lg border border-gray-200">
+              <div className="overflow-auto rounded-lg border border-slate-200">
                 <table className="min-w-[980px] w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
-                      <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left">조합원(LP) 명</th>
+                      <th className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-left">조합원(LP) 명</th>
                       <th className="px-3 py-2 text-left">성격(구분)</th>
                       <th className="px-3 py-2 text-right">총 약정액</th>
                       <th className="px-3 py-2 text-right">누적 납입액</th>
@@ -2201,14 +2201,14 @@ export default function FundDetailPage() {
                   <tbody className="divide-y">
                     {capitalGridRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">등록된 LP가 없습니다.</td>
+                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">등록된 LP가 없습니다.</td>
                       </tr>
                     ) : (
                       capitalGridRows.flatMap((lp) => {
                         const rows = [
                           <tr key={`row-${lp.id}`}>
                             <td
-                              className="sticky left-0 z-[1] cursor-pointer bg-white px-3 py-2 font-medium text-gray-800 hover:text-blue-700"
+                              className="sticky left-0 z-[1] cursor-pointer bg-white px-3 py-2 font-medium text-slate-800 hover:text-blue-700"
                               onClick={() => setExpandedLPId((prev) => (prev === lp.id ? null : lp.id))}
                             >
                               <span className="inline-flex items-center gap-1">
@@ -2217,13 +2217,13 @@ export default function FundDetailPage() {
                                 {lp.name}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-gray-700">{lp.type || '-'}</td>
+                            <td className="px-3 py-2 text-slate-700">{lp.type || '-'}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.commitment)}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.paidIn)}</td>
                             <td className="px-3 py-2 text-right">{lp.shareRatio.toFixed(2)}%</td>
                             <td className="px-3 py-2">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-gray-500">{lp.note}</span>
+                                <span className="text-xs text-slate-500">{lp.note}</span>
                                 <div className="flex gap-1">
                                   <button onClick={() => setEditingLPId(lp.id)} className="secondary-btn">수정</button>
                                   <button
@@ -2242,7 +2242,7 @@ export default function FundDetailPage() {
                         ]
                         if (editingLPId === lp.id) {
                           rows.push(
-                            <tr key={`edit-${lp.id}`} className="bg-gray-50">
+                            <tr key={`edit-${lp.id}`} className="bg-slate-50">
                               <td colSpan={6} className="px-2 py-2">
                                 <LPForm
                                   initial={lp}
@@ -2275,30 +2275,30 @@ export default function FundDetailPage() {
                     )}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-gray-50 font-semibold text-gray-800">
-                      <td className="sticky left-0 z-10 bg-gray-50 px-3 py-2">합계(Total)</td>
+                    <tr className="bg-slate-50 font-semibold text-slate-800">
+                      <td className="sticky left-0 z-10 bg-slate-50 px-3 py-2">합계(Total)</td>
                       <td className="px-3 py-2" />
                       <td className="px-3 py-2 text-right">{formatKRW(capitalCommitmentBase)}</td>
                       <td className="px-3 py-2 text-right">{formatKRW(lpPaidInTotal)}</td>
                       <td className="px-3 py-2 text-right">{capitalCommitmentBase > 0 ? '100.00%' : '0.00%'}</td>
-                      <td className="px-3 py-2 text-xs text-gray-500">{capitalGridRows.length}명</td>
+                      <td className="px-3 py-2 text-xs text-slate-500">{capitalGridRows.length}명</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 text-xs text-gray-600 md:grid-cols-3">
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">최초 결성 납입액: <strong>{formatKRW(initialPaidIn)}</strong></div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">후속 캐피탈콜 납입액: <strong>{formatKRW(nonInitialCallsPaidTotal)}</strong></div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">총 누적 납입액: <strong>{formatKRW(historyTotalPaidIn)}</strong></div>
+              <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-3">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">최초 결성 납입액: <strong>{formatKRW(initialPaidIn)}</strong></div>
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">후속 캐피탈콜 납입액: <strong>{formatKRW(nonInitialCallsPaidTotal)}</strong></div>
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">총 누적 납입액: <strong>{formatKRW(historyTotalPaidIn)}</strong></div>
               </div>
 
               {splitCapitalCalls.nonInitial.length > 0 && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-                  <h4 className="text-xs font-semibold text-gray-600">최근 캐피탈콜 연계</h4>
+                <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+                  <h4 className="text-xs font-semibold text-slate-600">최근 캐피탈콜 연계</h4>
                   <div className="mt-2 space-y-1">
                     {splitCapitalCalls.nonInitial.slice(-5).reverse().map((call) => (
-                      <div key={call.id} className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <div key={call.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span>{call.call_date || '-'} / {formatKRW(callPaidAmountById.get(call.id) ?? Number(call.total_amount || 0))}</span>
                         {call.linked_workflow_instance_id ? (
                           <button
@@ -2318,16 +2318,16 @@ export default function FundDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <h4 className="text-xs font-semibold text-gray-600">LP 양수양도 이력</h4>
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <h4 className="text-xs font-semibold text-slate-600">LP 양수양도 이력</h4>
                 {!lpTransfers.length ? (
-                  <p className="mt-2 text-sm text-gray-400">등록된 양수양도 이력이 없습니다.</p>
+                  <p className="mt-2 text-sm text-slate-500">등록된 양수양도 이력이 없습니다.</p>
                 ) : (
                   <div className="mt-2 space-y-1">
                     {lpTransfers.map((transfer) => (
-                      <div key={transfer.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 p-2 text-xs">
+                      <div key={transfer.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 p-2 text-xs">
                         <div className="min-w-0">
-                          <p className="truncate text-gray-700">
+                          <p className="truncate text-slate-700">
                             {transfer.from_lp_name || transfer.from_lp_id}
                             {' '}
                             →
@@ -2338,7 +2338,7 @@ export default function FundDetailPage() {
                             {' '}
                             {formatKRW(transfer.transfer_amount)}
                           </p>
-                          <p className="mt-0.5 text-gray-500">
+                          <p className="mt-0.5 text-slate-500">
                             {transfer.transfer_date || '-'}
                             {' '}
                             |
@@ -2391,11 +2391,11 @@ export default function FundDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
-                <h4 className="text-xs font-semibold text-gray-600">배분</h4>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                <h4 className="text-xs font-semibold text-slate-600">배분</h4>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">배분일</label>
                     <input
                       type="date"
                       value={newDistribution.dist_date}
@@ -2404,7 +2404,7 @@ export default function FundDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">배분 유형</label>
                     <select
                       value={newDistribution.dist_type}
                       onChange={(event) => setNewDistribution((prev) => ({ ...prev, dist_type: event.target.value }))}
@@ -2416,25 +2416,25 @@ export default function FundDetailPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">원금 총액</label>
                     <KrwAmountInput
                       value={newDistribution.principal_total || 0}
                       onChange={(next) =>
                         setNewDistribution((prev) => ({ ...prev, principal_total: next ?? 0 }))
                       }
                       className="form-input"
-                      helperClassName="mt-1 text-[10px] text-gray-500"
+                      helperClassName="mt-1 text-[10px] text-slate-500"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">수익 총액</label>
                     <KrwAmountInput
                       value={newDistribution.profit_total || 0}
                       onChange={(next) =>
                         setNewDistribution((prev) => ({ ...prev, profit_total: next ?? 0 }))
                       }
                       className="form-input"
-                      helperClassName="mt-1 text-[10px] text-gray-500"
+                      helperClassName="mt-1 text-[10px] text-slate-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -2455,9 +2455,9 @@ export default function FundDetailPage() {
 
                 <div className="space-y-2">
                   {distributions.map((row) => (
-                    <div key={row.id} className="rounded border border-gray-200 p-2">
+                    <div key={row.id} className="rounded border border-slate-200 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm text-gray-800">
+                        <p className="text-sm text-slate-800">
                           {toDate(row.dist_date)}
                           {' '}
                           |
@@ -2491,7 +2491,7 @@ export default function FundDetailPage() {
                       {editingDistId === row.id && editDistribution && (
                         <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">배분일</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">배분일</label>
                             <input
                               type="date"
                               value={editDistribution.dist_date}
@@ -2502,7 +2502,7 @@ export default function FundDetailPage() {
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">배분 유형</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">배분 유형</label>
                             <select
                               value={editDistribution.dist_type}
                               onChange={(event) =>
@@ -2516,7 +2516,7 @@ export default function FundDetailPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">원금 총액</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">원금 총액</label>
                             <KrwAmountInput
                               value={editDistribution.principal_total}
                               onChange={(next) =>
@@ -2525,11 +2525,11 @@ export default function FundDetailPage() {
                                 )
                               }
                               className="form-input"
-                              helperClassName="mt-1 text-[10px] text-gray-500"
+                              helperClassName="mt-1 text-[10px] text-slate-500"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">수익 총액</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">수익 총액</label>
                             <KrwAmountInput
                               value={editDistribution.profit_total}
                               onChange={(next) =>
@@ -2538,7 +2538,7 @@ export default function FundDetailPage() {
                                 )
                               }
                               className="form-input"
-                              helperClassName="mt-1 text-[10px] text-gray-500"
+                              helperClassName="mt-1 text-[10px] text-slate-500"
                             />
                           </div>
                           <div className="flex gap-1">
@@ -2574,10 +2574,10 @@ export default function FundDetailPage() {
                       )}
 
                       {distExpandedId === row.id && (
-                        <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
+                        <div className="mt-2 rounded bg-slate-50 p-2 space-y-2">
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                             <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">LP</label>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">LP</label>
                               <select
                                 value={newDistributionItem.lp_id || ''}
                                 onChange={(event) =>
@@ -2592,25 +2592,25 @@ export default function FundDetailPage() {
                               </select>
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">원금</label>
                               <KrwAmountInput
                                 value={newDistributionItem.principal || 0}
                                 onChange={(next) =>
                                   setNewDistributionItem((prev) => ({ ...prev, principal: next ?? 0 }))
                                 }
                                 className="form-input"
-                                helperClassName="mt-1 text-[10px] text-gray-500"
+                                helperClassName="mt-1 text-[10px] text-slate-500"
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">수익</label>
                               <KrwAmountInput
                                 value={newDistributionItem.profit || 0}
                                 onChange={(next) =>
                                   setNewDistributionItem((prev) => ({ ...prev, profit: next ?? 0 }))
                                 }
                                 className="form-input"
-                                helperClassName="mt-1 text-[10px] text-gray-500"
+                                helperClassName="mt-1 text-[10px] text-slate-500"
                               />
                             </div>
                             <div className="flex items-end">
@@ -2628,11 +2628,11 @@ export default function FundDetailPage() {
 
                           <div className="space-y-1">
                             {distributionItems.map((item) => (
-                              <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
+                              <div key={item.id} className="flex items-center justify-between rounded border border-slate-200 bg-white p-2">
                                 {editingDistItemId === item.id && editDistributionItem ? (
                                   <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                                     <div>
-                                      <label className="mb-1 block text-xs font-medium text-gray-600">원금</label>
+                                      <label className="mb-1 block text-xs font-medium text-slate-600">원금</label>
                                       <KrwAmountInput
                                         value={editDistributionItem.principal}
                                         onChange={(next) =>
@@ -2641,11 +2641,11 @@ export default function FundDetailPage() {
                                           )
                                         }
                                         className="form-input"
-                                        helperClassName="mt-1 text-[10px] text-gray-500"
+                                        helperClassName="mt-1 text-[10px] text-slate-500"
                                       />
                                     </div>
                                     <div>
-                                      <label className="mb-1 block text-xs font-medium text-gray-600">수익</label>
+                                      <label className="mb-1 block text-xs font-medium text-slate-600">수익</label>
                                       <KrwAmountInput
                                         value={editDistributionItem.profit}
                                         onChange={(next) =>
@@ -2654,7 +2654,7 @@ export default function FundDetailPage() {
                                           )
                                         }
                                         className="form-input"
-                                        helperClassName="mt-1 text-[10px] text-gray-500"
+                                        helperClassName="mt-1 text-[10px] text-slate-500"
                                       />
                                     </div>
                                     <button
@@ -2684,7 +2684,7 @@ export default function FundDetailPage() {
                                   </div>
                                 ) : (
                                   <>
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-slate-600">
                                       LP
                                       {' '}
                                       {item.lp_name || item.lp_id}
@@ -2720,7 +2720,7 @@ export default function FundDetailPage() {
                     </div>
                   ))}
                   {distributions.length === 0 && (
-                    <p className="text-sm text-gray-400">등록된 배분 내역이 없습니다.</p>
+                    <p className="text-sm text-slate-500">등록된 배분 내역이 없습니다.</p>
                   )}
                 </div>
               </div>
@@ -2731,7 +2731,7 @@ export default function FundDetailPage() {
             <>
               <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">통지기간</h3>
+              <h3 className="text-sm font-semibold text-slate-700">통지기간</h3>
               {!editingNotices ? (
                 <button
                   onClick={() => {
@@ -2760,16 +2760,16 @@ export default function FundDetailPage() {
 
             {!editingNotices ? (
               (fundDetail.notice_periods?.length ?? 0) === 0 ? (
-                <p className="text-sm text-gray-400">등록된 통지기간이 없습니다.</p>
+                <p className="text-sm text-slate-500">등록된 통지기간이 없습니다.</p>
               ) : (
                 <div className="space-y-2">
                   {(fundDetail.notice_periods ?? []).map((row) => (
-                    <div key={row.id} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-2 text-sm md:grid-cols-12">
-                      <div className="md:col-span-4 font-medium text-gray-800">{row.label}</div>
-                      <div className="md:col-span-3 text-gray-700">
+                    <div key={row.id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-2 text-sm md:grid-cols-12">
+                      <div className="md:col-span-4 font-medium text-slate-800">{row.label}</div>
+                      <div className="md:col-span-3 text-slate-700">
                         {row.business_days}{row.day_basis === 'calendar' ? '일' : '영업일'}
                       </div>
-                      <div className="md:col-span-5 text-gray-500">{row.memo || '-'}</div>
+                      <div className="md:col-span-5 text-slate-500">{row.memo || '-'}</div>
                     </div>
                   ))}
                 </div>
@@ -2777,9 +2777,9 @@ export default function FundDetailPage() {
             ) : (
               <div className="space-y-2">
                 {noticeDraft.map((row, idx) => (
-                  <div key={row._row_id} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-2 md:grid-cols-12">
+                  <div key={row._row_id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-2 md:grid-cols-12">
                     <div className="md:col-span-4">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">표시명</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">표시명</label>
                       <input
                         value={row.label}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
@@ -2788,7 +2788,7 @@ export default function FundDetailPage() {
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">통지기간</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">통지기간</label>
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
@@ -2809,7 +2809,7 @@ export default function FundDetailPage() {
                       </div>
                     </div>
                     <div className="md:col-span-3">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">메모/조항</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">메모/조항</label>
                       <input
                         value={row.memo || ''}
                         onChange={(e) => setNoticeDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, memo: e.target.value } : item))}
@@ -2845,7 +2845,7 @@ export default function FundDetailPage() {
 
               <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">주요 계약 조항</h3>
+              <h3 className="text-sm font-semibold text-slate-700">주요 계약 조항</h3>
               {!editingKeyTerms ? (
                 <button
                   onClick={() => {
@@ -2874,18 +2874,18 @@ export default function FundDetailPage() {
 
             {!editingKeyTerms ? (
               keyTermsByCategory.length === 0 ? (
-                <p className="text-sm text-gray-400">등록된 계약 조항이 없습니다.</p>
+                <p className="text-sm text-slate-500">등록된 계약 조항이 없습니다.</p>
               ) : (
                 <div className="space-y-3">
                   {keyTermsByCategory.map(([category, rows]) => (
-                    <div key={category} className="border border-gray-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">[{category}]</p>
+                    <div key={category} className="border border-slate-200 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">[{category}]</p>
                       <div className="space-y-2">
                         {rows.map((row, idx) => (
                           <div key={`${category}-${idx}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 text-sm">
-                            <div className="md:col-span-3 font-medium text-gray-800">{row.label}</div>
-                            <div className="md:col-span-7 text-gray-700">{row.value}</div>
-                            <div className="md:col-span-2 text-gray-500">{row.article_ref || '-'}</div>
+                            <div className="md:col-span-3 font-medium text-slate-800">{row.label}</div>
+                            <div className="md:col-span-7 text-slate-700">{row.value}</div>
+                            <div className="md:col-span-2 text-slate-500">{row.article_ref || '-'}</div>
                           </div>
                         ))}
                       </div>
@@ -2896,9 +2896,9 @@ export default function FundDetailPage() {
             ) : (
               <div className="space-y-2">
                 {keyTermDraft.map((row, idx) => (
-                  <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-gray-200 rounded-lg p-2">
+                  <div key={row._row_id} className="grid grid-cols-1 md:grid-cols-14 gap-2 border border-slate-200 rounded-lg p-2">
                     <div className="md:col-span-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">카테고리</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">카테고리</label>
                       <input
                         value={row.category}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, category: e.target.value } : item))}
@@ -2907,7 +2907,7 @@ export default function FundDetailPage() {
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">조항</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">조항</label>
                       <input
                         value={row.label}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item))}
@@ -2916,7 +2916,7 @@ export default function FundDetailPage() {
                       />
                     </div>
                     <div className="md:col-span-5">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">내용</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">내용</label>
                       <input
                         value={row.value}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, value: e.target.value } : item))}
@@ -2925,7 +2925,7 @@ export default function FundDetailPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-1 block text-[10px] font-medium text-gray-500">조문</label>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-500">조문</label>
                       <input
                         value={row.article_ref || ''}
                         onChange={(e) => setKeyTermDraft((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, article_ref: e.target.value } : item))}
@@ -2945,7 +2945,7 @@ export default function FundDetailPage() {
                             return next
                           })
                         }}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
                         title="위로"
                       >
                         ↑
@@ -2961,7 +2961,7 @@ export default function FundDetailPage() {
                             return next
                           })
                         }}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
                         title="아래로"
                       >
                         ↓
@@ -2992,10 +2992,10 @@ export default function FundDetailPage() {
             )}
               </div>
               <div className="card-base space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">총회</h3>
+                <h3 className="text-sm font-semibold text-slate-700">총회</h3>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">총회일</label>
                     <input
                       type="date"
                       value={newAssembly.date}
@@ -3004,7 +3004,7 @@ export default function FundDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">총회 유형</label>
                     <select
                       value={newAssembly.type}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, type: event.target.value }))}
@@ -3016,7 +3016,7 @@ export default function FundDetailPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
                     <select
                       value={newAssembly.status || ''}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, status: event.target.value }))}
@@ -3028,7 +3028,7 @@ export default function FundDetailPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">안건</label>
                     <input
                       value={newAssembly.agenda || ''}
                       onChange={(event) => setNewAssembly((prev) => ({ ...prev, agenda: event.target.value }))}
@@ -3054,9 +3054,9 @@ export default function FundDetailPage() {
 
                 <div className="space-y-1">
                   {assemblies.map((row) => (
-                    <div key={row.id} className="rounded border border-gray-200 p-2">
+                    <div key={row.id} className="rounded border border-slate-200 p-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-700">
+                        <p className="text-sm text-slate-700">
                           {toDate(row.date)}
                           {' '}
                           |
@@ -3082,7 +3082,7 @@ export default function FundDetailPage() {
                       {editingAssemblyId === row.id && editAssembly && (
                         <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">총회일</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">총회일</label>
                             <input
                               type="date"
                               value={editAssembly.date}
@@ -3093,7 +3093,7 @@ export default function FundDetailPage() {
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">총회 유형</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">총회 유형</label>
                             <select
                               value={editAssembly.type}
                               onChange={(event) =>
@@ -3107,7 +3107,7 @@ export default function FundDetailPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
                             <select
                               value={editAssembly.status}
                               onChange={(event) =>
@@ -3121,7 +3121,7 @@ export default function FundDetailPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">안건</label>
+                            <label className="mb-1 block text-xs font-medium text-slate-600">안건</label>
                             <input
                               value={editAssembly.agenda}
                               onChange={(event) =>
@@ -3164,7 +3164,7 @@ export default function FundDetailPage() {
                     </div>
                   ))}
                   {assemblies.length === 0 && (
-                    <p className="text-sm text-gray-400">등록된 총회가 없습니다.</p>
+                    <p className="text-sm text-slate-500">등록된 총회가 없습니다.</p>
                   )}
                 </div>
               </div>
@@ -3174,17 +3174,17 @@ export default function FundDetailPage() {
           {isInvestmentsTab && (
             <div className="card-base">
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">투자 내역</h3>
+                <h3 className="text-sm font-semibold text-slate-700">투자 내역</h3>
                 <div className="flex rounded border text-xs">
                   <button
                     onClick={() => setInvestmentViewMode('cards')}
-                    className={`px-2 py-1 ${investmentViewMode === 'cards' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
+                    className={`px-2 py-1 ${investmentViewMode === 'cards' ? 'primary-btn' : 'text-slate-600'}`}
                   >
                     카드
                   </button>
                   <button
                     onClick={() => setInvestmentViewMode('table')}
-                    className={`px-2 py-1 ${investmentViewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
+                    className={`px-2 py-1 ${investmentViewMode === 'table' ? 'primary-btn' : 'text-slate-600'}`}
                   >
                     목록
                   </button>
@@ -3192,20 +3192,20 @@ export default function FundDetailPage() {
               </div>
 
               {!investments?.length ? (
-                <p className="text-sm text-gray-400">등록된 투자가 없습니다.</p>
+                <p className="text-sm text-slate-500">등록된 투자가 없습니다.</p>
               ) : investmentViewMode === 'cards' ? (
                 <div className="space-y-2">
                   {investments.map((inv) => (
                     <button
                       key={inv.id}
                       onClick={() => navigate(`/investments/${inv.id}`)}
-                      className="w-full rounded-xl border border-gray-100 p-3 text-left hover:bg-gray-50"
+                      className="w-full rounded-xl border border-slate-100 p-3 text-left hover:bg-slate-50"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-800">{inv.company_name || `투자 #${inv.id}`}</span>
-                        <ChevronRight size={16} className="text-gray-400" />
+                        <span className="text-sm font-medium text-slate-800">{inv.company_name || `투자 #${inv.id}`}</span>
+                        <ChevronRight size={16} className="text-slate-500" />
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-slate-500">
                         {inv.investment_date ? new Date(inv.investment_date).toLocaleDateString('ko-KR') : '-'} |
                         {' '}{formatKRW(inv.amount ?? null)} |
                         {' '}{labelStatus(inv.status || 'pending')}
@@ -3216,7 +3216,7 @@ export default function FundDetailPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-xs text-gray-500">
+                    <thead className="bg-slate-50 text-xs text-slate-500">
                       <tr>
                         <th className="px-3 py-2 text-left">투자기업명</th>
                         <th className="px-3 py-2 text-left">설립일</th>
@@ -3231,16 +3231,16 @@ export default function FundDetailPage() {
                       {investments.map((inv) => (
                         <tr
                           key={inv.id}
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-slate-50"
                           onClick={() => navigate(`/investments/${inv.id}`)}
                         >
-                          <td className="px-3 py-2 font-medium text-gray-800">{inv.company_name || '-'}</td>
-                          <td className="px-3 py-2 text-gray-500">{inv.company_founded_date || '-'}</td>
-                          <td className="px-3 py-2 text-gray-500">{inv.industry || '-'}</td>
-                          <td className="px-3 py-2 text-gray-700">{inv.instrument || '-'}</td>
+                          <td className="px-3 py-2 font-medium text-slate-800">{inv.company_name || '-'}</td>
+                          <td className="px-3 py-2 text-slate-500">{inv.company_founded_date || '-'}</td>
+                          <td className="px-3 py-2 text-slate-500">{inv.industry || '-'}</td>
+                          <td className="px-3 py-2 text-slate-700">{inv.instrument || '-'}</td>
                           <td className="px-3 py-2 text-right">{formatKRW(inv.amount ?? null)}</td>
                           <td className="px-3 py-2 text-center">{inv.status === 'exited' ? 'Y' : '-'}</td>
-                          <td className="px-3 py-2 text-gray-500">{inv.investment_date || '-'}</td>
+                          <td className="px-3 py-2 text-slate-500">{inv.investment_date || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3253,30 +3253,30 @@ export default function FundDetailPage() {
           {isInvestmentsTab && (
             <div className="card-base space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">NAV 추이</h3>
+                <h3 className="text-sm font-semibold text-slate-700">NAV 추이</h3>
                 <button onClick={() => navigate('/valuations')} className="secondary-btn">가치평가 화면으로 이동</button>
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   최신 NAV
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatKRW(latestNav)}</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{formatKRW(latestNav)}</p>
                 </div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   평가 레코드 수
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{fundValuations.length}건</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{fundValuations.length}건</p>
                 </div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   시계열 포인트
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{navSeries.length}개</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{navSeries.length}개</p>
                 </div>
               </div>
 
               {navSeries.length === 0 ? (
-                <p className="rounded border border-dashed border-gray-300 px-3 py-8 text-center text-sm text-gray-500">
+                <p className="rounded border border-dashed border-slate-300 px-3 py-8 text-center text-sm text-slate-500">
                   NAV 추이를 계산할 평가 데이터가 없습니다.
                 </p>
               ) : (
-                <div className="rounded border border-gray-200 bg-white p-3">
+                <div className="rounded border border-slate-200 bg-white p-3">
                   <svg viewBox="0 0 100 36" className="h-32 w-full">
                     {navSparklinePath ? (
                       <path d={navSparklinePath} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" />
@@ -3286,7 +3286,7 @@ export default function FundDetailPage() {
                   </svg>
                   <div className="mt-2 overflow-auto">
                     <table className="min-w-[480px] w-full text-sm">
-                      <thead className="bg-gray-50 text-xs text-gray-500">
+                      <thead className="bg-slate-50 text-xs text-slate-500">
                         <tr>
                           <th className="px-3 py-2 text-left">기준일</th>
                           <th className="px-3 py-2 text-right">NAV</th>
@@ -3310,34 +3310,34 @@ export default function FundDetailPage() {
           {isFinanceTab && (
             <div className="card-base space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">보수</h3>
+                <h3 className="text-sm font-semibold text-slate-700">보수</h3>
                 <button onClick={() => navigate('/fee-management')} className="secondary-btn">보수 관리 화면으로 이동</button>
               </div>
 
               <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   관리보수율
-                  <p className="mt-1 text-base font-semibold text-gray-900">
+                  <p className="mt-1 text-base font-semibold text-slate-900">
                     {fundFeeConfig?.mgmt_fee_rate != null ? `${(Number(fundFeeConfig.mgmt_fee_rate) * 100).toFixed(2)}%` : '-'}
                   </p>
                 </div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   관리보수 기준
-                  <p className="mt-1 text-base font-semibold text-gray-900">{fundFeeConfig?.mgmt_fee_basis || '-'}</p>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{fundFeeConfig?.mgmt_fee_basis || '-'}</p>
                 </div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   누적 관리보수
-                  <p className="mt-1 text-base font-semibold text-gray-900">{formatKRW(feeTotalAmount)}</p>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{formatKRW(feeTotalAmount)}</p>
                 </div>
-                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                   미수령 건수
-                  <p className="mt-1 text-base font-semibold text-gray-900">{feePendingCount}건</p>
+                  <p className="mt-1 text-base font-semibold text-slate-900">{feePendingCount}건</p>
                 </div>
               </div>
 
-              <div className="overflow-auto rounded border border-gray-200">
+              <div className="overflow-auto rounded border border-slate-200">
                 <table className="min-w-[720px] w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left">분기</th>
                       <th className="px-3 py-2 text-left">기준</th>
@@ -3350,7 +3350,7 @@ export default function FundDetailPage() {
                   <tbody className="divide-y">
                     {fundManagementFees.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">관리보수 이력이 없습니다.</td>
+                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">관리보수 이력이 없습니다.</td>
                       </tr>
                     ) : (
                       fundManagementFees.map((row) => (
@@ -3374,7 +3374,7 @@ export default function FundDetailPage() {
             <div className="space-y-4">
               <div className="card-base">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-gray-700">LP 보고서 생성</h3>
+                  <h3 className="text-sm font-semibold text-slate-700">LP 보고서 생성</h3>
                   <button
                     type="button"
                     className="primary-btn"
@@ -3386,7 +3386,7 @@ export default function FundDetailPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <label>
-                    <span className="mb-1 block text-xs font-medium text-gray-600">연도</span>
+                    <span className="mb-1 block text-xs font-medium text-slate-600">연도</span>
                     <input
                       type="number"
                       min={2000}
@@ -3397,7 +3397,7 @@ export default function FundDetailPage() {
                     />
                   </label>
                   <label>
-                    <span className="mb-1 block text-xs font-medium text-gray-600">분기</span>
+                    <span className="mb-1 block text-xs font-medium text-slate-600">분기</span>
                     <select
                       className="form-input"
                       value={lpReportQuarter}
@@ -3410,7 +3410,7 @@ export default function FundDetailPage() {
                       ))}
                     </select>
                   </label>
-                  <div className="md:col-span-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                  <div className="md:col-span-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                     <p>투자 현황: {Array.isArray(lpReportPreview?.portfolio) ? lpReportPreview.portfolio.length : 0}건</p>
                     <p>주요 이벤트: {Array.isArray(lpReportPreview?.events) ? lpReportPreview.events.length : 0}건</p>
                     <p>
@@ -3449,5 +3449,8 @@ export default function FundDetailPage() {
     </div>
   )
 }
+
+
+
 
 

@@ -72,7 +72,7 @@ function statusBadgeClass(status: string): string {
   if (status === '요청' || status === '작성중' || status === '예정') {
     return 'rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700'
   }
-  return 'rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'
+  return 'rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700'
 }
 
 function severityBadgeClass(severity: string): string {
@@ -195,8 +195,8 @@ export default function ReportsPage() {
 
   function renderFindingGroup(title: string, findings: PreReportCheckFinding[]) {
     return (
-      <div className="space-y-1 rounded-xl border border-gray-200 bg-white p-3">
-        <p className="text-xs font-semibold text-gray-700">{title}</p>
+      <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-3">
+        <p className="text-xs font-semibold text-slate-700">{title}</p>
         {findings.length === 0 ? (
           <p className="text-xs text-emerald-700">이상 없음</p>
         ) : (
@@ -204,15 +204,15 @@ export default function ReportsPage() {
             {findings.map((finding, idx) => {
               const refText = findingReferenceText(finding)
               return (
-                <div key={`${title}-${idx}`} className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
+                <div key={`${title}-${idx}`} className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
                   <div className="flex flex-wrap items-center gap-1">
                     <span className={severityBadgeClass(finding.severity)}>
                       {finding.severity.toUpperCase()}
                     </span>
-                    <span className="text-xs font-medium text-gray-800">{finding.title}</span>
+                    <span className="text-xs font-medium text-slate-800">{finding.title}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-gray-700">{finding.detail}</p>
-                  {refText && <p className="mt-0.5 text-[11px] text-gray-500">근거: {refText}</p>}
+                  <p className="mt-0.5 text-xs text-slate-700">{finding.detail}</p>
+                  {refText && <p className="mt-0.5 text-[11px] text-slate-500">근거: {refText}</p>}
                 </div>
               )
             })}
@@ -234,22 +234,22 @@ export default function ReportsPage() {
       <div className="card-base">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label>
-            <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+            <label className="mb-1 block text-xs font-medium text-slate-600">보고 대상</label>
+            <select value={filters.report_target} onChange={(e) => setFilters((prev) => ({ ...prev, report_target: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-2 py-1 text-sm">
               <option value="">전체 대상</option>
               {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
-            <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+            <select value={filters.fund_id || ''} onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="w-full rounded-xl border border-slate-200 px-2 py-1 text-sm">
               <option value="">전체 조합</option>
               {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
-            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-gray-200 px-2 py-1 text-sm">
+            <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
+            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-2 py-1 text-sm">
               <option value="">전체 상태</option>
               {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
@@ -262,39 +262,39 @@ export default function ReportsPage() {
       </div>
 
       {showCreate && (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">신규 보고 기록</h3>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+          <h3 className="text-sm font-semibold text-slate-700">신규 보고 기록</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">보고 대상</label>
               <select value={newReport.report_target} onChange={(e) => setNewReport((prev) => ({ ...prev, report_target: e.target.value }))} className="form-input">
                 {REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
               <select value={newReport.fund_id || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))} className="form-input">
                 <option value="">조합 미지정</option>
                 {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">기간</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">기간</label>
               <input value={newReport.period} onChange={(e) => setNewReport((prev) => ({ ...prev, period: e.target.value }))} className="form-input" placeholder="예: 2026-Q1" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">마감일</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">마감일</label>
               <input type="date" value={newReport.due_date || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, due_date: e.target.value || null }))} className="form-input" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
               <select value={newReport.status || '예정'} onChange={(e) => setNewReport((prev) => ({ ...prev, status: e.target.value }))} className="form-input">
                 {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">메모</label>
             <textarea value={newReport.memo || ''} onChange={(e) => setNewReport((prev) => ({ ...prev, memo: e.target.value }))} rows={3} className="form-input" placeholder="선택 입력" />
           </div>
           <div className="flex gap-2">
@@ -320,9 +320,9 @@ export default function ReportsPage() {
       <div className="space-y-3">
         {!!matrixRows.length && (
           <div className="card-base overflow-auto">
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">조합별 보고 현황 매트릭스</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">조합별 보고 현황 매트릭스</h3>
             <table className="min-w-[760px] w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-600">
+              <thead className="bg-slate-50 text-xs text-slate-600">
                 <tr>
                   <th className="px-2 py-2 text-left">조합</th>
                   {REPORT_TARGET_OPTIONS.map((target) => (
@@ -333,7 +333,7 @@ export default function ReportsPage() {
               <tbody>
                 {matrixRows.map(({ fund, byTarget }) => (
                   <tr key={fund.id} className="border-t">
-                    <td className="px-2 py-2 font-medium text-gray-800">{fund.name}</td>
+                    <td className="px-2 py-2 font-medium text-slate-800">{fund.name}</td>
                     {REPORT_TARGET_OPTIONS.map((target) => {
                       const cell = byTarget[target]
                       return (
@@ -341,7 +341,7 @@ export default function ReportsPage() {
                           {cell ? (
                             <span className={statusBadgeClass(cell.status)}>{labelStatus(cell.status)}</span>
                           ) : (
-                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">미등록</span>
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">미등록</span>
                           )}
                         </td>
                       )
@@ -365,15 +365,15 @@ export default function ReportsPage() {
                 {isEditing && editForm ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">보고 대상</label><select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="form-input">{REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}</select></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">조합</label><select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="form-input"><option value="">조합 미지정</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">기간</label><input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="form-input" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">마감일</label><input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="form-input" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">상태</label><select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="form-input">{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">보고 대상</label><select value={editForm.report_target} onChange={(e) => setEditForm((prev) => prev ? { ...prev, report_target: e.target.value } : prev)} className="form-input">{REPORT_TARGET_OPTIONS.map((target) => <option key={target} value={target}>{target}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">조합</label><select value={editForm.fund_id || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, fund_id: Number(e.target.value) || null } : prev)} className="form-input"><option value="">조합 미지정</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">기간</label><input value={editForm.period} onChange={(e) => setEditForm((prev) => prev ? { ...prev, period: e.target.value } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">마감일</label><input type="date" value={editForm.due_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, due_date: e.target.value || null } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">상태</label><select value={editForm.status || '예정'} onChange={(e) => setEditForm((prev) => prev ? { ...prev, status: e.target.value } : prev)} className="form-input">{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
                     </div>
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">제출일</label><input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="form-input" /></div>
-                      <div><label className="mb-1 block text-xs font-medium text-gray-600">메모</label><textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">제출일</label><input type="date" value={editForm.submitted_date || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, submitted_date: e.target.value || null } : prev)} className="form-input" /></div>
+                      <div><label className="mb-1 block text-xs font-medium text-slate-600">메모</label><textarea value={editForm.memo || ''} onChange={(e) => setEditForm((prev) => prev ? { ...prev, memo: e.target.value } : prev)} rows={3} className="form-input" /></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => updateMut.mutate({ id: row.id, data: { ...editForm, period: editForm.period.trim(), memo: editForm.memo?.trim() || null } })} className="primary-btn">저장</button>
@@ -383,16 +383,16 @@ export default function ReportsPage() {
                 ) : (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-800">{row.report_target} · {row.period}</p>
+                      <p className="text-sm font-semibold text-slate-800">{row.report_target} · {row.period}</p>
                       <div className="flex items-center gap-1">
                       {badge && <span className={badge.className}>{badge.text}</span>}
                         <span className={statusBadgeClass(row.status)}>{labelStatus(row.status)}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">조합: {row.fund_name || '미지정'} | 마감일: {formatDate(row.due_date)} | 제출일: {formatDate(row.submitted_date)}</p>
+                    <p className="text-xs text-slate-500">조합: {row.fund_name || '미지정'} | 마감일: {formatDate(row.due_date)} | 제출일: {formatDate(row.submitted_date)}</p>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
-                      <textarea value={row.memo || ''} readOnly rows={3} className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-sm text-gray-700" />
+                      <label className="mb-1 block text-xs font-medium text-slate-600">메모</label>
+                      <textarea value={row.memo || ''} readOnly rows={3} className="w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-700" />
                     </div>
                     <div className="flex flex-wrap gap-1">
                       <button
@@ -426,8 +426,8 @@ export default function ReportsPage() {
                       <div className="mt-2 space-y-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="text-sm font-semibold text-gray-800">보고서 사전 검증</p>
-                            <p className="text-xs text-gray-500">법적 오류, 교차 검증, 가이드라인, 계약 일치성을 점검합니다.</p>
+                            <p className="text-sm font-semibold text-slate-800">보고서 사전 검증</p>
+                            <p className="text-xs text-slate-500">법적 오류, 교차 검증, 가이드라인, 계약 일치성을 점검합니다.</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {latestPreCheck && (
@@ -450,25 +450,25 @@ export default function ReportsPage() {
                         )}
 
                         {isPreChecksLoading ? (
-                          <p className="text-xs text-gray-500">검증 이력을 불러오는 중입니다...</p>
+                          <p className="text-xs text-slate-500">검증 이력을 불러오는 중입니다...</p>
                         ) : latestPreCheck ? (
                           <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                              <div className="rounded-lg border border-gray-200 bg-white p-2">
-                                <p className="text-[11px] text-gray-500">오류</p>
+                              <div className="rounded-lg border border-slate-200 bg-white p-2">
+                                <p className="text-[11px] text-slate-500">오류</p>
                                 <p className="text-base font-semibold text-red-600">{latestPreCheck.total_errors}</p>
                               </div>
-                              <div className="rounded-lg border border-gray-200 bg-white p-2">
-                                <p className="text-[11px] text-gray-500">경고</p>
+                              <div className="rounded-lg border border-slate-200 bg-white p-2">
+                                <p className="text-[11px] text-slate-500">경고</p>
                                 <p className="text-base font-semibold text-amber-600">{latestPreCheck.total_warnings}</p>
                               </div>
-                              <div className="rounded-lg border border-gray-200 bg-white p-2">
-                                <p className="text-[11px] text-gray-500">정보</p>
+                              <div className="rounded-lg border border-slate-200 bg-white p-2">
+                                <p className="text-[11px] text-slate-500">정보</p>
                                 <p className="text-base font-semibold text-blue-600">{latestPreCheck.total_info}</p>
                               </div>
-                              <div className="rounded-lg border border-gray-200 bg-white p-2">
-                                <p className="text-[11px] text-gray-500">시정 Task</p>
-                                <p className="text-base font-semibold text-gray-800">{latestPreCheck.tasks_created}</p>
+                              <div className="rounded-lg border border-slate-200 bg-white p-2">
+                                <p className="text-[11px] text-slate-500">시정 Task</p>
+                                <p className="text-base font-semibold text-slate-800">{latestPreCheck.tasks_created}</p>
                               </div>
                             </div>
                             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -477,12 +477,12 @@ export default function ReportsPage() {
                               {renderFindingGroup('Type 3 · 가이드라인', latestPreCheck.guideline_check)}
                               {renderFindingGroup('Type 4 · 계약 일치성', latestPreCheck.contract_check)}
                             </div>
-                            <p className="text-[11px] text-gray-500">
+                            <p className="text-[11px] text-slate-500">
                               최근 점검: {latestPreCheck.checked_at ? new Date(latestPreCheck.checked_at).toLocaleString('ko-KR') : '-'}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-500">검증 이력이 없습니다. 검증 실행 버튼으로 첫 점검을 수행하세요.</p>
+                          <p className="text-xs text-slate-500">검증 이력이 없습니다. 검증 실행 버튼으로 첫 점검을 수행하세요.</p>
                         )}
                       </div>
                     )}
@@ -496,5 +496,7 @@ export default function ReportsPage() {
     </div>
   )
 }
+
+
 
 

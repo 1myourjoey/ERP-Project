@@ -21,13 +21,6 @@
   --color-text-muted: #94a3b8;
   --color-hover: #f1f5f9;
 
-  /* Legacy theme var aliases (fixed single-light theme) */
-  --theme-bg-elevated: var(--color-surface);
-  --theme-border: var(--color-border);
-  --theme-hover: var(--color-hover);
-  --theme-text-primary: var(--color-text);
-  --theme-text-secondary: var(--color-text-secondary);
-
   /* Shadow */
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -393,6 +386,24 @@ input[type="radio"] {
   background: var(--color-surface);
   box-shadow: var(--shadow-lg);
   border-radius: 0.75rem;
+}
+
+.tab-btn {
+  @apply inline-flex items-center whitespace-nowrap rounded-lg border border-transparent px-4 py-2 text-sm font-medium;
+  color: var(--color-text-secondary);
+  transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+
+.tab-btn:hover {
+  border-color: var(--color-border);
+  background: #f8fafc;
+  color: var(--color-text);
+}
+
+.tab-btn.active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 /* Tags */

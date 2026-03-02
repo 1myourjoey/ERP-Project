@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+﻿import type { ReactNode } from 'react'
 
 interface DataFilterBarProps {
   title?: string
@@ -20,8 +20,8 @@ export default function DataFilterBar({
       {(title || description || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            {title && <h3 className="text-base font-semibold text-gray-800">{title}</h3>}
-            {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+            {title && <h3 className="text-base font-semibold text-slate-800">{title}</h3>}
+            {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
           </div>
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </div>
@@ -30,3 +30,4 @@ export default function DataFilterBar({
     </section>
   )
 }
+

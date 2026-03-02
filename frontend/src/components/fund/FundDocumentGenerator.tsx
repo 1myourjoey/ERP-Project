@@ -307,8 +307,8 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
       <div className="card-base space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">📄 조합 서류 자동 생성</h3>
-            <p className="mt-1 text-xs text-gray-500">템플릿: {totalTemplates}개 | 마커: {markerDefs.length}개</p>
+            <h3 className="text-base font-semibold text-slate-900">📄 조합 서류 자동 생성</h3>
+            <p className="mt-1 text-xs text-slate-500">템플릿: {totalTemplates}개 | 마커: {markerDefs.length}개</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -333,19 +333,19 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700">생성 단계 선택</p>
+            <p className="text-sm font-medium text-slate-700">생성 단계 선택</p>
             <div className="flex gap-2 text-xs">
               <button
                 onClick={() => setSelectedStages(STAGE_OPTIONS.map((item) => item.value))}
-                className="rounded border border-gray-300 bg-white px-2 py-1 text-gray-600 hover:bg-gray-50"
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50"
               >
                 전체 선택
               </button>
               <button
                 onClick={() => setSelectedStages([])}
-                className="rounded border border-gray-300 bg-white px-2 py-1 text-gray-600 hover:bg-gray-50"
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50"
               >
                 전체 해제
               </button>
@@ -369,13 +369,13 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
           {groupedSections.map(([section, markers]) => {
             const opened = Boolean(expandedSections[section])
             return (
-              <div key={section} className="rounded-lg border border-gray-200">
+              <div key={section} className="rounded-lg border border-slate-200">
                 <button
                   onClick={() => onToggleSection(section)}
-                  className="flex w-full items-center justify-between rounded-t-lg bg-gray-50 px-3 py-2 text-left"
+                  className="flex w-full items-center justify-between rounded-t-lg bg-slate-50 px-3 py-2 text-left"
                 >
-                  <span className="text-sm font-semibold text-gray-700">{section}</span>
-                  <span className="text-xs text-gray-500">{opened ? '접기' : '열기'}</span>
+                  <span className="text-sm font-semibold text-slate-700">{section}</span>
+                  <span className="text-xs text-slate-500">{opened ? '접기' : '열기'}</span>
                 </button>
                 {opened && (
                   <div className="space-y-2 px-3 py-3">
@@ -385,7 +385,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
                       const isHighlighted = highlightKeys.includes(marker.key) && !value.trim()
                       return (
                         <div key={marker.key} className="grid grid-cols-1 gap-1 md:grid-cols-12 md:items-center">
-                          <label className="text-xs font-medium text-gray-600 md:col-span-4">
+                          <label className="text-xs font-medium text-slate-600 md:col-span-4">
                             {marker.required ? '* ' : ''}{marker.label}
                           </label>
                           <div className="md:col-span-8">
@@ -397,7 +397,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
                                   ? 'border-red-300 bg-red-50'
                                   : isHighlighted
                                     ? 'border-amber-300 bg-amber-50'
-                                    : 'border-gray-300 bg-white'
+                                    : 'border-slate-300 bg-white'
                               }`}
                             />
                           </div>
@@ -429,10 +429,10 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
 
       <div className="card-base">
         <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-800">생성 이력</h4>
+          <h4 className="text-sm font-semibold text-slate-800">생성 이력</h4>
           <button
             onClick={() => historyQuery.refetch()}
-            className="rounded border border-gray-300 bg-white px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            className="rounded border border-slate-300 bg-white px-3 py-1 text-xs text-slate-600 hover:bg-slate-50"
           >
             새로고침
           </button>
@@ -440,7 +440,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
 
         <div className="overflow-x-auto">
           <table className="min-w-[720px] w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500">
+            <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-3 py-2 text-left">#</th>
                 <th className="px-3 py-2 text-left">생성일시</th>
@@ -453,7 +453,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
             <tbody className="divide-y">
               {historyRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
                     생성 이력이 없습니다.
                   </td>
                 </tr>
@@ -525,4 +525,5 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
     </div>
   )
 }
+
 

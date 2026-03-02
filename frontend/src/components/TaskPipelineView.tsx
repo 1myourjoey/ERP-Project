@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowRight, CalendarDays, Clock3, Inbox } from 'lucide-react'
 
 import type { ActiveWorkflow, Task } from '../lib/api'
@@ -32,7 +32,7 @@ const CARD_ACCENTS: Accent[] = [
 const DEFAULT_ACCENT: Accent = {
   border: 'border-l-gray-300',
   tint: 'bg-white',
-  text: 'text-gray-600',
+  text: 'text-slate-600',
 }
 
 type StageKey = 'overdue' | 'today' | 'thisWeek' | 'upcoming' | 'waiting'
@@ -110,7 +110,7 @@ function categoryBadgeClass(category: string): string {
     case '서류관리':
       return 'bg-orange-50 text-orange-700'
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'bg-slate-100 text-slate-600'
   }
 }
 
@@ -606,7 +606,7 @@ export default function TaskPipelineView({
     <div className={fullScreen ? '' : 'card-base'}>
       <div
         ref={pipelineRef}
-        className={`relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[620px]'}`}
+        className={`relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[620px]'}`}
       >
         <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" aria-hidden="true">
           {linkPaths.map((link) => {
@@ -635,11 +635,11 @@ export default function TaskPipelineView({
                 <p className={`text-sm font-semibold ${waitingLane.colorClass}`}>{waitingLane.label}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">{waitingCount}건</span>
+                <span className="text-xs text-slate-500">{waitingCount}건</span>
                 <button
                   type="button"
                   onClick={() => setIsWaitingCollapsed((prev) => !prev)}
-                  className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                  className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-600 hover:bg-slate-50"
                 >
                   {isWaitingCollapsed ? '펼치기' : '접기'}
                 </button>
@@ -649,7 +649,7 @@ export default function TaskPipelineView({
               <button
                 type="button"
                 onClick={() => setIsWaitingCollapsed(false)}
-                className="w-full rounded border border-dashed border-gray-300 bg-white px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-50"
+                className="w-full rounded border border-dashed border-slate-300 bg-white px-3 py-2 text-left text-xs text-slate-600 hover:bg-slate-50"
               >
                 📥 대기 ({waitingCount}건)
               </button>
@@ -665,14 +665,14 @@ export default function TaskPipelineView({
                       key={cardKey}
                       {...cardInteraction(cardKey)}
                       onClick={() => onClickWorkflow(workflow)}
-                      className={`min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
+                      className={`min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-slate-200 border-l-4 bg-white px-3 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
+                        <p className="truncate text-xs font-semibold text-slate-800">워크플로우: {workflow.name}</p>
                         <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
                       </div>
-                      <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                      <p className="mt-0.5 truncate text-[11px] text-slate-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                         <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
                       </div>
                     </button>
@@ -688,14 +688,14 @@ export default function TaskPipelineView({
                       key={cardKey}
                       {...cardInteraction(cardKey)}
                       onClick={() => onClickTask(task, { editable: true })}
-                      className="group relative min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300"
+                      className="group relative min-w-[224px] max-w-[260px] shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300"
                       title="클릭하여 마감일 배정"
                     >
                       <span className="pointer-events-none absolute left-2 top-0 -translate-y-full rounded bg-gray-800 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
                         클릭하여 마감일 배정
                       </span>
-                      <p className="truncate text-xs font-semibold text-gray-800">{task.title}</p>
-                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                      <p className="truncate text-xs font-semibold text-slate-800">{task.title}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
                         <span className="truncate">{task.fund_name || task.gp_entity_name || '일반'}</span>
                         <span className="shrink-0">기한 없음</span>
                       </div>
@@ -703,7 +703,7 @@ export default function TaskPipelineView({
                   )
                 })}
                 {waitingLane.workflows.length === 0 && waitingLane.tasks.length === 0 && (
-                  <p className="min-w-[224px] rounded border border-dashed border-gray-300 bg-white px-2 py-4 text-center text-xs text-gray-400">
+                  <p className="min-w-[224px] rounded border border-dashed border-slate-300 bg-white px-2 py-4 text-center text-xs text-slate-500">
                     대기 업무 없음
                   </p>
                 )}
@@ -725,10 +725,10 @@ export default function TaskPipelineView({
                       <Icon size={14} className={column.colorClass} />
                       <div className="flex items-center gap-1.5">
                         <p className={`text-sm font-semibold ${column.colorClass}`}>{column.label}</p>
-                        {column.subLabel && <p className="text-[10px] text-gray-500">{column.subLabel}</p>}
+                        {column.subLabel && <p className="text-[10px] text-slate-500">{column.subLabel}</p>}
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500">{column.tasks.length + column.workflows.length}건</span>
+                    <span className="text-xs text-slate-500">{column.tasks.length + column.workflows.length}건</span>
                   </div>
 
                   <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
@@ -742,16 +742,16 @@ export default function TaskPipelineView({
                           key={cardKey}
                           {...cardInteraction(cardKey)}
                           onClick={() => onClickWorkflow(workflow)}
-                          className={`w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
+                          className={`w-full shrink-0 rounded-lg border border-slate-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-blue-300 ${accent.border}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-xs font-semibold text-gray-800">워크플로우: {workflow.name}</p>
-                              <p className="mt-0.5 truncate text-[11px] text-gray-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
+                              <p className="truncate text-xs font-semibold text-slate-800">워크플로우: {workflow.name}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-700">현재 단계: {workflow.next_step || '다음 단계 확인'}</p>
                             </div>
                             <span className={`shrink-0 text-[10px] ${accent.text}`}>{workflow.progress}</span>
                           </div>
-                          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                             <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${percent}%` }} />
                           </div>
                           <p className={`mt-1 truncate text-[10px] ${accent.text}`}>
@@ -763,7 +763,7 @@ export default function TaskPipelineView({
                     })}
 
                     {!column.workflows.length && !grouped.length && (
-                      <p className="rounded border border-dashed border-gray-200 bg-white px-2 py-5 text-center text-xs text-gray-400">업무 없음</p>
+                      <p className="rounded border border-dashed border-slate-200 bg-white px-2 py-5 text-center text-xs text-slate-500">업무 없음</p>
                     )}
 
                     {isCompact ? (
@@ -777,11 +777,11 @@ export default function TaskPipelineView({
                               key={cardKey}
                               {...cardInteraction(cardKey)}
                               onClick={() => onClickTask(task, { editable: column.editable })}
-                              className={`group relative w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-1.5 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
+                              className={`group relative w-full shrink-0 rounded-lg border border-slate-200 border-l-4 bg-white px-2 py-1.5 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
                             >
-                              <p className="truncate text-xs text-gray-800">{task.title}</p>
-                              <div className="pointer-events-none invisible absolute left-full top-0 z-20 ml-2 w-52 rounded border border-gray-200 bg-white p-2 text-[11px] text-gray-600 shadow-lg group-hover:visible">
-                                <p className="font-medium text-gray-800">{task.title}</p>
+                              <p className="truncate text-xs text-slate-800">{task.title}</p>
+                              <div className="pointer-events-none invisible absolute left-full top-0 z-20 ml-2 w-52 rounded border border-slate-200 bg-white p-2 text-[11px] text-slate-600 shadow-lg group-hover:visible">
+                                <p className="font-medium text-slate-800">{task.title}</p>
                                 <p className="mt-1">마감: {task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</p>
                                 <p>예상: {task.estimated_time || '-'}</p>
                                 <p>대상: {task.fund_name || task.gp_entity_name || '일반'}</p>
@@ -795,7 +795,7 @@ export default function TaskPipelineView({
                         <div key={`${column.key}-${category}`}>
                           <div className="mb-1 flex items-center gap-1.5">
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${categoryBadgeClass(category)}`}>{category}</span>
-                            <span className="text-[10px] text-gray-400">{tasks.length}</span>
+                            <span className="text-[10px] text-slate-500">{tasks.length}</span>
                           </div>
                           <div className="space-y-1.5">
                             {tasks.map((task) => {
@@ -808,10 +808,10 @@ export default function TaskPipelineView({
                                   key={cardKey}
                                   {...cardInteraction(cardKey)}
                                   onClick={() => onClickTask(task, { editable: column.editable })}
-                                  className={`w-full shrink-0 rounded-lg border border-gray-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
+                                  className={`w-full shrink-0 rounded-lg border border-slate-200 border-l-4 bg-white px-2 py-2 text-left transition-colors hover:border-slate-300 ${deadlineBorder}`}
                                 >
-                                  <p className="truncate text-xs font-medium text-gray-800">{task.title}</p>
-                                  <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                                  <p className="truncate text-xs font-medium text-slate-800">{task.title}</p>
+                                  <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
                                     <span className={`truncate ${accent.text}`}>{task.fund_name || task.gp_entity_name || '일반'}</span>
                                     <span className="shrink-0">{task.deadline ? formatShortDate(task.deadline) : '기한 없음'}</span>
                                   </div>
@@ -829,7 +829,7 @@ export default function TaskPipelineView({
           </div>
         </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-3 px-2 text-[11px] text-gray-600">
+      <div className="mt-2 flex flex-wrap items-center gap-3 px-2 text-[11px] text-slate-600">
         <span className="inline-flex items-center gap-1">
           <i className="h-[2px] w-5 bg-blue-600" />
           워크플로
@@ -854,3 +854,5 @@ export default function TaskPipelineView({
     </div>
   )
 }
+
+

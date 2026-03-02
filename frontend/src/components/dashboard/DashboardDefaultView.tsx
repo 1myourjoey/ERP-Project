@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CalendarDays, GitBranch, KanbanSquare, Plus } from 'lucide-react'
 
 import type {
   ActiveWorkflow,
@@ -96,6 +97,7 @@ function DashboardDefaultView({
   onGenerateMonthlyReminder: _onGenerateMonthlyReminder,
   onOpenTask,
   onQuickComplete,
+  onOpenQuickAdd,
   onOpenWorkflow,
   onOpenTaskBoard,
   onOpenPipeline,
@@ -180,7 +182,15 @@ function DashboardDefaultView({
                   item.onClick ? 'cursor-pointer hover:bg-amber-100/70' : ''
                 }`}
               >
-                <span>{item.icon === 'warning' ? '⚠' : '📌'}</span>
+                <span
+                  className={`inline-flex min-w-8 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    item.icon === 'warning'
+                      ? 'bg-amber-200/80 text-amber-900'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {item.icon === 'warning' ? '주의' : '안내'}
+                </span>
                 <span className="truncate">{item.label}</span>
               </button>
             ))}
@@ -191,7 +201,7 @@ function DashboardDefaultView({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <DashboardStatCard
           label="오늘 우선업무"
           value={priorityHotCount}
@@ -223,6 +233,47 @@ function DashboardDefaultView({
           onClick={() => onOpenPopup('completed')}
           variant="success"
         />
+      </div>
+
+      <div className="card-base py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-700">빠른 실행</h3>
+          <p className="text-xs text-slate-500">반복 동선을 줄이기 위한 바로가기</p>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => onOpenQuickAdd('today')}
+            className="secondary-btn justify-start gap-2"
+          >
+            <Plus size={14} />
+            오늘 업무 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenQuickAdd('tomorrow')}
+            className="secondary-btn justify-start gap-2"
+          >
+            <CalendarDays size={14} />
+            내일 일정 등록
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPipeline}
+            className="secondary-btn justify-start gap-2"
+          >
+            <KanbanSquare size={14} />
+            파이프라인 보기
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/workflows')}
+            className="secondary-btn justify-start gap-2"
+          >
+            <GitBranch size={14} />
+            워크플로 관리
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

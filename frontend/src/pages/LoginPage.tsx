@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState, type FormEvent } from 'react'
+﻿import { Suspense, lazy, useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import GoogleLoginButton from '../components/GoogleLoginButton'
@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         <div className="mb-5 text-center">
           <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-          <p className="mt-3 text-sm text-gray-600">V:ON ERP 로그인</p>
+          <p className="mt-3 text-sm text-slate-600">V:ON ERP 로그인</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -89,10 +89,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-2 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
+        <div className="my-4 flex items-center gap-2 text-xs text-slate-500">
+          <div className="h-px flex-1 bg-slate-200" />
           또는
-          <div className="h-px flex-1 bg-gray-200" />
+          <div className="h-px flex-1 bg-slate-200" />
         </div>
 
         <div className="flex justify-center">
@@ -117,7 +117,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="mt-4 space-y-1 text-center text-xs text-gray-500">
+        <div className="mt-4 space-y-1 text-center text-xs text-slate-500">
           <p>
             계정이 없으신가요?{' '}
             <Link to="/register" className="text-blue-600 hover:underline">
@@ -135,3 +135,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

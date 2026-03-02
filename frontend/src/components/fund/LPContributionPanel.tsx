@@ -203,8 +203,8 @@ export default function LPContributionPanel({
     <div className="space-y-3 border-t border-blue-100 bg-blue-50/30 p-3">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-gray-800">납입 이력 · {lpName}</p>
-          <p className="text-xs text-gray-600">
+          <p className="text-sm font-semibold text-slate-800">납입 이력 · {lpName}</p>
+          <p className="text-xs text-slate-600">
             출자방식: {contributionTypeLabel(typeKey)} | 총 약정: {formatKRW(commitment)} | 누적 납입: {formatKRW(totalPaidIn)} ({paidRatio.toFixed(2)}%)
           </p>
         </div>
@@ -223,11 +223,11 @@ export default function LPContributionPanel({
       </div>
 
       {summaryQuery.isLoading ? (
-        <p className="py-3 text-sm text-gray-500">납입 이력을 불러오는 중입니다...</p>
+        <p className="py-3 text-sm text-slate-500">납입 이력을 불러오는 중입니다...</p>
       ) : (
-        <div className="overflow-auto rounded border border-gray-200 bg-white">
+        <div className="overflow-auto rounded border border-slate-200 bg-white">
           <table className="min-w-[860px] w-full text-xs">
-            <thead className="bg-gray-50 text-gray-500">
+            <thead className="bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-2 py-2 text-left">회차</th>
                 <th className="px-2 py-2 text-left">납입기일</th>
@@ -242,7 +242,7 @@ export default function LPContributionPanel({
             <tbody className="divide-y">
               {rowsWithCumulative.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-6 text-center text-sm text-gray-400">등록된 납입 이력이 없습니다.</td>
+                  <td colSpan={8} className="px-2 py-6 text-center text-sm text-slate-500">등록된 납입 이력이 없습니다.</td>
                 </tr>
               ) : (
                 rowsWithCumulative.flatMap((row, index) => {
@@ -257,7 +257,7 @@ export default function LPContributionPanel({
                       </td>
                       <td className="px-2 py-2 text-right">{formatKRW(row.cumulative_amount ?? 0)}</td>
                       <td className="px-2 py-2">{formatDate(row.actual_paid_date)}</td>
-                      <td className="px-2 py-2 text-gray-600">{row.memo || '-'}</td>
+                      <td className="px-2 py-2 text-slate-600">{row.memo || '-'}</td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1">
                           {linkedFromCall ? (
@@ -291,11 +291,11 @@ export default function LPContributionPanel({
 
                   if (editingId === row.id) {
                     lineRows.push(
-                      <tr key={`contribution-edit-${row.id}`} className="bg-gray-50">
+                      <tr key={`contribution-edit-${row.id}`} className="bg-slate-50">
                         <td colSpan={8} className="px-2 py-2">
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                             <div>
-                              <label className="mb-1 block text-[11px] text-gray-600">납입기일</label>
+                              <label className="mb-1 block text-[11px] text-slate-600">납입기일</label>
                               <input
                                 type="date"
                                 value={editDraft.due_date}
@@ -304,16 +304,16 @@ export default function LPContributionPanel({
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-[11px] text-gray-600">납입금액</label>
+                              <label className="mb-1 block text-[11px] text-slate-600">납입금액</label>
                               <KrwAmountInput
                                 value={editDraft.amount}
                                 onChange={(next) => setEditDraft((prev) => ({ ...prev, amount: next }))}
                                 className="w-full rounded border px-2 py-1.5"
-                                helperClassName="mt-1 text-[10px] text-gray-500"
+                                helperClassName="mt-1 text-[10px] text-slate-500"
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-[11px] text-gray-600">실제입금일</label>
+                              <label className="mb-1 block text-[11px] text-slate-600">실제입금일</label>
                               <input
                                 type="date"
                                 value={editDraft.actual_paid_date}
@@ -322,7 +322,7 @@ export default function LPContributionPanel({
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-[11px] text-gray-600">비고</label>
+                              <label className="mb-1 block text-[11px] text-slate-600">비고</label>
                               <input
                                 value={editDraft.memo}
                                 onChange={(event) => setEditDraft((prev) => ({ ...prev, memo: event.target.value }))}
@@ -361,11 +361,11 @@ export default function LPContributionPanel({
       )}
 
       {showAddForm && (
-        <div className="rounded border border-gray-200 bg-white p-3">
-          <p className="mb-2 text-sm font-medium text-gray-800">납입 이력 추가</p>
+        <div className="rounded border border-slate-200 bg-white p-3">
+          <p className="mb-2 text-sm font-medium text-slate-800">납입 이력 추가</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <div>
-              <label className="mb-1 block text-[11px] text-gray-600">납입기일</label>
+              <label className="mb-1 block text-[11px] text-slate-600">납입기일</label>
               <input
                 type="date"
                 value={draft.due_date}
@@ -374,16 +374,16 @@ export default function LPContributionPanel({
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] text-gray-600">납입금액</label>
+              <label className="mb-1 block text-[11px] text-slate-600">납입금액</label>
               <KrwAmountInput
                 value={draft.amount}
                 onChange={(next) => setDraft((prev) => ({ ...prev, amount: next }))}
                 className="w-full rounded border px-2 py-1.5"
-                helperClassName="mt-1 text-[10px] text-gray-500"
+                helperClassName="mt-1 text-[10px] text-slate-500"
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] text-gray-600">실제입금일</label>
+              <label className="mb-1 block text-[11px] text-slate-600">실제입금일</label>
               <input
                 type="date"
                 value={draft.actual_paid_date}
@@ -392,7 +392,7 @@ export default function LPContributionPanel({
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] text-gray-600">비고</label>
+              <label className="mb-1 block text-[11px] text-slate-600">비고</label>
               <input
                 value={draft.memo}
                 onChange={(event) => setDraft((prev) => ({ ...prev, memo: event.target.value }))}
@@ -426,4 +426,6 @@ export default function LPContributionPanel({
     </div>
   )
 }
+
+
 

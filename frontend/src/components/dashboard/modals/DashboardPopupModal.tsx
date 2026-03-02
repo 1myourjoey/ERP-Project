@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+﻿import { memo, useMemo } from 'react'
 
 import type {
   ActiveWorkflow,
@@ -92,7 +92,7 @@ function DashboardPopupModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
             ×
           </button>
         </div>
@@ -103,17 +103,17 @@ function DashboardPopupModal({
               <div key={category} className="mb-3">
                 <div className="mb-1 flex items-center gap-2">
                   <span className={categoryBadgeClass(category)}>{category}</span>
-                  <span className="text-[10px] text-gray-400">{tasks.length}건</span>
+                  <span className="text-[10px] text-slate-500">{tasks.length}건</span>
                 </div>
                 <div className="space-y-1">
                   {tasks.map((task) => (
                     <button
                       key={task.id}
                       onClick={() => onOpenTask(task, true)}
-                      className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
                     >
-                      <p className="text-sm font-medium text-gray-800">{task.title}</p>
-                      {task.deadline && <p className="mt-0.5 text-xs text-gray-400">{formatShortDate(task.deadline)}</p>}
+                      <p className="text-sm font-medium text-slate-800">{task.title}</p>
+                      {task.deadline && <p className="mt-0.5 text-xs text-slate-500">{formatShortDate(task.deadline)}</p>}
                     </button>
                   ))}
                 </div>
@@ -125,17 +125,17 @@ function DashboardPopupModal({
               <div key={category} className="mb-3">
                 <div className="mb-1 flex items-center gap-2">
                   <span className={categoryBadgeClass(category)}>{category}</span>
-                  <span className="text-[10px] text-gray-400">{tasks.length}건</span>
+                  <span className="text-[10px] text-slate-500">{tasks.length}건</span>
                 </div>
                 <div className="space-y-1">
                   {tasks.map((task) => (
                     <button
                       key={task.id}
                       onClick={() => onOpenTask(task, true)}
-                      className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
                     >
-                      <p className="text-sm font-medium text-gray-800">{task.title}</p>
-                      {task.deadline && <p className="mt-0.5 text-xs text-gray-400">{formatShortDate(task.deadline)}</p>}
+                      <p className="text-sm font-medium text-slate-800">{task.title}</p>
+                      {task.deadline && <p className="mt-0.5 text-xs text-slate-500">{formatShortDate(task.deadline)}</p>}
                     </button>
                   ))}
                 </div>
@@ -145,7 +145,7 @@ function DashboardPopupModal({
           {popupSection === 'this_week' &&
             groupedThisWeekByDeadline.map(([dateKey, tasks]) => (
               <div key={dateKey} className="mb-3">
-                <p className="mb-1 text-xs font-semibold text-gray-600">
+                <p className="mb-1 text-xs font-semibold text-slate-600">
                   {dateKey === '기한 미지정' ? dateKey : safeFormatDate(dateKey)}
                 </p>
                 <div className="space-y-1">
@@ -153,9 +153,9 @@ function DashboardPopupModal({
                     <button
                       key={task.id}
                       onClick={() => onOpenTask(task, true)}
-                      className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
                     >
-                      <p className="text-sm font-medium text-gray-800">{task.title}</p>
+                      <p className="text-sm font-medium text-slate-800">{task.title}</p>
                     </button>
                   ))}
                 </div>
@@ -165,7 +165,7 @@ function DashboardPopupModal({
           {popupSection === 'workflows' &&
             groupedWorkflows.map(([fundName, workflows]) => (
               <div key={fundName} className="mb-3">
-                <p className="mb-1 text-xs font-semibold text-gray-600">{fundName}</p>
+                <p className="mb-1 text-xs font-semibold text-slate-600">{fundName}</p>
                 <div className="space-y-1">
                   {workflows.map((workflow) => (
                     <button
@@ -174,10 +174,10 @@ function DashboardPopupModal({
                         onClose()
                         onOpenWorkflow(workflow)
                       }}
-                      className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
                     >
-                      <p className="text-sm font-medium text-gray-800">{workflow.name}</p>
-                      <p className="text-xs text-gray-500">{workflow.progress}</p>
+                      <p className="text-sm font-medium text-slate-800">{workflow.name}</p>
+                      <p className="text-xs text-slate-500">{workflow.progress}</p>
                     </button>
                   ))}
                 </div>
@@ -187,7 +187,7 @@ function DashboardPopupModal({
           {popupSection === 'documents' &&
             groupedDocuments.map(([fundName, documents]) => (
               <div key={fundName} className="mb-3">
-                <p className="mb-1 text-xs font-semibold text-gray-600">
+                <p className="mb-1 text-xs font-semibold text-slate-600">
                   {fundName} ({documents.length}건)
                 </p>
                 <div className="space-y-1">
@@ -214,15 +214,15 @@ function DashboardPopupModal({
                 <button
                   key={report.id}
                   onClick={() => onNavigateReport(report)}
-                  className="w-full rounded-lg border border-gray-200 p-2 text-left hover:bg-gray-50"
+                  className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-slate-800">
                       {report.report_target} | {report.period}
                     </p>
                     {badge && <span className={badge.className}>{badge.text}</span>}
                   </div>
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-slate-500">
                     {report.fund_name || '조합 공통'} | {labelStatus(report.status)}
                   </p>
                 </button>
@@ -234,15 +234,15 @@ function DashboardPopupModal({
               <div key={category} className="mb-3">
                 <div className="mb-1 flex items-center gap-2">
                   <span className={categoryBadgeClass(category)}>{category}</span>
-                  <span className="text-[10px] text-gray-400">{tasks.length}건</span>
+                  <span className="text-[10px] text-slate-500">{tasks.length}건</span>
                 </div>
                 <div className="space-y-1">
                   {tasks.map((task) => (
-                    <div key={task.id} className="rounded-lg border border-gray-200 p-2">
+                    <div key={task.id} className="rounded-lg border border-slate-200 p-2">
                       <div className="flex items-center justify-between">
                         <button
                           onClick={() => onOpenTask(task, true)}
-                          className="truncate text-left text-sm text-gray-500 line-through hover:text-blue-600"
+                          className="truncate text-left text-sm text-slate-500 line-through hover:text-blue-600"
                         >
                           {task.title}
                         </button>
@@ -265,3 +265,4 @@ function DashboardPopupModal({
 }
 
 export default memo(DashboardPopupModal)
+

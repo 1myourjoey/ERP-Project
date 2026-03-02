@@ -1,4 +1,4 @@
-import { memo, useState, type ChangeEvent } from 'react'
+﻿import { memo, useState, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorkLogs,
@@ -39,7 +39,7 @@ function DynamicList({
       </div>
       {items.map((item, i) => (
         <div key={i} className="mb-1 flex-1">
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">{label} #{i + 1}</label>
+          <label className="mb-1 block text-[10px] font-medium text-slate-500">{label} #{i + 1}</label>
           <div className="flex gap-1">
             <input
               value={item.content}
@@ -48,9 +48,9 @@ function DynamicList({
                 next[i] = { content: event.target.value }
                 onChange(next)
               }}
-              className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
-            <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500">
+            <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-500">
               <X size={12} />
             </button>
           </div>
@@ -103,25 +103,25 @@ function WorkLogForm({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="text-base font-semibold text-gray-800">{formTitle}</h3>
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+      <h3 className="text-base font-semibold text-slate-800">{formTitle}</h3>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">일자</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">일자</label>
           <input
             type="date"
             value={form.date}
             onChange={set('date')}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">카테고리</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">카테고리</label>
           <select
             value={form.category}
             onChange={set('category')}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             {categories.map((category) => (
               <option key={category} value={category}>{category}</option>
@@ -131,52 +131,52 @@ function WorkLogForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">제목</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">제목</label>
         <input
           value={form.title}
           onChange={set('title')}
           placeholder="예: IR 업데이트 회의"
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">내용</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600">내용</label>
         <textarea
           value={form.content}
           onChange={set('content')}
           placeholder="선택 입력"
           rows={2}
-          className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">예상 시간</label>
+          <label className="mb-1 block text-[10px] font-medium text-slate-500">예상 시간</label>
           <input
             value={form.estimated_time}
             onChange={set('estimated_time')}
             placeholder="예: 2h"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">실제 시간</label>
+          <label className="mb-1 block text-[10px] font-medium text-slate-500">실제 시간</label>
           <input
             value={form.actual_time}
             onChange={set('actual_time')}
             placeholder="예: 1.5h"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-gray-500">차이 시간</label>
+          <label className="mb-1 block text-[10px] font-medium text-slate-500">차이 시간</label>
           <input
             value={form.time_diff}
             onChange={set('time_diff')}
             placeholder="예: -0.5h"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
       </div>
@@ -207,14 +207,14 @@ const WorkLogEntry = memo(function WorkLogEntry({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <button
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-gray-50"
+        className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-slate-50"
       >
-        <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{log.category}</span>
-        <span className="flex-1 truncate text-sm text-gray-800">{log.title}</span>
-        <div className="shrink-0 flex items-center gap-2 text-xs text-gray-500">
+        <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{log.category}</span>
+        <span className="flex-1 truncate text-sm text-slate-800">{log.title}</span>
+        <div className="shrink-0 flex items-center gap-2 text-xs text-slate-500">
           {log.actual_time && (
             <span className="flex items-center gap-0.5"><Clock size={11} />{log.actual_time}</span>
           )}
@@ -226,23 +226,23 @@ const WorkLogEntry = memo(function WorkLogEntry({
       </button>
 
       {expanded && (
-        <div className="space-y-2 border-t border-gray-100 px-3 pb-3">
-          {log.content && <p className="mt-2 text-sm text-gray-600">{log.content}</p>}
+        <div className="space-y-2 border-t border-slate-100 px-3 pb-3">
+          {log.content && <p className="mt-2 text-sm text-slate-600">{log.content}</p>}
 
           {log.estimated_time && log.actual_time && (
-            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+            <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
               <span>예상: {log.estimated_time}</span>
               <span>실제: {log.actual_time}</span>
-              {log.time_diff && <span className="font-medium text-gray-700">차이: {log.time_diff}</span>}
+              {log.time_diff && <span className="font-medium text-slate-700">차이: {log.time_diff}</span>}
             </div>
           )}
 
           {log.details?.length > 0 && (
             <div>
-              <p className="mb-1 text-xs font-semibold text-gray-600">세부 내용</p>
+              <p className="mb-1 text-xs font-semibold text-slate-600">세부 내용</p>
               <ul className="space-y-0.5">
                 {log.details.map((detail) => (
-                  <li key={detail.id} className="border-l-2 border-gray-200 pl-3 text-xs text-gray-600">{detail.content}</li>
+                  <li key={detail.id} className="border-l-2 border-slate-200 pl-3 text-xs text-slate-600">{detail.content}</li>
                 ))}
               </ul>
             </div>
@@ -311,25 +311,25 @@ function renderInsights(insights: WorkLogInsights) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="card-base p-3">
-          <p className="text-xs text-gray-500">총 기록</p>
-          <p className="text-2xl font-semibold text-gray-900">{insights.total_logs}건</p>
+          <p className="text-xs text-slate-500">총 기록</p>
+          <p className="text-2xl font-semibold text-slate-900">{insights.total_logs}건</p>
         </div>
         <div className="card-base p-3">
-          <p className="text-xs text-gray-500">시간 추정 정확도</p>
+          <p className="text-xs text-slate-500">시간 추정 정확도</p>
           <p className="text-2xl font-semibold text-emerald-600">{accuracyRate}%</p>
         </div>
         <div className="card-base p-3">
-          <p className="text-xs text-gray-500">후속 조치 이행률</p>
+          <p className="text-xs text-slate-500">후속 조치 이행률</p>
           <p className="text-2xl font-semibold text-blue-600">{followUpRate}%</p>
         </div>
         <div className="card-base p-3">
-          <p className="text-xs text-gray-500">완료율</p>
-          <p className="text-2xl font-semibold text-gray-900">{completedRate}%</p>
+          <p className="text-xs text-slate-500">완료율</p>
+          <p className="text-2xl font-semibold text-slate-900">{completedRate}%</p>
         </div>
       </div>
 
       <div className="card-base p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-700">카테고리별 업무 분포</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-700">카테고리별 업무 분포</h3>
         <div className="space-y-2">
           {Object.entries(insights.category_counts)
             .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -338,12 +338,12 @@ function renderInsights(insights: WorkLogInsights) {
               const avgTime = insights.category_avg_time[category] || 0
               return (
                 <div key={category} className="flex items-center gap-3">
-                  <span className="w-20 truncate text-xs text-gray-600">{category}</span>
-                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <span className="w-20 truncate text-xs text-slate-600">{category}</span>
+                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-blue-500" style={{ width: `${percent}%` }} />
                   </div>
-                  <span className="w-12 text-right text-xs text-gray-500">{count as number}건</span>
-                  <span className="w-16 text-right text-xs text-gray-400">평균 {avgTime}분</span>
+                  <span className="w-12 text-right text-xs text-slate-500">{count as number}건</span>
+                  <span className="w-16 text-right text-xs text-slate-500">평균 {avgTime}분</span>
                 </div>
               )
             })}
@@ -351,16 +351,16 @@ function renderInsights(insights: WorkLogInsights) {
       </div>
 
       <div className="card-base p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-700">요일별 업무 집중도</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-700">요일별 업무 집중도</h3>
         <div className="flex h-24 items-end gap-2">
           {['월', '화', '수', '목', '금', '토', '일'].map((day, i) => {
             const count = weekdayMap[i] ?? weekdayMap[String(i)] ?? 0
             const height = Math.max(8, (count / maxWeekdayCount) * 100)
             return (
               <div key={day} className="flex flex-1 flex-col items-center gap-1">
-                <span className="text-[10px] text-gray-500">{count}</span>
+                <span className="text-[10px] text-slate-500">{count}</span>
                 <div className="w-full rounded-t bg-blue-400" style={{ height: `${height}%` }} />
-                <span className="text-[10px] text-gray-500">{day}</span>
+                <span className="text-[10px] text-slate-500">{day}</span>
               </div>
             )
           })}
@@ -368,19 +368,19 @@ function renderInsights(insights: WorkLogInsights) {
       </div>
 
       <div className="card-base p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-700">시간 추정 분석</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-700">시간 추정 분석</h3>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
             <p className="text-lg font-semibold text-red-500">{insights.time_accuracy.over}</p>
-            <p className="text-xs text-gray-500">과소 추정 (실제 &gt; 예상)</p>
+            <p className="text-xs text-slate-500">과소 추정 (실제 &gt; 예상)</p>
           </div>
           <div>
             <p className="text-lg font-semibold text-emerald-500">{insights.time_accuracy.accurate}</p>
-            <p className="text-xs text-gray-500">정확</p>
+            <p className="text-xs text-slate-500">정확</p>
           </div>
           <div>
             <p className="text-lg font-semibold text-amber-500">{insights.time_accuracy.under}</p>
-            <p className="text-xs text-gray-500">과대 추정 (실제 &lt; 예상)</p>
+            <p className="text-xs text-slate-500">과대 추정 (실제 &lt; 예상)</p>
           </div>
         </div>
       </div>
@@ -485,16 +485,16 @@ export default function WorkLogsPage() {
         )}
       </div>
 
-      <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-0.5">
+      <div className="mb-4 flex gap-1 rounded-lg bg-slate-100 p-0.5">
         <button
           onClick={() => setActiveTab('logs')}
-          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'logs' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500'}`}
+          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'logs' ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500'}`}
         >
           기록
         </button>
         <button
           onClick={() => setActiveTab('insights')}
-          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'insights' ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500'}`}
+          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'insights' ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500'}`}
         >
           인사이트
         </button>
@@ -505,7 +505,7 @@ export default function WorkLogsPage() {
           <div className="mb-4 flex flex-wrap gap-1">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${!categoryFilter ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${!categoryFilter ? 'bg-gray-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               전체
             </button>
@@ -513,7 +513,7 @@ export default function WorkLogsPage() {
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category)}
-                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${categoryFilter === category ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${categoryFilter === category ? 'bg-gray-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
                 {category}
               </button>
@@ -551,7 +551,7 @@ export default function WorkLogsPage() {
             <div className="space-y-6">
               {Object.entries(grouped).map(([dateKey, items]) => (
                 <div key={dateKey}>
-                  <h3 className="mb-2 text-sm font-semibold text-gray-600">
+                  <h3 className="mb-2 text-sm font-semibold text-slate-600">
                     {new Date(`${dateKey}T00:00`).toLocaleDateString('ko-KR', {
                       year: 'numeric',
                       month: 'long',
@@ -581,7 +581,7 @@ export default function WorkLogsPage() {
 
       {activeTab === 'insights' && (
         <>
-          <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-0.5">
+          <div className="mb-4 flex gap-1 rounded-lg bg-slate-100 p-0.5">
             {([
               ['week', '최근 1주'],
               ['month', '최근 1달'],
@@ -590,7 +590,7 @@ export default function WorkLogsPage() {
               <button
                 key={key}
                 onClick={() => setInsightPeriod(key)}
-                className={`rounded-md px-3 py-1.5 text-xs ${insightPeriod === key ? 'bg-white font-medium text-gray-800 shadow' : 'text-gray-500'}`}
+                className={`rounded-md px-3 py-1.5 text-xs ${insightPeriod === key ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500'}`}
               >
                 {label}
               </button>
@@ -605,6 +605,7 @@ export default function WorkLogsPage() {
     </div>
   )
 }
+
 
 
 

@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
+import { CalendarClock, Check, CheckCircle2, ChevronDown, ListTodo } from 'lucide-react'
 
 import EmptyState from '../EmptyState'
 import type { DashboardPrioritizedTask, Task } from '../../lib/api'
@@ -14,6 +14,8 @@ interface DashboardTaskPanelsProps {
   onQuickComplete: (task: Task) => void
   onOpenTaskBoard: () => void
 }
+
+type TaskPanelTab = 'priority' | 'deadline' | 'completed'
 
 function urgencyBadge(item: DashboardPrioritizedTask): { text: string; className: string } {
   const { urgency, d_day } = item
@@ -50,7 +52,12 @@ function DashboardTaskPanels({
   onOpenTaskBoard,
 }: DashboardTaskPanelsProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [activeTab, setActiveTab] = useState<TaskPanelTab>('priority')
   const taskGroups = useMemo(() => groupPrioritizedTasks(prioritizedTasks), [prioritizedTasks])
+  const urgentTaskCount = useMemo(
+    () => prioritizedTasks.filter((item) => item.urgency === 'overdue' || item.urgency === 'today').length,
+    [prioritizedTasks],
+  )
 
   const toggleGroup = (groupKey: string) => {
     setExpandedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }))
@@ -100,118 +107,163 @@ function DashboardTaskPanels({
 
   return (
     <div className="space-y-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">오늘 우선순위</h3>
-        <button
-          onClick={onOpenTaskBoard}
-          className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
-        >
-          업무보드
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">업무 포커스</h3>
+        <button onClick={onOpenTaskBoard} className="secondary-btn btn-sm">
+          업무 보드
         </button>
       </div>
 
-      <div className="card-base dashboard-card">
-        <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            우선순위 ({prioritizedTasks.length}건 · {taskGroups.length}그룹)
-          </h4>
-        </div>
-        {taskGroups.length === 0 ? (
-          <EmptyState emoji="🧩" message="우선순위 업무가 없습니다." className="py-6" />
-        ) : (
-          <div className="max-h-[320px] space-y-2.5 overflow-y-auto pr-1">
-            {taskGroups.map((group) => {
-              if (group.tasks.length === 1) return renderTaskRow(group.tasks[0])
-
-              const isExpanded = expandedGroups[group.groupKey] === true
-              const previewFunds =
-                group.fundNames.length > 3
-                  ? `${group.fundNames.slice(0, 3).join(', ')} 외 ${group.fundNames.length - 3}`
-                  : group.fundNames.join(', ')
-              const badge = urgencyBadge({
-                task: group.tasks[0].task,
-                urgency: group.urgencyMax,
-                d_day: group.dDayMin,
-                workflow_info: null,
-                source: group.tasks[0].source,
-              })
-
-              return (
-                <div key={group.groupKey} className="rounded-lg border border-slate-200 bg-white">
-                  <button
-                    onClick={() => toggleGroup(group.groupKey)}
-                    className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <p className="flex-1 truncate text-sm font-semibold text-slate-800">{group.groupLabel}</p>
-                      <span className="text-xs text-slate-500">{group.tasks.length}건</span>
-                      <span className={badge.className}>{badge.text}</span>
-                      <ChevronDown
-                        size={14}
-                        className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">{previewFunds || '개별 업무'}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">{isExpanded ? '접기' : '펼치기'}</p>
-                  </button>
-                  <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-slate-100 px-2 pb-2 pt-1`}>
-                    <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
-                      {group.tasks.map((item, index) => renderTaskRow(item, `${index + 1}.`))}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('priority')}
+          className={`rounded-lg border px-2.5 py-2 text-left ${
+            activeTab === 'priority'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <p className="text-[11px] font-medium">우선순위</p>
+          <p className="mt-0.5 text-sm font-semibold">{prioritizedTasks.length}건</p>
+          <p className="text-[11px]">{urgentTaskCount}건 긴급</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('deadline')}
+          className={`rounded-lg border px-2.5 py-2 text-left ${
+            activeTab === 'deadline'
+              ? 'border-blue-200 bg-blue-50 text-blue-700'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <p className="text-[11px] font-medium">이번 주 마감</p>
+          <p className="mt-0.5 text-sm font-semibold">{thisWeekTasks.length}건</p>
+          <p className="text-[11px]">주간 일정</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('completed')}
+          className={`rounded-lg border px-2.5 py-2 text-left ${
+            activeTab === 'completed'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <p className="text-[11px] font-medium">완료 업무</p>
+          <p className="mt-0.5 text-sm font-semibold">{completedTasks.length}건</p>
+          <p className="text-[11px]">오늘 기준</p>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="card-base dashboard-card">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">이번 주 마감</h4>
-            <span className="text-xs text-slate-400">{thisWeekTasks.length}건</span>
-          </div>
-          {thisWeekTasks.length === 0 ? (
-            <EmptyState emoji="📠" message="이번 주 마감 업무가 없습니다." className="py-6" />
-          ) : (
-            <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
-              {thisWeekTasks.slice(0, 8).map((task) => (
-                <button
-                  key={`week-${task.id}`}
-                  onClick={() => onOpenTask(task, true)}
-                  className="w-full rounded border border-slate-200 px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  <p className="truncate">{task.title}</p>
-                  <p className="truncate text-xs text-slate-500">{taskMeta(task)}</p>
-                </button>
-              ))}
+      <div className="card-base dashboard-card p-4">
+        {activeTab === 'priority' && (
+          <>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                우선순위 ({prioritizedTasks.length}건 · {taskGroups.length}그룹)
+              </h4>
             </div>
-          )}
-        </div>
+            {taskGroups.length === 0 ? (
+              <EmptyState icon={<ListTodo size={18} />} message="우선순위 업무가 없습니다." className="py-6" />
+            ) : (
+              <div className="max-h-[360px] space-y-2.5 overflow-y-auto pr-1">
+                {taskGroups.map((group) => {
+                  if (group.tasks.length === 1) return renderTaskRow(group.tasks[0])
 
-        <div className="card-base dashboard-card">
-          <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">완료</h4>
-            <span className="text-xs text-slate-400">{completedTasks.length}건</span>
-          </div>
-          {completedTasks.length === 0 ? (
-            <EmptyState emoji="✅" message="오늘 완료된 업무가 없습니다." className="py-6" />
-          ) : (
-            <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
-              {completedTasks.slice(0, 8).map((task) => (
-                <button
-                  key={`done-${task.id}`}
-                  onClick={() => onOpenTask(task, true)}
-                  className="w-full rounded border border-emerald-100 bg-emerald-50/40 px-2 py-1.5 text-left text-sm text-emerald-800 hover:bg-emerald-50"
-                >
-                  <p className="truncate line-through">{task.title}</p>
-                  <p className="truncate text-xs text-emerald-700/80">{task.actual_time || '-'}</p>
-                </button>
-              ))}
+                  const isExpanded = expandedGroups[group.groupKey] === true
+                  const previewFunds =
+                    group.fundNames.length > 3
+                      ? `${group.fundNames.slice(0, 3).join(', ')} 외 ${group.fundNames.length - 3}`
+                      : group.fundNames.join(', ')
+                  const badge = urgencyBadge({
+                    task: group.tasks[0].task,
+                    urgency: group.urgencyMax,
+                    d_day: group.dDayMin,
+                    workflow_info: null,
+                    source: group.tasks[0].source,
+                  })
+
+                  return (
+                    <div key={group.groupKey} className="rounded-lg border border-slate-200 bg-white">
+                      <button
+                        onClick={() => toggleGroup(group.groupKey)}
+                        className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{group.groupLabel}</p>
+                          <span className="text-xs text-slate-500">{group.tasks.length}건</span>
+                          <span className={badge.className}>{badge.text}</span>
+                          <ChevronDown
+                            size={14}
+                            className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">{previewFunds || '개별 업무'}</p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">{isExpanded ? '접기' : '펼치기'}</p>
+                      </button>
+                      <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-slate-100 px-2 pb-2 pt-1`}>
+                        <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
+                          {group.tasks.map((item, index) => renderTaskRow(item, `${index + 1}.`))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'deadline' && (
+          <>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">이번 주 마감</h4>
+              <span className="text-xs text-slate-500">{thisWeekTasks.length}건</span>
             </div>
-          )}
-        </div>
+            {thisWeekTasks.length === 0 ? (
+              <EmptyState icon={<CalendarClock size={18} />} message="이번 주 마감 업무가 없습니다." className="py-6" />
+            ) : (
+              <div className="max-h-[360px] space-y-1.5 overflow-y-auto pr-1">
+                {thisWeekTasks.slice(0, 12).map((task) => (
+                  <button
+                    key={`week-${task.id}`}
+                    onClick={() => onOpenTask(task, true)}
+                    className="w-full rounded border border-slate-200 px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <p className="truncate font-medium text-slate-800">{task.title}</p>
+                    <p className="truncate text-xs text-slate-500">{taskMeta(task)}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'completed' && (
+          <>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">완료 업무</h4>
+              <span className="text-xs text-slate-500">{completedTasks.length}건</span>
+            </div>
+            {completedTasks.length === 0 ? (
+              <EmptyState icon={<CheckCircle2 size={18} />} message="오늘 완료된 업무가 없습니다." className="py-6" />
+            ) : (
+              <div className="max-h-[360px] space-y-1.5 overflow-y-auto pr-1">
+                {completedTasks.slice(0, 12).map((task) => (
+                  <button
+                    key={`done-${task.id}`}
+                    onClick={() => onOpenTask(task, true)}
+                    className="w-full rounded border border-emerald-100 bg-emerald-50/40 px-2.5 py-2 text-left text-sm text-emerald-800 hover:bg-emerald-50"
+                  >
+                    <p className="truncate line-through">{task.title}</p>
+                    <p className="truncate text-xs text-emerald-700/80">{task.actual_time || '-'}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

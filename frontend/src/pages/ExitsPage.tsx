@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createExitCommittee,
@@ -282,19 +282,19 @@ export default function ExitsPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'dashboard' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           회수 대시보드
         </button>
         <button
           onClick={() => setActiveTab('committees')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'committees' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'committees' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           회수 위원회
         </button>
         <button
           onClick={() => setActiveTab('trades')}
-          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'trades' ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}
+          className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === 'trades' ? 'primary-btn' : 'secondary-btn text-slate-700'}`}
         >
           회수 거래/정산
         </button>
@@ -304,7 +304,7 @@ export default function ExitsPage() {
         <div className="card-base space-y-3">
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">조합 필터</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">조합 필터</label>
               <select
                 value={dashboardFundId || ''}
                 onChange={(e) => setDashboardFundId(e.target.value ? Number(e.target.value) : null)}
@@ -316,13 +316,13 @@ export default function ExitsPage() {
                 ))}
               </select>
             </div>
-            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded bg-slate-50 px-3 py-2 text-sm text-slate-700">
               총 투자 {formatKRW(exitDashboard?.total_invested || 0)}
             </div>
-            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded bg-slate-50 px-3 py-2 text-sm text-slate-700">
               총 회수 {formatKRW(exitDashboard?.total_recovered || 0)}
             </div>
-            <div className="rounded bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded bg-slate-50 px-3 py-2 text-sm text-slate-700">
               통합 MOIC {exitDashboard?.total_moic != null ? `${exitDashboard.total_moic.toFixed(2)}x` : '-'}
             </div>
           </div>
@@ -332,7 +332,7 @@ export default function ExitsPage() {
           ) : (
             <div className="overflow-auto">
               <table className="min-w-[760px] w-full text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
+                <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <th className="px-3 py-2 text-left">투자건</th>
                     <th className="px-3 py-2 text-right">투자원금</th>
@@ -360,21 +360,21 @@ export default function ExitsPage() {
 
       {activeTab === 'committees' && (
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 위원회 등록</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">신규 위원회 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">투자사</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">투자사</label>
             <select value={newCommittee.company_id || ''} onChange={(e) => setNewCommittee((p) => ({ ...p, company_id: Number(e.target.value) || 0 }))} className="form-input">
               <option value="">투자사</option>
               {companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">회의일</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">회의일</label>
             <input type="date" value={newCommittee.meeting_date} onChange={(e) => setNewCommittee((p) => ({ ...p, meeting_date: e.target.value }))} className="form-input" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
             <select value={newCommittee.status || 'scheduled'} onChange={(e) => setNewCommittee((p) => ({ ...p, status: e.target.value }))} className="form-input">
               {COMMITTEE_STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
@@ -384,7 +384,7 @@ export default function ExitsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">회수 전략</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">회수 전략</label>
             <input value={newCommittee.exit_strategy || ''} onChange={(e) => setNewCommittee((p) => ({ ...p, exit_strategy: e.target.value }))} className="form-input" placeholder="회수 전략" />
           </div>
           <div className="flex items-end">
@@ -396,12 +396,12 @@ export default function ExitsPage() {
 
       {activeTab === 'committees' && (
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">위원회</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">위원회</h3>
         <div className="space-y-2">
           {committees?.map((committee) => (
-            <div key={committee.id} className="rounded border border-gray-200 p-3">
+            <div key={committee.id} className="rounded border border-slate-200 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-gray-700">{committee.company_name || committee.company_id} | {toDate(committee.meeting_date)} | {labelStatus(committee.status)} | {committee.exit_strategy || '-'}</p>
+                <p className="text-sm text-slate-700">{committee.company_name || committee.company_id} | {toDate(committee.meeting_date)} | {labelStatus(committee.status)} | {committee.exit_strategy || '-'}</p>
                 <div className="flex gap-1">
                   <button onClick={() => setExpandedCommitteeId(expandedCommitteeId === committee.id ? null : committee.id)} className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">재원 연결</button>
                   <button onClick={() => toggleCommitteeEdit(committee)} className="secondary-btn">수정</button>
@@ -412,11 +412,11 @@ export default function ExitsPage() {
               {editingCommitteeId === committee.id && editCommittee && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-5">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">회의일</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">회의일</label>
                     <input type="date" value={editCommittee.meeting_date} onChange={(e) => setEditCommittee((p) => (p ? { ...p, meeting_date: e.target.value } : p))} className="form-input" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">상태</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
                     <select value={editCommittee.status} onChange={(e) => setEditCommittee((p) => (p ? { ...p, status: e.target.value } : p))} className="form-input">
                       {COMMITTEE_STATUS_OPTIONS.map((status) => (
                         <option key={status} value={status}>
@@ -426,11 +426,11 @@ export default function ExitsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">회수 전략</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">회수 전략</label>
                     <input value={editCommittee.exit_strategy} onChange={(e) => setEditCommittee((p) => (p ? { ...p, exit_strategy: e.target.value } : p))} className="form-input" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">메모</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">메모</label>
                     <input value={editCommittee.memo} onChange={(e) => setEditCommittee((p) => (p ? { ...p, memo: e.target.value } : p))} className="form-input" />
                   </div>
                   <div className="flex gap-1">
@@ -441,17 +441,17 @@ export default function ExitsPage() {
               )}
 
               {expandedCommitteeId === committee.id && (
-                <div className="mt-2 rounded bg-gray-50 p-2 space-y-2">
+                <div className="mt-2 rounded bg-slate-50 p-2 space-y-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
                       <select value={newCommitteeFund.fund_id || ''} onChange={(e) => setNewCommitteeFund((p) => ({ ...p, fund_id: Number(e.target.value) || 0 }))} className="form-input">
                         <option value="">조합</option>
                         {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">투자건 ID</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">투자건 ID</label>
                       <input type="number" value={newCommitteeFund.investment_id || ''} onChange={(e) => setNewCommitteeFund((p) => ({ ...p, investment_id: Number(e.target.value) || 0 }))} className="form-input" placeholder="투자건 ID" />
                     </div>
                     <div className="flex items-end">
@@ -460,15 +460,15 @@ export default function ExitsPage() {
                   </div>
                   <div className="space-y-1">
                     {committeeFunds?.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 bg-white p-2">
+                      <div key={item.id} className="flex items-center justify-between rounded border border-slate-200 bg-white p-2">
                         {editingCommitteeFundId === item.id && editCommitteeFund ? (
                           <div className="w-full grid grid-cols-1 gap-2 md:grid-cols-4">
                             <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">조합 ID</label>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">조합 ID</label>
                               <input type="number" value={editCommitteeFund.fund_id} onChange={(e) => setEditCommitteeFund((p) => (p ? { ...p, fund_id: Number(e.target.value) || 0 } : p))} className="form-input" />
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-600">투자건 ID</label>
+                              <label className="mb-1 block text-xs font-medium text-slate-600">투자건 ID</label>
                               <input type="number" value={editCommitteeFund.investment_id} onChange={(e) => setEditCommitteeFund((p) => (p ? { ...p, investment_id: Number(e.target.value) || 0 } : p))} className="form-input" />
                             </div>
                             <button onClick={() => updateCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id, data: { fund_id: editCommitteeFund.fund_id, investment_id: editCommitteeFund.investment_id } })} className="primary-btn">저장</button>
@@ -476,7 +476,7 @@ export default function ExitsPage() {
                           </div>
                         ) : (
                           <>
-                            <p className="text-xs text-gray-600">조합 {item.fund_name || item.fund_id} | 투자건 #{item.investment_id}</p>
+                            <p className="text-xs text-slate-600">조합 {item.fund_name || item.fund_id} | 투자건 #{item.investment_id}</p>
                             <div className="flex gap-1">
                               <button onClick={() => toggleCommitteeFundEdit(item)} className="secondary-btn">수정</button>
                               <button onClick={() => deleteCommitteeFundMut.mutate({ committeeId: committee.id, itemId: item.id })} className="danger-btn">삭제</button>
@@ -497,30 +497,30 @@ export default function ExitsPage() {
 
       {activeTab === 'trades' && (
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">신규 회수 거래 등록</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">신규 회수 거래 등록</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">위원회 ID</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">위원회 ID</label>
             <input type="number" value={newTrade.exit_committee_id || ''} onChange={(e) => setNewTrade((p) => ({ ...p, exit_committee_id: e.target.value ? Number(e.target.value) : null }))} className="form-input" placeholder="위원회 ID (선택)" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
             <select value={newTrade.fund_id || ''} onChange={(e) => setNewTrade((p) => ({ ...p, fund_id: Number(e.target.value) || 0 }))} className="form-input"><option value="">조합</option>{funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">투자사</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">투자사</label>
             <select value={newTrade.company_id || ''} onChange={(e) => setNewTrade((p) => ({ ...p, company_id: Number(e.target.value) || 0 }))} className="form-input"><option value="">투자사</option>{companies?.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">투자건</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">투자건</label>
             <select value={newTrade.investment_id || ''} onChange={(e) => setNewTrade((p) => ({ ...p, investment_id: Number(e.target.value) || 0 }))} className="form-input"><option value="">투자건</option>{filteredInvestmentOptions.map((investment) => <option key={investment.id} value={investment.id}>#{investment.id}</option>)}</select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">거래일</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">거래일</label>
             <input type="date" value={newTrade.trade_date} onChange={(e) => setNewTrade((p) => ({ ...p, trade_date: e.target.value }))} className="form-input" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">회수 유형</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">회수 유형</label>
             <select value={newTrade.exit_type} onChange={(e) => setNewTrade((p) => ({ ...p, exit_type: e.target.value }))} className="form-input">
               {EXIT_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
@@ -530,23 +530,23 @@ export default function ExitsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">거래 금액</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">거래 금액</label>
             <input type="number" value={newTrade.amount} onChange={(e) => setNewTrade((p) => ({ ...p, amount: Number(e.target.value || 0) }))} className="form-input" placeholder="거래 금액" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">매도 주식수</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">매도 주식수</label>
             <input type="number" value={newTrade.shares_sold || ''} onChange={(e) => setNewTrade((p) => ({ ...p, shares_sold: e.target.value ? Number(e.target.value) : null }))} className="form-input" placeholder="매도 주식수" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">수수료</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">수수료</label>
             <input type="number" value={newTrade.fees || 0} onChange={(e) => setNewTrade((p) => ({ ...p, fees: Number(e.target.value || 0) }))} className="form-input" placeholder="수수료" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">실현손익</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">실현손익</label>
             <input type="number" value={newTrade.realized_gain || ''} onChange={(e) => setNewTrade((p) => ({ ...p, realized_gain: e.target.value ? Number(e.target.value) : null }))} className="form-input" placeholder="실현손익" />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+            <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
             <input value={newTrade.memo || ''} onChange={(e) => setNewTrade((p) => ({ ...p, memo: e.target.value }))} className="form-input" placeholder="비고" />
           </div>
           <div className="flex items-end">
@@ -558,12 +558,12 @@ export default function ExitsPage() {
 
       {activeTab === 'trades' && (
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">회수 거래</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">회수 거래</h3>
         <div className="space-y-1">
           {trades?.map((trade) => (
-            <div key={trade.id} className="rounded border border-gray-200 p-2">
+            <div key={trade.id} className="rounded border border-slate-200 p-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-700">{trade.fund_name || trade.fund_id} | {trade.company_name || trade.company_id} | {toDate(trade.trade_date)} | {labelExitType(trade.exit_type)} | 거래 금액 {formatKRW(trade.amount)} | 회수액 {formatKRW(trade.net_amount || 0)}</p>
+                <p className="text-sm text-slate-700">{trade.fund_name || trade.fund_id} | {trade.company_name || trade.company_id} | {toDate(trade.trade_date)} | {labelExitType(trade.exit_type)} | 거래 금액 {formatKRW(trade.amount)} | 회수액 {formatKRW(trade.net_amount || 0)}</p>
                 <div className="flex gap-1">
                           <button onClick={() => toggleTradeEdit(trade)} className="secondary-btn">수정</button>
                   {trade.settlement_status !== '정산완료' && (
@@ -575,23 +575,23 @@ export default function ExitsPage() {
                   <button onClick={() => deleteTradeMut.mutate(trade.id)} className="danger-btn">삭제</button>
                 </div>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-slate-500">
                 정산상태: {trade.settlement_status || '-'} · 정산일: {toDate(trade.settlement_date)} · 정산금액: {formatKRW(trade.settlement_amount || 0)}
               </p>
               {editingTradeId === trade.id && editTrade && (
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-6">
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">위원회 ID</label><input type="number" value={editTrade.exit_committee_id ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, exit_committee_id: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="위원회 ID" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">조합 ID</label><input type="number" value={editTrade.fund_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, fund_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="조합 ID" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">투자사 ID</label><input type="number" value={editTrade.company_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, company_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="투자사 ID" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">투자건 ID</label><input type="number" value={editTrade.investment_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, investment_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="투자건 ID" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">거래일</label><input type="date" value={editTrade.trade_date} onChange={(e) => setEditTrade((p) => (p ? { ...p, trade_date: e.target.value } : p))} className="form-input" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">회수 유형</label><select value={editTrade.exit_type} onChange={(e) => setEditTrade((p) => (p ? { ...p, exit_type: e.target.value } : p))} className="form-input">{EXIT_TYPE_OPTIONS.map((type) => (<option key={type} value={type}>{labelExitType(type)}</option>))}</select></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">거래 금액</label><input type="number" value={editTrade.amount} onChange={(e) => setEditTrade((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="form-input" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">매도 주식수</label><input type="number" value={editTrade.shares_sold ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, shares_sold: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="매도 주식수" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">수수료</label><input type="number" value={editTrade.fees} onChange={(e) => setEditTrade((p) => (p ? { ...p, fees: Number(e.target.value || 0) } : p))} className="form-input" /></div>
-                  <div><label className="mb-1 block text-xs font-medium text-gray-600">실현손익</label><input type="number" value={editTrade.realized_gain ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, realized_gain: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="실현손익" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">위원회 ID</label><input type="number" value={editTrade.exit_committee_id ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, exit_committee_id: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="위원회 ID" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">조합 ID</label><input type="number" value={editTrade.fund_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, fund_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="조합 ID" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">투자사 ID</label><input type="number" value={editTrade.company_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, company_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="투자사 ID" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">투자건 ID</label><input type="number" value={editTrade.investment_id} onChange={(e) => setEditTrade((p) => (p ? { ...p, investment_id: Number(e.target.value) || 0 } : p))} className="form-input" placeholder="투자건 ID" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">거래일</label><input type="date" value={editTrade.trade_date} onChange={(e) => setEditTrade((p) => (p ? { ...p, trade_date: e.target.value } : p))} className="form-input" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">회수 유형</label><select value={editTrade.exit_type} onChange={(e) => setEditTrade((p) => (p ? { ...p, exit_type: e.target.value } : p))} className="form-input">{EXIT_TYPE_OPTIONS.map((type) => (<option key={type} value={type}>{labelExitType(type)}</option>))}</select></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">거래 금액</label><input type="number" value={editTrade.amount} onChange={(e) => setEditTrade((p) => (p ? { ...p, amount: Number(e.target.value || 0) } : p))} className="form-input" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">매도 주식수</label><input type="number" value={editTrade.shares_sold ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, shares_sold: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="매도 주식수" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">수수료</label><input type="number" value={editTrade.fees} onChange={(e) => setEditTrade((p) => (p ? { ...p, fees: Number(e.target.value || 0) } : p))} className="form-input" /></div>
+                  <div><label className="mb-1 block text-xs font-medium text-slate-600">실현손익</label><input type="number" value={editTrade.realized_gain ?? ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, realized_gain: e.target.value ? Number(e.target.value) : null } : p))} className="form-input" placeholder="실현손익" /></div>
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">비고</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
                     <input value={editTrade.memo || ''} onChange={(e) => setEditTrade((p) => (p ? { ...p, memo: e.target.value } : p))} className="form-input" />
                   </div>
                   <div className="flex gap-1">
@@ -712,6 +712,8 @@ export default function ExitsPage() {
     </div>
   )
 }
+
+
 
 
 

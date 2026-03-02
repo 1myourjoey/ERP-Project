@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 
 import {
   type Fund,
@@ -88,12 +88,12 @@ export default function EditTaskModal({
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">업무 수정</h3>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">×</button>
+            <button onClick={onCancel} className="text-slate-500 hover:text-slate-600">×</button>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-gray-500">제목</label>
+              <label className="mb-1 block text-xs text-slate-500">제목</label>
               <input
                 autoFocus
                 value={title}
@@ -104,26 +104,26 @@ export default function EditTaskModal({
                   setIsNotice(detected.is_notice)
                   setIsReport(detected.is_report)
                 }}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input
                   type="checkbox"
                   checked={isNotice}
                   onChange={(e) => setIsNotice(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-slate-300"
                 />
                 통지
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input
                   type="checkbox"
                   checked={isReport}
                   onChange={(e) => setIsReport(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-slate-300"
                 />
                 보고
               </label>
@@ -131,20 +131,20 @@ export default function EditTaskModal({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">마감일</label>
+                <label className="mb-1 block text-xs text-slate-500">마감일</label>
                 <input
                   type="date"
                   value={deadlineDate}
                   onChange={(e) => setDeadlineDate(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500">시간</label>
+                <label className="mb-1 block text-xs text-slate-500">시간</label>
                 <select
                   value={deadlineHour}
                   onChange={(e) => setDeadlineHour(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">선택</option>
                   {HOUR_OPTIONS.map((hour) => (
@@ -156,15 +156,15 @@ export default function EditTaskModal({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">예상 시간</label>
+                <label className="mb-1 block text-xs text-slate-500">예상 시간</label>
                 <TimeSelect value={estimatedTime} onChange={setEstimatedTime} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500">사분면</label>
+                <label className="mb-1 block text-xs text-slate-500">사분면</label>
                 <select
                   value={quadrant}
                   onChange={(e) => setQuadrant(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   {QUADRANT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -175,11 +175,11 @@ export default function EditTaskModal({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">카테고리</label>
+                <label className="mb-1 block text-xs text-slate-500">카테고리</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">없음</option>
                   {CATEGORY_OPTIONS.map((option) => (
@@ -188,11 +188,11 @@ export default function EditTaskModal({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500">관련 대상</label>
+                <label className="mb-1 block text-xs text-slate-500">관련 대상</label>
                 <select
                   value={relatedTarget}
                   onChange={(e) => setRelatedTarget(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">없음</option>
                   {gpEntities.length > 0 && (
@@ -212,22 +212,22 @@ export default function EditTaskModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-gray-500">담당자</label>
+              <label className="mb-1 block text-xs text-slate-500">담당자</label>
               <input
                 value={delegateTo}
                 onChange={(e) => setDelegateTo(e.target.value)}
                 placeholder="직접 입력"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-gray-500">메모</label>
+              <label className="mb-1 block text-xs text-slate-500">메모</label>
               <textarea
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 rows={3}
-                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
             <TaskAttachmentSection
@@ -246,3 +246,4 @@ export default function EditTaskModal({
     </>
   )
 }
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 
@@ -182,7 +182,7 @@ export default function LPManagementPage() {
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">{editing ? 'LP 수정' : 'LP 등록'}</h3>
+          <h3 className="text-sm font-semibold text-slate-700">{editing ? 'LP 수정' : 'LP 등록'}</h3>
           {editing && (
             <button
               onClick={() => {
@@ -265,7 +265,7 @@ export default function LPManagementPage() {
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-700">LP 목록</h3>
+          <h3 className="text-sm font-semibold text-slate-700">LP 목록</h3>
           <div className="flex gap-2">
             <input
               value={keyword}
@@ -285,7 +285,7 @@ export default function LPManagementPage() {
                 </option>
               ))}
             </select>
-            <label className="inline-flex items-center gap-1 text-xs text-gray-600">
+            <label className="inline-flex items-center gap-1 text-xs text-slate-600">
               <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
               비활성 포함
             </label>
@@ -293,14 +293,37 @@ export default function LPManagementPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-gray-500">불러오는 중...</p>
+          <p className="text-sm text-slate-500">불러오는 중...</p>
         ) : groupedLPs.length === 0 ? (
-          <p className="text-sm text-gray-400">표시할 LP가 없습니다.</p>
+          <p className="text-sm text-slate-500">표시할 LP가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {groupedLPs.map((lp) => {
               const expanded = expandedLPs.has(lp.name)
               const baseEntry = lp.entries[0]
+              const fundCommitmentMap = new Map<string, { fundName: string; commitment: number }>()
+
+              for (const entry of lp.entries) {
+                const relatedFunds = entry.related_funds?.length
+                  ? entry.related_funds
+                  : [{ fund_id: 0, fund_name: '공통' }]
+                const totalCommitment = Number(entry.total_commitment || 0)
+                const distributedCommitment =
+                  relatedFunds.length > 0 ? totalCommitment / relatedFunds.length : totalCommitment
+
+                for (const fund of relatedFunds) {
+                  const key = fund.fund_id > 0 ? `fund-${fund.fund_id}` : `name-${fund.fund_name || '공통'}`
+                  const current = fundCommitmentMap.get(key)
+                  fundCommitmentMap.set(key, {
+                    fundName: fund.fund_name || '공통',
+                    commitment: (current?.commitment || 0) + distributedCommitment,
+                  })
+                }
+              }
+
+              const fundRows = Array.from(fundCommitmentMap.values()).sort((a, b) =>
+                a.fundName.localeCompare(b.fundName, 'ko'),
+              )
 
               return (
                 <div key={lp.name} className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -313,7 +336,7 @@ export default function LPManagementPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="tag tag-gray">{lp.entries.length}개 조합</span>
+                      <span className="tag tag-gray">{fundRows.length}개 조합</span>
                       <button onClick={() => toggleExpand(lp.name)} className="icon-btn">
                         <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
                       </button>
@@ -323,12 +346,12 @@ export default function LPManagementPage() {
                   {expanded && (
                     <div className="border-t border-slate-100 px-4 pb-3 pt-2">
                       <div className="space-y-1.5">
-                        {lp.entries.map((entry) => (
-                          <div key={entry.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                        {fundRows.map((fund) => (
+                          <div key={fund.fundName} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
                             <span className="font-medium text-slate-700">
-                              {(entry.related_funds || [])[0]?.fund_name || '공통'}
+                              {fund.fundName}
                             </span>
-                            <span className="text-slate-500">약정 {formatAmount(entry.total_commitment)}</span>
+                            <span className="text-slate-500">약정 {formatAmount(fund.commitment)}</span>
                           </div>
                         ))}
                       </div>
@@ -360,3 +383,4 @@ export default function LPManagementPage() {
     </div>
   )
 }
+

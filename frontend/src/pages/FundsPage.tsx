@@ -174,14 +174,14 @@ function GPEntityForm({
   return (
     <div className="card-base mb-4 space-y-3 border-l-4 border-l-blue-500">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">고유계정 등록/수정</h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+        <h3 className="font-semibold text-slate-800">고유계정 등록/수정</h3>
+        <button onClick={onCancel} className="text-slate-500 hover:text-slate-600">
           <X size={18} />
         </button>
       </div>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">법인명</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">법인명</label>
           <input
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -189,7 +189,7 @@ function GPEntityForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">법인유형</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">법인유형</label>
           <select
             value={form.entity_type}
             onChange={(e) => setForm((prev) => ({ ...prev, entity_type: e.target.value as GPEntityInput['entity_type'] }))}
@@ -203,7 +203,7 @@ function GPEntityForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">사업자등록번호</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">사업자등록번호</label>
           <input
             value={form.business_number || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, business_number: e.target.value }))}
@@ -211,7 +211,7 @@ function GPEntityForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">대표자</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">대표자</label>
           <input
             value={form.representative || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, representative: e.target.value }))}
@@ -219,7 +219,7 @@ function GPEntityForm({
           />
         </div>
         <div className="md:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">주소</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">주소</label>
           <input
             value={form.address || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
@@ -332,8 +332,8 @@ function FundForm({
   return (
     <div className="card-base space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+        <h3 className="font-semibold text-slate-800">{title}</h3>
+        <button onClick={onCancel} className="text-slate-500 hover:text-slate-600">
           <X size={18} />
         </button>
       </div>
@@ -342,20 +342,20 @@ function FundForm({
 
       <div className="border-t pt-3">
         <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-700">LP 목록 (선택)</h4>
+          <h4 className="text-sm font-medium text-slate-700">LP 목록 (선택)</h4>
           <button onClick={() => setLps((prev) => [...prev, createEmptyLpDraft()])} className="text-xs text-blue-600 hover:underline">
             + LP 추가
           </button>
         </div>
         {!lps.length ? (
-          <p className="text-xs text-gray-400">등록할 LP가 있으면 추가하세요.</p>
+          <p className="text-xs text-slate-500">등록할 LP가 있으면 추가하세요.</p>
         ) : (
           <div className="space-y-2">
             {lps.map((lp) => (
-              <div key={lp._id} className="rounded-lg border border-gray-200 p-2">
+              <div key={lp._id} className="rounded-lg border border-slate-200 p-2">
                 <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-[2fr_1.2fr_1.6fr_1.6fr_1.4fr_1.6fr_1.4fr]">
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">주소록에서 선택</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">주소록에서 선택</label>
                     <select
                       value={lp._addressBookId || ''}
                       onChange={(e) => applyAddressBook(lp._id, e.target.value)}
@@ -371,7 +371,7 @@ function FundForm({
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">LP명</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">LP명</label>
                     <input
                       value={lp.name}
                       onChange={(e) => updateLp(lp._id, 'name', e.target.value)}
@@ -380,7 +380,7 @@ function FundForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">LP 유형</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">LP 유형</label>
                     <select
                       value={lp.type}
                       onChange={(e) => handleLpTypeChange(lp._id, e.target.value)}
@@ -394,27 +394,27 @@ function FundForm({
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">약정금액</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">약정금액</label>
                     <KrwAmountInput
                       value={lp.commitment ?? null}
                       onChange={(next) => updateLp(lp._id, 'commitment', next)}
                       placeholder="약정금액"
                       className="w-full rounded border px-2 py-1.5 text-sm"
-                      helperClassName="mt-1 text-[10px] text-gray-500"
+                      helperClassName="mt-1 text-[10px] text-slate-500"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">최초 납입금액</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">최초 납입금액</label>
                     <KrwAmountInput
                       value={lp.paid_in ?? null}
                       onChange={(next) => updateLp(lp._id, 'paid_in', next)}
                       placeholder="최초 납입금액"
                       className="w-full rounded border px-2 py-1.5 text-sm"
-                      helperClassName="mt-1 text-[10px] text-gray-500"
+                      helperClassName="mt-1 text-[10px] text-slate-500"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">사업자등록번호/생년월일</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">사업자등록번호/생년월일</label>
                     <input
                       value={lp.business_number ?? ''}
                       onChange={(e) => updateLp(lp._id, 'business_number', e.target.value)}
@@ -423,7 +423,7 @@ function FundForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-medium text-gray-500">주소</label>
+                    <label className="mb-1 block text-[10px] font-medium text-slate-500">주소</label>
                     <input
                       value={lp.address ?? ''}
                       onChange={(e) => updateLp(lp._id, 'address', e.target.value)}
@@ -433,14 +433,14 @@ function FundForm({
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-slate-500">
                     {lp.type === 'GP'
                       ? 'LP유형 GP는 최초 1회 GP 정보 자동입력 후, 주소록 선택으로 덮어쓸 수 있습니다.'
                       : '주소록 선택 시 LP 입력값을 즉시 채웁니다.'}
                   </p>
                   <button
                     onClick={() => setLps((prev) => prev.filter((row) => row._id !== lp._id))}
-                    className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+                    className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
                   >
                     삭제
                   </button>
@@ -601,8 +601,8 @@ export default function FundsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-blue-600">고유계정 (GP 법인)</p>
-            <h3 className="text-lg font-semibold text-gray-900">{primaryGp?.name || '미등록'}</h3>
-            <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+            <h3 className="text-lg font-semibold text-slate-900">{primaryGp?.name || '미등록'}</h3>
+            <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
               <span>{ENTITY_TYPE_LABEL[primaryGp?.entity_type || ''] || '-'}</span>
               <span>{primaryGp?.business_number || '-'}</span>
               <span>{primaryGp?.representative || '-'}</span>
@@ -671,7 +671,7 @@ export default function FundsPage() {
       <div className="card-base mb-4 space-y-3 border-l-4 border-l-indigo-500">
         <div>
           <p className="text-xs font-medium text-indigo-600">조합/LP 마이그레이션</p>
-          <h3 className="text-base font-semibold text-gray-900">엑셀 기반 검증 후 Import</h3>
+          <h3 className="text-base font-semibold text-slate-900">엑셀 기반 검증 후 Import</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => downloadTemplateMut.mutate()} disabled={downloadTemplateMut.isPending} className="secondary-btn">
@@ -696,7 +696,7 @@ export default function FundsPage() {
             <option value="upsert">upsert</option>
             <option value="insert">insert</option>
           </select>
-          <label className="inline-flex items-center gap-1 text-xs text-gray-600">
+          <label className="inline-flex items-center gap-1 text-xs text-slate-600">
             <input type="checkbox" checked={syncAddressBook} onChange={(e) => setSyncAddressBook(e.target.checked)} />
             LP 주소록 동시 반영
           </label>
@@ -726,17 +726,17 @@ export default function FundsPage() {
         )}
 
         {migrationValidation && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
-            <p className="font-medium text-gray-700">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <p className="font-medium text-slate-700">
               검증 결과: {migrationValidation.errors.length === 0 ? '통과' : `오류 ${migrationValidation.errors.length}건`}
             </p>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-slate-500">
               Funds {migrationValidation.fund_rows}행 / LPs {migrationValidation.lp_rows}행
             </p>
             {migrationValidation.errors.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white">
+              <div className="mt-2 max-h-48 overflow-auto rounded border border-slate-200 bg-white">
                 <table className="w-full text-xs">
-                  <thead className="bg-gray-100 text-gray-600">
+                  <thead className="bg-slate-100 text-slate-600">
                     <tr>
                       <th className="px-2 py-1 text-left">row</th>
                       <th className="px-2 py-1 text-left">column</th>
@@ -760,9 +760,9 @@ export default function FundsPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">조합 목록</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">조합 목록</h3>
         {isLoading ? (
-          <p className="p-2 text-sm text-gray-500">불러오는 중...</p>
+          <p className="p-2 text-sm text-slate-500">불러오는 중...</p>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {funds?.map((fund) => {
@@ -780,11 +780,11 @@ export default function FundsPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-semibold text-gray-900">{fund.name}</h4>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <h4 className="font-semibold text-slate-900">{fund.name}</h4>
+                      <p className="mt-0.5 text-xs text-slate-500">
                         {fund.type} | {dateInfo.label}: {dateInfo.date}
                       </p>
-                      {fund.registration_number && <p className="mt-0.5 text-xs text-gray-500">고유번호: {fund.registration_number}</p>}
+                      {fund.registration_number && <p className="mt-0.5 text-xs text-slate-500">고유번호: {fund.registration_number}</p>}
                     </div>
                     <span className={fund.status === 'active' ? 'tag tag-green' : 'tag tag-gray'}>
                       {labelStatus(fund.status)}
@@ -793,24 +793,24 @@ export default function FundsPage() {
 
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm md:grid-cols-4">
                     {fund.commitment_total != null && (
-                      <div className="text-gray-500">
+                      <div className="text-slate-500">
                         <span className="text-xs">약정총액</span>
-                        <p className="font-medium text-gray-700">{commitmentFmt.full}</p>
-                        {commitmentFmt.label && <p className="text-[11px] text-gray-400">{commitmentFmt.label}</p>}
+                        <p className="font-medium text-slate-700">{commitmentFmt.full}</p>
+                        {commitmentFmt.label && <p className="text-[11px] text-slate-500">{commitmentFmt.label}</p>}
                       </div>
                     )}
-                    <div className="text-gray-500">
+                    <div className="text-slate-500">
                       <span className="text-xs">납입현황</span>
-                      <p className="font-medium text-gray-700">{paidInFmt.full}</p>
-                      <p className="text-[11px] text-gray-400">{paidInPercent}%</p>
+                      <p className="font-medium text-slate-700">{paidInFmt.full}</p>
+                      <p className="text-[11px] text-slate-500">{paidInPercent}%</p>
                     </div>
-                    <div className="text-gray-500">
+                    <div className="text-slate-500">
                       <span className="text-xs">투자건수</span>
-                      <p className="font-medium text-gray-700">{fund.investment_count ?? 0}건</p>
+                      <p className="font-medium text-slate-700">{fund.investment_count ?? 0}건</p>
                     </div>
-                    <div className="text-gray-500">
+                    <div className="text-slate-500">
                       <span className="text-xs">등록성립일</span>
-                      <p className="font-medium text-gray-700">{fund.registration_date || '-'}</p>
+                      <p className="font-medium text-slate-700">{fund.registration_date || '-'}</p>
                     </div>
                   </div>
                 </div>
@@ -823,4 +823,6 @@ export default function FundsPage() {
     </div>
   )
 }
+
+
 

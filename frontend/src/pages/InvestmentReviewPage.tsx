@@ -91,10 +91,10 @@ function ReviewForm({
   onCancel: () => void
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">기업명</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">기업명</label>
           <input
             value={value.company_name}
             onChange={(e) => onChange({ ...value, company_name: e.target.value })}
@@ -102,7 +102,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">업종</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">업종</label>
           <input
             value={value.sector || ''}
             onChange={(e) => onChange({ ...value, sector: e.target.value })}
@@ -110,7 +110,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">단계</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">단계</label>
           <input
             value={value.stage || ''}
             onChange={(e) => onChange({ ...value, stage: e.target.value })}
@@ -119,7 +119,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">심사역</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">심사역</label>
           <input
             value={value.reviewer || ''}
             onChange={(e) => onChange({ ...value, reviewer: e.target.value })}
@@ -127,7 +127,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">소싱 경로</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">소싱 경로</label>
           <input
             value={value.deal_source || ''}
             onChange={(e) => onChange({ ...value, deal_source: e.target.value })}
@@ -135,7 +135,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">조합</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
           <select
             value={value.fund_id || ''}
             onChange={(e) => onChange({ ...value, fund_id: e.target.value ? Number(e.target.value) : null })}
@@ -150,7 +150,7 @@ function ReviewForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">희망 투자금액</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">희망 투자금액</label>
           <input
             type="number"
             value={value.target_amount ?? ''}
@@ -159,7 +159,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">투자수단</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">투자수단</label>
           <input
             value={value.instrument || ''}
             onChange={(e) => onChange({ ...value, instrument: e.target.value })}
@@ -168,7 +168,7 @@ function ReviewForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">의결 결과</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">의결 결과</label>
           <select
             value={value.decision_result || ''}
             onChange={(e) => onChange({ ...value, decision_result: e.target.value })}
@@ -182,7 +182,7 @@ function ReviewForm({
           </select>
         </div>
         <div className="md:col-span-3">
-          <label className="mb-1 block text-xs font-medium text-gray-600">심사 의견</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">심사 의견</label>
           <textarea
             value={value.review_opinion || ''}
             onChange={(e) => onChange({ ...value, review_opinion: e.target.value })}
@@ -382,7 +382,7 @@ export default function InvestmentReviewPage() {
 
       <div className="card-base">
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-xs font-medium text-gray-600">상태 필터</label>
+          <label className="text-xs font-medium text-slate-600">상태 필터</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -433,43 +433,43 @@ export default function InvestmentReviewPage() {
 
       {summaryMode ? (
         <div className="card-base space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700">주간 요약</h3>
+          <h3 className="text-sm font-semibold text-slate-700">주간 요약</h3>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            <div className="rounded border bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">금주 신규</p>
-              <p className="text-lg font-semibold text-gray-900">{summary?.new_count ?? 0}</p>
+            <div className="rounded border bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">금주 신규</p>
+              <p className="text-lg font-semibold text-slate-900">{summary?.new_count ?? 0}</p>
             </div>
-            <div className="rounded border bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">상태 변경</p>
-              <p className="text-lg font-semibold text-gray-900">{summary?.status_changed_count ?? 0}</p>
+            <div className="rounded border bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">상태 변경</p>
+              <p className="text-lg font-semibold text-slate-900">{summary?.status_changed_count ?? 0}</p>
             </div>
-            <div className="rounded border bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">코멘트 추가</p>
-              <p className="text-lg font-semibold text-gray-900">{summary?.comments_added_count ?? 0}</p>
+            <div className="rounded border bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">코멘트 추가</p>
+              <p className="text-lg font-semibold text-slate-900">{summary?.comments_added_count ?? 0}</p>
             </div>
-            <div className="rounded border bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">전체 건수</p>
-              <p className="text-lg font-semibold text-gray-900">{rows.length}</p>
+            <div className="rounded border bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">전체 건수</p>
+              <p className="text-lg font-semibold text-slate-900">{rows.length}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {PIPELINE_STATUSES.map((status) => (
               <div key={status} className="rounded border p-2 text-sm">
-                <span className="text-gray-500">{status}</span>
-                <span className="ml-2 font-semibold text-gray-800">{summary?.status_counts?.[status] ?? 0}</span>
+                <span className="text-slate-500">{status}</span>
+                <span className="ml-2 font-semibold text-slate-800">{summary?.status_counts?.[status] ?? 0}</span>
               </div>
             ))}
           </div>
           <div>
-            <h4 className="mb-2 text-xs font-semibold text-gray-600">최근 활동</h4>
+            <h4 className="mb-2 text-xs font-semibold text-slate-600">최근 활동</h4>
             {!summary?.recent_activities?.length ? (
               <EmptyState emoji="📝" message="최근 활동이 없습니다." className="py-6" />
             ) : (
               <div className="space-y-2">
                 {summary.recent_activities.map((activity) => (
-                  <div key={activity.review_id} className="rounded border border-gray-200 bg-white px-3 py-2 text-sm">
-                    <div className="font-medium text-gray-800">{activity.company_name}</div>
-                    <div className="text-xs text-gray-500">
+                  <div key={activity.review_id} className="rounded border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <div className="font-medium text-slate-800">{activity.company_name}</div>
+                    <div className="text-xs text-slate-500">
                       상태 {activity.status} · 코멘트 {activity.comment_count}건 · {toDate(activity.updated_at)}
                     </div>
                   </div>
@@ -488,8 +488,8 @@ export default function InvestmentReviewPage() {
                 {PIPELINE_STATUSES.map((status) => {
                   const statusRows = grouped.get(status) || []
                   return (
-                    <div key={status} className="rounded-xl border border-gray-200 bg-gray-50 p-2">
-                      <p className="mb-2 text-xs font-semibold text-gray-700">
+                    <div key={status} className="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                      <p className="mb-2 text-xs font-semibold text-slate-700">
                         {status} ({statusRows.length})
                       </p>
                       <div className="space-y-2">
@@ -501,16 +501,16 @@ export default function InvestmentReviewPage() {
                             className={`w-full rounded-lg border px-2 py-2 text-left text-xs transition ${
                               selectedId === row.id
                                 ? 'border-blue-300 bg-blue-50'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
-                            <p className="font-semibold text-gray-800">{row.company_name}</p>
-                            <p className="mt-0.5 text-gray-500">{row.sector || '-'}</p>
-                            <p className="mt-0.5 text-gray-500">{formatKRW(row.target_amount)}</p>
-                            <p className="mt-0.5 text-gray-500">{row.reviewer || '-'}</p>
+                            <p className="font-semibold text-slate-800">{row.company_name}</p>
+                            <p className="mt-0.5 text-slate-500">{row.sector || '-'}</p>
+                            <p className="mt-0.5 text-slate-500">{formatKRW(row.target_amount)}</p>
+                            <p className="mt-0.5 text-slate-500">{row.reviewer || '-'}</p>
                           </button>
                         ))}
-                        {!statusRows.length && <p className="rounded border border-dashed p-2 text-[11px] text-gray-400">없음</p>}
+                        {!statusRows.length && <p className="rounded border border-dashed p-2 text-[11px] text-slate-500">없음</p>}
                       </div>
                     </div>
                   )
@@ -528,8 +528,8 @@ export default function InvestmentReviewPage() {
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-base font-semibold text-gray-900">{detail.company_name}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-base font-semibold text-slate-900">{detail.company_name}</p>
+                    <p className="text-xs text-slate-500">
                       {detail.sector || '-'} · {detail.stage || '-'} · {detail.reviewer || '-'}
                     </p>
                   </div>
@@ -558,7 +558,7 @@ export default function InvestmentReviewPage() {
                   </div>
                 </div>
 
-                <div className="rounded border bg-gray-50 p-2 text-xs text-gray-700">
+                <div className="rounded border bg-slate-50 p-2 text-xs text-slate-700">
                   <p>희망 투자금액: {formatKRW(detail.target_amount)}</p>
                   <p>투자수단: {detail.instrument || '-'}</p>
                   <p>의결 결과: {detail.decision_result || '-'}</p>
@@ -621,13 +621,13 @@ export default function InvestmentReviewPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1 text-xs font-semibold text-gray-600">코멘트</p>
+                  <p className="mb-1 text-xs font-semibold text-slate-600">코멘트</p>
                   <div className="mb-2 space-y-2">
                     {detail.comments?.length ? (
                       detail.comments.map((comment) => (
-                        <div key={comment.id} className="rounded border border-gray-200 bg-white p-2 text-xs">
+                        <div key={comment.id} className="rounded border border-slate-200 bg-white p-2 text-xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-800">
+                            <span className="font-medium text-slate-800">
                               {comment.author} · {comment.comment_type}
                             </span>
                             <button
@@ -637,12 +637,12 @@ export default function InvestmentReviewPage() {
                               삭제
                             </button>
                           </div>
-                          <p className="mt-1 text-gray-700">{comment.content}</p>
-                          <p className="mt-1 text-[11px] text-gray-400">{toDate(comment.created_at)}</p>
+                          <p className="mt-1 text-slate-700">{comment.content}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">{toDate(comment.created_at)}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400">코멘트가 없습니다.</p>
+                      <p className="text-xs text-slate-500">코멘트가 없습니다.</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -671,4 +671,5 @@ export default function InvestmentReviewPage() {
     </div>
   )
 }
+
 

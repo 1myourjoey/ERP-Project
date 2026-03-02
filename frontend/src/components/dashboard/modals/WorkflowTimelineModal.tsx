@@ -1,4 +1,4 @@
-import { memo } from 'react'
+﻿import { memo } from 'react'
 
 import type { ActiveWorkflow, WorkflowInstance } from '../../../lib/api'
 import { workflowStepBadgeClass } from '../dashboardUtils'
@@ -25,8 +25,8 @@ function WorkflowTimelineModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">워크플로우 단계 확인</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-semibold text-slate-900">워크플로우 단계 확인</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
             ×
           </button>
         </div>
@@ -43,26 +43,26 @@ function WorkflowTimelineModal({
         </div>
 
         {loading ? (
-          <p className="py-8 text-center text-sm text-gray-500">단계 정보를 불러오는 중입니다...</p>
+          <p className="py-8 text-center text-sm text-slate-500">단계 정보를 불러오는 중입니다...</p>
         ) : !instance ? (
-          <p className="py-8 text-center text-sm text-gray-500">단계 정보를 불러오지 못했습니다.</p>
+          <p className="py-8 text-center text-sm text-slate-500">단계 정보를 불러오지 못했습니다.</p>
         ) : (
           <div className="space-y-2">
             {instance.step_instances.map((step, index) => (
-              <div key={step.id} className="rounded-lg border border-gray-200 p-3">
+              <div key={step.id} className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-slate-800">
                     {index + 1}. {step.step_name}
                   </p>
                   <span className={`rounded px-1.5 py-0.5 text-[11px] ${workflowStepBadgeClass(step.status)}`}>
                     {step.status}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   기준일: {step.calculated_date}
                   {step.actual_time ? ` | 실제시간: ${step.actual_time}` : ''}
                 </p>
-                {step.notes && <p className="mt-1 text-xs text-gray-600">메모: {step.notes}</p>}
+                {step.notes && <p className="mt-1 text-xs text-slate-600">메모: {step.notes}</p>}
               </div>
             ))}
           </div>
@@ -82,3 +82,4 @@ function WorkflowTimelineModal({
 }
 
 export default memo(WorkflowTimelineModal)
+
