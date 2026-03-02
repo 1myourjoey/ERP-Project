@@ -1,4 +1,6 @@
-import type { QueryClient, QueryKey } from '@tanstack/react-query'
+﻿import type { QueryClient, QueryKey } from '@tanstack/react-query'
+
+import { queryKeys } from './queryKeys'
 
 function invalidateMany(queryClient: QueryClient, keys: QueryKey[]) {
   for (const queryKey of keys) {
@@ -8,31 +10,25 @@ function invalidateMany(queryClient: QueryClient, keys: QueryKey[]) {
 
 export function invalidateTaskRelated(queryClient: QueryClient) {
   invalidateMany(queryClient, [
+    queryKeys.tasks.all,
+    queryKeys.tasks.board(),
+    queryKeys.tasks.categories,
+    queryKeys.dashboard.base,
+    queryKeys.dashboard.workflows,
+    queryKeys.dashboard.sidebar,
+    queryKeys.dashboard.completed,
+    queryKeys.worklogs.all,
     ['taskBoard'],
-    ['dashboard'],
-    ['dashboard-base'],
-    ['dashboard-workflows'],
-    ['dashboard-sidebar'],
-    ['dashboard-completed'],
-    ['dashboard-upcoming-notices'],
-    ['complianceDashboard'],
-    ['complianceObligations'],
-    ['complianceRules'],
-    ['internalReviews'],
-    ['internalReview'],
-    ['generatedDocuments'],
-    ['calendarEvents'],
     ['workflowInstances'],
     ['workflow-instances'],
-    ['tasks'],
-    ['worklogs'],
-    ['worklogInsights'],
+    ['calendarEvents'],
   ])
 }
 
 export function invalidateWorkflowRelated(queryClient: QueryClient) {
   invalidateMany(queryClient, [
-    ['workflows'],
+    queryKeys.workflows.all,
+    queryKeys.workflows.templates(),
     ['workflow'],
     ['workflowInstances'],
     ['workflow-instances'],
@@ -43,71 +39,45 @@ export function invalidateWorkflowRelated(queryClient: QueryClient) {
 }
 
 export function invalidateChecklistRelated(queryClient: QueryClient) {
-  invalidateMany(queryClient, [
-    ['checklists'],
-    ['checklist'],
-  ])
+  invalidateMany(queryClient, [['checklists'], ['checklist']])
 }
 
 export function invalidateFundRelated(queryClient: QueryClient, fundId?: number | null) {
   invalidateTaskRelated(queryClient)
   invalidateMany(queryClient, [
-    ['funds'],
+    queryKeys.funds.all,
+    queryKeys.funds.list(),
+    queryKeys.funds.overview,
+    queryKeys.capitalCalls.all,
+    queryKeys.investments.all,
+    queryKeys.performance.all,
     ['fund'],
-    ['fundOverview'],
-    ['capitalCalls'],
-    ['capitalCallItems'],
     ['capitalCallSummary'],
-    ['fundPerformance'],
     ['lpAddressBooks'],
     ['transactions'],
-    ['transactionLedger'],
-    ['transactionSummary'],
     ['valuations'],
-    ['valuations', 'dashboard'],
-    ['valuations', 'nav-summary'],
-    ['capitalCallDetails'],
-    ['distributionDetails'],
-    ['lpContributions'],
-    ['lpContributionSummary'],
-    ['fundContributionOverview'],
+    ['distributions'],
     ['fees', 'management'],
     ['fees', 'performance'],
     ['fees', 'config'],
     ['fees', 'waterfall'],
-    ['bizReports', 'matrix'],
-    ['bizReports', 'docCollection'],
-    ['bizReportRequests'],
-    ['bizReportAnomalies'],
-    ['bizReportTemplates'],
-    ['vicsReports'],
-    ['internalReviews'],
-    ['internalReview'],
-    ['complianceDashboard'],
-    ['complianceObligations'],
-    ['complianceRules'],
-    ['users'],
-    ['investmentReviews'],
-    ['investmentReview'],
-    ['investmentReviewWeeklySummary'],
-    ['generatedDocuments'],
   ])
+
   if (fundId) {
     invalidateMany(queryClient, [
-      ['fund', fundId],
+      queryKeys.funds.detail(fundId),
+      queryKeys.funds.lps(fundId),
+      queryKeys.capitalCalls.summary(fundId),
+      queryKeys.performance.fund(fundId),
       ['fundDetails', fundId],
-      ['fundLPs', fundId],
       ['capitalCalls', fundId],
-      ['capitalCallSummary', fundId],
-      ['fundContributionOverview', fundId],
-      ['fundPerformance', fundId],
-      ['valuations', 'dashboard', fundId],
+      ['transactions', fundId],
+      ['distributions', fundId],
+      ['lpTransfers', fundId],
       ['fees', 'management', fundId],
       ['fees', 'performance', fundId],
       ['fees', 'config', fundId],
       ['fees', 'waterfall', fundId],
-      ['investmentReviews', fundId],
-      ['transactions', fundId],
     ])
   }
 }
@@ -118,8 +88,7 @@ export function invalidateFeeRelated(queryClient: QueryClient, fundId?: number |
     ['fees', 'performance'],
     ['fees', 'config'],
     ['fees', 'waterfall'],
-    ['dashboard'],
-    ['dashboard-base'],
+    queryKeys.dashboard.base,
   ])
   if (fundId) {
     invalidateMany(queryClient, [
@@ -138,12 +107,10 @@ export function invalidateBizReportRelated(queryClient: QueryClient) {
     ['bizReports', 'docCollection'],
     ['bizReportRequests'],
     ['bizReportAnomalies'],
-    ['bizReportCommentDiff'],
     ['bizReportTemplates'],
     ['internalReviews'],
     ['internalReview'],
-    ['dashboard'],
-    ['dashboard-base'],
+    queryKeys.dashboard.base,
   ])
 }
 

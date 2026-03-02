@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import EmptyState from '../EmptyState'
@@ -69,7 +69,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
   const [documentType, setDocumentType] = useState<LegalDocumentType>('laws')
   const [version, setVersion] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [selectedFundId, setSelectedFundId] = useState<number | ''>('')
+  const [selectedFundId, setSelectedFundId] = useState<number | null>(null)
   const [fundTypeFilter, setFundTypeFilter] = useState('')
 
   const [searchText, setSearchText] = useState('')
@@ -129,7 +129,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       setTitle('')
       setVersion('')
       setSelectedFile(null)
-      setSelectedFundId('')
+      setSelectedFundId(null)
       setFundTypeFilter('')
       addToast('success', `${result.document.title} 업로드 및 인덱싱 완료 (${result.chunk_count} 청크)`)
     },
@@ -168,7 +168,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       addToast('warning', '가이드라인 문서는 조합 유형을 선택해야 합니다.')
       return
     }
-    if (isFundScoped && selectedFundId === '') {
+    if (isFundScoped && selectedFundId === null) {
       addToast('warning', '규약/내부지침 문서는 귀속 조합을 선택해야 합니다.')
       return
     }
@@ -192,7 +192,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
   }
 
   function onDelete(documentId: number) {
-    const confirmed = window.confirm('정말 삭제하시겠습니까? 벡터DB 청크도 함께 삭제됩니다.')
+    const confirmed = confirm('정말 삭제하시겠습니까? 벡터DB 청크도 함께 삭제됩니다.')
     if (!confirmed) return
     deleteMut.mutate(documentId)
   }
@@ -218,7 +218,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
               const nextType = event.target.value as LegalDocumentType
               setDocumentType(nextType)
               if (nextType !== 'guidelines') setFundTypeFilter('')
-              if (nextType !== 'agreements' && nextType !== 'internal') setSelectedFundId('')
+              if (nextType !== 'agreements' && nextType !== 'internal') setSelectedFundId(null)
             }}
           >
             {DOC_TYPES.map((item) => (
@@ -276,8 +276,8 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
               <span className="mb-1 block text-xs font-medium text-gray-600">귀속 조합</span>
               <select
                 className="form-input"
-                value={selectedFundId}
-                onChange={(event) => setSelectedFundId(event.target.value ? Number(event.target.value) : '')}
+                value={selectedFundId ?? ''}
+                onChange={(event) => setSelectedFundId(event.target.value ? Number(event.target.value) : null)}
               >
                 <option value="">선택</option>
                 {funds.map((fund) => (
@@ -431,3 +431,4 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     </div>
   )
 }
+

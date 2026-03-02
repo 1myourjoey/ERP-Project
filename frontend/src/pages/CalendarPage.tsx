@@ -14,6 +14,7 @@ import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { resolveDateTone } from '../lib/taskUrgency'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
@@ -88,6 +89,7 @@ export default function CalendarPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [taskDetail, setTaskDetail] = useState<Task | null>(null)
   const [completionTask, setCompletionTask] = useState<Task | null>(null)
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null)
   const [taskModalLoading, setTaskModalLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()))
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -387,7 +389,7 @@ export default function CalendarPage() {
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
-                              <button className="danger-btn" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                              <button className="danger-btn" onClick={() => setDeletingEventId(event.id)}>삭제</button>
                             </>
                           )}
                         </div>
@@ -458,7 +460,7 @@ export default function CalendarPage() {
                               {event.status !== 'completed' && (
                                 <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
-                              <button className="danger-btn" onClick={() => { if (confirm('이 일정을 삭제하시겠습니까?')) deleteMut.mutate(event.id) }}>삭제</button>
+                              <button className="danger-btn" onClick={() => setDeletingEventId(event.id)}>삭제</button>
                             </>
                           )}
                         </div>
@@ -481,6 +483,20 @@ export default function CalendarPage() {
 
       {taskDetail && <CalendarTaskDetailModal task={taskDetail} onClose={() => setTaskDetail(null)} />}
       {completionTask && <CompletionInfoModal task={completionTask} onClose={() => setCompletionTask(null)} />}
+      <ConfirmDialog
+        open={deletingEventId !== null}
+        title="일정 삭제"
+        message="이 일정을 삭제하시겠습니까?"
+        variant="danger"
+        loading={deleteMut.isPending}
+        onConfirm={() => {
+          if (deletingEventId == null) return
+          deleteMut.mutate(deletingEventId, {
+            onSuccess: () => setDeletingEventId(null),
+          })
+        }}
+        onCancel={() => setDeletingEventId(null)}
+      />
     </div>
   )
 }

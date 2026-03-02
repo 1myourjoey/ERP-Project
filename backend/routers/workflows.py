@@ -61,11 +61,13 @@ from services.workflow_service import (
 )
 from services.phase32_defaults import ensure_phase32_defaults
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
+from services.auto_journal import create_event_journal_entry
 from services.fund_integrity import (
     recalculate_fund_stats,
     validate_lp_paid_in_pair,
     validate_paid_in_deltas,
 )
+from services.notification_service import create_notification
 
 router = APIRouter(tags=["workflows"])
 _UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
@@ -129,6 +131,36 @@ def _is_capital_call_payment_step(step_name: str | None) -> bool:
             "paymentconfirm",
         )
     )
+
+
+def _match_event_journal_key(step_name: str | None, step_memo: str | None = None) -> str | None:
+    text = f"{_normalize_keyword(step_name)} {_normalize_keyword(step_memo)}"
+    if not text.strip():
+        return None
+    if any(token in text for token in ("출자금입금", "납입확인", "입금확인", "paymentconfirm")):
+        return "capital_call_paid"
+    if any(token in text for token in ("배분", "distribution")):
+        return "distribution_exit"
+    if any(token in text for token in ("관리보수청구", "managementfee")):
+        return "management_fee"
+    if any(token in text for token in ("관리보수수령", "fee_received")):
+        return "management_fee_received"
+    if any(token in text for token in ("성과보수", "performancefee")):
+        return "performance_fee"
+    return None
+
+
+def _resolve_event_amount(db: Session, instance: WorkflowInstance, event_key: str) -> float:
+    if event_key == "capital_call_paid":
+        capital_call_id = _extract_capital_call_id(instance.memo)
+        if capital_call_id is None:
+            return 0.0
+        call = db.get(CapitalCall, capital_call_id)
+        return float(call.total_amount or 0) if call else 0.0
+
+    # For non-capital-call events, amount source depends on domain data.
+    # Keep safe default to avoid creating invalid journal entries.
+    return 0.0
 
 def _is_fund_formation_workflow(workflow: Workflow | None) -> bool:
     if workflow is None:
@@ -1102,6 +1134,7 @@ def update_instance(
         db.rollback()
         raise
     db.refresh(instance)
+
     return _build_instance_response(instance, db)
 
 @router.put("/api/workflow-instances/{instance_id}/swap-template", response_model=WorkflowInstanceResponse)
@@ -1217,6 +1250,7 @@ def swap_instance_template(
         db.rollback()
         raise
     db.refresh(instance)
+
     return _build_instance_response(instance, db)
 
 @router.get(
@@ -1510,11 +1544,12 @@ async def attach_step_instance_document_by_id(
     return document
 
 @router.patch("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/complete")
-def complete_step(
+async def complete_step(
     instance_id: int,
     step_instance_id: int,
     data: WorkflowStepCompleteRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     si = db.get(WorkflowStepInstance, step_instance_id)
     if not si or si.instance_id != instance_id:
@@ -1594,6 +1629,25 @@ def complete_step(
         if capital_call_id is not None:
             _mark_capital_call_items_paid(db, capital_call_id)
 
+    event_key = _match_event_journal_key(
+        completed_wf_step.name if completed_wf_step else None,
+        completed_wf_step.memo if completed_wf_step else None,
+    )
+    if event_key and instance.fund_id is not None:
+        event_amount = _resolve_event_amount(db, instance, event_key)
+        if event_amount > 0:
+            create_event_journal_entry(
+                db,
+                event_key=event_key,
+                fund_id=instance.fund_id,
+                amount=event_amount,
+                entry_date=date.today(),
+                source_type="workflow_step_instance",
+                source_id=si.id,
+                description_override=f"워크플로우 단계 자동분개: {completed_wf_step.name if completed_wf_step else si.id}",
+                status="미결재",
+            )
+
     all_done = all(
         s.status in ("completed", "skipped")
         for s in instance.step_instances
@@ -1624,6 +1678,23 @@ def complete_step(
         db.rollback()
         raise
     db.refresh(instance)
+
+    try:
+        await create_notification(
+            db,
+            user_id=current_user.id,
+            category="workflow",
+            severity="info",
+            title=f"워크플로우 단계 완료: {completed_wf_step.name if completed_wf_step else si.id}",
+            message=f"{instance.name}의 다음 단계를 진행해 주세요.",
+            target_type="workflow_instance",
+            target_id=instance.id,
+            action_url=f"/workflows?instanceId={instance.id}",
+        )
+    except Exception:
+        # Notification should never block primary workflow progress.
+        pass
+
     return _build_instance_response(instance, db)
 
 @router.put("/api/workflow-instances/{instance_id}/steps/{step_instance_id}/undo", response_model=WorkflowInstanceResponse)

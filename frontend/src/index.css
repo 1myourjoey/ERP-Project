@@ -977,3 +977,36 @@ input[type="time"] {
   }
 }
 
+
+/* === 스켈레톤 로더 === */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--theme-border) 25%,
+    color-mix(in srgb, var(--theme-border) 60%, var(--theme-bg-elevated)) 37%,
+    var(--theme-border) 63%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* === 접이식 패널 트랜지션 === */
+.collapsible-enter {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 200ms ease-out;
+}
+
+.collapsible-enter-active {
+  max-height: 500px;
+}

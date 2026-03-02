@@ -14,6 +14,7 @@ import {
   createTask,
   fetchDashboardBase,
   fetchDashboardCompleted,
+  fetchDashboardSummary,
   fetchDashboardSidebar,
   fetchDashboardWorkflows,
   fetchGPEntities,
@@ -24,6 +25,7 @@ import {
   type ActiveWorkflow,
   type DashboardBaseResponse,
   type DashboardCompletedResponse,
+  type DashboardSummaryResponse,
   type DashboardSidebarResponse,
   type DashboardWorkflowsResponse,
   type GPEntity,
@@ -31,6 +33,9 @@ import {
   type TaskCreate,
   type WorkflowInstance,
 } from '../lib/api'
+import { STALE_TIMES } from '../lib/constants'
+import { formatDate } from '../lib/format'
+import { queryKeys } from '../lib/queryKeys'
 import { invalidateTaskRelated } from '../lib/queryInvalidation'
 
 const DAY_LABEL = {
@@ -67,25 +72,31 @@ export default function DashboardPage() {
   }, [])
 
   const { data: baseData, isLoading: baseLoading, error: baseError } = useQuery<DashboardBaseResponse>({
-    queryKey: ['dashboard-base'],
+    queryKey: queryKeys.dashboard.base,
     queryFn: fetchDashboardBase,
+    staleTime: STALE_TIMES.DASHBOARD,
   })
   const { data: workflowsData, isLoading: workflowsLoading } = useQuery<DashboardWorkflowsResponse>({
-    queryKey: ['dashboard-workflows'],
+    queryKey: queryKeys.dashboard.workflows,
     queryFn: fetchDashboardWorkflows,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.DASHBOARD,
   })
   const { data: sidebarData, isLoading: sidebarLoading } = useQuery<DashboardSidebarResponse>({
-    queryKey: ['dashboard-sidebar'],
+    queryKey: queryKeys.dashboard.sidebar,
     queryFn: fetchDashboardSidebar,
     enabled: shouldLoadSidebar,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.DASHBOARD,
   })
   const { data: completedData, isLoading: completedLoading } = useQuery<DashboardCompletedResponse>({
-    queryKey: ['dashboard-completed'],
+    queryKey: queryKeys.dashboard.completed,
     queryFn: fetchDashboardCompleted,
     enabled: shouldLoadCompleted,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.DASHBOARD,
+  })
+  const { data: summaryData, isError: summaryError } = useQuery<DashboardSummaryResponse>({
+    queryKey: queryKeys.dashboard.summary,
+    queryFn: fetchDashboardSummary,
+    staleTime: STALE_TIMES.DASHBOARD,
   })
   const { data: gpEntities = [] } = useQuery<GPEntity[]>({
     queryKey: ['gp-entities'],
@@ -181,17 +192,150 @@ export default function DashboardPage() {
   const completedLastWeekTasks = completedData?.completed_last_week ?? []
   const completedTodayCount = completedData?.completed_today_count ?? 0
   const completedThisWeekCount = completedData?.completed_this_week_count ?? 0
+  const briefingData: DashboardSummaryResponse = summaryData ?? {
+    urgent_notifications: (baseData.urgent_alerts ?? []).map((item, index) => ({
+      id: index + 1,
+      title: item.message,
+      message: item.due_date ? `마감일 ${item.due_date}` : null,
+      action_url: item.type === 'compliance' ? '/compliance' : '/tasks',
+    })),
+    today_tasks: {
+      total: todayTasks.length,
+      completed: todayTasks.filter((task) => task.status === 'completed').length,
+      in_progress: todayTasks.filter((task) => task.status === 'in_progress').length,
+    },
+    pending_approvals: {
+      journals: 0,
+      distributions: 0,
+      fees: baseData.pending_fee_count || 0,
+    },
+    deadlines_this_week: thisWeekTasks.map((task) => ({
+      type: 'task',
+      id: task.id,
+      title: task.title,
+      due_date: task.deadline || null,
+    })),
+    weekly_events: upcomingReports.map((report) => ({
+      id: report.id,
+      title: report.report_target || report.fund_name || '보고 일정',
+      date: report.due_date || null,
+      type: 'report',
+      status: report.status || null,
+    })),
+    fund_overview: {
+      active_funds: fundSummary.length,
+      total_aum: baseData.total_nav || 0,
+      next_call: null,
+    },
+  }
 
   return (
     <div className="page-container space-y-6">
       <div className="page-header mb-0">
         <div>
           <h2 className="page-title">
-            {`${new Date(baseData.date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} (${DAY_LABEL[baseData.day_of_week as keyof typeof DAY_LABEL] || baseData.day_of_week})`}
+            {`${formatDate(baseData.date, 'short')} (${DAY_LABEL[baseData.day_of_week as keyof typeof DAY_LABEL] || baseData.day_of_week})`}
           </h2>
           <p className="page-subtitle">
             오늘의 업무와 마감 일정을 확인하세요.
           </p>
+        </div>
+      </div>
+
+      <div className="card-base space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-gray-700">오늘의 브리핑</h3>
+          <div className="text-xs text-[var(--theme-text-secondary)]">
+            예상 작업시간: {baseData.today.total_estimated_time || '0m'}
+          </div>
+        </div>
+
+        {summaryError && (
+          <p className="text-xs text-[var(--color-warning)]">요약 API를 불러오지 못해 기본 데이터로 표시 중입니다.</p>
+        )}
+
+        {briefingData.urgent_notifications.length > 0 && (
+          <div className="warning-banner">
+            <div className="info-banner-icon">⚠</div>
+            <div className="info-banner-text">
+              긴급 알림 {briefingData.urgent_notifications.length}건
+            </div>
+          </div>
+        )}
+
+        {briefingData.urgent_notifications.length > 0 ? (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {briefingData.urgent_notifications.slice(0, 4).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="rounded border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] px-3 py-2 text-left hover:bg-[var(--theme-hover)]"
+                onClick={() => navigate(item.action_url || '/dashboard')}
+              >
+                <p className="text-sm font-medium text-[var(--theme-text-primary)]">{item.title}</p>
+                {item.message && (
+                  <p className="mt-1 text-xs text-[var(--theme-text-secondary)] line-clamp-2">{item.message}</p>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--theme-text-secondary)]">긴급 알림이 없습니다.</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <button type="button" onClick={() => navigate('/tasks')} className="rounded border border-[var(--theme-border)] p-3 text-left hover:bg-[var(--theme-hover)]">
+            <p className="text-[11px] text-[var(--theme-text-secondary)]">오늘 태스크</p>
+            <p className="text-lg font-semibold">{briefingData.today_tasks.total}건</p>
+          </button>
+          <button type="button" onClick={() => navigate('/accounting')} className="rounded border border-[var(--theme-border)] p-3 text-left hover:bg-[var(--theme-hover)]">
+            <p className="text-[11px] text-[var(--theme-text-secondary)]">승인 대기</p>
+            <p className="text-lg font-semibold">
+              {briefingData.pending_approvals.journals + briefingData.pending_approvals.distributions + briefingData.pending_approvals.fees}건
+            </p>
+          </button>
+          <button type="button" onClick={() => navigate('/tasks?due=week')} className="rounded border border-[var(--theme-border)] p-3 text-left hover:bg-[var(--theme-hover)]">
+            <p className="text-[11px] text-[var(--theme-text-secondary)]">주간 마감</p>
+            <p className="text-lg font-semibold">{briefingData.deadlines_this_week.length}건</p>
+          </button>
+          <button type="button" onClick={() => navigate('/funds')} className="rounded border border-[var(--theme-border)] p-3 text-left hover:bg-[var(--theme-hover)]">
+            <p className="text-[11px] text-[var(--theme-text-secondary)]">활성 펀드</p>
+            <p className="text-lg font-semibold">{briefingData.fund_overview.active_funds}개</p>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="rounded border border-[var(--theme-border)] p-3">
+            <h4 className="text-sm font-semibold text-[var(--theme-text-primary)]">이번 주 주요 일정</h4>
+            <div className="mt-2 space-y-1.5">
+              {briefingData.weekly_events.length === 0 && (
+                <p className="text-xs text-[var(--theme-text-secondary)]">등록된 일정이 없습니다.</p>
+              )}
+              {briefingData.weekly_events.slice(0, 5).map((event) => (
+                <div key={event.id} className="flex items-center justify-between rounded bg-[var(--theme-bg-elevated)] px-2.5 py-2">
+                  <span className="text-xs font-medium text-[var(--theme-text-primary)]">{event.title}</span>
+                  <span className="text-[11px] text-[var(--theme-text-secondary)]">{event.date ? formatDate(event.date, 'short') : '-'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded border border-[var(--theme-border)] p-3">
+            <h4 className="text-sm font-semibold text-[var(--theme-text-primary)]">빠른 처리</h4>
+            <div className="mt-2 space-y-2 text-xs">
+              <div className="flex items-center justify-between rounded bg-[var(--theme-bg-elevated)] px-2.5 py-2">
+                <span>분개 미결재</span>
+                <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/accounting')}>{briefingData.pending_approvals.journals}건</button>
+              </div>
+              <div className="flex items-center justify-between rounded bg-[var(--theme-bg-elevated)] px-2.5 py-2">
+                <span>배분 초안</span>
+                <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/funds')}>{briefingData.pending_approvals.distributions}건</button>
+              </div>
+              <div className="flex items-center justify-between rounded bg-[var(--theme-bg-elevated)] px-2.5 py-2">
+                <span>수수료 승인</span>
+                <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/fee-management')}>{briefingData.pending_approvals.fees}건</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

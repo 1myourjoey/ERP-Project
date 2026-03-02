@@ -1,4 +1,4 @@
-import { TIME_OPTIONS } from './timeOptions'
+﻿import { TIME_OPTIONS } from './timeOptions'
 
 interface TimeSelectProps {
   value: string
@@ -26,7 +26,7 @@ export default function TimeSelect({
         value={isCustom ? '__custom__' : value}
         onChange={(e) => {
           if (e.target.value === '__custom__') {
-            const custom = window.prompt(customPromptText)
+            const custom = prompt(customPromptText)
             if (custom) onChange(custom)
             return
           }
@@ -43,3 +43,4 @@ export default function TimeSelect({
     </div>
   )
 }
+

@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
-import { pushToast } from './toastBridge'
+import { pushToast } from '../toastBridge'
 
-const api = axios.create({ baseURL: '/api' })
+export const api = axios.create({ baseURL: '/api' })
 const ACCESS_TOKEN_KEY = 'von_access_token'
 const REFRESH_TOKEN_KEY = 'von_refresh_token'
 const AUTH_DISABLED =
@@ -3921,6 +3921,7 @@ export interface ExitTrade {
 export interface ExitTradeSettleInput {
   settlement_amount: number
   settlement_date: string
+  auto_distribution?: boolean
   memo?: string | null
 }
 

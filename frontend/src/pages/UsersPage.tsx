@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import EmptyState from '../components/EmptyState'
@@ -197,7 +197,7 @@ export default function UsersPage() {
         await navigator.clipboard.writeText(fullUrl)
         addToast('success', '재설정 링크를 복사했습니다.')
       } catch {
-        window.prompt('아래 링크를 복사하세요.', fullUrl)
+        prompt('아래 링크를 복사하세요.', fullUrl)
       }
     },
   })
@@ -212,7 +212,7 @@ export default function UsersPage() {
         await navigator.clipboard.writeText(fullUrl)
         addToast('success', '초대 링크를 생성하고 복사했습니다.')
       } catch {
-        window.prompt('아래 링크를 복사하세요.', fullUrl)
+        prompt('아래 링크를 복사하세요.', fullUrl)
       }
     },
   })
@@ -254,7 +254,7 @@ export default function UsersPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    const value = window.prompt(`${row.username} 임시 비밀번호`)
+                    const value = prompt(`${row.username} 임시 비밀번호`)
                     if (value && value.trim()) adminResetMut.mutate({ id: row.id, new_password: value.trim() })
                   }}
                   className="secondary-btn text-xs"
@@ -282,9 +282,9 @@ export default function UsersPage() {
                 <p>{row.name} ({row.username}) · {row.role} · {displayEmail(row.email)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditingId(row.id); setForm({ username: row.username, name: row.name, email: displayEmail(row.email) === '-' ? '' : displayEmail(row.email), password: '', role: row.role, department: row.department || '', is_active: row.is_active, allowed_routes: row.allowed_routes || [] }); setOpenMode('edit') }} className="secondary-btn text-xs">수정</button>
-                  <button onClick={() => { const value = window.prompt(`${row.username} 임시 비밀번호`); if (value && value.trim()) adminResetMut.mutate({ id: row.id, new_password: value.trim() }) }} className="secondary-btn text-xs">비번초기화</button>
+                  <button onClick={() => { const value = prompt(`${row.username} 임시 비밀번호`); if (value && value.trim()) adminResetMut.mutate({ id: row.id, new_password: value.trim() }) }} className="secondary-btn text-xs">비번초기화</button>
                   <button onClick={() => generateTokenMut.mutate(row.id)} className="secondary-btn text-xs">재설정링크</button>
-                  <button onClick={() => { if (!window.confirm('비활성화할까요?')) return; deactivateMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">비활성화</button>
+                  <button onClick={() => { if (!confirm('비활성화할까요?')) return; deactivateMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">비활성화</button>
                 </div>
               </div>
             ))}
@@ -298,7 +298,7 @@ export default function UsersPage() {
                 <p>{row.name} ({row.username}) · {displayEmail(row.email)} · {toDateLabel(row.created_at)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => approveMut.mutate(row.id)} className="secondary-btn text-xs">승인</button>
-                  <button onClick={() => { if (!window.confirm('거절할까요?')) return; rejectMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">거절</button>
+                  <button onClick={() => { if (!confirm('거절할까요?')) return; rejectMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">거절</button>
                 </div>
               </div>
             ))}
@@ -315,9 +315,9 @@ export default function UsersPage() {
                     <>
                       <button onClick={async () => {
                         const full = `${window.location.origin}${row.invite_url}`
-                        try { await navigator.clipboard.writeText(full); addToast('success', '링크 복사 완료') } catch { window.prompt('링크 복사', full) }
+                        try { await navigator.clipboard.writeText(full); addToast('success', '링크 복사 완료') } catch { prompt('링크 복사', full) }
                       }} className="secondary-btn text-xs">링크복사</button>
-                      <button onClick={() => { if (!window.confirm('초대를 취소할까요?')) return; cancelInviteMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">취소</button>
+                      <button onClick={() => { if (!confirm('초대를 취소할까요?')) return; cancelInviteMut.mutate(row.id) }} className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">취소</button>
                     </>
                   )}
                 </div>
@@ -446,3 +446,4 @@ export default function UsersPage() {
     </div>
   )
 }
+

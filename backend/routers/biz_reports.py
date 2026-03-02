@@ -38,6 +38,7 @@ from schemas.biz_report import (
 )
 from services.generated_document_service import generate_and_store_document
 from services.biz_report_anomaly import detect_biz_report_anomalies
+from services.biz_report_valuation_sync import suggest_valuation_updates
 
 router = APIRouter(tags=["biz-reports"])
 
@@ -250,6 +251,14 @@ def get_biz_report(report_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="영업보고를 찾을 수 없습니다")
     fund = db.get(Fund, report.fund_id)
     return _serialize_report(report, fund.name if fund else None)
+
+
+@router.get("/api/biz-reports/{report_id}/valuation-suggestions")
+async def get_valuation_suggestions(report_id: int, db: Session = Depends(get_db)):
+    try:
+        return await suggest_valuation_updates(db, report_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/api/biz-reports", response_model=BizReportResponse, status_code=201)

@@ -32,6 +32,7 @@ import {
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
+import FormModal from '../components/ui/FormModal'
 
 interface InvestmentOption {
   id: number
@@ -138,6 +139,19 @@ export default function ExitsPage() {
     realized_gain: null,
     memo: '',
   })
+  const [settleDialog, setSettleDialog] = useState<{
+    open: boolean
+    trade: ExitTrade | null
+    settlementAmount: string
+    settlementDate: string
+    autoDistribution: boolean
+  }>({
+    open: false,
+    trade: null,
+    settlementAmount: '',
+    settlementDate: todayIso(),
+    autoDistribution: true,
+  })
 
   const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
   const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
@@ -166,15 +180,26 @@ export default function ExitsPage() {
   const updateTradeMut = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<ExitTradeInput> }) => updateExitTrade(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exitTrades'] }); queryClient.invalidateQueries({ queryKey: ['transactions'] }); setEditingTradeId(null); setEditTrade(null); addToast('success', '회수 거래를 수정했습니다.') } })
   const deleteTradeMut = useMutation({ mutationFn: (id: number) => deleteExitTrade(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exitTrades'] }); queryClient.invalidateQueries({ queryKey: ['transactions'] }); addToast('success', '회수 거래를 삭제했습니다.') } })
   const settleTradeMut = useMutation({
-    mutationFn: ({ id, settlement_amount, settlement_date, memo }: { id: number; settlement_amount: number; settlement_date: string; memo?: string | null }) =>
-      settleExitTrade(id, { settlement_amount, settlement_date, memo }),
+    mutationFn: ({
+      id,
+      settlement_amount,
+      settlement_date,
+      auto_distribution,
+      memo,
+    }: {
+      id: number
+      settlement_amount: number
+      settlement_date: string
+      auto_distribution?: boolean
+      memo?: string | null
+    }) =>
+      settleExitTrade(id, { settlement_amount, settlement_date, auto_distribution, memo }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exitTrades'] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['valuations'] })
       queryClient.invalidateQueries({ queryKey: ['distributions'] })
       queryClient.invalidateQueries({ queryKey: ['exitDashboard'] })
-      addToast('success', '회수 거래 정산을 완료했습니다.')
     },
   })
   const generateDistributionMut = useMutation({
@@ -236,23 +261,12 @@ export default function ExitsPage() {
   }
 
   const handleSettleTrade = (trade: ExitTrade) => {
-    const defaultAmount = String(trade.net_amount ?? trade.amount ?? 0)
-    const amountInput = prompt('정산 금액을 입력하세요.', defaultAmount)
-    if (!amountInput) return
-    const settlementAmount = Number(amountInput)
-    if (!Number.isFinite(settlementAmount) || settlementAmount <= 0) {
-      addToast('warning', '정산 금액은 0보다 커야 합니다.')
-      return
-    }
-    const defaultDate = todayIso()
-    const dateInput = prompt('정산일(YYYY-MM-DD)을 입력하세요.', defaultDate)
-    if (!dateInput) return
-    const memo = prompt('정산 메모(선택)', trade.memo || '') || undefined
-    settleTradeMut.mutate({
-      id: trade.id,
-      settlement_amount: settlementAmount,
-      settlement_date: dateInput,
-      memo,
+    setSettleDialog({
+      open: true,
+      trade,
+      settlementAmount: String(trade.net_amount ?? trade.amount ?? 0),
+      settlementDate: todayIso(),
+      autoDistribution: true,
     })
   }
 
@@ -592,6 +606,109 @@ export default function ExitsPage() {
         </div>
       </div>
       )}
+
+      <FormModal
+        open={settleDialog.open}
+        title="매매 정산 처리"
+        submitLabel="정산 처리"
+        loading={settleTradeMut.isPending}
+        size="md"
+        onClose={() =>
+          setSettleDialog({
+            open: false,
+            trade: null,
+            settlementAmount: '',
+            settlementDate: todayIso(),
+            autoDistribution: true,
+          })
+        }
+        onSubmit={() => {
+          const trade = settleDialog.trade
+          if (!trade) return
+          const settlementAmount = Number(settleDialog.settlementAmount)
+          if (!Number.isFinite(settlementAmount) || settlementAmount <= 0) {
+            addToast('warning', '정산 금액은 0보다 커야 합니다.')
+            return
+          }
+          if (!settleDialog.settlementDate) {
+            addToast('warning', '정산일을 입력해주세요.')
+            return
+          }
+
+          settleTradeMut.mutate(
+            {
+              id: trade.id,
+              settlement_amount: settlementAmount,
+              settlement_date: settleDialog.settlementDate,
+              auto_distribution: settleDialog.autoDistribution,
+              memo: trade.memo || undefined,
+            },
+            {
+              onSuccess: () => {
+                setSettleDialog({
+                  open: false,
+                  trade: null,
+                  settlementAmount: '',
+                  settlementDate: todayIso(),
+                  autoDistribution: true,
+                })
+                addToast(
+                  'success',
+                  settleDialog.autoDistribution
+                    ? '정산을 완료하고 배분 초안을 생성했습니다.'
+                    : '정산을 완료했습니다.',
+                )
+              },
+            },
+          )
+        }}
+      >
+        <div className="rounded border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] px-3 py-2 text-sm">
+          {settleDialog.trade
+            ? `${labelExitType(settleDialog.trade.exit_type)} · ${formatKRW(settleDialog.trade.amount || 0)}`
+            : '정산 대상 정보를 확인할 수 없습니다.'}
+        </div>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-[var(--theme-text-secondary)]">정산 금액 *</span>
+          <input
+            type="number"
+            min={0}
+            className="form-input"
+            value={settleDialog.settlementAmount}
+            onChange={(event) =>
+              setSettleDialog((prev) => ({ ...prev, settlementAmount: event.target.value }))
+            }
+            placeholder="정산 금액"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-[var(--theme-text-secondary)]">정산일 *</span>
+          <input
+            type="date"
+            className="form-input"
+            value={settleDialog.settlementDate}
+            onChange={(event) =>
+              setSettleDialog((prev) => ({ ...prev, settlementDate: event.target.value }))
+            }
+          />
+        </label>
+        <label className="flex items-start gap-2 rounded border border-[var(--theme-border)] p-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={settleDialog.autoDistribution}
+            onChange={(event) =>
+              setSettleDialog((prev) => ({ ...prev, autoDistribution: event.target.checked }))
+            }
+          />
+          <span>
+            정산 후 LP 배분 자동생성
+            <span className="block text-xs text-[var(--theme-text-secondary)]">
+              Pro-rata 기준으로 배분 초안을 생성합니다.
+            </span>
+          </span>
+        </label>
+      </FormModal>
     </div>
   )
 }

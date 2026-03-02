@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -276,7 +276,7 @@ export default function LPContributionPanel({
                                 className="rounded bg-red-50 px-2 py-1 text-[11px] text-red-700 hover:bg-red-100"
                                 disabled={deleteMut.isPending}
                                 onClick={() => {
-                                  if (!window.confirm('이 납입 이력을 삭제하시겠습니까?')) return
+                                  if (!confirm('이 납입 이력을 삭제하시겠습니까?')) return
                                   deleteMut.mutate(row.id)
                                 }}
                               >
@@ -426,3 +426,4 @@ export default function LPContributionPanel({
     </div>
   )
 }
+

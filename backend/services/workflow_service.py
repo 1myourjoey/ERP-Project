@@ -1,7 +1,5 @@
-import os
 import re
 from datetime import date, datetime, timedelta
-from functools import lru_cache
 
 from sqlalchemy.orm import Session
 
@@ -10,62 +8,12 @@ from models.investment import InvestmentDocument
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance, WorkflowStepInstanceDocument
-
-# Fixed-date Korean public holidays.
-FIXED_HOLIDAYS: set[tuple[int, int]] = {
-    (1, 1),    # New Year
-    (3, 1),    # Independence Movement Day
-    (5, 5),    # Children's Day
-    (6, 6),    # Memorial Day
-    (8, 15),   # Liberation Day
-    (10, 3),   # National Foundation Day
-    (10, 9),   # Hangul Day
-    (12, 25),  # Christmas
-}
-
-
-@lru_cache(maxsize=1)
-def _extra_holidays() -> set[date]:
-    """Parse additional holidays from ERP_EXTRA_HOLIDAYS.
-
-    Example:
-        ERP_EXTRA_HOLIDAYS=2026-02-16,2026-02-17
-    """
-    value = os.getenv("ERP_EXTRA_HOLIDAYS", "")
-    if not value:
-        return set()
-
-    parsed: set[date] = set()
-    for token in value.split(","):
-        normalized = token.strip()
-        if not normalized:
-            continue
-        try:
-            parsed.add(date.fromisoformat(normalized))
-        except ValueError:
-            # Ignore malformed values instead of failing workflow creation.
-            continue
-    return parsed
-
-
-def _is_non_business_day(d: date) -> bool:
-    if d.weekday() >= 5:
-        return True
-    if (d.month, d.day) in FIXED_HOLIDAYS:
-        return True
-    return d in _extra_holidays()
-
-
-def shift_to_business_day(d: date, forward: bool = True) -> date:
-    step = 1 if forward else -1
-    while _is_non_business_day(d):
-        d += timedelta(days=step)
-    return d
+from utils.business_days import is_business_day, shift_to_business_day
 
 
 def calculate_step_date(trigger_date: date, offset_days: int) -> date:
     result = trigger_date + timedelta(days=offset_days)
-    return shift_to_business_day(result, forward=offset_days >= 0)
+    return shift_to_business_day(result, direction=1 if offset_days >= 0 else -1)
 
 
 def calculate_business_days_before(target_date: date, business_days: int) -> date:
@@ -74,7 +22,7 @@ def calculate_business_days_before(target_date: date, business_days: int) -> dat
     days_counted = 0
     while days_counted < business_days:
         result -= timedelta(days=1)
-        if not _is_non_business_day(result):
+        if is_business_day(result):
             days_counted += 1
     return result
 

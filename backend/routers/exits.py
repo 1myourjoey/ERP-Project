@@ -28,6 +28,8 @@ from schemas.phase3 import (
     ExitTradeUpdate,
 )
 from services.compliance_engine import ComplianceEngine
+from services.exit_distribution_service import create_distribution_from_exit
+from services.notification_service import create_notifications_for_active_users
 
 router = APIRouter(tags=["exits"])
 logger = logging.getLogger(__name__)
@@ -554,7 +556,7 @@ def update_exit_trade(trade_id: int, data: ExitTradeUpdate, db: Session = Depend
 
 
 @router.patch("/api/exit-trades/{trade_id}/settle", response_model=ExitTradeResponse)
-def settle_exit_trade(
+async def settle_exit_trade(
     trade_id: int,
     data: ExitTradeSettleRequest,
     db: Session = Depends(get_db),
@@ -575,10 +577,16 @@ def settle_exit_trade(
         memo = data.memo.strip()
         row.memo = f"{(row.memo or '').strip()}\n[정산] {memo}".strip()
 
+    distribution_result: dict | None = None
     try:
         _sync_exit_trade_transaction(db, row)
         _update_valuation_from_settlement(db, row, settlement_amount, data.settlement_date)
-        _generate_distribution_for_settlement(db, row, settlement_amount, data.settlement_date)
+        if data.auto_distribution:
+            distribution_result = await create_distribution_from_exit(
+                db,
+                exit_trade_id=row.id,
+                auto_journal=True,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -596,6 +604,34 @@ def settle_exit_trade(
             row.investment_id,
             exc,
         )
+
+    try:
+        company = db.get(PortfolioCompany, row.company_id)
+        company_name = company.name if company else f"Company #{row.company_id}"
+        if distribution_result is not None:
+            await create_notifications_for_active_users(
+                db,
+                category="approval",
+                severity="info",
+                title=f"엑시트 정산 완료: {company_name}",
+                message="배분 초안이 생성되었습니다. 배분 탭에서 확인해주세요.",
+                target_type="distribution",
+                target_id=int(distribution_result["distribution_id"]),
+                action_url=f"/funds/{row.fund_id}/distributions",
+            )
+        else:
+            await create_notifications_for_active_users(
+                db,
+                category="workflow",
+                severity="info",
+                title=f"엑시트 정산 완료: {company_name}",
+                message="정산이 완료되었습니다. 회수 내역을 확인해주세요.",
+                target_type="exit_trade",
+                target_id=int(row.id),
+                action_url="/exits",
+            )
+    except Exception as exc:  # noqa: BLE001 - notification failures must not break flow
+        logger.warning("notification hook failed on settle_exit_trade: trade_id=%s error=%s", trade_id, exc)
 
     return row
 
@@ -661,7 +697,7 @@ def get_exit_dashboard(
 
 
 @router.post("/api/exits/generate-distribution")
-def generate_distribution_from_exit_settlement(
+async def generate_distribution_from_exit_settlement(
     trade_id: int,
     db: Session = Depends(get_db),
 ):
@@ -671,19 +707,14 @@ def generate_distribution_from_exit_settlement(
     if row.settlement_status != "정산완료" or row.settlement_amount is None or row.settlement_date is None:
         raise HTTPException(status_code=409, detail="정산 완료된 거래만 배분을 생성할 수 있습니다")
     try:
-        distribution = _generate_distribution_for_settlement(
-            db,
-            row,
-            float(row.settlement_amount),
-            row.settlement_date,
-        )
+        result = await create_distribution_from_exit(db, trade_id, auto_journal=True)
         db.commit()
     except Exception:
         db.rollback()
         raise
     return {
         "ok": True,
-        "distribution_id": distribution.id,
+        "distribution_id": int(result["distribution_id"]),
         "trade_id": trade_id,
     }
 

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -18,6 +20,8 @@ from models.compliance import (
     ComplianceRule,
     FundComplianceRule,
 )
+from models.attachment import Attachment
+from models.document_template import DocumentTemplate
 from models.fund import Fund
 from models.llm_usage import LLMUsage
 from models.task import Task
@@ -33,10 +37,13 @@ from services.compliance_rule_engine import ComplianceRuleEngine
 from services.legal_rag import LegalRAGService, MonthlyTokenLimitExceededError
 from services.law_amendment_monitor import LawAmendmentMonitor
 from services.periodic_compliance_scanner import PeriodicComplianceScanner
+from services.document_service import build_variables_for_fund, generate_document_for_template
 from services.scheduler import get_scheduler_service
 from services.vector_db import VectorDBService
 
 router = APIRouter(tags=["compliance"])
+_COMPLIANCE_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads" / "compliance"
+_COMPLIANCE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ObligationCompleteBody(BaseModel):
@@ -209,6 +216,7 @@ def _serialize_obligation(db: Session, row: ComplianceObligation) -> dict:
         "evidence_note": row.evidence_note,
         "investment_id": row.investment_id,
         "task_id": row.task_id,
+        "template_id": row.template_id,
         "target_system": rule.target_system if rule else None,
         "guideline_ref": rule.guideline_ref if rule else None,
         "created_at": row.created_at.isoformat() if row.created_at else None,
@@ -507,6 +515,72 @@ def waive_compliance_obligation(
         raise
     db.refresh(row)
     return _serialize_obligation(db, row)
+
+
+@router.post("/api/compliance/obligations/{obligation_id}/generate-document")
+def generate_obligation_document(
+    obligation_id: int,
+    db: Session = Depends(get_db),
+):
+    row = db.get(ComplianceObligation, obligation_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="compliance obligation not found")
+    if row.template_id is None:
+        raise HTTPException(status_code=400, detail="template_id is not configured for this obligation")
+
+    template = db.get(DocumentTemplate, row.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="document template not found")
+
+    fund = db.get(Fund, row.fund_id)
+    if not fund:
+        raise HTTPException(status_code=404, detail="fund not found")
+
+    rule = db.get(ComplianceRule, row.rule_id)
+    variables = build_variables_for_fund(
+        fund,
+        list(fund.lps or []),
+        extra={
+            "obligation_id": row.id,
+            "obligation_due_date": row.due_date.isoformat() if row.due_date else "",
+            "obligation_status": row.status or "",
+            "rule_code": rule.rule_code if rule else "",
+            "rule_title": rule.title if rule else "",
+        },
+    )
+
+    try:
+        buffer = generate_document_for_template(template, variables)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"document generation failed: {exc}") from exc
+
+    payload = buffer.getvalue()
+    stored_name = f"{uuid4().hex}.docx"
+    stored_path = _COMPLIANCE_UPLOAD_DIR / stored_name
+    stored_path.write_bytes(payload)
+
+    attachment = Attachment(
+        filename=stored_name,
+        original_filename=f"compliance_obligation_{row.id}.docx",
+        file_path=str(stored_path),
+        file_size=len(payload),
+        mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        entity_type="compliance_obligation",
+        entity_id=row.id,
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+
+    return {
+        "obligation_id": row.id,
+        "template_id": row.template_id,
+        "attachment_id": attachment.id,
+        "download_url": f"/api/documents/{attachment.id}/download",
+        "message": "의무사항 문서가 생성되었습니다.",
+    }
 
 
 @router.get("/api/compliance/dashboard")

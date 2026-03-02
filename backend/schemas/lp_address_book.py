@@ -53,5 +53,8 @@ class LPAddressBookResponse(BaseModel):
     total_paid_in: float = 0
     outstanding_balance: float = 0
     paid_in_ratio: float = 0
+    related_lps_count: int = 0
+    sync_suggestion: bool = False
+    message: Optional[str] = None
 
     model_config = {"from_attributes": True}

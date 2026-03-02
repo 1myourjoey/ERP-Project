@@ -20,8 +20,12 @@ import { labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import ExcelImportWizard from '../components/ExcelImportWizard'
 import DrawerOverlay from '../components/common/DrawerOverlay'
 import DataFilterBar from '../components/common/DataFilterBar'
+import DataTable, { type Column } from '../components/ui/DataTable'
+import StatusBadge from '../components/ui/StatusBadge'
+import { exportInvestmentsExcel } from '../lib/api/excel'
 
 interface InvestmentListItem {
   id: number
@@ -35,15 +39,16 @@ interface InvestmentListItem {
   status?: string
 }
 
-function investmentStatusTagClass(status: string | undefined): string {
+function investmentStatusMeta(status: string | undefined): { tone: 'success' | 'warning' | 'info' | 'pending'; label: string } {
   switch (status) {
     case 'exited':
-      return 'tag tag-green'
+      return { tone: 'success', label: labelStatus('exited') }
     case 'written_off':
-      return 'tag tag-gray'
+      return { tone: 'warning', label: labelStatus('written_off') }
     case 'active':
+      return { tone: 'info', label: labelStatus('active') }
     default:
-      return 'tag tag-blue'
+      return { tone: 'pending', label: labelStatus(status || 'active') }
   }
 }
 
@@ -173,6 +178,7 @@ export default function InvestmentsPage() {
   const [companySearch, setCompanySearch] = useState('')
 
   const [showInvestmentForm, setShowInvestmentForm] = useState(false)
+  const [excelImportOpen, setExcelImportOpen] = useState(false)
 
   const { data: funds } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
   const { data: companies } = useQuery<Company[]>({ queryKey: ['companies'], queryFn: fetchCompanies })
@@ -225,6 +231,70 @@ export default function InvestmentsPage() {
       return source.includes(keyword)
     })
   }, [investments, searchKeyword])
+
+  const investmentColumns = useMemo<Column<InvestmentListItem>[]>(() => [
+    {
+      key: 'fund_name',
+      header: '조합',
+      priority: 1,
+      render: (row) => row.fund_name || '-',
+    },
+    {
+      key: 'company_name',
+      header: '회사',
+      priority: 1,
+      render: (row) => row.company_name || `투자 #${row.id}`,
+    },
+    {
+      key: 'instrument',
+      header: '투자수단',
+      priority: 2,
+      render: (row) => row.instrument || '-',
+    },
+    {
+      key: 'amount',
+      header: '총 투자금',
+      priority: 1,
+      align: 'right',
+      render: (row) => (row.amount != null ? row.amount.toLocaleString() : '-'),
+    },
+    {
+      key: 'valuation',
+      header: '현재 밸류',
+      priority: 2,
+      align: 'right',
+      render: (row) => (row.valuation != null ? row.valuation.toLocaleString() : '-'),
+    },
+    {
+      key: 'roi',
+      header: '수익률',
+      priority: 2,
+      align: 'right',
+      render: (row) => {
+        const amount = Number(row.amount || 0)
+        const valuation = Number(row.valuation || 0)
+        const roi = amount > 0 && valuation > 0
+          ? ((valuation - amount) / amount) * 100
+          : null
+        return roi == null ? '-' : `${roi.toFixed(2)}%`
+      },
+    },
+    {
+      key: 'status',
+      header: '상태',
+      priority: 1,
+      render: (row) => {
+        const meta = investmentStatusMeta(row.status)
+        return <StatusBadge status={meta.tone} label={meta.label} />
+      },
+    },
+    {
+      key: 'investment_date',
+      header: '투자일',
+      priority: 3,
+      render: (row) => row.investment_date || '-',
+    },
+  ], [])
 
   const filteredCompanies = useMemo(() => {
     const keyword = companySearch.trim().toLowerCase()
@@ -309,6 +379,23 @@ export default function InvestmentsPage() {
     setCompanySearch('')
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const blob = await exportInvestmentsExcel({
+        fund_id: fundFilter === '' ? undefined : fundFilter,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'investments.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+      addToast('success', '엑셀 다운로드를 시작했습니다.')
+    } catch {
+      addToast('warning', '엑셀 다운로드에 실패했습니다.')
+    }
+  }
+
   return (
     <div className="page-container flex h-full min-h-0 flex-col gap-4">
       <div className="page-header">
@@ -317,6 +404,8 @@ export default function InvestmentsPage() {
           <p className="page-subtitle">목록 모니터링은 이 화면에서, 상세 업무는 투자 통제실에서 처리합니다.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="secondary-btn" onClick={handleExportExcel}>엑셀 다운로드</button>
+          <button className="secondary-btn" onClick={() => setExcelImportOpen(true)}>엑셀 가져오기</button>
           <button className="secondary-btn" onClick={() => setCompanyDrawerOpen(true)}>회사 관리</button>
           <button className="primary-btn" onClick={() => setShowInvestmentForm(true)}>+ 투자 등록</button>
         </div>
@@ -371,50 +460,34 @@ export default function InvestmentsPage() {
           />
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="min-w-full text-sm">
-              <thead className="table-head-row sticky top-0 z-10">
-                <tr>
-                  <th className="table-head-cell">조합</th>
-                  <th className="table-head-cell">회사</th>
-                  <th className="table-head-cell">투자수단</th>
-                  <th className="table-head-cell text-right">총 투자금</th>
-                  <th className="table-head-cell text-right">현재 밸류</th>
-                  <th className="table-head-cell text-right">수익률</th>
-                  <th className="table-head-cell">상태</th>
-                  <th className="table-head-cell">투자일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvestments.map((inv) => {
-                  const amount = Number(inv.amount || 0)
-                  const valuation = Number(inv.valuation || 0)
-                  const roi = amount > 0 && valuation > 0
-                    ? ((valuation - amount) / amount) * 100
-                    : null
-
-                  return (
-                    <tr
-                      key={inv.id}
-                      className="cursor-pointer border-b hover:bg-gray-50"
-                      onClick={() => navigate(`/investments/${inv.id}`)}
-                    >
-                      <td className="table-body-cell text-gray-700">{inv.fund_name || '-'}</td>
-                      <td className="table-body-cell font-medium text-gray-800">{inv.company_name || `투자 #${inv.id}`}</td>
-                      <td className="table-body-cell text-gray-700">{inv.instrument || '-'}</td>
-                      <td className="table-body-cell text-right text-gray-700">{inv.amount?.toLocaleString?.() ?? '-'}</td>
-                      <td className="table-body-cell text-right text-gray-700">{inv.valuation?.toLocaleString?.() ?? '-'}</td>
-                      <td className="table-body-cell text-right text-gray-700">{roi == null ? '-' : `${roi.toFixed(2)}%`}</td>
-                      <td className="table-body-cell">
-                        <span className={investmentStatusTagClass(inv.status || 'active')}>
-                          {labelStatus(inv.status || 'active')}
-                        </span>
-                      </td>
-                      <td className="table-body-cell text-gray-700">{inv.investment_date || '-'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              columns={investmentColumns}
+              data={filteredInvestments}
+              keyExtractor={(row) => row.id}
+              stickyHeader
+              onRowClick={(row) => navigate(`/investments/${row.id}`)}
+              mobileCardRender={(row) => {
+                const meta = investmentStatusMeta(row.status)
+                return (
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-bg-elevated)] px-3 py-2 text-left"
+                    onClick={() => navigate(`/investments/${row.id}`)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-[var(--theme-text-primary)]">{row.company_name || `투자 #${row.id}`}</p>
+                      <StatusBadge status={meta.tone} label={meta.label} />
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--theme-text-secondary)]">
+                      {row.fund_name || '-'} · {row.instrument || '-'}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--theme-text-secondary)]">
+                      {row.amount != null ? `${row.amount.toLocaleString()}원` : '-'} · {row.investment_date || '-'}
+                    </p>
+                  </button>
+                )
+              }}
+            />
           </div>
         )}
       </section>
@@ -509,6 +582,14 @@ export default function InvestmentsPage() {
           </div>
         </div>
       </DrawerOverlay>
+
+      <ExcelImportWizard
+        open={excelImportOpen}
+        onClose={() => setExcelImportOpen(false)}
+        onCompleted={() => {
+          queryClient.invalidateQueries({ queryKey: ['investments'] })
+        }}
+      />
     </div>
   )
 }
@@ -755,5 +836,8 @@ function InvestmentForm({
     </div>
   )
 }
+
+
+
 
 

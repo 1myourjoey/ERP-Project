@@ -69,6 +69,7 @@ class ComplianceObligation(Base):
 
     investment_id = Column(Integer, ForeignKey("investments.id"), nullable=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
+    template_id = Column(Integer, ForeignKey("document_templates.id"), nullable=True, index=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -1,41 +1,50 @@
+﻿import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import RequireAuth from './components/RequireAuth'
 import RouteGuard from './components/RouteGuard'
 import Layout from './components/Layout'
 import { AuthProvider } from './contexts/AuthContext'
+import { PageSkeleton } from './components/ui/PageSkeleton'
 import AccessDeniedPage from './pages/AccessDeniedPage'
-import AccountingPage from './pages/AccountingPage'
-import BizReportsPage from './pages/BizReportsPage'
-import CompliancePage from './pages/CompliancePage'
 import DashboardPage from './pages/DashboardPage'
-import DocumentsPage from './pages/DocumentsPage'
-import ExitsPage from './pages/ExitsPage'
-import FeeManagementPage from './pages/FeeManagementPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import FundDetailPage from './pages/FundDetailPage'
-import FundOperationsPage from './pages/FundOperationsPage'
-import FundOverviewPage from './pages/FundOverviewPage'
-import FundsPage from './pages/FundsPage'
-import InternalReviewPage from './pages/InternalReviewPage'
-import InvestmentDetailPage from './pages/InvestmentDetailPage'
-import InvestmentReviewPage from './pages/InvestmentReviewPage'
-import InvestmentsPage from './pages/InvestmentsPage'
 import LoginPage from './pages/LoginPage'
-import LPManagementPage from './pages/LPManagementPage'
-import MyProfilePage from './pages/MyProfilePage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
-import ReportsPage from './pages/ReportsPage'
-import ProvisionalFSPage from './pages/ProvisionalFSPage'
-import TaskBoardPage from './pages/TaskBoardPage'
-import TemplateManagementPage from './pages/TemplateManagementPage'
-import TransactionsPage from './pages/TransactionsPage'
-import UsersPage from './pages/UsersPage'
-import ValuationsPage from './pages/ValuationsPage'
-import VicsReportPage from './pages/VicsReportPage'
-import WorkflowsPage from './pages/WorkflowsPage'
-import WorkLogsPage from './pages/WorkLogsPage'
+
+const AccountingPage = lazy(() => import('./pages/AccountingPage'))
+const BizReportsPage = lazy(() => import('./pages/BizReportsPage'))
+const CompliancePage = lazy(() => import('./pages/CompliancePage'))
+const CashFlowPage = lazy(() => import('./pages/CashFlowPage'))
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
+const ExitsPage = lazy(() => import('./pages/ExitsPage'))
+const FeeManagementPage = lazy(() => import('./pages/FeeManagementPage'))
+const FundDetailPage = lazy(() => import('./pages/FundDetailPage'))
+const FundOperationsPage = lazy(() => import('./pages/FundOperationsPage'))
+const FundOverviewPage = lazy(() => import('./pages/FundOverviewPage'))
+const FundsPage = lazy(() => import('./pages/FundsPage'))
+const InternalReviewPage = lazy(() => import('./pages/InternalReviewPage'))
+const InvestmentDetailPage = lazy(() => import('./pages/InvestmentDetailPage'))
+const InvestmentReviewPage = lazy(() => import('./pages/InvestmentReviewPage'))
+const InvestmentsPage = lazy(() => import('./pages/InvestmentsPage'))
+const LPManagementPage = lazy(() => import('./pages/LPManagementPage'))
+const MyProfilePage = lazy(() => import('./pages/MyProfilePage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const ProvisionalFSPage = lazy(() => import('./pages/ProvisionalFSPage'))
+const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
+const TemplateManagementPage = lazy(() => import('./pages/TemplateManagementPage'))
+const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
+const UsersPage = lazy(() => import('./pages/UsersPage'))
+const ValuationsPage = lazy(() => import('./pages/ValuationsPage'))
+const VicsReportPage = lazy(() => import('./pages/VicsReportPage'))
+const WorkflowsPage = lazy(() => import('./pages/WorkflowsPage'))
+const WorkLogsPage = lazy(() => import('./pages/WorkLogsPage'))
+const CalendarPage = lazy(() => import('./pages/CalendarPage'))
+
+function LazyElement({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageSkeleton type="table" />}>{children}</Suspense>
+}
 
 export default function App() {
   return (
@@ -50,41 +59,43 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/access-denied" element={<AccessDeniedPage />} />
-            <Route path="/profile" element={<MyProfilePage />} />
+            <Route path="/profile" element={<LazyElement><MyProfilePage /></LazyElement>} />
 
             <Route path="/dashboard" element={<DashboardPage />} />
 
-            <Route path="/tasks" element={<RouteGuard routeKey="/tasks"><TaskBoardPage /></RouteGuard>} />
-            <Route path="/worklogs" element={<RouteGuard routeKey="/worklogs"><WorkLogsPage /></RouteGuard>} />
+            <Route path="/tasks" element={<RouteGuard routeKey="/tasks"><LazyElement><TaskBoardPage /></LazyElement></RouteGuard>} />
+            <Route path="/worklogs" element={<RouteGuard routeKey="/worklogs"><LazyElement><WorkLogsPage /></LazyElement></RouteGuard>} />
+            <Route path="/calendar" element={<RouteGuard routeKey="/calendar"><LazyElement><CalendarPage /></LazyElement></RouteGuard>} />
 
-            <Route path="/workflows" element={<RouteGuard routeKey="/workflows"><WorkflowsPage /></RouteGuard>} />
-            <Route path="/fund-overview" element={<RouteGuard routeKey="/fund-overview"><FundOverviewPage /></RouteGuard>} />
-            <Route path="/funds" element={<RouteGuard routeKey="/funds"><FundsPage /></RouteGuard>} />
-            <Route path="/funds/:id" element={<RouteGuard routeKey="/funds"><FundDetailPage /></RouteGuard>} />
-            <Route path="/investments" element={<RouteGuard routeKey="/investments"><InvestmentsPage /></RouteGuard>} />
-            <Route path="/investments/:id" element={<RouteGuard routeKey="/investments"><InvestmentDetailPage /></RouteGuard>} />
-            <Route path="/investment-reviews" element={<RouteGuard routeKey="/investment-reviews"><InvestmentReviewPage /></RouteGuard>} />
-            <Route path="/exits" element={<RouteGuard routeKey="/exits"><ExitsPage /></RouteGuard>} />
+            <Route path="/workflows" element={<RouteGuard routeKey="/workflows"><LazyElement><WorkflowsPage /></LazyElement></RouteGuard>} />
+            <Route path="/fund-overview" element={<RouteGuard routeKey="/fund-overview"><LazyElement><FundOverviewPage /></LazyElement></RouteGuard>} />
+            <Route path="/funds" element={<RouteGuard routeKey="/funds"><LazyElement><FundsPage /></LazyElement></RouteGuard>} />
+            <Route path="/funds/:id" element={<RouteGuard routeKey="/funds"><LazyElement><FundDetailPage /></LazyElement></RouteGuard>} />
+            <Route path="/investments" element={<RouteGuard routeKey="/investments"><LazyElement><InvestmentsPage /></LazyElement></RouteGuard>} />
+            <Route path="/investments/:id" element={<RouteGuard routeKey="/investments"><LazyElement><InvestmentDetailPage /></LazyElement></RouteGuard>} />
+            <Route path="/investment-reviews" element={<RouteGuard routeKey="/investment-reviews"><LazyElement><InvestmentReviewPage /></LazyElement></RouteGuard>} />
+            <Route path="/exits" element={<RouteGuard routeKey="/exits"><LazyElement><ExitsPage /></LazyElement></RouteGuard>} />
 
-            <Route path="/transactions" element={<RouteGuard routeKey="/transactions"><TransactionsPage /></RouteGuard>} />
-            <Route path="/valuations" element={<RouteGuard routeKey="/valuations"><ValuationsPage /></RouteGuard>} />
-            <Route path="/accounting" element={<RouteGuard routeKey="/accounting"><AccountingPage /></RouteGuard>} />
-            <Route path="/provisional-fs" element={<RouteGuard routeKey="/provisional-fs"><ProvisionalFSPage /></RouteGuard>} />
-            <Route path="/fee-management" element={<RouteGuard routeKey="/fee-management"><FeeManagementPage /></RouteGuard>} />
+            <Route path="/transactions" element={<RouteGuard routeKey="/transactions"><LazyElement><TransactionsPage /></LazyElement></RouteGuard>} />
+            <Route path="/valuations" element={<RouteGuard routeKey="/valuations"><LazyElement><ValuationsPage /></LazyElement></RouteGuard>} />
+            <Route path="/accounting" element={<RouteGuard routeKey="/accounting"><LazyElement><AccountingPage /></LazyElement></RouteGuard>} />
+            <Route path="/provisional-fs" element={<RouteGuard routeKey="/provisional-fs"><LazyElement><ProvisionalFSPage /></LazyElement></RouteGuard>} />
+            <Route path="/fee-management" element={<RouteGuard routeKey="/fee-management"><LazyElement><FeeManagementPage /></LazyElement></RouteGuard>} />
+            <Route path="/cashflow" element={<RouteGuard routeKey="/fee-management"><LazyElement><CashFlowPage /></LazyElement></RouteGuard>} />
 
-            <Route path="/lp-management" element={<RouteGuard routeKey="/lp-management"><LPManagementPage /></RouteGuard>} />
+            <Route path="/lp-management" element={<RouteGuard routeKey="/lp-management"><LazyElement><LPManagementPage /></LazyElement></RouteGuard>} />
             <Route path="/lp-address-book" element={<Navigate to="/lp-management" replace />} />
-            <Route path="/users" element={<RouteGuard routeKey="/users"><UsersPage /></RouteGuard>} />
-            <Route path="/compliance" element={<RouteGuard routeKey="/compliance"><CompliancePage /></RouteGuard>} />
-            <Route path="/biz-reports" element={<RouteGuard routeKey="/biz-reports"><BizReportsPage /></RouteGuard>} />
-            <Route path="/vics" element={<RouteGuard routeKey="/vics"><VicsReportPage /></RouteGuard>} />
-            <Route path="/internal-reviews" element={<RouteGuard routeKey="/internal-reviews"><InternalReviewPage /></RouteGuard>} />
-            <Route path="/internal-reviews/:id" element={<RouteGuard routeKey="/internal-reviews"><InternalReviewPage /></RouteGuard>} />
-            <Route path="/reports" element={<RouteGuard routeKey="/reports"><ReportsPage /></RouteGuard>} />
-            <Route path="/fund-operations" element={<RouteGuard routeKey="/fund-operations"><FundOperationsPage /></RouteGuard>} />
-            <Route path="/documents" element={<RouteGuard routeKey="/documents"><DocumentsPage /></RouteGuard>} />
-            <Route path="/documents/generate" element={<RouteGuard routeKey="/documents"><DocumentsPage /></RouteGuard>} />
-            <Route path="/templates" element={<RouteGuard routeKey="/templates"><TemplateManagementPage /></RouteGuard>} />
+            <Route path="/users" element={<RouteGuard routeKey="/users"><LazyElement><UsersPage /></LazyElement></RouteGuard>} />
+            <Route path="/compliance" element={<RouteGuard routeKey="/compliance"><LazyElement><CompliancePage /></LazyElement></RouteGuard>} />
+            <Route path="/biz-reports" element={<RouteGuard routeKey="/biz-reports"><LazyElement><BizReportsPage /></LazyElement></RouteGuard>} />
+            <Route path="/vics" element={<RouteGuard routeKey="/vics"><LazyElement><VicsReportPage /></LazyElement></RouteGuard>} />
+            <Route path="/internal-reviews" element={<RouteGuard routeKey="/internal-reviews"><LazyElement><InternalReviewPage /></LazyElement></RouteGuard>} />
+            <Route path="/internal-reviews/:id" element={<RouteGuard routeKey="/internal-reviews"><LazyElement><InternalReviewPage /></LazyElement></RouteGuard>} />
+            <Route path="/reports" element={<RouteGuard routeKey="/reports"><LazyElement><ReportsPage /></LazyElement></RouteGuard>} />
+            <Route path="/fund-operations" element={<RouteGuard routeKey="/fund-operations"><LazyElement><FundOperationsPage /></LazyElement></RouteGuard>} />
+            <Route path="/documents" element={<RouteGuard routeKey="/documents"><LazyElement><DocumentsPage /></LazyElement></RouteGuard>} />
+            <Route path="/documents/generate" element={<RouteGuard routeKey="/documents"><LazyElement><DocumentsPage /></LazyElement></RouteGuard>} />
+            <Route path="/templates" element={<RouteGuard routeKey="/templates"><LazyElement><TemplateManagementPage /></LazyElement></RouteGuard>} />
             <Route path="/checklists" element={<Navigate to="/workflows?tab=checklists" replace />} />
           </Route>
         </Route>
@@ -92,3 +103,4 @@ export default function App() {
     </AuthProvider>
   )
 }
+

@@ -432,6 +432,7 @@ class ExitTradeSettleRequest(BaseModel):
     settlement_amount: float
     settlement_date: date
     memo: Optional[str] = None
+    auto_distribution: bool = False
 
 
 class ExitDashboardItem(BaseModel):

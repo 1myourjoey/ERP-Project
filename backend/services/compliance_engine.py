@@ -10,6 +10,7 @@ from models.compliance import ComplianceObligation, ComplianceRule, InvestmentLi
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany
 from services.task_auto_generator import create_task_for_obligation
+from utils.business_days import add_business_days, is_business_day
 
 
 class ComplianceEngine:
@@ -20,17 +21,11 @@ class ComplianceEngine:
 
     @staticmethod
     def _is_business_day(value: date) -> bool:
-        return value.weekday() < 5
+        return is_business_day(value)
 
     @classmethod
     def _add_business_days(cls, base_date: date, days: int) -> date:
-        current = base_date
-        added = 0
-        while added < max(0, days):
-            current += timedelta(days=1)
-            if cls._is_business_day(current):
-                added += 1
-        return current
+        return add_business_days(base_date, max(0, days))
 
     @staticmethod
     def _month_end(year: int, month: int) -> date:

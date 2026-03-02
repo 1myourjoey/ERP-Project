@@ -1577,7 +1577,7 @@ function InstanceList({
     const updates: WorkflowStepLPPaidInInput[] = []
     for (const lp of lps) {
       const currentValue = Math.max(0, Number(lp.paid_in ?? 0))
-      const inputValue = window.prompt(
+      const inputValue = prompt(
         `[${lp.name}] 누적 납입액(원)을 입력하세요.`,
         String(currentValue),
       )
@@ -1605,7 +1605,7 @@ function InstanceList({
       (doc) => doc.required && !doc.checked,
     ).length
     if (requiredUncheckedCount > 0) {
-      const shouldComplete = window.confirm(
+      const shouldComplete = confirm(
         `필수 서류 ${requiredUncheckedCount}건이 미확인 상태입니다. 그래도 완료하시겠습니까?`,
       )
       if (!shouldComplete) return
@@ -3269,6 +3269,7 @@ export default function WorkflowsPage() {
     </div>
   )
 }
+
 
 
 

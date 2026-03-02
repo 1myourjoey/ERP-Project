@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createDocumentVariable,
@@ -264,7 +264,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
   }
 
   const onSavePreset = () => {
-    const nameInput = window.prompt('프리셋 이름을 입력하세요.')
+    const nameInput = prompt('프리셋 이름을 입력하세요.')
     const name = (nameInput || '').trim()
     if (!name) return
     createPresetMut.mutate({ fund_id: fundId, name, variables })
@@ -276,7 +276,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
       .filter((item) => selectedStages.includes(item.value))
       .map((item) => item.label)
       .join(', ')
-    const confirmed = window.confirm(
+    const confirmed = confirm(
       `선택 단계(${selectedStages.length}개): ${selectedStageLabels}\n서류 생성을 시작하시겠습니까?`,
     )
     if (!confirmed) return
@@ -493,7 +493,7 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
                           )}
                           <button
                             onClick={() => {
-                              if (!window.confirm('이 생성 이력을 삭제하시겠습니까?')) return
+                              if (!confirm('이 생성 이력을 삭제하시겠습니까?')) return
                               deleteHistoryMut.mutate(row.id)
                             }}
                             disabled={deleteHistoryMut.isPending}
@@ -525,3 +525,4 @@ export default function FundDocumentGenerator({ fundId, fundName }: FundDocument
     </div>
   )
 }
+

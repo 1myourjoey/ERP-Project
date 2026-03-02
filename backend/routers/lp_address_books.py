@@ -111,6 +111,9 @@ def _to_response(db: Session, row: LPAddressBook) -> LPAddressBookResponse:
         total_paid_in=total_paid_in,
         outstanding_balance=outstanding_balance,
         paid_in_ratio=paid_in_ratio,
+        related_lps_count=len(related_lps),
+        sync_suggestion=False,
+        message=None,
     )
 
 
@@ -214,7 +217,13 @@ def update_lp_address_book(
     row.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
-    return _to_response(db, row)
+    response = _to_response(db, row)
+    related_lps = _collect_related_lps(db, row)
+    if related_lps:
+        response.sync_suggestion = True
+        response.message = f"{len(related_lps)}개 조합의 LP 정보도 함께 업데이트할 수 있습니다."
+        response.related_lps_count = len(related_lps)
+    return response
 
 
 @router.delete("/api/lp-address-books/{book_id}")

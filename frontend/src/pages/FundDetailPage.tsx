@@ -75,6 +75,7 @@ import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import LPContributionPanel from '../components/fund/LPContributionPanel'
+import { generateLPReport, previewLPReportData } from '../lib/api/lpReports'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface FundInvestmentListItem {
@@ -149,14 +150,11 @@ const FUND_STATUS_OPTIONS = [
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
 const FUND_DETAIL_TABS = [
-  { id: 'overview', label: '조합 요약' },
-  { id: 'info', label: '기본정보' },
-  { id: 'capital', label: '자본 및 LP 현황' },
-  { id: 'portfolio', label: '투자 포트폴리오' },
-  { id: 'nav', label: 'NAV 추이' },
-  { id: 'fees', label: '보수' },
-  { id: 'terms', label: '규약 및 컴플라이언스' },
-  { id: 'documents', label: '📄 서류 생성' },
+  { id: 'overview', label: '개요' },
+  { id: 'capital_lp', label: '자본 & LP' },
+  { id: 'investments', label: '투자' },
+  { id: 'finance', label: '재무' },
+  { id: 'documents', label: '서류' },
 ] as const
 
 type FundDetailTab = typeof FUND_DETAIL_TABS[number]['id']
@@ -1112,6 +1110,10 @@ export default function FundDetailPage() {
   const [editingKeyTerms, setEditingKeyTerms] = useState(false)
   const [showCapCallWizard, setShowCapCallWizard] = useState(false)
   const [activeTab, setActiveTab] = useState<FundDetailTab>('overview')
+  const isOverviewTab = activeTab === 'overview'
+  const isCapitalTab = activeTab === 'capital_lp'
+  const isInvestmentsTab = activeTab === 'investments'
+  const isFinanceTab = activeTab === 'finance'
   const [investmentViewMode, setInvestmentViewMode] = useState<'cards' | 'table'>('cards')
   const [distExpandedId, setDistExpandedId] = useState<number | null>(null)
   const [editingDistId, setEditingDistId] = useState<number | null>(null)
@@ -1126,6 +1128,8 @@ export default function FundDetailPage() {
   const [formationWorkflowTriggerDate, setFormationWorkflowTriggerDate] = useState('')
   const [formationTemplateModal, setFormationTemplateModal] = useState<{ slotKey: string; slotLabel: string } | null>(null)
   const [selectedFormationTemplateId, setSelectedFormationTemplateId] = useState<number | ''>('')
+  const [lpReportYear, setLpReportYear] = useState(new Date().getFullYear())
+  const [lpReportQuarter, setLpReportQuarter] = useState(Math.floor(new Date().getMonth() / 3) + 1)
   const [newDistribution, setNewDistribution] = useState<DistributionInput>({
     fund_id: 0,
     dist_date: todayIso(),
@@ -1253,6 +1257,11 @@ export default function FundDetailPage() {
     queryKey: ['assemblies', fundId],
     queryFn: () => fetchAssemblies({ fund_id: fundId }),
     enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+  const { data: lpReportPreview } = useQuery<Record<string, any>>({
+    queryKey: ['lpReportPreview', fundId, lpReportYear, lpReportQuarter],
+    queryFn: () => previewLPReportData(fundId, { year: lpReportYear, quarter: lpReportQuarter }),
+    enabled: Number.isFinite(fundId) && fundId > 0 && activeTab === 'documents',
   })
 
   useEffect(() => {
@@ -1502,6 +1511,19 @@ export default function FundDetailPage() {
   const invalidateFundLinked = () => {
     invalidateFundRelated(queryClient, fundId)
   }
+
+  const generateLpReportMut = useMutation({
+    mutationFn: () => generateLPReport(fundId, { year: lpReportYear, quarter: lpReportQuarter }),
+    onSuccess: (result) => {
+      addToast('success', result.message || 'LP 보고서 초안을 생성했습니다.')
+      if (result.download_url) {
+        window.open(result.download_url, '_blank', 'noopener,noreferrer')
+      }
+    },
+    onError: () => {
+      addToast('warning', 'LP 보고서 생성에 실패했습니다.')
+    },
+  })
 
   const updateFundMut = useMutation({
     mutationFn: ({ id: targetId, data }: { id: number; data: Partial<FundInput> }) => updateFund(targetId, data),
@@ -1889,7 +1911,7 @@ export default function FundDetailPage() {
             </div>
           </div>
 
-          {activeTab === 'info' && (editingFund ? (
+          {isOverviewTab && (editingFund ? (
             <FundForm
               initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }}
               loading={updateFundMut.isPending}
@@ -1928,7 +1950,7 @@ export default function FundDetailPage() {
             </div>
           ))}
 
-          {activeTab === 'overview' && isFormingFund && (
+          {isOverviewTab && isFormingFund && (
             <div className="card-base space-y-3">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -1987,7 +2009,7 @@ export default function FundDetailPage() {
               </div>
             </div>
           )}
-          {activeTab === 'overview' && (
+          {isOverviewTab && (
             <>
               <div className="card-base space-y-3">
                 <h3 className="text-sm font-semibold text-gray-700">조합 요약</h3>
@@ -2139,7 +2161,7 @@ export default function FundDetailPage() {
             </div>
           )}
 
-          {activeTab === 'capital' && (
+          {isCapitalTab && (
             <div className="card-base space-y-3">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -2705,7 +2727,7 @@ export default function FundDetailPage() {
             </div>
           )}
 
-          {activeTab === 'terms' && (
+          {isFinanceTab && (
             <>
               <div className="card-base space-y-3">
             <div className="flex items-center justify-between">
@@ -3149,7 +3171,7 @@ export default function FundDetailPage() {
             </>
           )}
 
-          {activeTab === 'portfolio' && (
+          {isInvestmentsTab && (
             <div className="card-base">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">투자 내역</h3>
@@ -3228,7 +3250,7 @@ export default function FundDetailPage() {
             </div>
           )}
 
-          {activeTab === 'nav' && (
+          {isInvestmentsTab && (
             <div className="card-base space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">NAV 추이</h3>
@@ -3285,7 +3307,7 @@ export default function FundDetailPage() {
             </div>
           )}
 
-          {activeTab === 'fees' && (
+          {isFinanceTab && (
             <div className="card-base space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">보수</h3>
@@ -3349,7 +3371,58 @@ export default function FundDetailPage() {
           )}
 
           {activeTab === 'documents' && (
-            <FundDocumentGenerator fundId={fundId} fundName={fundDetail.name} />
+            <div className="space-y-4">
+              <div className="card-base">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-gray-700">LP 보고서 생성</h3>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={() => generateLpReportMut.mutate()}
+                    disabled={generateLpReportMut.isPending}
+                  >
+                    {generateLpReportMut.isPending ? '생성 중...' : '보고서 생성'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <label>
+                    <span className="mb-1 block text-xs font-medium text-gray-600">연도</span>
+                    <input
+                      type="number"
+                      min={2000}
+                      max={2100}
+                      className="form-input"
+                      value={lpReportYear}
+                      onChange={(event) => setLpReportYear(Number(event.target.value) || new Date().getFullYear())}
+                    />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-medium text-gray-600">분기</span>
+                    <select
+                      className="form-input"
+                      value={lpReportQuarter}
+                      onChange={(event) => setLpReportQuarter(Number(event.target.value) || 1)}
+                    >
+                      {[1, 2, 3, 4].map((quarter) => (
+                        <option key={quarter} value={quarter}>
+                          {quarter}분기
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="md:col-span-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <p>투자 현황: {Array.isArray(lpReportPreview?.portfolio) ? lpReportPreview.portfolio.length : 0}건</p>
+                    <p>주요 이벤트: {Array.isArray(lpReportPreview?.events) ? lpReportPreview.events.length : 0}건</p>
+                    <p>
+                      수익률: IRR {lpReportPreview?.performance?.irr != null ? `${(Number(lpReportPreview.performance.irr) * 100).toFixed(2)}%` : 'N/A'}
+                      {' · '}
+                      TVPI {lpReportPreview?.performance?.tvpi != null ? `${Number(lpReportPreview.performance.tvpi).toFixed(2)}x` : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <FundDocumentGenerator fundId={fundId} fundName={fundDetail.name} />
+            </div>
           )}
 
           {transferSourceLp && (

@@ -1,34 +1,37 @@
 ﻿import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
-  LayoutDashboard,
-  KanbanSquare,
-  ClipboardCheck,
+  Bell,
   BookOpen,
   BarChart3,
   Building2,
-  PieChart,
-  GitBranch,
-  TrendingDown,
-  ListTree,
-  LineChart,
   Calculator,
-  FileText,
-  Send,
-  Landmark,
+  CalendarDays,
   Files,
-  FileCode2,
-  FileSpreadsheet,
-  ShieldAlert,
-  Users,
+  GitBranch,
+  KanbanSquare,
+  Landmark,
+  LayoutDashboard,
+  LineChart,
   Menu,
+  PieChart,
   Search,
+  ShieldAlert,
+  TrendingDown,
+  UserCog,
+  Users,
   X,
 } from 'lucide-react'
 
 import SearchModal from './SearchModal'
+import NotificationPanel from './NotificationPanel'
+import { ErrorBoundary } from './ErrorBoundary'
+import { PageSkeleton } from './ui/PageSkeleton'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
+import { getUnreadCount } from '../lib/api/notifications'
+import { queryKeys } from '../lib/queryKeys'
 
 type NavItem = {
   to: string
@@ -57,44 +60,41 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
   {
     label: '업무',
     items: [
-      { to: '/tasks', label: '업무 보드', icon: KanbanSquare },
-      { to: '/worklogs', label: '업무 기록', icon: BookOpen },
+      { to: '/tasks', label: '태스크', icon: KanbanSquare },
+      { to: '/workflows', label: '워크플로우', icon: GitBranch },
+      { to: '/worklogs', label: '업무일지', icon: BookOpen },
+      { to: '/calendar', label: '캘린더', icon: CalendarDays },
     ],
   },
   {
-    label: '조합·투자',
+    label: '펀드',
     items: [
-      { to: '/fund-overview', label: '조합 개요', icon: BarChart3 },
-      { to: '/funds', label: '조합 관리', icon: Building2 },
-      { to: '/investments', label: '투자 관리', icon: PieChart },
-      { to: '/investment-reviews', label: '투자 심의', icon: ClipboardCheck },
-      { to: '/workflows', label: '워크플로우', icon: GitBranch },
-      { to: '/exits', label: '회수 관리', icon: TrendingDown },
+      { to: '/funds', label: '펀드', icon: Building2 },
+      { to: '/investments', label: '투자', icon: PieChart },
+      { to: '/exits', label: '엑시트', icon: TrendingDown },
     ],
   },
   {
     label: '재무',
     items: [
-      { to: '/transactions', label: '거래원장', icon: ListTree },
-      { to: '/valuations', label: '가치평가', icon: LineChart },
-      { to: '/accounting', label: '회계 관리', icon: Calculator },
-      { to: '/provisional-fs', label: '가결산 관리', icon: FileSpreadsheet },
-      { to: '/fee-management', label: '보수 관리', icon: Landmark },
+      { to: '/accounting', label: '회계', icon: Calculator },
+      { to: '/fee-management', label: '수수료', icon: Landmark },
+      { to: '/cashflow', label: '현금흐름', icon: LineChart },
+    ],
+  },
+  {
+    label: '보고',
+    items: [
+      { to: '/compliance', label: '컴플라이언스', icon: ShieldAlert },
+      { to: '/biz-reports', label: '사업보고서', icon: BarChart3 },
     ],
   },
   {
     label: '관리',
     items: [
-      { to: '/lp-management', label: 'LP 관리', icon: Building2 },
-      { to: '/users', label: '사용자 관리', icon: Users },
-      { to: '/compliance', label: '컴플라이언스', icon: ShieldAlert },
-      { to: '/biz-reports', label: '영업보고', icon: FileText },
-      { to: '/vics', label: 'VICS 월보고', icon: FileSpreadsheet },
-      { to: '/internal-reviews', label: '내부보고회', icon: ClipboardCheck },
-      { to: '/reports', label: '보고공시', icon: Send },
-      { to: '/fund-operations', label: '조합 운영', icon: Landmark },
-      { to: '/documents', label: '서류 현황', icon: Files },
-      { to: '/templates', label: '템플릿 관리', icon: FileCode2 },
+      { to: '/lp-management', label: 'LP 관리', icon: Users },
+      { to: '/documents', label: '문서', icon: Files },
+      { to: '/users', label: '사용자', icon: UserCog },
     ],
   },
 ]
@@ -124,6 +124,7 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false)
 
   const visibleDropdownGroups = useMemo(
     () =>
@@ -164,6 +165,12 @@ export default function Layout() {
   )
   const currentTheme = themes[currentThemeIndex]
   const nextTheme = themes[(currentThemeIndex + 1) % themes.length]
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: queryKeys.notifications.unreadCount,
+    queryFn: getUnreadCount,
+    refetchInterval: 60_000,
+  })
+
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -178,6 +185,7 @@ export default function Layout() {
         setOpenDropdown(null)
         setMobileMenuOpen(false)
         setUserMenuOpen(false)
+        setNotificationPanelOpen(false)
       }
     }
 
@@ -190,22 +198,24 @@ export default function Layout() {
       setOpenDropdown(null)
       setMobileMenuOpen(false)
       setUserMenuOpen(false)
+      setNotificationPanelOpen(false)
     })
     return () => window.cancelAnimationFrame(frame)
   }, [location.pathname])
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!openDropdown && !userMenuOpen) return
+      if (!openDropdown && !userMenuOpen && !notificationPanelOpen) return
       if (navRef.current && event.target instanceof Node && !navRef.current.contains(event.target)) {
         setOpenDropdown(null)
         setUserMenuOpen(false)
+        setNotificationPanelOpen(false)
       }
     }
 
     document.addEventListener('mousedown', onPointerDown)
     return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [openDropdown, userMenuOpen])
+  }, [openDropdown, userMenuOpen, notificationPanelOpen])
 
   const handleLogout = () => {
     logout()
@@ -254,6 +264,7 @@ export default function Layout() {
                   <button
                     onClick={() => {
                       setUserMenuOpen(false)
+                      setNotificationPanelOpen(false)
                       setOpenDropdown((prev) => (prev === group.label ? null : group.label))
                     }}
                     className={`rounded-xl px-3 py-2 text-sm transition-colors ${
@@ -301,6 +312,26 @@ export default function Layout() {
             >
               {currentTheme.icon}
             </button>
+            <div className="relative">
+              <button
+                type="button"
+                className="icon-btn relative"
+                aria-label={`알림 ${unreadCount}건`}
+                onClick={() => {
+                  setOpenDropdown(null)
+                  setUserMenuOpen(false)
+                  setNotificationPanelOpen((prev) => !prev)
+                }}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-[10px] text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notificationPanelOpen && <NotificationPanel onClose={() => setNotificationPanelOpen(false)} />}
+            </div>
             <button
               onClick={() => setSearchOpen(true)}
               className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
@@ -313,6 +344,7 @@ export default function Layout() {
               <button
                 onClick={() => {
                   setOpenDropdown(null)
+                  setNotificationPanelOpen(false)
                   setUserMenuOpen((prev) => !prev)
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
@@ -340,6 +372,7 @@ export default function Layout() {
                 <button
                   onClick={() => {
                     setUserMenuOpen(false)
+                    setNotificationPanelOpen(false)
                     navigate('/profile')
                   }}
                   className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
@@ -444,7 +477,11 @@ export default function Layout() {
       )}
 
       <main className="relative z-10 flex-1 overflow-auto">
-        <Outlet />
+        <ErrorBoundary>
+          <Suspense fallback={<PageSkeleton type="table" />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

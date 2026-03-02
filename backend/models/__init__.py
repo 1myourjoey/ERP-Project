@@ -61,6 +61,7 @@ from .gp_profile import GPProfile
 from .document_number_seq import DocumentNumberSeq
 from .template_variable import TemplateVariable
 from .llm_usage import LLMUsage
+from .notification import Notification
 
 __all__ = [
     "Task",
@@ -104,4 +105,5 @@ __all__ = [
     "DocumentNumberSeq",
     "TemplateVariable",
     "LLMUsage",
+    "Notification",
 ]

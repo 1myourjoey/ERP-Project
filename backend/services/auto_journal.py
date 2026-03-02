@@ -6,9 +6,144 @@ from decimal import Decimal
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
+from models.accounting import Account
 from models.accounting import JournalEntry, JournalEntryLine
 from models.auto_mapping_rule import AutoMappingRule
 from models.bank_transaction import BankTransaction
+
+
+JOURNAL_TEMPLATES: dict[str, dict[str, str]] = {
+    "capital_call_paid": {
+        "debit": "보통예금",
+        "credit": "출자금",
+        "description": "LP 출자금 납입",
+    },
+    "distribution_exit": {
+        "debit": "투자자산",
+        "credit": "배분금",
+        "description": "엑시트 배분",
+    },
+    "management_fee": {
+        "debit": "관리보수수익",
+        "credit": "미수관리보수",
+        "description": "관리보수 청구",
+    },
+    "management_fee_received": {
+        "debit": "보통예금",
+        "credit": "미수관리보수",
+        "description": "관리보수 수령",
+    },
+    "performance_fee": {
+        "debit": "성과보수수익",
+        "credit": "미수성과보수",
+        "description": "성과보수 확정",
+    },
+}
+
+
+def _resolve_account_id(db: Session, *, fund_id: int, account_name: str) -> int | None:
+    if not account_name:
+        return None
+
+    exact = (
+        db.query(Account)
+        .filter(Account.fund_id == fund_id, Account.name == account_name)
+        .order_by(Account.id.asc())
+        .first()
+    )
+    if exact:
+        return int(exact.id)
+
+    fallback = (
+        db.query(Account)
+        .filter(Account.fund_id == fund_id)
+        .order_by(Account.id.asc())
+        .first()
+    )
+    if fallback:
+        return int(fallback.id)
+
+    global_exact = (
+        db.query(Account)
+        .filter(Account.fund_id.is_(None), Account.name == account_name)
+        .order_by(Account.id.asc())
+        .first()
+    )
+    if global_exact:
+        return int(global_exact.id)
+
+    global_fallback = (
+        db.query(Account)
+        .filter(Account.fund_id.is_(None))
+        .order_by(Account.id.asc())
+        .first()
+    )
+    if global_fallback:
+        return int(global_fallback.id)
+    return None
+
+
+def create_event_journal_entry(
+    db: Session,
+    *,
+    event_key: str,
+    fund_id: int,
+    amount: float,
+    entry_date: date | None = None,
+    source_type: str | None = None,
+    source_id: int | None = None,
+    description_override: str | None = None,
+    status: str = "미결재",
+) -> JournalEntry | None:
+    """Create draft journal entry from event template.
+
+    Returns None when amount is invalid or account mapping is unavailable.
+    """
+    template = JOURNAL_TEMPLATES.get((event_key or "").strip())
+    if not template:
+        return None
+
+    posting_amount = float(amount or 0)
+    if posting_amount <= 0:
+        return None
+
+    debit_account_id = _resolve_account_id(db, fund_id=fund_id, account_name=template["debit"])
+    credit_account_id = _resolve_account_id(db, fund_id=fund_id, account_name=template["credit"])
+    if not debit_account_id or not credit_account_id:
+        return None
+
+    entry = JournalEntry(
+        fund_id=fund_id,
+        entry_date=entry_date or date.today(),
+        entry_type="자동분개",
+        description=(description_override or template["description"]).strip(),
+        status=status,
+        source_type=source_type,
+        source_id=source_id,
+    )
+    db.add(entry)
+    db.flush()
+
+    db.add(
+        JournalEntryLine(
+            journal_entry_id=entry.id,
+            account_id=debit_account_id,
+            debit=posting_amount,
+            credit=0,
+            memo=entry.description,
+        )
+    )
+    db.add(
+        JournalEntryLine(
+            journal_entry_id=entry.id,
+            account_id=credit_account_id,
+            debit=0,
+            credit=posting_amount,
+            memo=entry.description,
+        )
+    )
+    db.flush()
+    return entry
 
 
 class AutoJournalService:
