@@ -178,10 +178,10 @@ function TransactionForm({
   const requiresGain = form.type === 'exit'
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
           <select
             value={form.fund_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
@@ -196,7 +196,7 @@ function TransactionForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">투자사</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">투자사</label>
           <select
             value={form.company_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, company_id: Number(e.target.value) || 0 }))}
@@ -211,7 +211,7 @@ function TransactionForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">투자건</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">투자건</label>
           <select
             value={form.investment_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, investment_id: Number(e.target.value) || 0 }))}
@@ -226,7 +226,7 @@ function TransactionForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">거래일</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">거래일</label>
           <input
             type="date"
             value={form.transaction_date}
@@ -235,7 +235,7 @@ function TransactionForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">결제일</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">결제일</label>
           <input
             type="date"
             value={form.settlement_date || ''}
@@ -244,7 +244,7 @@ function TransactionForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">유형</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">유형</label>
           <select
             value={form.type}
             onChange={(e) => {
@@ -262,7 +262,7 @@ function TransactionForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">세부유형</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">세부유형</label>
           <select
             value={form.transaction_subtype || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, transaction_subtype: e.target.value }))}
@@ -276,7 +276,7 @@ function TransactionForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">금액</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">금액</label>
           <input
             type="number"
             value={form.amount}
@@ -285,7 +285,7 @@ function TransactionForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">거래상대방</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">거래상대방</label>
           <input
             value={form.counterparty || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, counterparty: e.target.value }))}
@@ -293,7 +293,7 @@ function TransactionForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">
             주식수 변동 {requiresShares ? '(필수)' : '(선택)'}
           </label>
           <input
@@ -304,7 +304,7 @@ function TransactionForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">
             실현손익 {requiresGain ? '(필수)' : '(선택)'}
           </label>
           <input
@@ -315,7 +315,7 @@ function TransactionForm({
           />
         </div>
         <div className="md:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">
             전환 상세 {requiresConversion ? '(필수)' : '(선택)'}
           </label>
           <input
@@ -326,7 +326,7 @@ function TransactionForm({
           />
         </div>
         <div className="md:col-span-4">
-          <label className="mb-1 block text-xs font-medium text-slate-600">비고</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">비고</label>
           <input
             value={form.memo || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, memo: e.target.value }))}
@@ -481,10 +481,10 @@ export default function TransactionsPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">필터</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">필터</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
             <select
               value={filters.fund_id || ''}
               onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: Number(e.target.value) || null }))}
@@ -499,7 +499,7 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">투자사</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">투자사</label>
             <select
               value={filters.company_id || ''}
               onChange={(e) => setFilters((prev) => ({ ...prev, company_id: Number(e.target.value) || null }))}
@@ -514,7 +514,7 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">투자건 ID</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">투자건 ID</label>
             <input
               type="number"
               value={filters.investment_id || ''}
@@ -523,7 +523,7 @@ export default function TransactionsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">유형</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">유형</label>
             <select
               value={filters.type}
               onChange={(e) =>
@@ -544,7 +544,7 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">세부유형</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">세부유형</label>
             <input
               value={filters.transaction_subtype}
               onChange={(e) => setFilters((prev) => ({ ...prev, transaction_subtype: e.target.value }))}
@@ -552,7 +552,7 @@ export default function TransactionsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">시작일</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">시작일</label>
             <input
               type="date"
               value={filters.date_from}
@@ -561,7 +561,7 @@ export default function TransactionsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">종료일</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">종료일</label>
             <input
               type="date"
               value={filters.date_to}
@@ -592,23 +592,23 @@ export default function TransactionsPage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="card-base p-3">
-          <p className="text-xs text-slate-500">총 거래 건수</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900">{summary?.total_count ?? 0}</p>
+          <p className="text-xs text-[#64748b]">총 거래 건수</p>
+          <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{summary?.total_count ?? 0}</p>
         </div>
         <div className="card-base p-3">
-          <p className="text-xs text-slate-500">총 거래 금액</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900">{formatKRW(summary?.total_amount ?? 0)}</p>
+          <p className="text-xs text-[#64748b]">총 거래 금액</p>
+          <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{formatKRW(summary?.total_amount ?? 0)}</p>
         </div>
         <div className="card-base p-3">
-          <p className="text-xs text-slate-500">원장 건수</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900">{ledgerRows.length}</p>
+          <p className="text-xs text-[#64748b]">원장 건수</p>
+          <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{ledgerRows.length}</p>
         </div>
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">유형별 요약</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">유형별 요약</h3>
         {!summary?.items?.length ? (
-          <p className="text-sm text-slate-500">요약 데이터가 없습니다.</p>
+          <p className="text-sm text-[#64748b]">요약 데이터가 없습니다.</p>
         ) : (
           <div className="space-y-1">
             {summary.items.map((item) => (
@@ -616,7 +616,7 @@ export default function TransactionsPage() {
                 <span>
                   {labelType(item.type)} / {labelSubtype(item.type, item.transaction_subtype)}
                 </span>
-                <span className="text-slate-600">
+                <span className="text-[#64748b]">
                   {item.count}건 · {formatKRW(item.total_amount)}
                 </span>
               </div>
@@ -626,13 +626,13 @@ export default function TransactionsPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">거래 원장 (누적 잔액)</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">거래 원장 (누적 잔액)</h3>
         {!ledgerRows.length ? (
-          <p className="text-sm text-slate-500">원장 데이터가 없습니다.</p>
+          <p className="text-sm text-[#64748b]">원장 데이터가 없습니다.</p>
         ) : (
           <div className="overflow-auto">
             <table className="min-w-[980px] w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500">
+              <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                 <tr>
                   <th className="px-2 py-2 text-left">일자</th>
                   <th className="px-2 py-2 text-left">유형</th>
@@ -660,7 +660,7 @@ export default function TransactionsPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">거래 내역</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">거래 내역</h3>
         {isLoading ? (
           <PageLoading />
         ) : !rows.length ? (
@@ -668,7 +668,7 @@ export default function TransactionsPage() {
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (
-              <div key={row.id} className="rounded border border-slate-200 p-3">
+              <div key={row.id} className="rounded border border-[#d8e5fb] p-3">
                 {editingId === row.id ? (
                   <TransactionForm
                     funds={funds}
@@ -700,17 +700,17 @@ export default function TransactionsPage() {
                 ) : (
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-sm">
-                      <p className="font-medium text-slate-800">
+                      <p className="font-medium text-[#0f1f3d]">
                         {toDate(row.transaction_date)} · {labelType(row.type)} · {labelSubtype(row.type, row.transaction_subtype)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[#64748b]">
                         조합: {row.fund_name || fundNameMap.get(row.fund_id) || row.fund_id} · 투자사:{' '}
                         {row.company_name || companyNameMap.get(row.company_id) || row.company_id} · 투자건 #{row.investment_id}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[#64748b]">
                         금액 {formatKRW(row.amount)} · 주식수 {row.shares_change ?? '-'} · 실현손익 {formatKRW(row.realized_gain)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[#64748b]">
                         결제일 {toDate(row.settlement_date)} · 상대방 {row.counterparty || '-'} · 비고 {row.memo || '-'}
                       </p>
                     </div>

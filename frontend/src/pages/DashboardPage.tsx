@@ -243,10 +243,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="card-base space-y-4">
+      <div className="card-base space-y-4 bg-[#f5f9ff]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-700">오늘의 브리핑</h3>
-          <div className="text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">오늘의 브리핑</h3>
+          <div className="text-xs text-[#64748b]">
             예상 작업시간: {baseData.today.total_estimated_time || '0m'}
           </div>
         </div>
@@ -272,68 +272,68 @@ export default function DashboardPage() {
                 <button
                   key={item.id}
                   type="button"
-                  className="secondary-btn"
+                  className="w-full rounded-lg border border-[#d8e5fb] bg-white px-3 py-2 text-left hover:bg-[#f5f9ff]"
                   onClick={() => navigate(item.action_url || '/dashboard')}
                 >
-                  <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                  <p className="text-sm font-medium text-[#0f1f3d]">{item.title}</p>
                   {item.message && (
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.message}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-[#64748b]">{item.message}</p>
                   )}
                 </button>
               ))}
             </div>
         ) : (
-          <p className="text-sm text-slate-500">긴급 알림이 없습니다.</p>
+          <p className="text-sm text-[#64748b]">긴급 알림이 없습니다.</p>
         )}
 
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <button type="button" onClick={() => navigate('/tasks')} className="rounded border border-slate-200 p-3 text-left hover:bg-slate-50">
-            <p className="text-[11px] text-slate-500">오늘 태스크</p>
+          <button type="button" onClick={() => navigate('/tasks')} className="rounded border border-[#d8e5fb] p-3 text-left hover:bg-[#f5f9ff]">
+            <p className="text-[11px] text-[#64748b]">오늘 태스크</p>
             <p className="text-lg font-semibold">{briefingData.today_tasks.total}건</p>
           </button>
-          <button type="button" onClick={() => navigate('/accounting')} className="rounded border border-slate-200 p-3 text-left hover:bg-slate-50">
-            <p className="text-[11px] text-slate-500">승인 대기</p>
+          <button type="button" onClick={() => navigate('/accounting')} className="rounded border border-[#d8e5fb] p-3 text-left hover:bg-[#f5f9ff]">
+            <p className="text-[11px] text-[#64748b]">승인 대기</p>
             <p className="text-lg font-semibold">
               {briefingData.pending_approvals.journals + briefingData.pending_approvals.distributions + briefingData.pending_approvals.fees}건
             </p>
           </button>
-          <button type="button" onClick={() => navigate('/tasks?due=week')} className="rounded border border-slate-200 p-3 text-left hover:bg-slate-50">
-            <p className="text-[11px] text-slate-500">주간 마감</p>
+          <button type="button" onClick={() => navigate('/tasks?due=week')} className="rounded border border-[#d8e5fb] p-3 text-left hover:bg-[#f5f9ff]">
+            <p className="text-[11px] text-[#64748b]">주간 마감</p>
             <p className="text-lg font-semibold">{briefingData.deadlines_this_week.length}건</p>
           </button>
-          <button type="button" onClick={() => navigate('/funds')} className="rounded border border-slate-200 p-3 text-left hover:bg-slate-50">
-            <p className="text-[11px] text-slate-500">활성 펀드</p>
+          <button type="button" onClick={() => navigate('/funds')} className="rounded border border-[#d8e5fb] p-3 text-left hover:bg-[#f5f9ff]">
+            <p className="text-[11px] text-[#64748b]">활성 펀드</p>
             <p className="text-lg font-semibold">{briefingData.fund_overview.active_funds}개</p>
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <div className="rounded border border-slate-200 p-3">
-            <h4 className="text-sm font-semibold text-slate-800">이번 주 주요 일정</h4>
+          <div className="rounded border border-[#d8e5fb] bg-white p-3">
+            <h4 className="text-sm font-semibold text-[#0f1f3d]">이번 주 주요 일정</h4>
             <div className="mt-2 space-y-1.5">
               {briefingData.weekly_events.length === 0 && (
-                <p className="text-xs text-slate-500">등록된 일정이 없습니다.</p>
+                <p className="text-xs text-[#64748b]">등록된 일정이 없습니다.</p>
               )}
               {briefingData.weekly_events.slice(0, 5).map((event) => (
-                <div key={event.id} className="flex items-center justify-between rounded bg-slate-50 px-2.5 py-2">
-                  <span className="text-xs font-medium text-slate-800">{event.title}</span>
-                  <span className="text-[11px] text-slate-500">{event.date ? formatDate(event.date, 'short') : '-'}</span>
+                <div key={event.id} className="flex items-center justify-between rounded bg-[#f5f9ff] px-2.5 py-2">
+                  <span className="text-xs font-medium text-[#0f1f3d]">{event.title}</span>
+                  <span className="text-[11px] text-[#64748b]">{event.date ? formatDate(event.date, 'short') : '-'}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded border border-slate-200 p-3">
-            <h4 className="text-sm font-semibold text-slate-800">빠른 처리</h4>
+          <div className="rounded border border-[#d8e5fb] bg-white p-3">
+            <h4 className="text-sm font-semibold text-[#0f1f3d]">빠른 처리</h4>
             <div className="mt-2 space-y-2 text-xs">
-              <div className="flex items-center justify-between rounded bg-slate-50 px-2.5 py-2">
+              <div className="flex items-center justify-between rounded bg-[#f5f9ff] px-2.5 py-2">
                 <span>분개 미결재</span>
                 <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/accounting')}>{briefingData.pending_approvals.journals}건</button>
               </div>
-              <div className="flex items-center justify-between rounded bg-slate-50 px-2.5 py-2">
+              <div className="flex items-center justify-between rounded bg-[#f5f9ff] px-2.5 py-2">
                 <span>배분 초안</span>
                 <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/funds')}>{briefingData.pending_approvals.distributions}건</button>
               </div>
-              <div className="flex items-center justify-between rounded bg-slate-50 px-2.5 py-2">
+              <div className="flex items-center justify-between rounded bg-[#f5f9ff] px-2.5 py-2">
                 <span>수수료 승인</span>
                 <button type="button" className="secondary-btn btn-sm" onClick={() => navigate('/fee-management')}>{briefingData.pending_approvals.fees}건</button>
               </div>

@@ -38,10 +38,10 @@ function DashboardStatCard({
               suffix: 'text-amber-700',
             }
         : {
-            panel: 'border-slate-200 bg-white',
-            label: 'text-slate-500',
-            value: 'text-slate-900',
-            suffix: 'text-slate-500',
+            panel: 'border-[#d8e5fb] bg-white',
+            label: 'text-[#64748b]',
+            value: 'text-[#0f1f3d]',
+            suffix: 'text-[#64748b]',
           }
 
   return (

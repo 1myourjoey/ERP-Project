@@ -39,7 +39,7 @@ function textOrDash(value: string | null | undefined): string {
 }
 
 function getRatioClass(value: number | null | undefined): string {
-  if (value == null) return 'text-slate-600'
+  if (value == null) return 'text-[#64748b]'
   if (value > 80) return 'text-red-600'
   if (value > 50) return 'text-amber-600'
   return 'text-emerald-600'
@@ -101,11 +101,11 @@ export default function FundOverviewPage() {
           <h2 className="page-title">투자개요</h2>
           <p className="page-subtitle">기준일 기준 조합별 핵심 지표를 한눈에 비교합니다.</p>
         </div>
-        <div className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:w-auto">
+        <div className="w-full rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-2.5 sm:w-auto">
           <div className="flex items-center gap-2 whitespace-nowrap">
             <label
               htmlFor="fund-overview-reference-date"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-slate-600"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[#64748b]"
             >
               <CalendarDays size={13} />
               기준일
@@ -128,9 +128,9 @@ export default function FundOverviewPage() {
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpiCards.map((card) => (
           <div key={card.label} className="card-base !p-[10px]">
-            <p className="truncate text-[11px] font-medium text-slate-500">{card.label}</p>
+            <p className="truncate text-[11px] font-medium text-[#64748b]">{card.label}</p>
             <p
-              className="mt-1 truncate whitespace-nowrap text-base font-semibold leading-tight text-slate-900 sm:text-[17px]"
+              className="mt-1 truncate whitespace-nowrap text-base font-semibold leading-tight text-[#0f1f3d] sm:text-[17px]"
               title={card.value}
             >
               {card.value}
@@ -140,15 +140,15 @@ export default function FundOverviewPage() {
       </div>
 
       <div className="card-base overflow-hidden p-0">
-        <div className="flex flex-col items-start justify-between gap-1 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:gap-2">
-          <h3 className="text-sm font-semibold text-slate-800">조합 비교표</h3>
-          <p className="text-xs text-slate-500 sm:whitespace-nowrap">
+        <div className="flex flex-col items-start justify-between gap-1 border-b border-[#d8e5fb] px-4 py-3 sm:flex-row sm:items-center sm:gap-2">
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">조합 비교표</h3>
+          <p className="text-xs text-[#64748b] sm:whitespace-nowrap">
             기준일: {effectiveReferenceDate} · 단위: 백만원 · 총 {funds.length.toLocaleString('ko-KR')}개
           </p>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-500">데이터를 불러오는 중...</div>
+          <div className="p-8 text-center text-sm text-[#64748b]">데이터를 불러오는 중...</div>
         ) : funds.length === 0 ? (
           <EmptyState icon={<BarChart3 size={20} />} message="표시할 조합이 없습니다." className="py-10" />
         ) : (
@@ -156,9 +156,9 @@ export default function FundOverviewPage() {
             <div className="pointer-events-none absolute inset-y-0 right-0 z-30 w-5 bg-gradient-to-l from-white to-transparent" aria-hidden="true" />
             <div className="max-h-[calc(100vh-330px)] overflow-auto">
               <table className="w-max min-w-[2080px] text-sm">
-                <thead className="table-head-row sticky top-0 z-20 border-b border-slate-200 bg-slate-50">
+                <thead className="table-head-row sticky top-0 z-20 border-b border-[#d8e5fb] bg-[#f5f9ff]">
                   <tr>
-                    <th className={`${tableHeadClass} sticky left-0 z-30 min-w-[58px] bg-slate-50 text-center`}>NO</th>
+                    <th className={`${tableHeadClass} sticky left-0 z-30 min-w-[58px] bg-[#f5f9ff] text-center`}>NO</th>
                     <th className={`${tableHeadClass} min-w-[220px]`}>조합명</th>
                     <th className={`${tableHeadClass} min-w-[120px]`}>조합 구분</th>
                     <th className={`${tableHeadClass} min-w-[100px]`}>상태</th>
@@ -186,45 +186,45 @@ export default function FundOverviewPage() {
                     <tr
                       key={fund.id}
                       onClick={() => navigate(`/funds/${fund.id}`)}
-                      className="group cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                      className="group cursor-pointer border-t border-[#e6eefc] hover:bg-[#f5f9ff]"
                     >
-                      <td className={`${tableBodyClass} sticky left-0 z-10 bg-white text-center font-medium group-hover:bg-slate-50`}>
+                      <td className={`${tableBodyClass} sticky left-0 z-10 bg-white text-center font-medium group-hover:bg-[#f5f9ff]`}>
                         {fund.no}
                       </td>
-                      <td className={`${tableBodyClass} font-medium text-slate-900`}>
+                      <td className={`${tableBodyClass} font-medium text-[#0f1f3d]`}>
                         <span className="block max-w-[220px] truncate" title={fund.name}>
                           {fund.name}
                         </span>
                       </td>
-                      <td className={`${tableBodyClass} text-slate-700`}>
+                      <td className={`${tableBodyClass} text-[#0f1f3d]`}>
                         <span className="block max-w-[120px] truncate" title={textOrDash(fund.fund_type)}>
                           {textOrDash(fund.fund_type)}
                         </span>
                       </td>
                       <td className={tableBodyClass}>
-                        <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-[#fff7d6] px-2 py-0.5 text-xs text-[#0f1f3d]">
                           {textOrDash(fund.status)}
                         </span>
                       </td>
-                      <td className={`${tableBodyClass} text-slate-700`}>
+                      <td className={`${tableBodyClass} text-[#0f1f3d]`}>
                         <span className="block max-w-[140px] truncate" title={textOrDash(fund.fund_manager)}>
                           {textOrDash(fund.fund_manager)}
                         </span>
                       </td>
-                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.registration_date || fund.formation_date)}</td>
-                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.investment_period_end)}</td>
+                      <td className={`${tableBodyClass} text-[#64748b]`}>{textOrDash(fund.registration_date || fund.formation_date)}</td>
+                      <td className={`${tableBodyClass} text-[#64748b]`}>{textOrDash(fund.investment_period_end)}</td>
                       <td className={`${tableBodyClass} min-w-[130px]`}>
                         <div className={`font-semibold ${getRatioClass(fund.investment_period_progress)}`}>
                           {formatPercent(fund.investment_period_progress)}
                         </div>
-                        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-[#fff7d6]">
                           <div
-                            className="h-1.5 rounded-full bg-blue-500"
+                            className="h-1.5 rounded-full bg-[#558ef8]"
                             style={{ width: `${Math.max(0, Math.min(100, fund.investment_period_progress || 0))}%` }}
                           />
                         </div>
                       </td>
-                      <td className={`${tableBodyClass} text-slate-600`}>{textOrDash(fund.maturity_date)}</td>
+                      <td className={`${tableBodyClass} text-[#64748b]`}>{textOrDash(fund.maturity_date)}</td>
                       <td className={tableNumberClass}>{formatMillion(fund.commitment_total)}</td>
                       <td className={tableNumberClass}>{formatMillion(fund.total_paid_in)}</td>
                       <td className={`${tableNumberClass} font-medium ${getRatioClass(fund.paid_in_ratio)}`}>
@@ -238,11 +238,11 @@ export default function FundOverviewPage() {
                       <td className={tableNumberClass}>{formatNumber(fund.active_workflow_count)}</td>
                       <td className={tableNumberClass}>{formatNumber(fund.pending_task_count)}</td>
                       <td className={tableNumberClass}>{formatPercent(fund.hurdle_rate)}</td>
-                      <td className={`${tableBodyClass} text-slate-700`}>{textOrDash(fund.remaining_period)}</td>
+                      <td className={`${tableBodyClass} text-[#0f1f3d]`}>{textOrDash(fund.remaining_period)}</td>
                     </tr>
                   ))}
-                  <tr className="sticky bottom-0 z-20 border-t-2 border-slate-900 bg-slate-100 font-semibold text-slate-900 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-                    <td className="sticky left-0 z-30 bg-slate-100 px-3 py-3 whitespace-nowrap" colSpan={9}>
+                  <tr className="sticky bottom-0 z-20 border-t-2 border-[#0f1f3d] bg-[#fff7d6] font-semibold text-[#0f1f3d] shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
+                    <td className="sticky left-0 z-30 bg-[#fff7d6] px-3 py-3 whitespace-nowrap" colSpan={9}>
                       합계
                     </td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">{formatMillion(totals?.commitment_total)}</td>

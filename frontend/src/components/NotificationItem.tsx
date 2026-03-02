@@ -71,8 +71,8 @@ export default function NotificationItem({ notification, onClose }: Notification
   return (
     <button
       type="button"
-      className={`flex w-full gap-3 border-b border-slate-200 px-4 py-3 text-left hover:bg-slate-50 ${
-        !notification.is_read ? 'bg-slate-50/80' : ''
+      className={`flex w-full gap-3 border-b border-[#d8e5fb] px-4 py-3 text-left hover:bg-[#f5f9ff] ${
+        !notification.is_read ? 'bg-[#f5f9ff]/80' : ''
       }`}
       onClick={handleClick}
     >
@@ -82,13 +82,13 @@ export default function NotificationItem({ notification, onClose }: Notification
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5">
-          <Icon size={14} className="text-slate-500" />
-          <span className="truncate text-sm font-medium text-slate-800">{notification.title}</span>
+          <Icon size={14} className="text-[#64748b]" />
+          <span className="truncate text-sm font-medium text-[#0f1f3d]">{notification.title}</span>
         </div>
         {notification.message && (
-          <p className="line-clamp-2 text-xs text-slate-500">{notification.message}</p>
+          <p className="line-clamp-2 text-xs text-[#64748b]">{notification.message}</p>
         )}
-        <span className="mt-1 block text-[10px] text-slate-400">
+        <span className="mt-1 block text-[10px] text-[#94a3b8]">
           {notification.created_at ? formatRelativeTime(notification.created_at) : '-'}
         </span>
       </div>

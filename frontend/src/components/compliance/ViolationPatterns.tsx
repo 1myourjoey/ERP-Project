@@ -50,8 +50,8 @@ export default function ViolationPatterns({ fundId, months }: ViolationPatternsP
     <div className="space-y-3">
       <div className="card-base">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-800">위반 패턴 분석</h3>
-          <span className="text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">위반 패턴 분석</h3>
+          <span className="text-xs text-[#64748b]">
             {isFetching ? '새로고침 중...' : `분석 구간: 최근 ${months}개월`}
           </span>
         </div>
@@ -61,16 +61,16 @@ export default function ViolationPatterns({ fundId, months }: ViolationPatternsP
         ) : (
           <div className="space-y-2">
             {recurring.map((item) => (
-              <div key={`${item.rule_id}-${item.rule_code}`} className="rounded-xl border border-slate-200 bg-white/70 p-3">
+              <div key={`${item.rule_id}-${item.rule_code}`} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-slate-800">
+                  <div className="text-sm font-semibold text-[#0f1f3d]">
                     {item.rule_name || item.rule_code || `규칙 #${item.rule_id}`}
                   </div>
                   <span className="tag tag-red">{item.violation_count}회 위반</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-600">발생 월: {monthLabel(item.months_violated)}</p>
-                <p className="mt-1 text-xs text-slate-600">패턴: {item.pattern}</p>
-                <p className="mt-2 text-xs text-slate-700">권고: {item.recommendation}</p>
+                <p className="mt-1 text-xs text-[#64748b]">발생 월: {monthLabel(item.months_violated)}</p>
+                <p className="mt-1 text-xs text-[#64748b]">패턴: {item.pattern}</p>
+                <p className="mt-2 text-xs text-[#0f1f3d]">권고: {item.recommendation}</p>
               </div>
             ))}
           </div>
@@ -81,7 +81,7 @@ export default function ViolationPatterns({ fundId, months }: ViolationPatternsP
         <div className="card-base">
           <h4 className="mb-2 text-sm font-semibold text-green-700">개선 구간</h4>
           {!improving.length ? (
-            <p className="text-xs text-slate-500">개선 추이가 감지되지 않았습니다.</p>
+            <p className="text-xs text-[#64748b]">개선 추이가 감지되지 않았습니다.</p>
           ) : (
             <div className="space-y-2">
               {improving.map((item) => (
@@ -101,7 +101,7 @@ export default function ViolationPatterns({ fundId, months }: ViolationPatternsP
         <div className="card-base">
           <h4 className="mb-2 text-sm font-semibold text-red-700">악화 구간</h4>
           {!worsening.length ? (
-            <p className="text-xs text-slate-500">악화 추이가 감지되지 않았습니다.</p>
+            <p className="text-xs text-[#64748b]">악화 추이가 감지되지 않았습니다.</p>
           ) : (
             <div className="space-y-2">
               {worsening.map((item) => (

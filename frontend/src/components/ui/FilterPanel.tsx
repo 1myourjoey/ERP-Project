@@ -105,7 +105,7 @@ export function FilterPanel({
   )
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white px-4 py-3 shadow-sm">
       <div className="hidden items-center justify-between md:flex">
         <div className="inline-flex items-center gap-2 text-sm font-semibold">
           <Filter size={15} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}

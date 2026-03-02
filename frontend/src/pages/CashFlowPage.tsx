@@ -60,7 +60,7 @@ export default function CashFlowPage() {
       <div className="card-base">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <label>
-            <span className="mb-1 block text-xs font-medium text-slate-500">조합</span>
+            <span className="mb-1 block text-xs font-medium text-[#64748b]">조합</span>
             <select
               className="form-input"
               value={selectedFundId ?? ''}
@@ -74,7 +74,7 @@ export default function CashFlowPage() {
             </select>
           </label>
           <label>
-            <span className="mb-1 block text-xs font-medium text-slate-500">예측 기간</span>
+            <span className="mb-1 block text-xs font-medium text-[#64748b]">예측 기간</span>
             <select
               className="form-input"
               value={monthsAhead}
@@ -88,7 +88,7 @@ export default function CashFlowPage() {
             </select>
           </label>
           <label>
-            <span className="mb-1 block text-xs font-medium text-slate-500">월 운영비(옵션)</span>
+            <span className="mb-1 block text-xs font-medium text-[#64748b]">월 운영비(옵션)</span>
             <input
               type="number"
               className="form-input"
@@ -97,15 +97,15 @@ export default function CashFlowPage() {
               onChange={(event) => setOperatingCost(Number(event.target.value) || 0)}
             />
           </label>
-          <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-            <p className="text-xs text-slate-500">현재 잔액</p>
+          <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2">
+            <p className="text-xs text-[#64748b]">현재 잔액</p>
             <p className="text-lg font-semibold">{formatKRW(projection?.current_balance || 0)}</p>
           </div>
         </div>
       </div>
 
       <div className="card-base">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">전체 펀드 요약</h3>
+        <h3 className="mb-3 text-sm font-semibold text-[#0f1f3d]">전체 펀드 요약</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           {allSummary.map((item) => (
             <button
@@ -114,11 +114,11 @@ export default function CashFlowPage() {
               onClick={() => setSelectedFundId(item.fund_id)}
               className={`rounded border px-3 py-2 text-left transition-colors ${
                 selectedFundId === item.fund_id
-                  ? 'border-[var(--color-primary)] bg-slate-100'
-                  : 'border-slate-200 hover:bg-slate-100'
+                  ? 'border-[var(--color-primary)] bg-[#fff7d6]'
+                  : 'border-[#d8e5fb] hover:bg-[#fff7d6]'
               }`}
             >
-              <p className="text-xs text-slate-500">{item.fund_name}</p>
+              <p className="text-xs text-[#64748b]">{item.fund_name}</p>
               <p className="text-sm font-semibold">잔액 {formatKRW(item.current_balance)}</p>
               <p className={`text-xs ${item.next_month_net < 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`}>
                 다음월 순액 {formatKRW(item.next_month_net)}
@@ -129,8 +129,8 @@ export default function CashFlowPage() {
       </div>
 
       <div className="card-base">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">월별 흐름</h3>
-        {isLoading && <p className="text-sm text-slate-500">불러오는 중...</p>}
+        <h3 className="mb-3 text-sm font-semibold text-[#0f1f3d]">월별 흐름</h3>
+        {isLoading && <p className="text-sm text-[#64748b]">불러오는 중...</p>}
 
         {!isLoading && projection?.monthly_summary?.length ? (
           <div className="space-y-4">
@@ -139,21 +139,21 @@ export default function CashFlowPage() {
                 const inflowWidth = `${(Math.abs(row.total_inflow) / maxMonthlyAmount) * 100}%`
                 const outflowWidth = `${(Math.abs(row.total_outflow) / maxMonthlyAmount) * 100}%`
                 return (
-                  <div key={row.year_month} className="rounded border border-slate-200 p-2.5">
+                  <div key={row.year_month} className="rounded border border-[#d8e5fb] p-2.5">
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="font-medium">{row.year_month}</span>
-                      <span className="text-slate-500">잔액 {formatKRW(row.ending_balance)}</span>
+                      <span className="text-[#64748b]">잔액 {formatKRW(row.ending_balance)}</span>
                     </div>
                     <div className="space-y-1">
                       <div>
-                        <div className="mb-0.5 text-[11px] text-slate-500">유입 {formatKRW(row.total_inflow)}</div>
-                        <div className="h-2 rounded bg-slate-200">
+                        <div className="mb-0.5 text-[11px] text-[#64748b]">유입 {formatKRW(row.total_inflow)}</div>
+                        <div className="h-2 rounded bg-[#d8e5fb]">
                           <div className="h-2 rounded bg-sky-500" style={{ width: inflowWidth }} />
                         </div>
                       </div>
                       <div>
-                        <div className="mb-0.5 text-[11px] text-slate-500">유출 {formatKRW(row.total_outflow)}</div>
-                        <div className="h-2 rounded bg-slate-200">
+                        <div className="mb-0.5 text-[11px] text-[#64748b]">유출 {formatKRW(row.total_outflow)}</div>
+                        <div className="h-2 rounded bg-[#d8e5fb]">
                           <div className="h-2 rounded bg-amber-500" style={{ width: outflowWidth }} />
                         </div>
                       </div>
@@ -193,7 +193,7 @@ export default function CashFlowPage() {
         ) : null}
 
         {!isLoading && (!projection || projection.monthly_summary.length === 0) && (
-          <p className="text-sm text-slate-500">예측 데이터가 없습니다.</p>
+          <p className="text-sm text-[#64748b]">예측 데이터가 없습니다.</p>
         )}
 
         {lowBalanceMonth && (

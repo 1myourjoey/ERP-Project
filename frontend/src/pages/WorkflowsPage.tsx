@@ -274,7 +274,7 @@ function periodicCategoryClass(value: string): string {
   if (normalized.includes('분기')) return 'border-sky-200 bg-sky-100 text-sky-700'
   if (normalized.includes('영업')) return 'border-emerald-200 bg-emerald-100 text-emerald-700'
   if (normalized.includes('총회')) return 'border-indigo-200 bg-indigo-100 text-indigo-700'
-  return 'border-slate-200 bg-slate-100 text-slate-700'
+  return 'border-[#d8e5fb] bg-[#fff7d6] text-[#0f1f3d]'
 }
 
 function escapeHtml(value: string): string {
@@ -904,12 +904,12 @@ function TemplateModal({
   return (
     <div className="card-base flex max-h-[calc(100vh-5.5rem)] min-h-0 flex-col">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">{title}</h3>
-        <button onClick={onClose} className="icon-btn text-slate-500 hover:text-slate-600"><X size={18} /></button>
+        <h3 className="text-base font-semibold text-[#0f1f3d]">{title}</h3>
+        <button onClick={onClose} className="icon-btn text-[#64748b] hover:text-[#64748b]"><X size={18} /></button>
       </div>
       <div className="mt-3 min-h-0 space-y-3 overflow-y-auto pr-1">
-        <details open className="rounded-lg border border-slate-200 bg-white p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">기본 정보</summary>
+        <details open className="rounded-lg border border-[#d8e5fb] bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[#0f1f3d]">기본 정보</summary>
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
           <div><input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 정기 출자 요청" className="form-input" /></div>
           <div>
@@ -930,8 +930,8 @@ function TemplateModal({
           <div><input value={form.trigger_description || ''} onChange={e => setForm(prev => ({ ...prev, trigger_description: e.target.value }))} placeholder="템플릿 설명 (선택)" className="form-input" /></div>
           </div>
         </details>
-        <details open className="rounded-lg border border-slate-200 bg-white p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">단계 ({form.steps.length})</summary>
+        <details open className="rounded-lg border border-[#d8e5fb] bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[#0f1f3d]">단계 ({form.steps.length})</summary>
           <div className="mt-2 space-y-2">
           {form.steps.map((step, idx) => (
             <div key={idx} className="grid grid-cols-1 gap-2 rounded-lg border p-2 md:grid-cols-4">
@@ -942,21 +942,21 @@ function TemplateModal({
               <div><label className="form-label text-xs">사분면</label><input value={step.quadrant || 'Q1'} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, quadrant: e.target.value } : it) }))} placeholder="Q1~Q4" className="form-input" /></div>
               <div className="md:col-span-2"><label className="form-label text-xs">메모</label><input value={step.memo || ''} onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, memo: e.target.value } : it) }))} placeholder="선택 입력" className="form-input" /></div>
               <div className="md:col-span-2 flex items-center gap-3">
-                <label className="flex items-center gap-1 text-xs text-slate-600">
+                <label className="flex items-center gap-1 text-xs text-[#64748b]">
                   <input
                     type="checkbox"
                     checked={Boolean(step.is_notice)}
                     onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, is_notice: e.target.checked } : it) }))}
-                    className="rounded border-slate-300"
+                    className="rounded border-[#bfcff0]"
                   />
                   통지
                 </label>
-                <label className="flex items-center gap-1 text-xs text-slate-600">
+                <label className="flex items-center gap-1 text-xs text-[#64748b]">
                   <input
                     type="checkbox"
                     checked={Boolean(step.is_report)}
                     onChange={e => setForm(prev => ({ ...prev, steps: prev.steps.map((it, itIdx) => itIdx === idx ? { ...it, is_report: e.target.checked } : it) }))}
-                    className="rounded border-slate-300"
+                    className="rounded border-[#bfcff0]"
                   />
                   보고
                 </label>
@@ -978,20 +978,20 @@ function TemplateModal({
                 </button>
                 <button onClick={() => setForm(prev => ({ ...prev, steps: prev.steps.filter((_, itIdx) => itIdx !== idx) }))} className="text-xs text-red-600 hover:text-red-700 text-left">단계 삭제</button>
               </div>
-                <div className="md:col-span-4 space-y-2 rounded border border-dashed border-slate-300 bg-slate-50/60 p-2">
+                <div className="md:col-span-4 space-y-2 rounded border border-dashed border-[#bfcff0] bg-[#f5f9ff]/60 p-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-slate-700">단계 서류</p>
-                  <span className="text-xs text-slate-500">{step.step_documents?.length ?? 0}개</span>
+                  <p className="text-xs font-semibold text-[#0f1f3d]">단계 서류</p>
+                  <span className="text-xs text-[#64748b]">{step.step_documents?.length ?? 0}개</span>
                 </div>
                 {(step.step_documents?.length ?? 0) === 0 ? (
-                  <p className="text-xs text-slate-500">연결된 서류가 없습니다.</p>
+                  <p className="text-xs text-[#64748b]">연결된 서류가 없습니다.</p>
                 ) : (
                   <div className="space-y-1">
                     {(step.step_documents ?? []).map((doc, docIdx) => (
-                      <div key={`${doc.name}-${docIdx}`} className="grid grid-cols-1 gap-2 rounded border border-slate-200 bg-white p-2 md:grid-cols-6">
+                      <div key={`${doc.name}-${docIdx}`} className="grid grid-cols-1 gap-2 rounded border border-[#d8e5fb] bg-white p-2 md:grid-cols-6">
                         <div className="md:col-span-2">
-                          <p className="text-xs font-medium text-slate-700">{doc.name}</p>
-                          <p className="text-xs text-slate-500">{doc.notes || '-'}</p>
+                          <p className="text-xs font-medium text-[#0f1f3d]">{doc.name}</p>
+                          <p className="text-xs text-[#64748b]">{doc.notes || '-'}</p>
                           <div className="mt-1">
                             <FileAttachmentPanel
                               attachmentIds={doc.attachment_ids ?? []}
@@ -1019,9 +1019,9 @@ function TemplateModal({
                             />
                           </div>
                         </div>
-                        <div className="text-xs text-slate-600">{doc.required ? '필수' : '선택'}</div>
-                        <div className="text-xs text-slate-600">{doc.timing || '-'}</div>
-                        <div className="text-xs text-blue-600">{doc.document_template_id ? '[템플릿]' : '[직접]'}</div>
+                        <div className="text-xs text-[#64748b]">{doc.required ? '필수' : '선택'}</div>
+                        <div className="text-xs text-[#64748b]">{doc.timing || '-'}</div>
+                        <div className="text-xs text-[#558ef8]">{doc.document_template_id ? '[템플릿]' : '[직접]'}</div>
                         <div className="text-right">
                           <button
                             onClick={() => removeStepDocument(idx, docIdx)}
@@ -1034,7 +1034,7 @@ function TemplateModal({
                     ))}
                   </div>
                 )}
-                <div className="grid grid-cols-1 gap-2 rounded border border-slate-200 bg-white p-2 md:grid-cols-6">
+                <div className="grid grid-cols-1 gap-2 rounded border border-[#d8e5fb] bg-white p-2 md:grid-cols-6">
                   <div className="md:col-span-2">
                     <label className="form-label text-xs">서류명</label>
                     <input
@@ -1063,12 +1063,12 @@ function TemplateModal({
                     />
                   </div>
                   <div className="flex items-end justify-start gap-1">
-                    <label className="mb-1 flex items-center gap-1 text-xs text-slate-600">
+                    <label className="mb-1 flex items-center gap-1 text-xs text-[#64748b]">
                       <input
                         type="checkbox"
                         checked={ensureStepDocDraft(idx).required}
                         onChange={e => setStepDocDraft(idx, { required: e.target.checked })}
-                        className="rounded border-slate-300"
+                        className="rounded border-[#bfcff0]"
                       />
                       필수
                     </label>
@@ -1127,25 +1127,25 @@ function TemplateModal({
           <button onClick={() => setForm(prev => ({ ...prev, steps: [...prev.steps, { order: prev.steps.length + 1, name: '', timing: 'D-day', timing_offset_days: 0, estimated_time: '', quadrant: 'Q1', memo: '', is_notice: false, is_report: false, step_documents: [] }] }))} className="secondary-btn">+ 단계 추가</button>
           </div>
         </details>
-        <details open className="rounded-lg border border-slate-200 bg-white p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">공통 서류</summary>
+        <details open className="rounded-lg border border-[#d8e5fb] bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[#0f1f3d]">공통 서류</summary>
           <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-700">서류</p>
-            <span className="text-xs text-slate-500">{form.documents.length}개</span>
+            <p className="text-sm font-medium text-[#0f1f3d]">서류</p>
+            <span className="text-xs text-[#64748b]">{form.documents.length}개</span>
           </div>
           {form.documents.length === 0 ? (
-            <p className="text-xs text-slate-500">등록된 서류가 없습니다.</p>
+            <p className="text-xs text-[#64748b]">등록된 서류가 없습니다.</p>
           ) : (
             <div className="space-y-1.5">
               {form.documents.map((doc, idx) => (
-                <div key={`${doc.name}-${idx}`} className="grid grid-cols-1 gap-2 rounded border border-slate-200 bg-slate-50 p-2 md:grid-cols-6">
+                <div key={`${doc.name}-${idx}`} className="grid grid-cols-1 gap-2 rounded border border-[#d8e5fb] bg-[#f5f9ff] p-2 md:grid-cols-6">
                   <div className="md:col-span-2">
-                    <p className="text-xs font-medium text-slate-700">{doc.name || '-'}</p>
-                    <p className="text-xs text-slate-500">{doc.notes || '-'}</p>
+                    <p className="text-xs font-medium text-[#0f1f3d]">{doc.name || '-'}</p>
+                    <p className="text-xs text-[#64748b]">{doc.notes || '-'}</p>
                   </div>
-                  <div className="text-xs text-slate-600">{doc.required ? '필수' : '선택'}</div>
-                  <div className="text-xs text-slate-600">{doc.timing || '-'}</div>
+                  <div className="text-xs text-[#64748b]">{doc.required ? '필수' : '선택'}</div>
+                  <div className="text-xs text-[#64748b]">{doc.timing || '-'}</div>
                   <div className="md:col-span-2 text-right">
                     <button onClick={() => removeDocument(idx)} className="text-xs text-red-600 hover:text-red-700">삭제</button>
                   </div>
@@ -1153,7 +1153,7 @@ function TemplateModal({
               ))}
             </div>
           )}
-          <div className="grid grid-cols-1 gap-2 rounded border border-dashed border-slate-300 p-2 md:grid-cols-6">
+          <div className="grid grid-cols-1 gap-2 rounded border border-dashed border-[#bfcff0] p-2 md:grid-cols-6">
             <div className="md:col-span-2">
               <label className="form-label text-xs">서류명</label>
               <input
@@ -1182,12 +1182,12 @@ function TemplateModal({
               />
             </div>
             <div className="flex items-end justify-between gap-2">
-              <label className="mb-1 flex items-center gap-1 text-xs text-slate-600">
+              <label className="mb-1 flex items-center gap-1 text-xs text-[#64748b]">
                 <input
                   type="checkbox"
                   checked={documentDraft.required}
                   onChange={e => setDocumentDraft(prev => ({ ...prev, required: e.target.checked }))}
-                  className="rounded border-slate-300"
+                  className="rounded border-[#bfcff0]"
                 />
                 필수
               </label>
@@ -1196,8 +1196,8 @@ function TemplateModal({
           </div>
           </div>
         </details>
-        <details className="rounded-lg border border-slate-200 bg-white p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">주의사항</summary>
+        <details className="rounded-lg border border-[#d8e5fb] bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[#0f1f3d]">주의사항</summary>
           <div className="mt-2 space-y-2">
             {(form.warnings ?? []).map((warning, idx) => (
               <div key={`${warning.content}-${idx}`} className="flex items-center justify-between rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs">
@@ -1316,31 +1316,31 @@ function WorkflowDetail({
     <div className="card-base space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">{wf.name}</h3>
-          <p className="text-sm text-slate-500">{wf.trigger_description || '-'}</p>
+          <h3 className="text-lg font-semibold text-[#0f1f3d]">{wf.name}</h3>
+          <p className="text-sm text-[#64748b]">{wf.trigger_description || '-'}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => onPrint(wf)} className="secondary-btn inline-flex items-center gap-1"><Printer size={14} /> 인쇄</button>
           <button onClick={onEdit} className="secondary-btn">수정</button>
-          <button onClick={onClose} className="icon-btn text-slate-500 hover:text-slate-600"><X size={18} /></button>
+          <button onClick={onClose} className="icon-btn text-[#64748b] hover:text-[#64748b]"><X size={18} /></button>
         </div>
       </div>
 
       <div className="space-y-1">
         {wf.steps.map((s: WorkflowStep) => (
-          <div key={s.id} className="rounded bg-slate-50 p-2">
+          <div key={s.id} className="rounded bg-[#f5f9ff] p-2">
             <div className="flex items-center gap-2 text-sm">
-              <span className="w-6 text-center text-xs text-slate-500">{s.order}</span>
+              <span className="w-6 text-center text-xs text-[#64748b]">{s.order}</span>
               <span className="flex-1">{s.name}</span>
-              <span className="text-xs text-slate-500">{s.timing}</span>
+              <span className="text-xs text-[#64748b]">{s.timing}</span>
             </div>
             {(s.step_documents?.length ?? 0) > 0 && (
               <div className="ml-8 mt-1 space-y-0.5">
                 {(s.step_documents ?? []).map((doc, docIdx) => (
-                  <div key={`${s.id}-doc-${doc.id ?? docIdx}`} className="flex items-center gap-1 text-xs text-slate-500">
+                  <div key={`${s.id}-doc-${doc.id ?? docIdx}`} className="flex items-center gap-1 text-xs text-[#64748b]">
                     <span>•</span>
                     <span>{doc.name}</span>
-                    {doc.document_template_id ? <span className="text-blue-500">[템플릿]</span> : null}
+                    {doc.document_template_id ? <span className="text-[#558ef8]">[템플릿]</span> : null}
                   </div>
                 ))}
               </div>
@@ -1352,18 +1352,18 @@ function WorkflowDetail({
       {!showRun ? (
         <button onClick={() => setShowRun(true)} className="primary-btn inline-flex items-center gap-2"><Play size={16} /> 실행</button>
       ) : (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+        <div className="rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] p-3 space-y-2">
           <div><input value={instName} onChange={e => setInstName(e.target.value)} placeholder="예: 2026년 1차 출자요청" className="form-input" /></div>
-          <div><label className="form-label text-blue-700">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="form-input" /></div>
+          <div><label className="form-label text-[#1a3660]">기준일</label><input type="date" value={instDate} onChange={e => setInstDate(e.target.value)} className="form-input" /></div>
           <div>
-            <label className="form-label text-blue-700">관련 조합</label>
+            <label className="form-label text-[#1a3660]">관련 조합</label>
             <select value={instFundId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstFundId(next); setInstGpEntityId(''); if (instInvestmentId !== '') setInstInvestmentId('') }} className="form-input">
               <option value="">관련 조합 (선택)</option>
               {(funds ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="form-label text-blue-700">관련 고유계정</label>
+            <label className="form-label text-[#1a3660]">관련 고유계정</label>
             <select
               value={instGpEntityId}
               onChange={e => {
@@ -1379,14 +1379,14 @@ function WorkflowDetail({
             </select>
           </div>
           <div>
-            <label className="form-label text-blue-700">관련 회사</label>
+            <label className="form-label text-[#1a3660]">관련 회사</label>
             <select value={instCompanyId} onChange={e => { const next = e.target.value ? Number(e.target.value) : ''; setInstCompanyId(next); if (instInvestmentId !== '') setInstInvestmentId('') }} className="form-input">
               <option value="">관련 회사 (선택)</option>
               {(companies ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="form-label text-blue-700">관련 투자</label>
+            <label className="form-label text-[#1a3660]">관련 투자</label>
             <select value={instInvestmentId} onChange={e => setInstInvestmentId(e.target.value ? Number(e.target.value) : '')} className="form-input">
               <option value="">관련 투자 (선택)</option>
               {filteredInvestments.map((inv) => <option key={inv.id} value={inv.id}>#{inv.id} {inv.fund_name} - {inv.company_name}</option>)}
@@ -1394,7 +1394,7 @@ function WorkflowDetail({
           </div>
           {instFundId !== '' && (
             <div>
-              <label className="form-label text-blue-700">통지유형</label>
+              <label className="form-label text-[#1a3660]">통지유형</label>
               <select value={instNoticeType} onChange={e => setInstNoticeType(e.target.value)} className="form-input">
                 {options.map((opt) => <option key={opt.notice_type} value={opt.notice_type}>{opt.label}</option>)}
               </select>
@@ -1948,7 +1948,7 @@ function InstanceList({
     <div className="space-y-2.5">
       {activeSummary && (
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+          <span className="rounded-full bg-[#fff7d6] px-2.5 py-1 font-medium text-[#64748b]">
             전체 {activeSummary.total}건
           </span>
           {activeSummary.overdue > 0 && (
@@ -1971,18 +1971,18 @@ function InstanceList({
             ? 'border-red-200 bg-red-50/50'
             : dueMeta.tone === 'today'
               ? 'border-amber-200 bg-amber-50/50'
-              : 'border-slate-200 bg-white'
+              : 'border-[#d8e5fb] bg-white'
         return (
         <div key={inst.id} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f5f9ff]">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-slate-800">{inst.name}</p>
-              <p className="truncate text-xs text-slate-500">{inst.workflow_name} | {inst.trigger_date}</p>
+              <p className="truncate text-[13px] font-medium text-[#0f1f3d]">{inst.name}</p>
+              <p className="truncate text-xs text-[#64748b]">{inst.workflow_name} | {inst.trigger_date}</p>
               <div className="mt-1.5 flex items-center gap-1.5">
-                <div className="h-1.5 w-36 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-blue-500 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+                <div className="h-1.5 w-36 overflow-hidden rounded-full bg-[#d8e5fb]">
+                  <div className="h-full rounded-full bg-[#558ef8] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
                 </div>
-                <span className="text-xs font-medium text-slate-600">{inst.progress}</span>
+                <span className="text-xs font-medium text-[#64748b]">{inst.progress}</span>
                 {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
               </div>
             </div>
@@ -2031,13 +2031,13 @@ function InstanceList({
                   템플릿 교체
                 </button>
               )}
-              <ChevronRight size={16} className={`text-slate-500 transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
+              <ChevronRight size={16} className={`text-[#64748b] transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
             </div>
           </div>
           {openId === inst.id && (
-            <div className="space-y-2 border-t border-slate-100 px-3 py-2.5">
+            <div className="space-y-2 border-t border-[#e6eefc] px-3 py-2.5">
               {status === 'active' && editingInstanceId === inst.id && editInstance && (
-                <div className="mb-2 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
+                <div className="mb-2 space-y-2 rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] p-2.5">
                   <div>
                     <label className="form-label">인스턴스 이름</label>
                     <input
@@ -2118,7 +2118,7 @@ function InstanceList({
                 const editingCurrentDocument =
                   editingStepDocument && editingStepDocument.stepId === step.id ? editingStepDocument : null
                 return (
-                  <div key={step.id} className="flex-col space-y-1.5 rounded-lg bg-slate-50 px-2.5 py-2 text-xs">
+                  <div key={step.id} className="flex-col space-y-1.5 rounded-lg bg-[#f5f9ff] px-2.5 py-2 text-xs">
                     <div className="flex items-center gap-1.5">
                       {step.status === 'completed' ? (
                         <div className="flex items-center gap-1">
@@ -2126,7 +2126,7 @@ function InstanceList({
                           {status === 'active' && (
                             <button
                               onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
-                              className="text-xs text-slate-500 hover:text-blue-600"
+                              className="text-xs text-[#64748b] hover:text-[#558ef8]"
                             >
                               되돌리기
                             </button>
@@ -2136,23 +2136,23 @@ function InstanceList({
                         canComplete ? (
                           <button
                             onClick={() => handleCompleteStep(inst, step)}
-                            className="h-4 w-4 rounded-full border-2 border-slate-300 hover:border-green-500"
+                            className="h-4 w-4 rounded-full border-2 border-[#bfcff0] hover:border-green-500"
                             disabled={completeMut.isPending}
                           />
                         ) : (
-                          <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-slate-200 bg-slate-100" />
+                          <span title="이전 단계를 먼저 완료해주세요" className="h-4 w-4 rounded-full border-2 border-[#d8e5fb] bg-[#fff7d6]" />
                         )
                       ) : (
                         <span className="w-4" />
                       )}
-                      <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-slate-500' : isCurrentStep ? 'font-semibold text-blue-700' : 'text-slate-700'}`}>{step.step_name}</span>
-                      <span className="text-xs text-slate-500">{labelStatus(step.status)}</span>
+                      <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-[#64748b]' : isCurrentStep ? 'font-semibold text-[#1a3660]' : 'text-[#0f1f3d]'}`}>{step.step_name}</span>
+                      <span className="text-xs text-[#64748b]">{labelStatus(step.status)}</span>
                       {isCurrentStep && (
-                        <span className="rounded-full border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
+                        <span className="rounded-full border border-[#b2cbfb] bg-[#e6efff] px-1.5 py-0.5 text-[9px] font-semibold text-[#1a3660]">
                           현재 단계
                         </span>
                       )}
-                      <span className="text-xs text-slate-500">{step.calculated_date}</span>
+                      <span className="text-xs text-[#64748b]">{step.calculated_date}</span>
                       {(() => {
                         const matchingDocs = docTemplates.filter(
                           (template) =>
@@ -2166,22 +2166,22 @@ function InstanceList({
                               event.stopPropagation()
                               handleGenerateDocuments(matchingDocs, inst)
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                            className="inline-flex items-center gap-1 rounded-lg bg-[#f5f9ff] px-2 py-1 text-xs text-[#558ef8] transition-colors hover:bg-[#e6efff]"
                           >
                             문서 생성 ({matchingDocs.length}종)
                           </button>
                         )
                       })()}
-                      {step.completed_at && <span className="text-xs text-slate-500">{formatCompletedAt(step.completed_at)}</span>}
+                      {step.completed_at && <span className="text-xs text-[#64748b]">{formatCompletedAt(step.completed_at)}</span>}
                     </div>
 
-                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                    <div className="mt-1 overflow-hidden rounded-lg border border-[#d8e5fb] bg-white px-2.5 py-2">
                       <div className="mb-1 flex items-center justify-between">
-                        <p className="text-xs font-semibold text-slate-700">단계 서류 {stepDocuments.length}건</p>
+                        <p className="text-xs font-semibold text-[#0f1f3d]">단계 서류 {stepDocuments.length}건</p>
                         {canMutateStepDocuments && (
                           <button
                             onClick={() => setNewStepDocDraft(step.id, {})}
-                            className="text-xs text-blue-600 hover:text-blue-700"
+                            className="text-xs text-[#558ef8] hover:text-[#1a3660]"
                           >
                             + 서류 추가
                           </button>
@@ -2189,13 +2189,13 @@ function InstanceList({
                       </div>
 
                       {stepDocuments.length === 0 ? (
-                        <p className="text-xs text-slate-500">등록된 단계 서류가 없습니다.</p>
+                        <p className="text-xs text-[#64748b]">등록된 단계 서류가 없습니다.</p>
                       ) : (
                         <div className="space-y-1.5">
                           {stepDocuments.map((doc) => {
                             const isEditing = editingCurrentDocument?.documentId === doc.id
                             return (
-                              <div key={doc.id} className={`rounded border px-2 py-1.5 ${doc.checked ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}>
+                              <div key={doc.id} className={`rounded border px-2 py-1.5 ${doc.checked ? 'border-emerald-200 bg-emerald-50/60' : 'border-[#d8e5fb] bg-white'}`}>
                                 {isEditing && editingCurrentDocument ? (
                                   <div className="space-y-2">
                                     <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -2234,7 +2234,7 @@ function InstanceList({
                                       />
                                     </div>
                                     <div className="flex items-center justify-between">
-                                      <label className="inline-flex items-center gap-1 text-xs text-slate-600">
+                                      <label className="inline-flex items-center gap-1 text-xs text-[#64748b]">
                                         <input
                                           type="checkbox"
                                           checked={editingCurrentDocument.draft.required}
@@ -2290,13 +2290,13 @@ function InstanceList({
                                       className="mt-1"
                                     />
                                     <div className="min-w-0 flex-1">
-                                      <p className="truncate text-[12px] font-medium text-slate-800">
+                                      <p className="truncate text-[12px] font-medium text-[#0f1f3d]">
                                         {doc.name}
-                                        <span className={`ml-1 rounded px-1 py-0.5 text-xs ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                        <span className={`ml-1 rounded px-1 py-0.5 text-xs ${doc.required ? 'bg-rose-100 text-rose-700' : 'bg-[#fff7d6] text-[#64748b]'}`}>
                                           {doc.required ? '필수' : '선택'}
                                         </span>
                                       </p>
-                                      <p className="text-xs text-slate-500">
+                                      <p className="text-xs text-[#64748b]">
                                         {doc.timing || '시점 미정'}
                                         {doc.notes ? ` | ${doc.notes}` : ''}
                                         {doc.template_name ? ` | 템플릿: ${doc.template_name}` : ''}
@@ -2306,11 +2306,11 @@ function InstanceList({
                                           {(doc.attachment_ids ?? []).map((attachmentId) => {
                                             const meta = attachmentById.get(attachmentId)
                                             return (
-                                              <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs">
+                                              <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-[#f5f9ff] px-1.5 py-0.5 text-xs">
                                                 <button
                                                   type="button"
                                                   onClick={() => handleDownloadAttachment(attachmentId)}
-                                                  className="text-blue-600 hover:text-blue-700"
+                                                  className="text-[#558ef8] hover:text-[#1a3660]"
                                                 >
                                                   {meta?.original_filename || `파일 #${attachmentId}`}
                                                 </button>
@@ -2335,7 +2335,7 @@ function InstanceList({
                                         </div>
                                       )}
                                       {canMutateStepDocuments && (
-                                        <label className="mt-1 inline-flex cursor-pointer rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                                        <label className="mt-1 inline-flex cursor-pointer rounded border border-[#c5d8fb] bg-[#f5f9ff] px-2 py-0.5 text-xs text-[#1a3660]">
                                           파일 첨부
                                           <input
                                             type="file"
@@ -2363,7 +2363,7 @@ function InstanceList({
                                       <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => startEditingStepDocument(step.id, doc)}
-                                          className="text-xs text-blue-600 hover:text-blue-700"
+                                          className="text-xs text-[#558ef8] hover:text-[#1a3660]"
                                         >
                                           수정
                                         </button>
@@ -2392,7 +2392,7 @@ function InstanceList({
                       )}
 
                       {hasDraft && (
-                        <div className="mt-2 space-y-2 rounded border border-dashed border-blue-300 bg-blue-50 p-2">
+                        <div className="mt-2 space-y-2 rounded border border-dashed border-[#b2cbfb] bg-[#f5f9ff] p-2">
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                             <input
                               value={newDraft.name}
@@ -2418,11 +2418,11 @@ function InstanceList({
                               {(newDraft.attachment_ids ?? []).map((attachmentId) => {
                                 const meta = attachmentById.get(attachmentId)
                                 return (
-                                  <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs">
+                                  <span key={attachmentId} className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-1.5 py-0.5 text-xs">
                                     <button
                                       type="button"
                                       onClick={() => handleDownloadAttachment(attachmentId)}
-                                      className="text-blue-600 hover:text-blue-700"
+                                      className="text-[#558ef8] hover:text-[#1a3660]"
                                     >
                                       {meta?.original_filename || `파일 #${attachmentId}`}
                                     </button>
@@ -2441,7 +2441,7 @@ function InstanceList({
                             </div>
                           )}
                           <div className="flex items-center justify-between">
-                            <label className="inline-flex items-center gap-1 text-xs text-slate-600">
+                            <label className="inline-flex items-center gap-1 text-xs text-[#64748b]">
                               <input
                                 type="checkbox"
                                 checked={newDraft.required}
@@ -2450,7 +2450,7 @@ function InstanceList({
                               필수
                             </label>
                             <div className="flex items-center gap-2">
-                              <label className="inline-flex cursor-pointer rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700">
+                              <label className="inline-flex cursor-pointer rounded border border-[#c5d8fb] bg-white px-2 py-1 text-xs text-[#1a3660]">
                                 파일 업로드
                                 <input
                                   type="file"
@@ -2545,7 +2545,7 @@ function InstanceList({
       >
         {swapTarget && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[#64748b]">
               [{swapTarget.name}] 워크플로를 다른 템플릿으로 교체합니다.
             </p>
 
@@ -2720,8 +2720,8 @@ function PeriodicSchedulesPanel() {
     <div className="space-y-4">
       <div className="card-base flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-slate-800">정기 업무 캘린더</h3>
-          <p className="text-sm text-slate-500">분기/반기/연간 템플릿을 연간 단위로 일괄 생성합니다.</p>
+          <h3 className="text-base font-semibold text-[#0f1f3d]">정기 업무 캘린더</h3>
+          <p className="text-sm text-[#64748b]">분기/반기/연간 템플릿을 연간 단위로 일괄 생성합니다.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -2759,11 +2759,11 @@ function PeriodicSchedulesPanel() {
               const month = monthIndex + 1
               const rows = timelineByMonth.get(month) ?? []
               return (
-                <div key={label} className="w-[96px] min-w-[96px] max-w-[96px] rounded-lg border border-slate-200 bg-white p-2">
-                  <p className="mb-2 text-xs font-semibold text-slate-700">{label}</p>
+                <div key={label} className="w-[96px] min-w-[96px] max-w-[96px] rounded-lg border border-[#d8e5fb] bg-white p-2">
+                  <p className="mb-2 text-xs font-semibold text-[#0f1f3d]">{label}</p>
                   <div className="space-y-1">
                     {rows.length === 0 ? (
-                      <p className="text-xs text-slate-500">-</p>
+                      <p className="text-xs text-[#64748b]">-</p>
                     ) : (
                       rows.map((schedule) => (
                         <p
@@ -2785,8 +2785,8 @@ function PeriodicSchedulesPanel() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="card-base space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-700">정기 업무 목록</h4>
-            <span className="text-xs text-slate-500">{schedules.length}건</span>
+            <h4 className="text-sm font-semibold text-[#0f1f3d]">정기 업무 목록</h4>
+            <span className="text-xs text-[#64748b]">{schedules.length}건</span>
           </div>
           {isLoading ? (
             <PageLoading />
@@ -2795,11 +2795,11 @@ function PeriodicSchedulesPanel() {
           ) : (
             <div className="space-y-1.5">
               {schedules.map((schedule) => (
-                <div key={schedule.id} className={`rounded-lg border p-2 ${editingId === schedule.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                <div key={schedule.id} className={`rounded-lg border p-2 ${editingId === schedule.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb] bg-white'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-800 break-all">{schedule.name}</p>
-                      <p className="text-xs text-slate-500 break-all">
+                      <p className="text-sm font-medium text-[#0f1f3d] break-all">{schedule.name}</p>
+                      <p className="text-xs text-[#64748b] break-all">
                         {schedule.category} | {periodicRecurrenceLabel(schedule.recurrence)} | {schedule.base_month}/{schedule.base_day}
                         {schedule.fund_type_filter ? ` | 필터 ${schedule.fund_type_filter}` : ''}
                       </p>
@@ -2826,7 +2826,7 @@ function PeriodicSchedulesPanel() {
 
         <div className="card-base space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-700">{editingId ? '정기 업무 수정' : '정기 업무 추가'}</h4>
+            <h4 className="text-sm font-semibold text-[#0f1f3d]">{editingId ? '정기 업무 수정' : '정기 업무 추가'}</h4>
             {editingId && <button onClick={resetForm} className="secondary-btn text-xs">새로 작성</button>}
           </div>
 
@@ -2875,16 +2875,16 @@ function PeriodicSchedulesPanel() {
               />
             </div>
             <div className="flex items-end">
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+              <label className="inline-flex items-center gap-2 text-sm text-[#0f1f3d]">
                 <input type="checkbox" checked={!!form.is_active} onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))} />
                 활성 상태
               </label>
             </div>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-slate-200 p-2">
+          <div className="space-y-2 rounded-lg border border-[#d8e5fb] p-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-slate-700">단계 설정</p>
+              <p className="text-xs font-semibold text-[#0f1f3d]">단계 설정</p>
               <button
                 onClick={() => setForm((prev) => ({
                   ...prev,
@@ -2896,7 +2896,7 @@ function PeriodicSchedulesPanel() {
               </button>
             </div>
             {(form.steps ?? []).map((step, stepIdx) => (
-              <div key={`${step.name}-${stepIdx}`} className="grid grid-cols-1 gap-2 rounded border border-slate-200 bg-slate-50 p-2 md:grid-cols-6">
+              <div key={`${step.name}-${stepIdx}`} className="grid grid-cols-1 gap-2 rounded border border-[#d8e5fb] bg-[#f5f9ff] p-2 md:grid-cols-6">
                 <div className="md:col-span-2">
                   <input
                     value={step.name}
@@ -3134,7 +3134,7 @@ export default function WorkflowsPage() {
         </div>
       </div>
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-[#d8e5fb]">
         <div className="flex gap-1 overflow-x-auto pb-1">
           {[
             { key: 'active' as const, label: '진행 중' },
@@ -3148,8 +3148,8 @@ export default function WorkflowsPage() {
               onClick={() => changeTab(t.key)}
               className={`tab-btn border-b-2 border-x-0 border-t-0 rounded-none px-4 pb-2.5 pt-1 text-sm font-medium transition-colors ${
                 tab === t.key
-                  ? 'active border-blue-600 bg-transparent text-blue-700'
-                  : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-transparent hover:text-slate-900'
+                  ? 'active border-[#558ef8] bg-transparent text-[#1a3660]'
+                  : 'border-transparent text-[#0f1f3d] hover:border-[#bfcff0] hover:bg-transparent hover:text-[#0f1f3d]'
               }`}
             >
               {t.label}
@@ -3171,25 +3171,25 @@ export default function WorkflowsPage() {
                   <div key={category} className="space-y-1">
                     <button
                       onClick={() => toggleCategory(category)}
-                      className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-2 py-1 text-left hover:bg-slate-100"
+                      className="flex w-full items-center justify-between rounded-lg bg-[#f5f9ff] px-2 py-1 text-left hover:bg-[#fff7d6]"
                     >
                       <div className="flex items-center gap-1">
                         <ChevronRight
                           size={12}
-                          className={`text-slate-500 transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
+                          className={`text-[#64748b] transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
                         />
-                        <span className="text-xs font-semibold text-slate-600">{category}</span>
+                        <span className="text-xs font-semibold text-[#64748b]">{category}</span>
                       </div>
-                      <span className="text-xs text-slate-500">{items.length}개</span>
+                      <span className="text-xs text-[#64748b]">{items.length}개</span>
                     </button>
                     {!collapsedCategories.has(category) && (
                       <div className="space-y-2">
                         {items.map((row: WorkflowListItem) => (
-                          <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200'}`}>
+                          <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb]'}`}>
                             <div className="flex items-start justify-between gap-2">
                               <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
-                                <p className="text-sm font-medium text-slate-800">{row.name}</p>
-                                <p className="text-xs text-slate-500">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
+                                <p className="text-sm font-medium text-[#0f1f3d]">{row.name}</p>
+                                <p className="text-xs text-[#64748b]">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
                               </button>
                               <button
                                 onClick={(event) => {
@@ -3198,7 +3198,7 @@ export default function WorkflowsPage() {
                                 }}
                                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selectedId === row.id
                                     ? 'border-emerald-500 bg-emerald-500 text-white'
-                                    : 'border-slate-300 bg-white hover:border-gray-400'
+                                    : 'border-[#bfcff0] bg-white hover:border-[#9fb7e5]'
                                   }`}
                                 aria-label="템플릿 체크"
                                 title={selectedId === row.id ? '체크 해제' : '체크'}
@@ -3235,7 +3235,7 @@ export default function WorkflowsPage() {
                 onPrint={handlePrintTemplate}
               />
             ) : (
-              <div className="card-base text-sm text-slate-500">템플릿을 선택하세요.</div>
+              <div className="card-base text-sm text-[#64748b]">템플릿을 선택하세요.</div>
             )}
           </div>
         </div>

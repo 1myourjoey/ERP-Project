@@ -253,42 +253,42 @@ export default function ProvisionalFSPage() {
 
   const renderSfp = (data: Record<string, number>) => (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">유동자산</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.current_assets || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">유동자산</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.current_assets || 0)}</p>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">투자자산</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.investment_assets || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">투자자산</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.investment_assets || 0)}</p>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">부채총계</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.total_liabilities || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">부채총계</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.total_liabilities || 0)}</p>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">자본총계</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.total_equity || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">자본총계</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.total_equity || 0)}</p>
       </div>
-      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm md:col-span-2">
-        <p className="text-xs text-blue-600">자산총계</p>
-        <p className="font-semibold text-blue-700">{formatKRW(data.total_assets || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm md:col-span-2">
+        <p className="text-xs text-[#558ef8]">자산총계</p>
+        <p className="font-semibold text-[#1a3660]">{formatKRW(data.total_assets || 0)}</p>
       </div>
     </div>
   )
 
   const renderIs = (data: Record<string, number>) => (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">영업수익</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.operating_revenue || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">영업수익</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.operating_revenue || 0)}</p>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">영업비용</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.operating_expense || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">영업비용</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.operating_expense || 0)}</p>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        <p className="text-xs text-slate-500">영업이익</p>
-        <p className="font-semibold text-slate-800">{formatKRW(data.operating_income || 0)}</p>
+      <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+        <p className="text-xs text-[#64748b]">영업이익</p>
+        <p className="font-semibold text-[#0f1f3d]">{formatKRW(data.operating_income || 0)}</p>
       </div>
       <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm">
         <p className="text-xs text-emerald-600">당기순이익</p>
@@ -306,7 +306,7 @@ export default function ProvisionalFSPage() {
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
             <select
               value={selectedFundId || ''}
               onChange={(e) => setFundId(Number(e.target.value) || null)}
@@ -318,7 +318,7 @@ export default function ProvisionalFSPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">월</label>
+            <label className="mb-1 block text-xs font-medium text-[#64748b]">월</label>
             <input
               type="month"
               value={yearMonth}
@@ -371,23 +371,23 @@ export default function ProvisionalFSPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                <p className="text-xs text-slate-500">총 건수</p>
-                <p className="font-semibold text-slate-800">{bankTxns.length}건</p>
+              <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+                <p className="text-xs text-[#64748b]">총 건수</p>
+                <p className="font-semibold text-[#0f1f3d]">{bankTxns.length}건</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                <p className="text-xs text-slate-500">출금 합계</p>
-                <p className="font-semibold text-slate-800">{formatKRW(totalWithdrawal)}</p>
+              <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+                <p className="text-xs text-[#64748b]">출금 합계</p>
+                <p className="font-semibold text-[#0f1f3d]">{formatKRW(totalWithdrawal)}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                <p className="text-xs text-slate-500">입금 합계</p>
-                <p className="font-semibold text-slate-800">{formatKRW(totalDeposit)}</p>
+              <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
+                <p className="text-xs text-[#64748b]">입금 합계</p>
+                <p className="font-semibold text-[#0f1f3d]">{formatKRW(totalDeposit)}</p>
               </div>
             </div>
 
             <div className="overflow-auto">
               <table className="min-w-[900px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-2 py-2 text-left">No</th>
                     <th className="px-2 py-2 text-left">일시</th>
@@ -440,7 +440,7 @@ export default function ProvisionalFSPage() {
             {autoJournalMut.isPending ? '자동 분개 실행 중...' : '자동 분개 실행'}
           </button>
           {lastAutoResult && (
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-[#64748b]">
               자동 매핑 {lastAutoResult.mapped_count}건 / 수동 필요 {lastAutoResult.unmapped_count}건
             </p>
           )}
@@ -453,7 +453,7 @@ export default function ProvisionalFSPage() {
               const draft = getDraft(txn)
               return (
                 <div key={txn.id} className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                  <p className="mb-2 text-xs text-slate-700">
+                  <p className="mb-2 text-xs text-[#0f1f3d]">
                     {txn.transaction_date.slice(0, 10)} | {txn.counterparty || txn.description || '거래처 없음'} | 금액 {formatKRW(txn.deposit > 0 ? txn.deposit : txn.withdrawal)}
                   </p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
@@ -483,7 +483,7 @@ export default function ProvisionalFSPage() {
                       매핑 저장
                     </button>
                   </div>
-                  <label className="mt-2 inline-flex items-center gap-1 text-xs text-slate-600">
+                  <label className="mt-2 inline-flex items-center gap-1 text-xs text-[#64748b]">
                     <input
                       type="checkbox"
                       checked={draft.learn}
@@ -530,7 +530,7 @@ export default function ProvisionalFSPage() {
           </button>
 
           {provisionalFs && (
-            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+            <span className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-1 text-xs text-[#64748b]">
               상태: {prettyStatus(provisionalFs.status)}
             </span>
           )}
@@ -543,13 +543,13 @@ export default function ProvisionalFSPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('sfp')}
-                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'sfp' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}
+                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'sfp' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
               >
                 SFP
               </button>
               <button
                 onClick={() => setActiveTab('is')}
-                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'is' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}
+                className={`rounded px-3 py-1.5 text-sm ${activeTab === 'is' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
               >
                 IS
               </button>

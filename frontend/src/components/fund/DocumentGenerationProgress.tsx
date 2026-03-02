@@ -20,7 +20,7 @@ function statusLabel(status: DocumentGenerationStatus['status']): string {
 
 function statusBadgeClass(status: DocumentGenerationStatus['status']): string {
   if (status === 'pending') return 'bg-amber-100 text-amber-700'
-  if (status === 'processing') return 'bg-blue-100 text-blue-700'
+  if (status === 'processing') return 'bg-[#e6efff] text-[#1a3660]'
   if (status === 'completed') return 'bg-emerald-100 text-emerald-700'
   return 'bg-red-100 text-red-700'
 }
@@ -70,47 +70,47 @@ export default function DocumentGenerationProgress({
 
   return (
     <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-      <div className="modal-content w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+      <div className="modal-content w-full max-w-2xl rounded-xl border border-[#d8e5fb] bg-white p-5 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900">서류 생성 진행</h3>
+          <h3 className="text-base font-semibold text-[#0f1f3d]">서류 생성 진행</h3>
           <button onClick={onClose} className="secondary-btn">백그라운드로 전환</button>
         </div>
 
         {!data ? (
-          <div className="py-6 text-sm text-slate-500">진행 상태를 불러오는 중...</div>
+          <div className="py-6 text-sm text-[#64748b]">진행 상태를 불러오는 중...</div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <div className="flex items-center justify-between rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(data.status)}`}>
                 {statusLabel(data.status)}
               </span>
-              <span className="text-slate-600">
+              <span className="text-[#64748b]">
                 {total > 0 ? `${percent}% (${current}/${total})` : `${current}건 처리`}
               </span>
             </div>
 
-            <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-3 overflow-hidden rounded-full bg-[#d8e5fb]">
               <div
-                className="h-full rounded-full bg-blue-600 transition-all"
+                className="h-full rounded-full bg-[#0f1f3d] transition-all"
                 style={{ width: `${percent}%` }}
               />
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-              <p className="text-slate-500">현재 작업</p>
-              <p className="mt-1 text-slate-800">{data.progress_message || '처리 중...'}</p>
+            <div className="rounded-lg border border-[#d8e5fb] bg-white p-3 text-sm">
+              <p className="text-[#64748b]">현재 작업</p>
+              <p className="mt-1 text-[#0f1f3d]">{data.progress_message || '처리 중...'}</p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-sm">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2">
                 총 파일
-                <p className="mt-1 text-base font-semibold text-slate-900">{data.total_files || total}</p>
+                <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{data.total_files || total}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-emerald-50 px-3 py-2">
+              <div className="rounded-lg border border-[#d8e5fb] bg-emerald-50 px-3 py-2">
                 성공
                 <p className="mt-1 text-base font-semibold text-emerald-700">{data.success_count}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-red-50 px-3 py-2">
+              <div className="rounded-lg border border-[#d8e5fb] bg-red-50 px-3 py-2">
                 실패
                 <p className="mt-1 text-base font-semibold text-red-700">{data.failed_count}</p>
               </div>

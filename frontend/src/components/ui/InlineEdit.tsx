@@ -33,7 +33,7 @@ export function InlineEdit({ value, onSave, type = 'text', options = [], loading
     return (
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-left hover:bg-slate-100"
+        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-left hover:bg-[#fff7d6]"
         onClick={() => setEditing(true)}
       >
         <span>{value || '-'}</span>

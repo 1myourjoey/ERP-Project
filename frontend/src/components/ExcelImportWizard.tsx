@@ -75,7 +75,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
             {[1, 2, 3].map((value) => (
               <div
                 key={value}
-                className={`rounded-full px-2 py-1 ${step === value ? 'bg-slate-100 font-semibold' : 'bg-slate-50'}`}
+                className={`rounded-full px-2 py-1 ${step === value ? 'bg-[#fff7d6] font-semibold' : 'bg-[#f5f9ff]'}`}
               >
                 Step {value}
               </div>
@@ -85,7 +85,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
           {step === 1 && (
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">가져오기 유형</span>
+                <span className="mb-1 block text-xs font-medium text-[#64748b]">가져오기 유형</span>
                 <select className="form-input" value={importType} onChange={(event) => setImportType(event.target.value as ImportDomain)}>
                   {IMPORT_TYPES.map((type) => (
                     <option key={type.value} value={type.value}>
@@ -94,14 +94,14 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
                   ))}
                 </select>
               </label>
-              <label className="block rounded border border-dashed border-slate-200 p-4 text-center">
+              <label className="block rounded border border-dashed border-[#d8e5fb] p-4 text-center">
                 <input
                   type="file"
                   className="hidden"
                   accept=".xlsx,.xlsm,.xltx"
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
                 />
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-[#64748b]">
                   {file ? file.name : '엑셀 파일을 선택하세요'}
                 </span>
               </label>
@@ -113,7 +113,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
 
           {step === 2 && preview && (
             <div className="space-y-3">
-              <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] p-3 text-sm">
                 총 {preview.total_rows}행 | 유효 {preview.valid_rows}행 | 오류 {preview.error_rows.length}행
               </div>
 
@@ -128,7 +128,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
                 </div>
               )}
 
-              <div className="overflow-x-auto rounded border border-slate-200">
+              <div className="overflow-x-auto rounded border border-[#d8e5fb]">
                 <table className="min-w-full">
                   <thead>
                     <tr className="table-head-row">
@@ -155,7 +155,7 @@ export default function ExcelImportWizard({ open, onClose, onCompleted }: ExcelI
 
           {step === 3 && result && (
             <div className="space-y-2 text-sm">
-              <div className="rounded border border-slate-200 bg-slate-50 p-3">
+              <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] p-3">
                 가져오기를 완료했습니다.
               </div>
               <p>성공: {result.imported_count}건</p>

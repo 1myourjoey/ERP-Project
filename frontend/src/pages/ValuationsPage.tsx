@@ -120,10 +120,10 @@ function ValuationSimpleForm({
   }, [investments, value.fund_id])
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-2xl border border-[#d8e5fb] bg-[#f5f9ff] p-4">
       <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
           <select
             value={value.fund_id || ''}
             onChange={(e) => onChange({ ...value, fund_id: Number(e.target.value) || 0 })}
@@ -136,7 +136,7 @@ function ValuationSimpleForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">투자건</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">투자건</label>
           <select
             value={value.investment_id || ''}
             onChange={(e) => {
@@ -158,7 +158,7 @@ function ValuationSimpleForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">평가기준일</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">평가기준일</label>
           <input
             type="date"
             value={value.as_of_date || todayIso()}
@@ -167,7 +167,7 @@ function ValuationSimpleForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">평가방법</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">평가방법</label>
           <select
             value={value.method || 'mark_to_market'}
             onChange={(e) => onChange({ ...value, method: e.target.value })}
@@ -179,7 +179,7 @@ function ValuationSimpleForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">평가금액</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">평가금액</label>
           <input
             type="number"
             value={value.value}
@@ -369,7 +369,7 @@ export default function ValuationsPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === tab.key ? 'primary-btn' : 'bg-white text-slate-700 border border-slate-200'}`}
+            className={`rounded-lg px-3 py-1.5 text-sm ${activeTab === tab.key ? 'primary-btn' : 'bg-white text-[#0f1f3d] border border-[#d8e5fb]'}`}
           >
             {tab.label}
           </button>
@@ -384,33 +384,33 @@ export default function ValuationsPage() {
             <>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <div className="card-base p-3">
-                  <p className="text-xs text-slate-500">전체 NAV</p>
-                  <p className="mt-1 text-lg font-bold text-slate-800">{formatKRW(dashboardData?.total_nav || 0)}</p>
+                  <p className="text-xs text-[#64748b]">전체 NAV</p>
+                  <p className="mt-1 text-lg font-bold text-[#0f1f3d]">{formatKRW(dashboardData?.total_nav || 0)}</p>
                 </div>
                 <div className="card-base p-3">
-                  <p className="text-xs text-slate-500">미실현 손익</p>
+                  <p className="text-xs text-[#64748b]">미실현 손익</p>
                   <p className={`mt-1 text-lg font-bold ${(dashboardData?.total_unrealized_gain_loss || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {formatKRW(dashboardData?.total_unrealized_gain_loss || 0)}
                   </p>
                 </div>
                 <div className="card-base p-3">
-                  <p className="text-xs text-slate-500">평가 완료 건</p>
-                  <p className="mt-1 text-lg font-bold text-slate-800">{dashboardData?.valuation_count || 0}건</p>
+                  <p className="text-xs text-[#64748b]">평가 완료 건</p>
+                  <p className="mt-1 text-lg font-bold text-[#0f1f3d]">{dashboardData?.valuation_count || 0}건</p>
                 </div>
                 <div className="card-base p-3">
-                  <p className="text-xs text-slate-500">미평가 건</p>
-                  <p className="mt-1 text-lg font-bold text-slate-800">{dashboardData?.unvalued_count || 0}건</p>
+                  <p className="text-xs text-[#64748b]">미평가 건</p>
+                  <p className="mt-1 text-lg font-bold text-[#0f1f3d]">{dashboardData?.unvalued_count || 0}건</p>
                 </div>
               </div>
 
               <div className="card-base overflow-hidden">
-                <h3 className="mb-2 text-sm font-semibold text-slate-700">투자건별 최신 평가</h3>
+                <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">투자건별 최신 평가</h3>
                 {!dashboardData?.items.length ? (
                   <EmptyState emoji="💎" message="표시할 평가 데이터가 없습니다." className="py-8" />
                 ) : (
                   <div className="overflow-auto">
                     <table className="min-w-[980px] w-full text-sm">
-                      <thead className="bg-slate-50 text-xs text-slate-500">
+                      <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                         <tr>
                           <th className="px-3 py-2 text-left">투자사</th>
                           <th className="px-3 py-2 text-left">투자유형</th>
@@ -425,14 +425,14 @@ export default function ValuationsPage() {
                         {dashboardData.items.map((item) => (
                           <tr key={item.investment_id}>
                             <td className="px-3 py-2">{item.company_name}</td>
-                            <td className="px-3 py-2 text-slate-600">{item.instrument_type || item.instrument || '-'}</td>
+                            <td className="px-3 py-2 text-[#64748b]">{item.instrument_type || item.instrument || '-'}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(item.book_value || 0)}</td>
-                            <td className="px-3 py-2 text-right font-medium text-slate-800">{formatKRW(item.total_fair_value || 0)}</td>
+                            <td className="px-3 py-2 text-right font-medium text-[#0f1f3d]">{formatKRW(item.total_fair_value || 0)}</td>
                             <td className={`px-3 py-2 text-right font-semibold ${(item.unrealized_gain_loss || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                               {formatKRW(item.unrealized_gain_loss || 0)}
                             </td>
-                            <td className="px-3 py-2 text-slate-600">{toDateLabel(item.valuation_date)}</td>
-                            <td className="px-3 py-2 text-slate-600">{methodLabel(item.valuation_method || item.method)}</td>
+                            <td className="px-3 py-2 text-[#64748b]">{toDateLabel(item.valuation_date)}</td>
+                            <td className="px-3 py-2 text-[#64748b]">{methodLabel(item.valuation_method || item.method)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -442,13 +442,13 @@ export default function ValuationsPage() {
               </div>
 
               <div className="card-base overflow-hidden">
-                <h3 className="mb-2 text-sm font-semibold text-slate-700">조합별 NAV 요약</h3>
+                <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">조합별 NAV 요약</h3>
                 {!navSummary.length ? (
                   <EmptyState emoji="📊" message="조합별 NAV 데이터가 없습니다." className="py-8" />
                 ) : (
                   <div className="overflow-auto">
                     <table className="min-w-[720px] w-full text-sm">
-                      <thead className="bg-slate-50 text-xs text-slate-500">
+                      <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                         <tr>
                           <th className="px-3 py-2 text-left">조합</th>
                           <th className="px-3 py-2 text-right">총 NAV</th>
@@ -480,9 +480,9 @@ export default function ValuationsPage() {
       {activeTab === 'history' && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">투자건 시계열 가치</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">투자건 시계열 가치</h3>
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-slate-600">투자건 선택</label>
+              <label className="mb-1 block text-xs font-medium text-[#64748b]">투자건 선택</label>
               <select
                 value={historyInvestmentId || ''}
                 onChange={(e) => setHistoryInvestmentId(e.target.value ? Number(e.target.value) : null)}
@@ -507,15 +507,15 @@ export default function ValuationsPage() {
                   const value = Number(row.total_fair_value || 0)
                   const width = Math.max(4, Math.round((value / maxHistoryValue) * 100))
                   return (
-                    <div key={row.id} className="rounded border border-slate-200 p-2">
-                      <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                    <div key={row.id} className="rounded border border-[#d8e5fb] p-2">
+                      <div className="mb-1 flex items-center justify-between text-xs text-[#64748b]">
                         <span>{toDateLabel(row.valuation_date || row.as_of_date)}</span>
                         <span>{formatKRW(value)}</span>
                       </div>
-                      <div className="h-2 rounded bg-slate-100">
-                        <div className="h-2 rounded bg-blue-500" style={{ width: `${width}%` }} />
+                      <div className="h-2 rounded bg-[#fff7d6]">
+                        <div className="h-2 rounded bg-[#558ef8]" style={{ width: `${width}%` }} />
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
+                      <div className="mt-1 text-[11px] text-[#64748b]">
                         장부가 {formatKRW(row.book_value || 0)} / 손익 {formatKRW(row.unrealized_gain_loss || 0)}
                       </div>
                     </div>
@@ -526,10 +526,10 @@ export default function ValuationsPage() {
           </div>
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">분기말 일괄 평가</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">분기말 일괄 평가</h3>
             <div className="space-y-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
                 <select
                   value={bulkFundId || ''}
                   onChange={(e) => setBulkFundId(e.target.value ? Number(e.target.value) : null)}
@@ -542,7 +542,7 @@ export default function ValuationsPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">평가 기준일</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">평가 기준일</label>
                 <input
                   type="date"
                   value={bulkDate}
@@ -560,7 +560,7 @@ export default function ValuationsPage() {
               {bulkMut.isPending ? '생성 중...' : '분기말 일괄 생성'}
             </button>
 
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-[#64748b]">
               선택한 조합의 투자건별 최신 평가를 기반으로 기준일 평가를 일괄 생성합니다.
             </p>
           </div>
@@ -570,10 +570,10 @@ export default function ValuationsPage() {
       {activeTab === 'records' && (
         <>
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">필터</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">필터</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
                 <select
                   value={filters.fund_id || ''}
                   onChange={(e) => setFilters((prev) => ({ ...prev, fund_id: e.target.value ? Number(e.target.value) : null }))}
@@ -586,7 +586,7 @@ export default function ValuationsPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">투자건</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">투자건</label>
                 <select
                   value={filters.investment_id || ''}
                   onChange={(e) => setFilters((prev) => ({ ...prev, investment_id: e.target.value ? Number(e.target.value) : null }))}
@@ -599,7 +599,7 @@ export default function ValuationsPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">평가방법</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">평가방법</label>
                 <select
                   value={filters.method}
                   onChange={(e) => setFilters((prev) => ({ ...prev, method: e.target.value }))}
@@ -632,7 +632,7 @@ export default function ValuationsPage() {
           )}
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">평가 레코드</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">평가 레코드</h3>
             {valuationsLoading ? (
               <PageLoading />
             ) : !valuations.length ? (
@@ -640,7 +640,7 @@ export default function ValuationsPage() {
             ) : (
               <div className="space-y-2">
                 {valuations.map((row) => (
-                  <div key={row.id} className="rounded-lg border border-slate-200 p-3">
+                  <div key={row.id} className="rounded-lg border border-[#d8e5fb] p-3">
                     {editingId === row.id && editForm ? (
                       <ValuationSimpleForm
                         funds={funds}
@@ -658,13 +658,13 @@ export default function ValuationsPage() {
                     ) : (
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-slate-800">
+                          <p className="text-sm font-medium text-[#0f1f3d]">
                             {toDateLabel(row.valuation_date || row.as_of_date)} · #{row.investment_id} · {methodLabel(row.valuation_method || row.method)}
                           </p>
-                          <p className="mt-0.5 text-xs text-slate-500">
+                          <p className="mt-0.5 text-xs text-[#64748b]">
                             {row.company_name || `회사 #${row.company_id}`} · 평가금액 {formatKRW(row.total_fair_value || row.value)}
                           </p>
-                          <p className="mt-0.5 text-xs text-slate-500">
+                          <p className="mt-0.5 text-xs text-[#64748b]">
                             장부가 {formatKRW(row.book_value || row.prev_value || 0)} · 손익 {formatKRW(row.unrealized_gain_loss || row.change_amount || 0)} ({toPercent(row.change_pct)})
                           </p>
                         </div>

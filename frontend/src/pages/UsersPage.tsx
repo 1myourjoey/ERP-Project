@@ -271,15 +271,15 @@ export default function UsersPage() {
 
       <div className="card-base">
         <div className="mb-3 flex gap-2 text-xs">
-          <button onClick={() => setTab('active')} className={`rounded px-3 py-1.5 ${tab === 'active' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>활성 사용자 ({activeUsers.length})</button>
-          <button onClick={() => setTab('pending')} className={`rounded px-3 py-1.5 ${tab === 'pending' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>승인 대기 ({pendingUsers.length})</button>
-          <button onClick={() => setTab('invites')} className={`rounded px-3 py-1.5 ${tab === 'invites' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>초대 관리 ({invitations.length})</button>
+          <button onClick={() => setTab('active')} className={`rounded px-3 py-1.5 ${tab === 'active' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>활성 사용자 ({activeUsers.length})</button>
+          <button onClick={() => setTab('pending')} className={`rounded px-3 py-1.5 ${tab === 'pending' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>승인 대기 ({pendingUsers.length})</button>
+          <button onClick={() => setTab('invites')} className={`rounded px-3 py-1.5 ${tab === 'invites' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>초대 관리 ({invitations.length})</button>
         </div>
 
         {tab === 'active' && (usersLoading ? <PageLoading /> : activeUsers.length === 0 ? <EmptyState emoji="👤" message="활성 사용자 없음" className="py-8" /> : (
           <div className="space-y-2">
             {activeUsers.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-2 text-sm">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
                 <p>{row.name} ({row.username}) · {labelRole(row.role)} · {displayEmail(row.email)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditingId(row.id); setForm({ username: row.username, name: row.name, email: displayEmail(row.email) === '-' ? '' : displayEmail(row.email), password: '', role: row.role, department: row.department || '', is_active: row.is_active, allowed_routes: row.allowed_routes || [] }); setOpenMode('edit') }} className="secondary-btn text-xs">수정</button>
@@ -295,7 +295,7 @@ export default function UsersPage() {
         {tab === 'pending' && (pendingLoading ? <PageLoading /> : pendingUsers.length === 0 ? <EmptyState emoji="🕒" message="승인 대기 없음" className="py-8" /> : (
           <div className="space-y-2">
             {pendingUsers.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-2 text-sm">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
                 <p>{row.name} ({row.username}) · {labelRole(row.role)} · {displayEmail(row.email)} · {toDateLabel(row.created_at)}</p>
                 <div className="flex gap-2">
                   <button onClick={() => approveMut.mutate(row.id)} className="secondary-btn text-xs">승인</button>
@@ -309,7 +309,7 @@ export default function UsersPage() {
         {tab === 'invites' && (inviteLoading ? <PageLoading /> : invitations.length === 0 ? <EmptyState emoji="🔗" message="초대 없음" className="py-8" /> : (
           <div className="space-y-2">
             {invitations.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-2 text-sm">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
                 <p>{row.name || row.email || '-'} · {labelRole(row.role)} · {labelStatus(row.status)} · {toDateLabel(row.expires_at)}</p>
                 <div className="flex gap-2">
                   {row.status === 'pending' && (
@@ -332,8 +332,8 @@ export default function UsersPage() {
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="modal-content w-full max-w-3xl bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-800">{openMode === 'create' ? '사용자 생성' : '사용자 수정'}</h3>
-              <button onClick={() => { setOpenMode(null); setEditingId(null); setForm(EMPTY_USER_FORM) }} className="text-sm text-slate-500">닫기</button>
+              <h3 className="text-sm font-semibold text-[#0f1f3d]">{openMode === 'create' ? '사용자 생성' : '사용자 수정'}</h3>
+              <button onClick={() => { setOpenMode(null); setEditingId(null); setForm(EMPTY_USER_FORM) }} className="text-sm text-[#64748b]">닫기</button>
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} className="form-input" placeholder="아이디" />
@@ -346,7 +346,7 @@ export default function UsersPage() {
               <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} className="form-input" placeholder={openMode === 'edit' ? '비밀번호(선택)' : '비밀번호'} />
             </div>
             {(form.role === 'viewer' || form.role === 'manager') && (
-              <div className="mt-3 max-h-40 overflow-auto rounded border border-slate-200 p-2 text-xs">
+              <div className="mt-3 max-h-40 overflow-auto rounded border border-[#d8e5fb] p-2 text-xs">
                 {ROUTE_KEYS.map((key) => (
                   <label key={key} className="inline-flex w-1/2 items-center gap-1 py-0.5">
                     <input
@@ -399,8 +399,8 @@ export default function UsersPage() {
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="modal-content w-full max-w-2xl bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-800">초대 링크 생성</h3>
-              <button onClick={() => setInviteModalOpen(false)} className="text-sm text-slate-500">닫기</button>
+              <h3 className="text-sm font-semibold text-[#0f1f3d]">초대 링크 생성</h3>
+              <button onClick={() => setInviteModalOpen(false)} className="text-sm text-[#64748b]">닫기</button>
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input value={inviteForm.name} onChange={(e) => setInviteForm((p) => ({ ...p, name: e.target.value }))} className="form-input" placeholder="이름(선택)" />
@@ -412,7 +412,7 @@ export default function UsersPage() {
               <input type="number" min={1} max={365} value={inviteForm.expires_in_days} onChange={(e) => setInviteForm((p) => ({ ...p, expires_in_days: Number(e.target.value || 7) }))} className="form-input md:col-span-2" placeholder="만료일(일)" />
             </div>
             {(inviteForm.role === 'viewer' || inviteForm.role === 'manager') && (
-              <div className="mt-3 max-h-40 overflow-auto rounded border border-slate-200 p-2 text-xs">
+              <div className="mt-3 max-h-40 overflow-auto rounded border border-[#d8e5fb] p-2 text-xs">
                 {ROUTE_KEYS.map((key) => (
                   <label key={key} className="inline-flex w-1/2 items-center gap-1 py-0.5">
                     <input

@@ -5,7 +5,7 @@ import LottieAnimation from './LottieAnimation'
 const TOAST_COLOR = {
   success: 'bg-green-50 border-green-300 text-green-800',
   error: 'bg-red-50 border-red-300 text-red-800',
-  info: 'bg-blue-50 border-blue-300 text-blue-800',
+  info: 'bg-[#f5f9ff] border-[#b2cbfb] text-[#0f1f3d]',
   warning: 'bg-amber-50 border-amber-300 text-amber-800',
 }
 

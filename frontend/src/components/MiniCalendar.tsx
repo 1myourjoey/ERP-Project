@@ -57,7 +57,7 @@ function dotClass(event: CalendarEvent, today: Date) {
   if (tone === 'overdue') return 'bg-red-500'
   if (tone === 'today') return 'bg-orange-500'
   if (tone === 'this_week') return 'bg-amber-400'
-  return 'bg-blue-500'
+  return 'bg-[#558ef8]'
 }
 
 function typeLabel(event: CalendarEvent) {
@@ -81,9 +81,9 @@ function statusBadge(event: CalendarEvent, today: Date): { text: string; classNa
     return { text: '완료', className: 'rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700' }
   }
   if (event.status === 'pending') {
-    return { text: '진행중', className: 'rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700' }
+    return { text: '진행중', className: 'rounded-full bg-[#e6efff] px-1.5 py-0.5 text-[10px] font-semibold text-[#1a3660]' }
   }
-  return { text: labelStatus(event.status), className: 'rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600' }
+  return { text: labelStatus(event.status), className: 'rounded-full bg-[#fff7d6] px-1.5 py-0.5 text-[10px] font-semibold text-[#64748b]' }
 }
 
 export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalendarProps) {
@@ -152,36 +152,36 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
   })
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+    <div className="rounded-2xl border border-[#e6eefc] bg-white p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-          className="icon-btn text-slate-600 hover:bg-slate-200"
+          className="icon-btn text-[#64748b] hover:bg-[#d8e5fb]"
           aria-label="이전 달"
         >
           <ChevronLeft size={14} />
         </button>
-        <p className="text-xs font-semibold text-slate-700">{monthLabel}</p>
+        <p className="text-xs font-semibold text-[#0f1f3d]">{monthLabel}</p>
         <button
           onClick={() => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-          className="icon-btn text-slate-600 hover:bg-slate-200"
+          className="icon-btn text-[#64748b] hover:bg-[#d8e5fb]"
           aria-label="다음 달"
         >
           <ChevronRight size={14} />
         </button>
       </div>
 
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
-        <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-blue-500" />업무</span>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-[#64748b]">
+        <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-[#558ef8]" />업무</span>
         <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-violet-500" />워크플로우</span>
         <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-emerald-500" />일정</span>
-        <span className="text-gray-300">|</span>
+        <span className="text-[#94a3b8]">|</span>
         <span className="inline-flex items-center gap-1 text-red-600">🔴 지연</span>
         <span className="inline-flex items-center gap-1 text-orange-600">🟠 오늘</span>
         <span className="inline-flex items-center gap-1 text-amber-600">🟡 이번주</span>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-500">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-[#64748b]">
         {WEEKDAY_LABELS.map((label) => <div key={label}>{label}</div>)}
       </div>
 
@@ -199,13 +199,13 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
               onClick={() => setSelectedDate(key)}
               className={`min-h-10 rounded border px-1 py-1 text-left ${
                 selectedDate === key
-                  ? 'border-blue-300 bg-blue-50'
+                  ? 'border-[#b2cbfb] bg-[#f5f9ff]'
                   : hasOverdueTask
                     ? 'border-red-300 bg-red-50 hover:bg-red-100'
                     : hasTodayTask
                       ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
-                      : 'border-slate-100 bg-white hover:bg-slate-50'
-              } ${inCurrentMonth ? '' : 'text-gray-300'}`}
+                      : 'border-[#e6eefc] bg-white hover:bg-[#f5f9ff]'
+              } ${inCurrentMonth ? '' : 'text-[#94a3b8]'}`}
             >
               <p className="text-[10px]">{date.getDate()}</p>
               <div className="mt-0.5 flex flex-wrap gap-[2px]">
@@ -218,9 +218,9 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
         })}
       </div>
 
-      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
+      <div className="mt-3 rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-2">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-700">{parseDate(selectedDate).toLocaleDateString('ko-KR')}</p>
+          <p className="text-xs font-medium text-[#0f1f3d]">{parseDate(selectedDate).toLocaleDateString('ko-KR')}</p>
           <button
             onClick={() => setShowCreate((prev) => !prev)}
             className="primary-btn btn-sm"
@@ -230,7 +230,7 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
         </div>
 
         {showCreate && (
-          <div className="mb-2 space-y-1 rounded border border-blue-200 bg-white p-2">
+          <div className="mb-2 space-y-1 rounded border border-[#c5d8fb] bg-white p-2">
             <div>
               <label className="form-label text-[10px]">일정 제목</label>
               <input
@@ -270,7 +270,7 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
         )}
 
         {!selectedEvents.length ? (
-          <p className="text-xs text-slate-500">선택한 날짜에 일정이 없습니다.</p>
+          <p className="text-xs text-[#64748b]">선택한 날짜에 일정이 없습니다.</p>
         ) : (
           <div className="max-h-44 space-y-1 overflow-auto">
             {selectedEvents.map((event) => {
@@ -287,14 +287,14 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
                     }
                   }}
                   className={`rounded border bg-white p-1.5 ${
-                    tone === 'overdue' ? 'border-red-300 border-l-4 bg-red-50/60' : 'border-slate-200'
+                    tone === 'overdue' ? 'border-red-300 border-l-4 bg-red-50/60' : 'border-[#d8e5fb]'
                   } ${
-                    taskId && onTaskClick ? 'cursor-pointer hover:bg-blue-50' : ''
+                    taskId && onTaskClick ? 'cursor-pointer hover:bg-[#f5f9ff]' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <div className="min-w-0">
-                      <p className={`truncate text-xs text-slate-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>
+                      <p className={`truncate text-xs text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>
                         {event.title}
                       </p>
                     </div>
@@ -328,7 +328,7 @@ export default function MiniCalendar({ onTaskClick, onTaskComplete }: MiniCalend
                       ) : null}
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#64748b]">
                     {event.time || '-'} | {typeLabel(event)} | {tone === 'overdue' ? '기한 초과' : labelStatus(event.status)}
                   </p>
                 </div>

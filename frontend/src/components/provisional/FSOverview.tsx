@@ -16,8 +16,8 @@ function statusLabel(item: ProvisionalFSOverviewItem): string {
 function statusClass(status: string): string {
   if (status === 'confirmed') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (status === 'needs_mapping') return 'bg-amber-50 text-amber-700 border-amber-200'
-  if (status === 'not_started') return 'bg-slate-100 text-slate-600 border-slate-200'
-  return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (status === 'not_started') return 'bg-[#fff7d6] text-[#64748b] border-[#d8e5fb]'
+  return 'bg-[#f5f9ff] text-[#1a3660] border-[#c5d8fb]'
 }
 
 export default function FSOverview({ yearMonth }: { yearMonth: string }) {
@@ -30,7 +30,7 @@ export default function FSOverview({ yearMonth }: { yearMonth: string }) {
   if (isLoading) {
     return (
       <div className="card-base p-4">
-        <p className="text-sm text-slate-500">전체 조합 현황을 불러오는 중...</p>
+        <p className="text-sm text-[#64748b]">전체 조합 현황을 불러오는 중...</p>
       </div>
     )
   }
@@ -46,7 +46,7 @@ export default function FSOverview({ yearMonth }: { yearMonth: string }) {
   return (
     <div className="card-base p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">전체 조합 가결산 현황</h3>
+        <h3 className="text-sm font-semibold text-[#0f1f3d]">전체 조합 가결산 현황</h3>
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
             확정 {data.summary.confirmed_count}/{data.summary.fund_count}
@@ -54,7 +54,7 @@ export default function FSOverview({ yearMonth }: { yearMonth: string }) {
           <span className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">
             수동매핑 {data.summary.needs_mapping_count}
           </span>
-          <span className="rounded border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">
+          <span className="rounded border border-[#d8e5fb] bg-[#fff7d6] px-2 py-1 text-[#0f1f3d]">
             미입력 {data.summary.not_started_count}
           </span>
         </div>
@@ -62,14 +62,14 @@ export default function FSOverview({ yearMonth }: { yearMonth: string }) {
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
         {data.items.map((item) => (
-          <div key={item.fund_id} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div key={item.fund_id} className="rounded-lg border border-[#d8e5fb] bg-white p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-medium text-slate-800">{item.fund_name}</p>
+              <p className="truncate text-sm font-medium text-[#0f1f3d]">{item.fund_name}</p>
               <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusClass(item.status)}`}>
                 {statusLabel(item)}
               </span>
             </div>
-            <div className="space-y-1 text-xs text-slate-600">
+            <div className="space-y-1 text-xs text-[#64748b]">
               <p>자산: {item.total_assets == null ? '-' : formatKRW(item.total_assets)}</p>
               <p>입출금: {item.bank_txn_count}건</p>
               <p>미매핑: {item.unmapped_count}건</p>

@@ -109,11 +109,11 @@ function DashboardRightPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">운영 현황</h3>
+        <h3 className="text-sm font-semibold text-[#0f1f3d]">운영 현황</h3>
         <button
           type="button"
           onClick={() => setQuickCollapsed((prev) => !prev)}
-          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+          className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-2 py-1 text-xs text-[#64748b] hover:bg-[#f5f9ff]"
         >
           {quickCollapsed ? '펼치기' : '접기'}
           <ChevronDown size={12} className={`transition-transform ${quickCollapsed ? '-rotate-90' : ''}`} />
@@ -122,16 +122,16 @@ function DashboardRightPanel({
 
       {quickCollapsed ? (
         <div className="card-base dashboard-card">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-600">
-            <span className="rounded-full bg-slate-100 px-2.5 py-1">조합 {uniqueFunds.length}건</span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1">보고 마감 {reports.length}건</span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
+          <div className="flex flex-wrap gap-3 text-xs text-[#64748b]">
+            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">조합 {uniqueFunds.length}건</span>
+            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">보고 마감 {reports.length}건</span>
+            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">미수 서류 {missingDocuments.length}건</span>
+            <span className="rounded-full bg-[#fff7d6] px-2.5 py-1">공지/알림 {upcomingNotices.length}건</span>
           </div>
         </div>
       ) : (
         <>
-          <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5">
+          <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-0.5">
             {RIGHT_TABS.map((tab) => {
               const count = tabCount[tab.key]
               return (
@@ -139,13 +139,13 @@ function DashboardRightPanel({
                   key={tab.key}
                   onClick={() => setRightTab(tab.key)}
                   className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                    rightTab === tab.key ? 'bg-white font-medium text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'
+                    rightTab === tab.key ? 'bg-white font-medium text-[#0f1f3d] shadow' : 'text-[#64748b] hover:text-[#0f1f3d]'
                   }`}
                 >
                   <tab.icon size={13} />
                   {tab.label}
                   {count > 0 && (
-                    <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[10px] text-slate-600">
+                    <span className="ml-0.5 rounded-full bg-[#d8e5fb] px-1.5 text-[10px] text-[#64748b]">
                       {count}
                     </span>
                   )}
@@ -156,9 +156,9 @@ function DashboardRightPanel({
 
           {rightTab === 'funds' && (
             <div className="card-base dashboard-card">
-              <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2">
-                <p className="text-xs font-semibold text-blue-800">운영 요약</p>
-                <div className="mt-1 grid grid-cols-2 gap-1.5 text-xs text-blue-700">
+              <div className="mb-2 rounded-lg border border-[#d8e5fb] bg-[#f5f9ff]/60 px-2.5 py-2">
+                <p className="text-xs font-semibold text-[#0f1f3d]">운영 요약</p>
+                <div className="mt-1 grid grid-cols-2 gap-1.5 text-xs text-[#1a3660]">
                   <div>
                     심의 진행 <span className="font-semibold">{investmentReviewActiveCount}건</span>
                   </div>
@@ -175,13 +175,13 @@ function DashboardRightPanel({
               </div>
 
               {widgetsLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">조합 목록을 불러오는 중입니다...</p>
+                <p className="py-8 text-center text-sm text-[#64748b]">조합 목록을 불러오는 중입니다...</p>
               ) : uniqueFunds.length === 0 ? (
                 <EmptyState icon={<Building2 size={18} />} message="등록된 조합이 없습니다." className="py-8" />
               ) : (
                 <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
                   {duplicateFundCount > 0 && (
-                    <p className="rounded bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                    <p className="rounded bg-[#f5f9ff] px-2 py-1 text-[11px] text-[#64748b]">
                       중복 조합 {duplicateFundCount}건은 통합하여 표시합니다.
                     </p>
                   )}
@@ -189,13 +189,13 @@ function DashboardRightPanel({
                     <button
                       key={fund.id}
                       onClick={() => navigate(`/funds/${fund.id}`)}
-                      className="w-full rounded-lg border border-slate-200 p-2 text-left hover:bg-slate-50"
+                      className="w-full rounded-lg border border-[#d8e5fb] p-2 text-left hover:bg-[#f5f9ff]"
                     >
-                      <p className="text-sm font-medium text-slate-800">{fund.name}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-medium text-[#0f1f3d]">{fund.name}</p>
+                      <p className="text-xs text-[#64748b]">
                         LP {fund.lp_count} | 투자 {fund.investment_count} | 약정 {formatKRW(fund.commitment_total)}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-[#64748b]">
                         컴플라이언스 {fund.compliance_overdue}건 지연 | 서류 {fund.doc_collection_progress || '-'}
                       </p>
                     </button>
@@ -208,7 +208,7 @@ function DashboardRightPanel({
           {rightTab === 'notices' && (
             <div className="card-base dashboard-card">
               {noticesLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">공지 일정을 불러오는 중입니다...</p>
+                <p className="py-8 text-center text-sm text-[#64748b]">공지 일정을 불러오는 중입니다...</p>
               ) : upcomingNotices.length === 0 ? (
                 <EmptyState icon={<Clock size={18} />} message="다가오는 공지 기한이 없습니다." className="py-8" />
               ) : (
@@ -232,7 +232,7 @@ function DashboardRightPanel({
                         className="feed-card w-full text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-[#0f1f3d]">
                             {notice.fund_name} | {notice.notice_label}
                             {isPeriodicRow(notice.source_label, notice.notice_label) && (
                               <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs text-rose-700">정기</span>
@@ -244,7 +244,7 @@ function DashboardRightPanel({
                           {notice.source_label ? `${notice.source_label} ` : ''}
                           {notice.workflow_instance_name}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">기한 {formatShortDate(notice.deadline)}</p>
+                        <p className="mt-0.5 text-[11px] text-[#64748b]">기한 {formatShortDate(notice.deadline)}</p>
                       </button>
                     )
                   })}
@@ -256,7 +256,7 @@ function DashboardRightPanel({
           {rightTab === 'reports' && (
             <div className="card-base dashboard-card">
               {widgetsLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">보고 마감 목록을 불러오는 중입니다...</p>
+                <p className="py-8 text-center text-sm text-[#64748b]">보고 마감 목록을 불러오는 중입니다...</p>
               ) : reports.length === 0 ? (
                 <EmptyState icon={<Send size={18} />} message="임박한 보고 마감이 없습니다." className="py-8" />
               ) : (
@@ -303,7 +303,7 @@ function DashboardRightPanel({
           {rightTab === 'documents' && (
             <div className="card-base dashboard-card">
               {widgetsLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">미수집 서류를 불러오는 중입니다...</p>
+                <p className="py-8 text-center text-sm text-[#64748b]">미수집 서류를 불러오는 중입니다...</p>
               ) : missingDocuments.length === 0 ? (
                 <EmptyState icon={<FileWarning size={18} />} message="미수집 서류가 없습니다." className="py-8" />
               ) : (
@@ -323,7 +323,7 @@ function DashboardRightPanel({
                         <p className="feed-card-meta truncate">
                           {doc.fund_name} | {doc.company_name} | {labelStatus(doc.status)}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">마감 {formatShortDate(doc.due_date)}</p>
+                        <p className="mt-0.5 text-[11px] text-[#64748b]">마감 {formatShortDate(doc.due_date)}</p>
                       </button>
                     )
                   })}
@@ -337,13 +337,13 @@ function DashboardRightPanel({
       <div className="card-base dashboard-card">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-emerald-700">완료 업무</h3>
-          <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5 text-xs">
+          <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-0.5 text-xs">
             {(['today', 'this_week', 'last_week'] as const).map((key) => (
               <button
                 key={key}
                 onClick={() => setCompletedFilter(key)}
                 className={`rounded-lg px-2 py-1 ${
-                  completedFilter === key ? 'bg-white font-medium text-emerald-700 shadow' : 'text-slate-500 hover:text-slate-700'
+                  completedFilter === key ? 'bg-white font-medium text-emerald-700 shadow' : 'text-[#64748b] hover:text-[#0f1f3d]'
                 }`}
               >
                 {key === 'today' ? '오늘' : key === 'this_week' ? '이번 주' : '지난주'}
@@ -352,11 +352,11 @@ function DashboardRightPanel({
           </div>
         </div>
 
-        <p className="mb-2 text-xs text-slate-500">
+        <p className="mb-2 text-xs text-[#64748b]">
           오늘 {completedTodayCount}건 · 이번 주 {completedThisWeekCount}건
         </p>
         {completedLoading ? (
-          <p className="py-6 text-center text-sm text-slate-500">완료 업무를 불러오는 중입니다...</p>
+          <p className="py-6 text-center text-sm text-[#64748b]">완료 업무를 불러오는 중입니다...</p>
         ) : filteredCompleted.length === 0 ? (
           <EmptyState icon={<CheckCircle2 size={18} />} message="완료된 업무가 없습니다." className="py-6" />
         ) : (
@@ -365,13 +365,13 @@ function DashboardRightPanel({
               <div key={task.id} className="flex items-center justify-between text-sm">
                 <button
                   onClick={() => onOpenTask(task, true)}
-                  className="truncate text-left text-slate-600 line-through hover:text-blue-600"
+                  className="truncate text-left text-[#64748b] line-through hover:text-[#558ef8]"
                 >
                   {task.title}
                 </button>
                 <div className="ml-2 flex items-center gap-2">
-                  {task.actual_time && <span className="text-xs text-slate-500">{task.actual_time}</span>}
-                  <button onClick={() => onUndoComplete(task.id)} className="text-xs text-blue-500 hover:underline">
+                  {task.actual_time && <span className="text-xs text-[#64748b]">{task.actual_time}</span>}
+                  <button onClick={() => onUndoComplete(task.id)} className="text-xs text-[#558ef8] hover:underline">
                     되돌리기
                   </button>
                 </div>

@@ -20,8 +20,8 @@ export default function DataFilterBar({
       {(title || description || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            {title && <h3 className="text-base font-semibold text-slate-800">{title}</h3>}
-            {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
+            {title && <h3 className="text-base font-semibold text-[#0f1f3d]">{title}</h3>}
+            {description && <p className="mt-1 text-xs text-[#64748b]">{description}</p>}
           </div>
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </div>

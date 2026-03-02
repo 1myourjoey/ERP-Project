@@ -53,10 +53,10 @@ import { invalidateFundRelated, invalidateTaskRelated } from '../lib/queryInvali
 import { resolveDeadlineTone, type TaskDeadlineTone } from '../lib/taskUrgency'
 
 const QUADRANTS = [
-  { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-red-400', bg: 'bg-red-50', badge: 'bg-red-500' },
-  { key: 'Q2', label: '중요·비긴급 (Q2)', color: 'border-blue-400', bg: 'bg-blue-50', badge: 'bg-blue-500' },
-  { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-amber-400', bg: 'bg-amber-50', badge: 'bg-amber-500' },
-  { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-slate-300', bg: 'bg-slate-50', badge: 'bg-gray-400' },
+  { key: 'Q1', label: '긴급·중요 (Q1)', color: 'border-[#9fb7e5]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#0f1f3d]' },
+  { key: 'Q2', label: '중요·비긴급 (Q2)', color: 'border-[#9fb7e5]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#558ef8]' },
+  { key: 'Q3', label: '긴급·비중요 (Q3)', color: 'border-[#d9c89a]', bg: 'bg-[#fff7d6]', badge: 'bg-[#1a3660]' },
+  { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-[#bfcff0]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#64748b]' },
 ] as const
 
 const VIEW_TABS = [
@@ -141,14 +141,14 @@ function taskUrgencyMeta(task: Task): {
       }
     case 'none':
       return {
-        leftBorderClass: 'border-l-slate-300',
+        leftBorderClass: 'border-l-[#bfcff0]',
         badgeStatus: 'pending',
         label: '기한없음',
       }
     case 'later':
     default:
       return {
-        leftBorderClass: 'border-l-slate-300',
+        leftBorderClass: 'border-l-[#bfcff0]',
         badgeStatus: null,
         label: null,
       }
@@ -260,15 +260,15 @@ const TaskItem = memo(function TaskItem({
         setIsDragging(true)
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`group flex items-start gap-3 rounded-xl border border-slate-200 border-l-4 bg-white px-3.5 py-3 transition-shadow hover:shadow-sm ${
+      className={`group flex items-start gap-3 rounded-xl border border-[#d8e5fb] border-l-4 bg-white px-3.5 py-3 transition-shadow hover:shadow-sm ${
         urgencyMeta.leftBorderClass
       } ${
-        isBlinking ? 'animate-pulse ring-2 ring-blue-400' : ''
+        isBlinking ? 'animate-pulse ring-2 ring-[#558ef8]' : ''
       } ${
         isDragging ? 'opacity-70' : ''
       }`}
     >
-      <div className="hidden text-gray-300 transition-colors group-hover:text-slate-500 md:block">
+      <div className="hidden text-[#94a3b8] transition-colors group-hover:text-[#64748b] md:block">
         <GripVertical size={13} />
       </div>
       <div className="flex h-full items-start pt-1" onClick={(event) => event.stopPropagation()}>
@@ -276,15 +276,15 @@ const TaskItem = memo(function TaskItem({
           type="checkbox"
           checked={selected}
           onChange={(event) => onToggleSelect(task.id, event.target.checked)}
-          className={`h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 ${
+          className={`h-4 w-4 cursor-pointer rounded border-[#bfcff0] text-[#558ef8] focus:ring-[#558ef8] ${
             selected || selectionMode ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
           }`}
           aria-label={`업무 선택: ${task.title}`}
         />
       </div>
       <div className="min-w-0 flex-1 cursor-pointer space-y-1" onClick={() => onEdit(task)}>
-        <p className="text-sm font-medium leading-snug text-slate-800">{task.title}</p>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+        <p className="text-sm font-medium leading-snug text-[#0f1f3d]">{task.title}</p>
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b]">
           {displayTag && <span className={displayTag.className}>{displayTag.label}</span>}
           {deadlineStr && <span>{deadlineStr}</span>}
           {task.estimated_time && (
@@ -304,13 +304,13 @@ const TaskItem = memo(function TaskItem({
         </button>
         <button
           onClick={() => onEdit(task)}
-          className="btn-sm rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+          className="btn-sm rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-1.5 text-xs font-medium text-[#1a3660] transition-colors hover:bg-[#e6efff]"
         >
           수정
         </button>
         <button
           onClick={() => onDelete(task.id)}
-          className="icon-btn text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
+          className="icon-btn text-[#64748b] opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
           title="삭제"
         >
           <Trash2 size={14} />
@@ -352,37 +352,37 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
   }, [hasBlinkingTask])
 
   return (
-    <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+    <div className="rounded-xl border border-[#c5d8fb] bg-[#f5f9ff] p-3">
       <button onClick={() => setExpanded((prev) => !prev)} className="flex w-full items-center gap-2.5 text-left">
-        <span className="text-indigo-500">
+        <span className="text-[#558ef8]">
           <GitBranch size={13} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-indigo-800">{group.currentStep?.fund_name || '워크플로'}</p>
-          <p className="truncate text-xs text-indigo-600">현재: {group.currentStep?.title || '-'}</p>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-indigo-200/80">
+          <p className="truncate text-sm font-medium text-[#0f1f3d]">{group.currentStep?.fund_name || '워크플로'}</p>
+          <p className="truncate text-xs text-[#64748b]">현재: {group.currentStep?.title || '-'}</p>
+          <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#d8e5fb]/80">
             <div
-              className="h-1.5 rounded-full bg-indigo-500 transition-all"
+              className="h-1.5 rounded-full bg-[#558ef8] transition-all"
               style={{ width: `${group.progressPercent}%` }}
             />
           </div>
-          <p className="mt-1.5 truncate text-[11px] text-indigo-700">
+          <p className="mt-1.5 truncate text-[11px] text-[#1a3660]">
             진행률 {group.completedSteps}/{group.totalSteps} ({group.progressPercent}%)
             {group.nextStep ? ` | 다음: ${group.nextStep.title}` : ''}
           </p>
         </div>
-        <span className="tag tag-indigo shrink-0">
+        <span className="tag tag-blue shrink-0">
           {group.progress}
         </span>
-        <ChevronDown size={14} className={`text-indigo-500 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+        <ChevronDown size={14} className={`text-[#558ef8] transition-transform ${expanded ? '' : '-rotate-90'}`} />
       </button>
 
       {expanded && (
-        <div className="ml-3 mt-2 space-y-2 border-l-2 border-indigo-200 pl-3">
+        <div className="ml-3 mt-2 space-y-2 border-l-2 border-[#c5d8fb] pl-3">
           {group.tasks.map((task) => {
             const isCurrent = group.currentStep?.id === task.id
             return (
-              <div key={task.id} className={isCurrent ? 'rounded-md ring-2 ring-indigo-300' : ''}>
+              <div key={task.id} className={isCurrent ? 'rounded-md ring-2 ring-[#b2cbfb]' : ''}>
                 <TaskItem
                   task={task}
                   onComplete={onComplete}
@@ -507,7 +507,7 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
     return (
       <button
         onClick={() => setOpen(true)}
-        className="secondary-btn btn-sm inline-flex w-full items-center justify-center gap-1 text-slate-600"
+        className="secondary-btn btn-sm inline-flex w-full items-center justify-center gap-1 text-[#64748b]"
       >
         <Plus size={14} /> 추가
       </button>
@@ -515,7 +515,7 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+    <div className="space-y-2 rounded-lg border border-[#d8e5fb] bg-white p-3">
       <div>
         <input
           autoFocus
@@ -608,7 +608,7 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
         </div>
       </div>
       {relatedTarget.startsWith('fund:') && selectedTemplateId && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[#64748b]">
           선택한 조합의 통지기간을 반영해 단계 일정이 자동 계산됩니다.
         </p>
       )}
@@ -695,36 +695,36 @@ function EditTaskModal({
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">작업 수정</h3>
-            <button onClick={onCancel} className="icon-btn text-slate-500 hover:text-slate-600">×</button>
+            <button onClick={onCancel} className="icon-btn text-[#64748b] hover:text-[#64748b]">×</button>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-slate-500">제목</label>
+              <label className="mb-1 block text-xs text-[#64748b]">제목</label>
               <input
                 autoFocus
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-slate-500">마감일</label>
+                <label className="mb-1 block text-xs text-[#64748b]">마감일</label>
                 <input
                   type="date"
                   value={deadlineDate}
                   onChange={(e) => setDeadlineDate(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-500">시간</label>
+                <label className="mb-1 block text-xs text-[#64748b]">시간</label>
                 <select
                   value={deadlineHour}
                   onChange={(e) => setDeadlineHour(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
                 >
                   <option value="">선택</option>
                   {HOUR_OPTIONS.map((hour) => (
@@ -736,15 +736,15 @@ function EditTaskModal({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-slate-500">예상 시간</label>
+                <label className="mb-1 block text-xs text-[#64748b]">예상 시간</label>
                 <TimeSelect value={estimatedTime} onChange={setEstimatedTime} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-500">사분면</label>
+                <label className="mb-1 block text-xs text-[#64748b]">사분면</label>
                 <select
                   value={quadrant}
                   onChange={(e) => setQuadrant(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
                 >
                   <option value="Q1">긴급·중요 (Q1)</option>
                   <option value="Q2">중요·비긴급 (Q2)</option>
@@ -756,11 +756,11 @@ function EditTaskModal({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-slate-500">카테고리</label>
+                <label className="mb-1 block text-xs text-[#64748b]">카테고리</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
                 >
                   <option value="">없음</option>
                   {categoryOptions.map((categoryName) => (
@@ -769,11 +769,11 @@ function EditTaskModal({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-500">관련 대상</label>
+                <label className="mb-1 block text-xs text-[#64748b]">관련 대상</label>
                 <select
                   value={relatedTarget}
                   onChange={(e) => setRelatedTarget(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
                 >
                   <option value="">없음</option>
                   {gpEntities.length > 0 && (
@@ -793,34 +793,34 @@ function EditTaskModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-slate-500">담당자</label>
+              <label className="mb-1 block text-xs text-[#64748b]">담당자</label>
               <input
                 value={delegateTo}
                 onChange={(e) => setDelegateTo(e.target.value)}
                 placeholder="선택 입력"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-slate-500">메모</label>
+              <label className="mb-1 block text-xs text-[#64748b]">메모</label>
               <textarea
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 rows={3}
-                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full resize-none rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
               />
             </div>
 
             {task.workflow_instance_id && (
-              <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
-                <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+              <div className="rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-2">
+                <p className="text-xs font-semibold text-[#1a3660]">연결 서류</p>
                 {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
-                  <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+                  <p className="mt-1 text-xs text-[#64748b]">불러오는 중...</p>
                 ) : stepDocuments.length > 0 ? (
                   <ul className="mt-1 space-y-1">
                     {stepDocuments.map((doc, idx) => (
-                      <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                      <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-[#0f1f3d]">
                         • {doc.name}
                         {doc.document_template_id ? ' [템플릿]' : ''}
                         {doc.required ? ' (필수)' : ''}
@@ -828,7 +828,7 @@ function EditTaskModal({
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+                  <p className="mt-1 text-xs text-[#64748b]">연결된 서류가 없습니다.</p>
                 )}
               </div>
             )}
@@ -887,11 +887,11 @@ function TaskDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">{task.title}</h3>
-          <button onClick={onClose} className="icon-btn text-slate-500 hover:text-slate-600">×</button>
+          <h3 className="text-lg font-bold text-[#0f1f3d]">{task.title}</h3>
+          <button onClick={onClose} className="icon-btn text-[#64748b] hover:text-[#64748b]">×</button>
         </div>
 
-        <div className="space-y-2 text-sm text-slate-700">
+        <div className="space-y-2 text-sm text-[#0f1f3d]">
           {task.deadline && (
             <div><span className="font-medium">마감:</span> {new Date(task.deadline).toLocaleString('ko-KR')}</div>
           )}
@@ -918,14 +918,14 @@ function TaskDetailModal({
             <div><span className="font-medium">담당자:</span> {task.delegate_to}</div>
           )}
           {task.workflow_instance_id && (
-            <div className="rounded border border-indigo-200 bg-indigo-50 px-3 py-2">
-              <p className="text-xs font-semibold text-indigo-700">연결 서류</p>
+            <div className="rounded border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-2">
+              <p className="text-xs font-semibold text-[#1a3660]">연결 서류</p>
               {isWorkflowInstanceLoading || isWorkflowTemplateLoading ? (
-                <p className="mt-1 text-xs text-indigo-600">불러오는 중...</p>
+                <p className="mt-1 text-xs text-[#64748b]">불러오는 중...</p>
               ) : stepDocuments.length > 0 ? (
                 <ul className="mt-1 space-y-1">
                   {stepDocuments.map((doc, idx) => (
-                    <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-indigo-900">
+                    <li key={`${doc.id ?? idx}-${doc.name}`} className="text-xs text-[#0f1f3d]">
                       • {doc.name}
                       {doc.document_template_id ? ' [템플릿]' : ''}
                       {doc.required ? ' (필수)' : ''}
@@ -933,7 +933,7 @@ function TaskDetailModal({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-xs text-indigo-600">연결된 서류가 없습니다.</p>
+                <p className="mt-1 text-xs text-[#64748b]">연결된 서류가 없습니다.</p>
               )}
             </div>
           )}
@@ -957,7 +957,7 @@ function TaskDetailModal({
               </button>
               <button
                 onClick={() => onEdit(task)}
-                className="btn-sm rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                className="btn-sm rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-1.5 text-xs font-medium text-[#1a3660] transition-colors hover:bg-[#e6efff]"
               >
                 수정
               </button>
@@ -997,15 +997,15 @@ function BulkCompleteModal({
         <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-emerald-700">일괄 완료</h3>
-            <button onClick={onCancel} className="icon-btn text-slate-500 hover:text-slate-600" aria-label="닫기">×</button>
+            <button onClick={onCancel} className="icon-btn text-[#64748b] hover:text-[#64748b]" aria-label="닫기">×</button>
           </div>
 
-          <p className="mb-2 text-sm text-slate-700">{count}개 업무를 한 번에 완료합니다.</p>
+          <p className="mb-2 text-sm text-[#0f1f3d]">{count}개 업무를 한 번에 완료합니다.</p>
 
-          <label className="mb-1 block text-xs text-slate-500">실제 소요 시간</label>
+          <label className="mb-1 block text-xs text-[#64748b]">실제 소요 시간</label>
           <TimeSelect value={actualTime} onChange={setActualTime} />
 
-          <label className="mb-4 mt-3 flex items-center gap-2 text-sm text-slate-700">
+          <label className="mb-4 mt-3 flex items-center gap-2 text-sm text-[#0f1f3d]">
             <input
               type="checkbox"
               checked={autoWorklog}
@@ -1059,17 +1059,17 @@ function CategoryManagerModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-slate-900">카테고리 관리</h3>
-            <button onClick={onClose} className="icon-btn text-slate-500 hover:text-slate-600" aria-label="닫기">×</button>
+            <h3 className="text-base font-semibold text-[#0f1f3d]">카테고리 관리</h3>
+            <button onClick={onClose} className="icon-btn text-[#64748b] hover:text-[#64748b]" aria-label="닫기">×</button>
           </div>
 
-          <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+          <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] p-2">
             {categories.length === 0 ? (
-              <p className="text-xs text-slate-500">등록된 카테고리가 없습니다.</p>
+              <p className="text-xs text-[#64748b]">등록된 카테고리가 없습니다.</p>
             ) : (
               categories.map((category) => (
                 <div key={category.id} className="flex items-center justify-between rounded bg-white px-3 py-2">
-                  <span className="text-sm text-slate-700">{category.name}</span>
+                  <span className="text-sm text-[#0f1f3d]">{category.name}</span>
                   <button
                     onClick={() => onDelete(category)}
                     className="text-xs text-red-600 hover:text-red-700 disabled:opacity-60"
@@ -1090,13 +1090,13 @@ function CategoryManagerModal({
                 if (event.key === 'Enter') onCreate()
               }}
               placeholder="새 카테고리 이름"
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              className="flex-1 rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm"
             />
             <button onClick={onCreate} disabled={creating || !newCategoryName.trim()} className="primary-btn btn-sm disabled:opacity-60">
               {creating ? '추가 중...' : '추가'}
             </button>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">사용 중인 카테고리는 삭제 시 경고가 표시됩니다.</p>
+          <p className="mt-2 text-[11px] text-[#64748b]">사용 중인 카테고리는 삭제 시 경고가 표시됩니다.</p>
         </div>
       </div>
     </>
@@ -1836,7 +1836,7 @@ export default function TaskBoardPage() {
           )}
           <Link
             to="/dashboard"
-            className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+            className="rounded-md border border-[#c5d8fb] bg-[#f5f9ff] px-2 py-1 text-xs font-medium text-[#1a3660] hover:bg-[#e6efff]"
           >
             오늘의 현황
           </Link>
@@ -1847,15 +1847,15 @@ export default function TaskBoardPage() {
             onClick={() => setSelectionMode((prev) => !prev)}
             className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs ${
               selectionMode
-                ? 'border-blue-200 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
+                : 'border-[#d8e5fb] bg-white text-[#0f1f3d] hover:bg-[#f5f9ff]'
             }`}
           >
             {selectionMode ? '선택 모드 ON' : '선택 모드'}
           </button>
           <button
             onClick={() => setShowCategoryManager(true)}
-            className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-2 py-1 text-xs text-[#0f1f3d] hover:bg-[#f5f9ff]"
           >
             <Tag size={12} />
             카테고리 관리
@@ -1872,7 +1872,7 @@ export default function TaskBoardPage() {
       />
 
       <div className="mt-4 space-y-5">
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="flex gap-1 rounded-xl bg-[#fff7d6] p-1">
           {VIEW_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -1890,8 +1890,8 @@ export default function TaskBoardPage() {
         </div>
 
       {boardView === 'board' && selectedVisibleTasks.length > 0 && (
-        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <span className="text-sm font-semibold text-slate-700">{selectedVisibleTasks.length}개 선택됨</span>
+        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-[#d8e5fb] bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <span className="text-sm font-semibold text-[#0f1f3d]">{selectedVisibleTasks.length}개 선택됨</span>
           <button
             onClick={handleBulkComplete}
             disabled={bulkCompleteMutation.isPending || completeMutation.isPending}
@@ -1947,7 +1947,7 @@ export default function TaskBoardPage() {
       ) : boardView === 'pipeline' ? (
         <div className="w-full">
           {isPipelineLoading ? (
-            <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-[#d8e5fb] bg-white py-12 text-center text-sm text-[#64748b]">
               파이프라인 데이터를 불러오는 중입니다...
             </div>
           ) : (
@@ -1996,14 +1996,14 @@ export default function TaskBoardPage() {
                   if (!taskId || !fromQuadrant || fromQuadrant === quadrant.key) return
                   moveMutation.mutate({ id: taskId, quadrant: quadrant.key })
                 }}
-                className={`rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm ${quadrant.color} ${
-                  dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-blue-400 bg-blue-50/30' : ''
+                className={`rounded-xl border border-[#d8e5fb] border-l-4 bg-white p-4 shadow-sm ${quadrant.color} ${
+                  dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-[#558ef8] bg-[#f5f9ff]/30' : ''
                 }`}
               >
                 <div className="mb-3.5 flex items-center gap-2">
                   <span className={`h-2.5 w-2.5 rounded-full ${quadrant.badge}`} />
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{quadrant.label}</h3>
-                  <span className="ml-auto text-xs text-slate-400">{allTasks.length}</span>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">{quadrant.label}</h3>
+                  <span className="ml-auto text-xs text-[#94a3b8]">{allTasks.length}</span>
                 </div>
 
                 <div className="space-y-3">
@@ -2035,7 +2035,7 @@ export default function TaskBoardPage() {
                     />
                   ))}
                   {allTasks.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-200">
+                    <div className="rounded-lg border border-dashed border-[#d8e5fb]">
                       <EmptyState message="등록된 업무가 없습니다." className="py-6" />
                     </div>
                   )}

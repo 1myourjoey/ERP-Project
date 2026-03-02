@@ -182,7 +182,7 @@ export default function LPManagementPage() {
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{editing ? 'LP 수정' : 'LP 등록'}</h3>
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">{editing ? 'LP 수정' : 'LP 등록'}</h3>
           {editing && (
             <button
               onClick={() => {
@@ -265,7 +265,7 @@ export default function LPManagementPage() {
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-700">LP 목록</h3>
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">LP 목록</h3>
           <div className="flex gap-2">
             <input
               value={keyword}
@@ -285,7 +285,7 @@ export default function LPManagementPage() {
                 </option>
               ))}
             </select>
-            <label className="inline-flex items-center gap-1 text-xs text-slate-600">
+            <label className="inline-flex items-center gap-1 text-xs text-[#64748b]">
               <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
               비활성 포함
             </label>
@@ -293,9 +293,9 @@ export default function LPManagementPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">불러오는 중...</p>
+          <p className="text-sm text-[#64748b]">불러오는 중...</p>
         ) : groupedLPs.length === 0 ? (
-          <p className="text-sm text-slate-500">표시할 LP가 없습니다.</p>
+          <p className="text-sm text-[#64748b]">표시할 LP가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {groupedLPs.map((lp) => {
@@ -326,11 +326,11 @@ export default function LPManagementPage() {
               )
 
               return (
-                <div key={lp.name} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div key={lp.name} className="rounded-xl border border-[#d8e5fb] bg-white shadow-sm">
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">{lp.name}</p>
-                      <p className="truncate text-xs text-slate-500">
+                      <p className="truncate text-sm font-semibold text-[#0f1f3d]">{lp.name}</p>
+                      <p className="truncate text-xs text-[#64748b]">
                         {LP_TYPE_LABEL[lp.type] || lp.type} · {lp.contact || '-'}
                         {lp.business_number ? ` · ${lp.business_number}` : ''}
                       </p>
@@ -344,14 +344,14 @@ export default function LPManagementPage() {
                   </div>
 
                   {expanded && (
-                    <div className="border-t border-slate-100 px-4 pb-3 pt-2">
+                    <div className="border-t border-[#e6eefc] px-4 pb-3 pt-2">
                       <div className="space-y-1.5">
                         {fundRows.map((fund) => (
-                          <div key={fund.fundName} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                            <span className="font-medium text-slate-700">
+                          <div key={fund.fundName} className="flex items-center justify-between rounded-lg bg-[#f5f9ff] px-3 py-2 text-xs">
+                            <span className="font-medium text-[#0f1f3d]">
                               {fund.fundName}
                             </span>
-                            <span className="text-slate-500">약정 {formatAmount(fund.commitment)}</span>
+                            <span className="text-[#64748b]">약정 {formatAmount(fund.commitment)}</span>
                           </div>
                         ))}
                       </div>

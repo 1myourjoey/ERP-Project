@@ -47,7 +47,7 @@ export default function EmptyState({
       ) : (
         <LottieAnimation src={src} className="h-24 w-24 opacity-70" />
       )}
-      <p className="mt-2 text-sm text-slate-500">{message}</p>
+      <p className="mt-2 text-sm text-[#64748b]">{message}</p>
       {action && actionLabel && (
         <button onClick={action} className="primary-btn mt-2 text-xs">
           {actionLabel}

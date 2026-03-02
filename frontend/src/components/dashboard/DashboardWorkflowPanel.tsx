@@ -88,27 +88,27 @@ function DashboardWorkflowPanel({
       <button
         key={workflow.id}
         onClick={() => onOpenWorkflow(workflow)}
-        className="w-full cursor-pointer rounded-lg border border-slate-200 bg-white p-2 text-left hover:bg-slate-50"
+        className="w-full cursor-pointer rounded-lg border border-[#d8e5fb] bg-white p-2 text-left hover:bg-[#f5f9ff]"
       >
         <div className="flex items-center justify-between gap-1">
-          <p className="min-w-0 truncate text-sm font-medium text-slate-800">{workflow.name}</p>
+          <p className="min-w-0 truncate text-sm font-medium text-[#0f1f3d]">{workflow.name}</p>
           <div className="ml-2 flex items-center gap-1">
             <span className="tag tag-blue">{workflow.progress}</span>
             {nextStepBadge && <span className={nextStepBadge.className}>{nextStepBadge.text}</span>}
           </div>
         </div>
-        <p className="mt-0.5 truncate text-[11px] text-slate-500">
+        <p className="mt-0.5 truncate text-[11px] text-[#64748b]">
           {workflow.fund_name || workflow.gp_entity_name || '-'} | {workflow.company_name || '-'}
         </p>
         {workflow.next_step && (
-          <p className="mt-0.5 truncate text-[11px] text-slate-600">
+          <p className="mt-0.5 truncate text-[11px] text-[#64748b]">
             다음: {workflow.next_step}
             {workflow.next_step_date ? ` (${formatShortDate(workflow.next_step_date)})` : ''}
           </p>
         )}
-        <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-200">
+        <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[#d8e5fb]">
           <div
-            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            className="h-full rounded-full bg-[#558ef8] transition-all duration-300"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -121,11 +121,11 @@ function DashboardWorkflowPanel({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <button
           onClick={onOpenPopup}
-          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-slate-700 hover:text-blue-600"
+          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-[#0f1f3d] hover:text-[#558ef8]"
         >
           <GitBranch size={16} />
           진행 중인 워크플로
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="ml-auto text-xs text-[#64748b]">
             {filteredWorkflows.length}건 · {workflowGroups.length}그룹
           </span>
         </button>
@@ -143,8 +143,8 @@ function DashboardWorkflowPanel({
           onClick={() => setFilter('all')}
           className={`rounded-full border px-2.5 py-1 ${
             filter === 'all'
-              ? 'border-slate-300 bg-slate-100 text-slate-700'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+              ? 'border-[#bfcff0] bg-[#fff7d6] text-[#0f1f3d]'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           전체 {activeWorkflows.length}
@@ -155,7 +155,7 @@ function DashboardWorkflowPanel({
           className={`rounded-full border px-2.5 py-1 ${
             filter === 'due_soon'
               ? 'border-amber-200 bg-amber-50 text-amber-700'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           <span className="inline-flex items-center gap-1">
@@ -169,7 +169,7 @@ function DashboardWorkflowPanel({
           className={`rounded-full border px-2.5 py-1 ${
             filter === 'overdue'
               ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           <span className="inline-flex items-center gap-1">
@@ -177,11 +177,11 @@ function DashboardWorkflowPanel({
             지연 {overdueCount}
           </span>
         </button>
-        <span className="ml-auto text-[11px] text-slate-500">기준: 다음 단계 예정일</span>
+        <span className="ml-auto text-[11px] text-[#64748b]">기준: 다음 단계 예정일</span>
       </div>
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-slate-500">워크플로를 불러오는 중입니다...</p>
+        <p className="py-8 text-center text-sm text-[#64748b]">워크플로를 불러오는 중입니다...</p>
       ) : filteredWorkflows.length > 0 ? (
         <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
           {workflowGroups.map((group) => {
@@ -196,24 +196,24 @@ function DashboardWorkflowPanel({
                 : group.fundNames.join(', ')
 
             return (
-              <div key={group.groupKey} className="rounded-lg border border-slate-200 bg-white">
+              <div key={group.groupKey} className="rounded-lg border border-[#d8e5fb] bg-white">
                 <button
                   onClick={() => toggleGroup(group.groupKey)}
-                  className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
+                  className="w-full cursor-pointer px-3 py-2 text-left hover:bg-[#f5f9ff]"
                 >
                   <div className="flex items-center gap-2">
-                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{group.groupLabel}</p>
-                    <span className="text-xs text-slate-600">{group.workflows.length}건</span>
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#0f1f3d]">{group.groupLabel}</p>
+                    <span className="text-xs text-[#64748b]">{group.workflows.length}건</span>
                     <ChevronDown
                       size={14}
-                      className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      className={`text-[#64748b] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                     />
                   </div>
-                  <p className="mt-0.5 truncate text-[11px] text-slate-500">{previewFunds || '공통'}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-400">{isExpanded ? '접기' : '펼치기'}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-[#64748b]">{previewFunds || '공통'}</p>
+                  <p className="mt-0.5 text-[11px] text-[#94a3b8]">{isExpanded ? '접기' : '펼치기'}</p>
                 </button>
 
-                <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-slate-100 px-2 pb-2 pt-1`}>
+                <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-[#e6eefc] px-2 pb-2 pt-1`}>
                   <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
                     {group.workflows.map((workflow) => renderWorkflowRow(workflow))}
                   </div>

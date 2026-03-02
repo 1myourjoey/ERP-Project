@@ -75,7 +75,7 @@ function eventTone(event: CalendarEvent) {
   if (tone === 'overdue') return 'tag tag-red'
   if (tone === 'today') return 'rounded bg-orange-100 px-2 py-1 text-orange-700'
   if (tone === 'this_week') return 'rounded bg-amber-100 px-2 py-1 text-amber-700'
-  if (tone === 'none') return 'rounded bg-slate-100 px-2 py-1 text-slate-600'
+  if (tone === 'none') return 'rounded bg-[#fff7d6] px-2 py-1 text-[#64748b]'
   return 'tag tag-blue'
 }
 
@@ -189,7 +189,7 @@ export default function CalendarPage() {
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex items-center gap-2">
           <div>
-            <label className="mb-1 block text-[10px] font-medium text-slate-500">상태</label>
+            <label className="mb-1 block text-[10px] font-medium text-[#64748b]">상태</label>
             <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
               <option value="">전체 상태</option>
               <option value="pending">{labelStatus('pending')}</option>
@@ -197,13 +197,13 @@ export default function CalendarPage() {
             </select>
           </div>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-gray-800 text-white' : 'bg-slate-100 text-slate-700'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
             onClick={() => setView('calendar')}
           >
             월별
           </button>
           <button
-            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-gray-800 text-white' : 'bg-slate-100 text-slate-700'}`}
+            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-[#0f1f3d] text-white' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}
             onClick={() => setView('list')}
           >
             리스트
@@ -211,8 +211,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-blue-700">업무(일반)</span>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[#64748b]">
+        <span className="inline-flex items-center gap-1 rounded bg-[#e6efff] px-2 py-1 text-[#1a3660]">업무(일반)</span>
         <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">업무(오늘)</span>
         <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-1 text-amber-700">업무(이번주)</span>
         <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">업무(지연)</span>
@@ -234,21 +234,21 @@ export default function CalendarPage() {
           <div className="card-base flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                className="px-2 py-1 text-sm bg-slate-100 rounded hover:bg-slate-200"
+                className="px-2 py-1 text-sm bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
               >
                 &lt;
               </button>
-              <h3 className="text-sm font-semibold text-slate-800">{monthLabel}</h3>
+              <h3 className="text-sm font-semibold text-[#0f1f3d]">{monthLabel}</h3>
               <button
-                className="px-2 py-1 text-sm bg-slate-100 rounded hover:bg-slate-200"
+                className="px-2 py-1 text-sm bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
               >
                 &gt;
               </button>
             </div>
             <button
-              className="text-xs px-2 py-1 bg-slate-100 rounded hover:bg-slate-200"
+              className="text-xs px-2 py-1 bg-[#fff7d6] rounded hover:bg-[#d8e5fb]"
               onClick={() => {
                 const now = new Date()
                 setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
@@ -259,9 +259,9 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-[#d8e5fb] border border-[#d8e5fb] rounded-xl overflow-hidden">
             {WEEKDAY_LABELS.map(label => (
-              <div key={label} className="bg-slate-50 px-2 py-2 text-center text-xs font-medium text-slate-600">
+              <div key={label} className="bg-[#f5f9ff] px-2 py-2 text-center text-xs font-medium text-[#64748b]">
                 {label}
               </div>
             ))}
@@ -292,10 +292,10 @@ export default function CalendarPage() {
                       }
                     }}
                     className={`bg-white p-2 min-h-[110px] text-left align-top transition-colors ${
-                      inCurrentMonth ? '' : 'text-gray-300 bg-slate-50'
-                    } ${isSelected ? 'ring-2 ring-inset ring-blue-400' : 'hover:bg-slate-50'} cursor-pointer`}
+                      inCurrentMonth ? '' : 'text-[#94a3b8] bg-[#f5f9ff]'
+                    } ${isSelected ? 'ring-2 ring-inset ring-[#558ef8]' : 'hover:bg-[#f5f9ff]'} cursor-pointer`}
                   >
-                    <div className={`text-sm ${isToday ? 'bg-blue-50 font-bold text-blue-700 inline-block px-1.5 rounded' : ''}`}>
+                    <div className={`text-sm ${isToday ? 'bg-[#f5f9ff] font-bold text-[#1a3660] inline-block px-1.5 rounded' : ''}`}>
                       {date.getDate()}
                     </div>
                     <div className="mt-1 space-y-1">
@@ -325,7 +325,7 @@ export default function CalendarPage() {
                           </div>
                         )
                       })}
-                      {dayEvents.length > 2 && <p className="text-[11px] text-slate-500">+{dayEvents.length - 2}개 더</p>}
+                      {dayEvents.length > 2 && <p className="text-[11px] text-[#64748b]">+{dayEvents.length - 2}개 더</p>}
                     </div>
                   </div>
                 )
@@ -335,7 +335,7 @@ export default function CalendarPage() {
 
           <div className="card-base">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-slate-700">
+              <h4 className="text-sm font-semibold text-[#0f1f3d]">
                 {parseDate(selectedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
               </h4>
               <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>
@@ -348,7 +348,7 @@ export default function CalendarPage() {
             ) : (
               <div className="space-y-2">
                 {selectedDateEvents.map(event => (
-                  <div key={event.id} className="border border-slate-200 rounded-lg p-3">
+                  <div key={event.id} className="border border-[#d8e5fb] rounded-lg p-3">
                     {editingId === event.id ? (
                       <EventForm
                         initial={event}
@@ -365,9 +365,9 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className={`text-sm font-medium text-slate-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
+                            <p className={`text-sm font-medium text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <p className="text-xs text-[#64748b] mt-0.5">
                             {event.time || '-'} | {event.duration != null ? `${event.duration}분` : '-'} | {event.description || '-'}
                           </p>
                           <span className={`inline-block mt-1 ${eventTone(event)}`}>
@@ -402,12 +402,12 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-2xl border border-[#d8e5fb] bg-white overflow-hidden">
           {isLoading ? (
             <PageLoading />
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs">
+              <thead className="bg-[#f5f9ff] text-[#64748b] text-xs">
                 <tr>
                   <th className="px-3 py-2 text-left">날짜</th>
                   <th className="px-3 py-2 text-left">제목</th>
@@ -419,7 +419,7 @@ export default function CalendarPage() {
               </thead>
               <tbody>
                 {sortedEvents.map(event => (
-                  <tr key={event.id} className="border-t border-slate-100 align-top">
+                  <tr key={event.id} className="border-t border-[#e6eefc] align-top">
                     <td className="px-3 py-2">{event.date}</td>
                     <td className="px-3 py-2">
                       {editingId === event.id ? (
@@ -432,9 +432,9 @@ export default function CalendarPage() {
                                 {event.quadrant || 'TASK'}
                               </span>
                             )}
-                            <p className={`font-medium text-slate-800 ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
+                            <p className={`font-medium text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500">{event.description || '-'}</p>
+                          <p className="text-xs text-[#64748b]">{event.description || '-'}</p>
                         </div>
                       )}
                     </td>
@@ -518,14 +518,14 @@ function EventForm({
   })
 
   return (
-    <div className={`${compact ? '' : 'mb-3'} bg-slate-50 border border-slate-200 rounded p-2`}>
+    <div className={`${compact ? '' : 'mb-3'} bg-[#f5f9ff] border border-[#d8e5fb] rounded p-2`}>
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">제목</label><input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="예: LP 정기 미팅" className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">날짜</label><input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">시간</label><input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">소요시간(분)</label><input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">상태</label><input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="form-input" /></div>
-        <div><label className="mb-1 block text-xs font-medium text-slate-600">설명</label><input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">제목</label><input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} placeholder="예: LP 정기 미팅" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">날짜</label><input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">시간</label><input type="time" value={form.time || ''} onChange={e => setForm(prev => ({ ...prev, time: e.target.value }))} className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">소요시간(분)</label><input type="number" value={form.duration ?? ''} onChange={e => setForm(prev => ({ ...prev, duration: e.target.value ? Number(e.target.value) : null }))} placeholder="선택 입력" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">상태</label><input value={form.status || 'pending'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} placeholder="예: pending" className="form-input" /></div>
+        <div><label className="mb-1 block text-xs font-medium text-[#64748b]">설명</label><input value={form.description || ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
       </div>
       <div className="flex gap-2 mt-2">
         <button
@@ -551,10 +551,10 @@ function CalendarTaskDetailModal({ task, onClose }: { task: Task; onClose: () =>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">업무 상세</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">×</button>
+          <h3 className="text-lg font-semibold text-[#0f1f3d]">업무 상세</h3>
+          <button onClick={onClose} className="text-[#64748b] hover:text-[#64748b]">×</button>
         </div>
-        <div className="space-y-2 text-sm text-slate-700">
+        <div className="space-y-2 text-sm text-[#0f1f3d]">
           <div><span className="font-medium">업무명:</span> {task.title}</div>
           <div><span className="font-medium">마감:</span> {task.deadline ? new Date(task.deadline).toLocaleString('ko-KR') : '-'}</div>
           <div><span className="font-medium">예상 시간:</span> {task.estimated_time || '-'}</div>
@@ -575,12 +575,12 @@ function CompletionInfoModal({ task, onClose }: { task: Task; onClose: () => voi
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-emerald-700">완료된 업무</h3>
         <div className="mt-3 space-y-2 text-sm">
-          <div><span className="text-slate-500">업무명:</span> {task.title}</div>
-          <div><span className="text-slate-500">완료 시간:</span> {task.completed_at ? new Date(task.completed_at).toLocaleString('ko-KR') : '-'}</div>
-          <div><span className="text-slate-500">실제 소요:</span> {task.actual_time || '-'}</div>
-          {task.memo && <div><span className="text-slate-500">업무 기록:</span> {task.memo}</div>}
+          <div><span className="text-[#64748b]">업무명:</span> {task.title}</div>
+          <div><span className="text-[#64748b]">완료 시간:</span> {task.completed_at ? new Date(task.completed_at).toLocaleString('ko-KR') : '-'}</div>
+          <div><span className="text-[#64748b]">실제 소요:</span> {task.actual_time || '-'}</div>
+          {task.memo && <div><span className="text-[#64748b]">업무 기록:</span> {task.memo}</div>}
           {(task.fund_name || task.gp_entity_name) && (
-            <div><span className="text-slate-500">관련 대상:</span> {task.fund_name || task.gp_entity_name}</div>
+            <div><span className="text-[#64748b]">관련 대상:</span> {task.fund_name || task.gp_entity_name}</div>
           )}
         </div>
         <button onClick={onClose} className="mt-4 w-full primary-btn">닫기</button>

@@ -41,15 +41,15 @@ export default function RuleSuggestions({ fundId }: RuleSuggestionsProps) {
   return (
     <div className="card-base overflow-auto">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">규칙 조정 제안</h3>
-        <span className="text-xs text-slate-500">{isFetching ? '새로고침 중...' : `${data.length}건`}</span>
+        <h3 className="text-sm font-semibold text-[#0f1f3d]">규칙 조정 제안</h3>
+        <span className="text-xs text-[#64748b]">{isFetching ? '새로고침 중...' : `${data.length}건`}</span>
       </div>
 
       {!data.length ? (
         <EmptyState emoji="s" message="현재 범위에서 규칙 조정 제안이 없습니다." className="py-8" />
       ) : (
         <table className="min-w-[860px] w-full text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-500">
+          <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
             <tr>
               <th className="px-3 py-2 text-left">규칙</th>
               <th className="px-3 py-2 text-left">현재값</th>
@@ -63,17 +63,17 @@ export default function RuleSuggestions({ fundId }: RuleSuggestionsProps) {
               return (
                 <tr key={`${item.rule_id}-${item.suggestion}`}>
                   <td className="px-3 py-2">
-                    <div className="font-mono text-xs text-slate-500">{item.rule_code || '-'}</div>
+                    <div className="font-mono text-xs text-[#64748b]">{item.rule_code || '-'}</div>
                     <div>{item.rule_name || '-'}</div>
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-700">
+                  <td className="px-3 py-2 text-xs text-[#0f1f3d]">
                     <div>레벨: {item.current_level || '-'}</div>
                     <div>심각도: {item.current_severity || '-'}</div>
                   </td>
                   <td className="px-3 py-2">
                     <span className={badge.className}>{badge.label}</span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-700">{item.detail}</td>
+                  <td className="px-3 py-2 text-xs text-[#0f1f3d]">{item.detail}</td>
                 </tr>
               )
             })}

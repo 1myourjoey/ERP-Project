@@ -59,11 +59,11 @@ function JournalForm({
   const balanced = Math.round(debitTotal * 100) === Math.round(creditTotal * 100) && form.lines.length > 0
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">{title}</h3>
+    <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+      <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">{title}</h3>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
           <select
             value={form.fund_id || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, fund_id: Number(e.target.value) || 0 }))}
@@ -78,7 +78,7 @@ function JournalForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">전표일</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">전표일</label>
           <input
             type="date"
             value={form.entry_date}
@@ -87,7 +87,7 @@ function JournalForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">상태</label>
           <select
             value={form.status || '미결재'}
             onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
@@ -101,7 +101,7 @@ function JournalForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">적요</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">적요</label>
           <input
             value={form.description || ''}
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -115,7 +115,7 @@ function JournalForm({
         {form.lines.map((line, index) => (
           <div key={`${line.account_id}-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-6">
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">계정과목</label>
+              <label className="mb-1 block text-[10px] font-medium text-[#64748b]">계정과목</label>
               <select
                 value={line.account_id || ''}
                 onChange={(e) => {
@@ -134,7 +134,7 @@ function JournalForm({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">차변</label>
+              <label className="mb-1 block text-[10px] font-medium text-[#64748b]">차변</label>
               <input
                 type="number"
                 value={line.debit || ''}
@@ -148,7 +148,7 @@ function JournalForm({
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">대변</label>
+              <label className="mb-1 block text-[10px] font-medium text-[#64748b]">대변</label>
               <input
                 type="number"
                 value={line.credit || ''}
@@ -162,7 +162,7 @@ function JournalForm({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">라인 비고</label>
+              <label className="mb-1 block text-[10px] font-medium text-[#64748b]">라인 비고</label>
               <input
                 value={line.memo || ''}
                 onChange={(e) => {
@@ -400,7 +400,7 @@ export default function AccountingPage() {
           <p className="page-subtitle">계정과목, 전표, 합계잔액표를 관리합니다.</p>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
           <select value={selectedFundId || ''} onChange={(e) => setFundId(Number(e.target.value) || null)} className="rounded border px-2 py-1 text-sm">
             {funds?.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
           </select>
@@ -408,23 +408,23 @@ export default function AccountingPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>계정과목</button>
-        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>전표</button>
-        <button onClick={() => setTab('ledger')} className={`rounded px-3 py-1.5 text-sm ${tab === 'ledger' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>계정별 원장</button>
-        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'primary-btn' : 'bg-slate-100 text-slate-700'}`}>합계잔액</button>
+        <button onClick={() => setTab('accounts')} className={`rounded px-3 py-1.5 text-sm ${tab === 'accounts' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>계정과목</button>
+        <button onClick={() => setTab('journal')} className={`rounded px-3 py-1.5 text-sm ${tab === 'journal' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>전표</button>
+        <button onClick={() => setTab('ledger')} className={`rounded px-3 py-1.5 text-sm ${tab === 'ledger' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>계정별 원장</button>
+        <button onClick={() => setTab('trial')} className={`rounded px-3 py-1.5 text-sm ${tab === 'trial' ? 'primary-btn' : 'bg-[#fff7d6] text-[#0f1f3d]'}`}>합계잔액</button>
       </div>
 
       {tab === 'accounts' && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">계정과목 등록</h3>
+          <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">계정과목 등록</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">코드</label><input value={newAccount.code} onChange={(e) => setNewAccount((prev) => ({ ...prev, code: e.target.value }))} className="form-input" placeholder="예: 1110" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">계정명</label><input value={newAccount.name} onChange={(e) => setNewAccount((prev) => ({ ...prev, name: e.target.value }))} className="form-input" placeholder="예: 현금" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">대분류</label><select value={newAccount.category} onChange={(e) => setNewAccount((prev) => ({ ...prev, category: e.target.value }))} className="form-input">{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">중분류</label><input value={newAccount.sub_category || ''} onChange={(e) => setNewAccount((prev) => ({ ...prev, sub_category: e.target.value }))} className="form-input" placeholder="선택 입력" /></div>
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">정상 차/대변</label><select value={newAccount.normal_side || '차변'} onChange={(e) => setNewAccount((prev) => ({ ...prev, normal_side: e.target.value }))} className="form-input"><option value="차변">차변</option><option value="대변">대변</option></select></div>
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">정렬순서</label><input type="number" value={newAccount.display_order || 0} onChange={(e) => setNewAccount((prev) => ({ ...prev, display_order: Number(e.target.value || 0) }))} className="form-input" placeholder="숫자 입력" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">코드</label><input value={newAccount.code} onChange={(e) => setNewAccount((prev) => ({ ...prev, code: e.target.value }))} className="form-input" placeholder="예: 1110" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">계정명</label><input value={newAccount.name} onChange={(e) => setNewAccount((prev) => ({ ...prev, name: e.target.value }))} className="form-input" placeholder="예: 현금" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">대분류</label><select value={newAccount.category} onChange={(e) => setNewAccount((prev) => ({ ...prev, category: e.target.value }))} className="form-input">{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">중분류</label><input value={newAccount.sub_category || ''} onChange={(e) => setNewAccount((prev) => ({ ...prev, sub_category: e.target.value }))} className="form-input" placeholder="선택 입력" /></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">정상 차/대변</label><select value={newAccount.normal_side || '차변'} onChange={(e) => setNewAccount((prev) => ({ ...prev, normal_side: e.target.value }))} className="form-input"><option value="차변">차변</option><option value="대변">대변</option></select></div>
+              <div><label className="mb-1 block text-xs font-medium text-[#64748b]">정렬순서</label><input type="number" value={newAccount.display_order || 0} onChange={(e) => setNewAccount((prev) => ({ ...prev, display_order: Number(e.target.value || 0) }))} className="form-input" placeholder="숫자 입력" /></div>
               <button
                 onClick={() => {
                   if (!newAccount.code.trim() || !newAccount.name.trim() || !newAccount.category) return
@@ -437,7 +437,7 @@ export default function AccountingPage() {
                   })
                 }}
                 disabled={createAccountMut.isPending}
-                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:bg-gray-300"
+                className="rounded bg-[#0f1f3d] px-2 py-1 text-xs text-white hover:bg-[#0a1630] disabled:bg-[#d8e5fb]"
               >
                 등록
               </button>
@@ -448,7 +448,7 @@ export default function AccountingPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-[#64748b]">
                     <th className="px-2 py-2">카테고리</th>
                     <th className="px-2 py-2">코드</th>
                     <th className="px-2 py-2">계정명</th>
@@ -463,16 +463,16 @@ export default function AccountingPage() {
                       {editingAccountId === account.id && editAccount ? (
                         <>
                           <td className="px-2 py-2">
-                            <label className="mb-1 block text-[10px] font-medium text-slate-500">카테고리</label>
+                            <label className="mb-1 block text-[10px] font-medium text-[#64748b]">카테고리</label>
                             <select value={editAccount.category || '자산'} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, category: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs">
                               {CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}
                             </select>
                           </td>
-                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-slate-500">코드</label><input value={editAccount.code || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, code: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
-                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-slate-500">계정명</label><input value={editAccount.name || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, name: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
-                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-slate-500">중분류</label><input value={editAccount.sub_category || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, sub_category: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
+                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-[#64748b]">코드</label><input value={editAccount.code || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, code: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
+                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-[#64748b]">계정명</label><input value={editAccount.name || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, name: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
+                          <td className="px-2 py-2"><label className="mb-1 block text-[10px] font-medium text-[#64748b]">중분류</label><input value={editAccount.sub_category || ''} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, sub_category: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs" /></td>
                           <td className="px-2 py-2">
-                            <label className="mb-1 block text-[10px] font-medium text-slate-500">정상잔액</label>
+                            <label className="mb-1 block text-[10px] font-medium text-[#64748b]">정상잔액</label>
                             <select value={editAccount.normal_side || '차변'} onChange={(e) => setEditAccount((prev) => (prev ? { ...prev, normal_side: e.target.value } : prev))} className="w-full rounded border px-2 py-1 text-xs">
                               <option value="차변">차변</option>
                               <option value="대변">대변</option>
@@ -573,21 +573,21 @@ export default function AccountingPage() {
           )}
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">전표 목록</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">전표 목록</h3>
             <div className="space-y-2">
               {entries?.map((entry) => (
-                <div key={entry.id} className="rounded border border-slate-200 p-2">
+                <div key={entry.id} className="rounded border border-[#d8e5fb] p-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{entry.entry_date} | {entry.status} | {entry.description || '-'}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="text-sm font-medium text-[#0f1f3d]">{entry.entry_date} | {entry.status} | {entry.description || '-'}</p>
+                      <p className="mt-0.5 text-xs text-[#64748b]">
                         라인 {entry.lines.length}개
                         {' / '}
                         차변 {formatNumber(entry.lines.reduce((sum, line) => sum + (line.debit || 0), 0))}
                         {' / '}
                         대변 {formatNumber(entry.lines.reduce((sum, line) => sum + (line.credit || 0), 0))}
                       </p>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="mt-1 text-xs text-[#64748b]">
                         {entry.lines.map((line) => (
                           <div key={line.id}>
                             {accountNameMap.get(line.account_id) || line.account_name || line.account_id} | 차변 {formatNumber(line.debit)} | 대변 {formatNumber(line.credit)}
@@ -639,11 +639,11 @@ export default function AccountingPage() {
 
       {tab === 'ledger' && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">계정별 원장 조회</h3>
+          <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">계정별 원장 조회</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">계정과목</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">계정과목</label>
                 <select
                   value={selectedLedgerAccountId || ''}
                   onChange={(e) => setLedgerAccountId(Number(e.target.value) || null)}
@@ -660,11 +660,11 @@ export default function AccountingPage() {
           </div>
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">원장</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">원장</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-[#64748b]">
                     <th className="px-2 py-2">전표일</th>
                     <th className="px-2 py-2">전표ID</th>
                     <th className="px-2 py-2">적요</th>
@@ -693,7 +693,7 @@ export default function AccountingPage() {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-50 font-semibold text-slate-800">
+                  <tr className="bg-[#f5f9ff] font-semibold text-[#0f1f3d]">
                     <td className="px-2 py-2" colSpan={3}>합계</td>
                     <td className="px-2 py-2 text-right">{formatNumber(ledgerTotals.debit)}</td>
                     <td className="px-2 py-2 text-right">{formatNumber(ledgerTotals.credit)}</td>
@@ -708,22 +708,22 @@ export default function AccountingPage() {
 
       {tab === 'trial' && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">조회 조건</h3>
+          <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">조회 조건</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">기준일</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">기준일</label>
                 <input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="rounded border px-2 py-1 text-sm" />
               </div>
             </div>
           </div>
 
           <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">합계잔액표</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">합계잔액표</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-slate-600">
+                  <tr className="border-b text-left text-[#64748b]">
                     <th className="px-2 py-2">카테고리</th>
                     <th className="px-2 py-2">코드</th>
                     <th className="px-2 py-2">계정명</th>

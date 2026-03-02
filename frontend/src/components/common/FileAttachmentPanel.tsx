@@ -114,13 +114,13 @@ export default function FileAttachmentPanel({
   }
 
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white ${compact ? 'p-3' : 'p-4'}`}>
+    <div className={`rounded-lg border border-[#d8e5fb] bg-white ${compact ? 'p-3' : 'p-4'}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className={`${compact ? 'text-xs' : 'text-sm'} flex items-center gap-1.5 font-semibold text-slate-800`}>
-          <Paperclip size={14} className="text-slate-500" />
+        <p className={`${compact ? 'text-xs' : 'text-sm'} flex items-center gap-1.5 font-semibold text-[#0f1f3d]`}>
+          <Paperclip size={14} className="text-[#64748b]" />
           {label}
         </p>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+        <span className="rounded-full bg-[#fff7d6] px-2 py-0.5 text-[11px] text-[#64748b]">
           {normalizedIds.length}건
         </span>
       </div>
@@ -151,23 +151,23 @@ export default function FileAttachmentPanel({
       )}
 
       {normalizedIds.length > 0 && attachmentsQuery.isLoading && (
-        <p className="text-xs text-slate-500">첨부 파일을 불러오는 중...</p>
+        <p className="text-xs text-[#64748b]">첨부 파일을 불러오는 중...</p>
       )}
 
       {normalizedIds.length === 0 ? (
-        <p className="rounded border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+        <p className="rounded border border-dashed border-[#d8e5fb] px-3 py-2 text-xs text-[#64748b]">
           첨부된 파일이 없습니다.
         </p>
       ) : (
         <ul className="space-y-2">
           {orderedAttachments.map((attachment) => (
-            <li key={attachment.id} className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
+            <li key={attachment.id} className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className={`${compact ? 'text-xs' : 'text-sm'} truncate text-slate-800`}>
+                  <p className={`${compact ? 'text-xs' : 'text-sm'} truncate text-[#0f1f3d]`}>
                     {attachment.original_filename}
                   </p>
-                  <p className="text-[11px] text-slate-500">{formatFileSize(attachment.file_size)}</p>
+                  <p className="text-[11px] text-[#64748b]">{formatFileSize(attachment.file_size)}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button

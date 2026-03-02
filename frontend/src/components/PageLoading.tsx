@@ -4,7 +4,7 @@ export default function PageLoading({ label = '불러오는 중...' }: { label?:
   return (
     <div className="loading-state">
       <LottieAnimation src="/animations/loading.lottie" className="h-20 w-20" />
-      <p className="mt-2 text-xs text-slate-500">{label}</p>
+      <p className="mt-2 text-xs text-[#64748b]">{label}</p>
     </div>
   )
 }

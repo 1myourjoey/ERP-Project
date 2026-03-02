@@ -165,11 +165,11 @@ export default function TaskAttachmentSection({
     <div className="space-y-2">
       {showWorkflowDocStatus && !readOnly && (
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-xs text-slate-600">연결 서류:</label>
+          <label className="text-xs text-[#64748b]">연결 서류:</label>
           <select
             value={selectedWorkflowDocId}
             onChange={(event) => setSelectedWorkflowDocId(event.target.value ? Number(event.target.value) : '')}
-            className="rounded border border-slate-200 px-2 py-1 text-xs"
+            className="rounded border border-[#d8e5fb] px-2 py-1 text-xs"
           >
             <option value="">워크플로 자동 연결</option>
             {stepDocuments.map((document) => (

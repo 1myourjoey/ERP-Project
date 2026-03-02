@@ -71,16 +71,16 @@ function DashboardTaskPanels({
       <div
         key={`prio-${task.id}`}
         onClick={() => onOpenTask(task, true)}
-        className={`cursor-pointer rounded-lg border border-slate-200 border-l-4 bg-white px-3 py-2.5 hover:bg-slate-50 ${urgencyBorder(item.urgency)}`}
+        className={`cursor-pointer rounded-lg border border-[#d8e5fb] border-l-4 bg-white px-3 py-2.5 hover:bg-[#f5f9ff] ${urgencyBorder(item.urgency)}`}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-sm font-medium text-slate-800">
+          <p className="truncate text-sm font-medium text-[#0f1f3d]">
             {prefix ? `${prefix} ` : ''}
             {task.title}
           </p>
           <span className={badge.className}>{badge.text}</span>
         </div>
-        <p className="mt-0.5 truncate text-xs text-slate-500">{taskMeta(task)}</p>
+        <p className="mt-0.5 truncate text-xs text-[#64748b]">{taskMeta(task)}</p>
         {item.workflow_info && (
           <p className="mt-0.5 truncate text-[11px] text-indigo-600">
             {item.workflow_info.name} | {item.workflow_info.step} | {item.workflow_info.step_name}
@@ -108,7 +108,7 @@ function DashboardTaskPanels({
   return (
     <div className="space-y-3">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">업무 포커스</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">업무 포커스</h3>
         <button onClick={onOpenTaskBoard} className="secondary-btn btn-sm">
           업무 보드
         </button>
@@ -121,7 +121,7 @@ function DashboardTaskPanels({
           className={`rounded-lg border px-2.5 py-2 text-left ${
             activeTab === 'priority'
               ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           <p className="text-[11px] font-medium">우선순위</p>
@@ -133,8 +133,8 @@ function DashboardTaskPanels({
           onClick={() => setActiveTab('deadline')}
           className={`rounded-lg border px-2.5 py-2 text-left ${
             activeTab === 'deadline'
-              ? 'border-blue-200 bg-blue-50 text-blue-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           <p className="text-[11px] font-medium">이번 주 마감</p>
@@ -147,7 +147,7 @@ function DashboardTaskPanels({
           className={`rounded-lg border px-2.5 py-2 text-left ${
             activeTab === 'completed'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              : 'border-[#d8e5fb] bg-white text-[#64748b] hover:bg-[#f5f9ff]'
           }`}
         >
           <p className="text-[11px] font-medium">완료 업무</p>
@@ -160,7 +160,7 @@ function DashboardTaskPanels({
         {activeTab === 'priority' && (
           <>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
                 우선순위 ({prioritizedTasks.length}건 · {taskGroups.length}그룹)
               </h4>
             </div>
@@ -185,24 +185,24 @@ function DashboardTaskPanels({
                   })
 
                   return (
-                    <div key={group.groupKey} className="rounded-lg border border-slate-200 bg-white">
+                    <div key={group.groupKey} className="rounded-lg border border-[#d8e5fb] bg-white">
                       <button
                         onClick={() => toggleGroup(group.groupKey)}
-                        className="w-full cursor-pointer px-3 py-2 text-left hover:bg-slate-50"
+                        className="w-full cursor-pointer px-3 py-2 text-left hover:bg-[#f5f9ff]"
                       >
                         <div className="flex items-center gap-2">
-                          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{group.groupLabel}</p>
-                          <span className="text-xs text-slate-500">{group.tasks.length}건</span>
+                          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#0f1f3d]">{group.groupLabel}</p>
+                          <span className="text-xs text-[#64748b]">{group.tasks.length}건</span>
                           <span className={badge.className}>{badge.text}</span>
                           <ChevronDown
                             size={14}
-                            className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            className={`text-[#64748b] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                           />
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-slate-500">{previewFunds || '개별 업무'}</p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">{isExpanded ? '접기' : '펼치기'}</p>
+                        <p className="mt-0.5 truncate text-xs text-[#64748b]">{previewFunds || '개별 업무'}</p>
+                        <p className="mt-0.5 text-[11px] text-[#64748b]">{isExpanded ? '접기' : '펼치기'}</p>
                       </button>
-                      <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-slate-100 px-2 pb-2 pt-1`}>
+                      <div className={`${isExpanded ? 'block' : 'hidden'} border-t border-[#e6eefc] px-2 pb-2 pt-1`}>
                         <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
                           {group.tasks.map((item, index) => renderTaskRow(item, `${index + 1}.`))}
                         </div>
@@ -218,8 +218,8 @@ function DashboardTaskPanels({
         {activeTab === 'deadline' && (
           <>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">이번 주 마감</h4>
-              <span className="text-xs text-slate-500">{thisWeekTasks.length}건</span>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">이번 주 마감</h4>
+              <span className="text-xs text-[#64748b]">{thisWeekTasks.length}건</span>
             </div>
             {thisWeekTasks.length === 0 ? (
               <EmptyState icon={<CalendarClock size={18} />} message="이번 주 마감 업무가 없습니다." className="py-6" />
@@ -229,10 +229,10 @@ function DashboardTaskPanels({
                   <button
                     key={`week-${task.id}`}
                     onClick={() => onOpenTask(task, true)}
-                    className="w-full rounded border border-slate-200 px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    className="w-full rounded border border-[#d8e5fb] px-2.5 py-2 text-left text-sm text-[#0f1f3d] hover:bg-[#f5f9ff]"
                   >
-                    <p className="truncate font-medium text-slate-800">{task.title}</p>
-                    <p className="truncate text-xs text-slate-500">{taskMeta(task)}</p>
+                    <p className="truncate font-medium text-[#0f1f3d]">{task.title}</p>
+                    <p className="truncate text-xs text-[#64748b]">{taskMeta(task)}</p>
                   </button>
                 ))}
               </div>
@@ -243,8 +243,8 @@ function DashboardTaskPanels({
         {activeTab === 'completed' && (
           <>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">완료 업무</h4>
-              <span className="text-xs text-slate-500">{completedTasks.length}건</span>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">완료 업무</h4>
+              <span className="text-xs text-[#64748b]">{completedTasks.length}건</span>
             </div>
             {completedTasks.length === 0 ? (
               <EmptyState icon={<CheckCircle2 size={18} />} message="오늘 완료된 업무가 없습니다." className="py-6" />

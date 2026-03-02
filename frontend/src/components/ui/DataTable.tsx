@@ -116,7 +116,7 @@ export function DataTable<T>({
       {mobileCardRender && <div className="space-y-2 md:hidden">{data.map((row) => <div key={keyExtractor(row)}>{mobileCardRender(row)}</div>)}</div>}
       <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full">
-          <thead className={stickyHeader ? 'sticky top-0 z-10 bg-slate-50' : ''}>
+          <thead className={stickyHeader ? 'sticky top-0 z-10 bg-[#f5f9ff]' : ''}>
             <tr className="table-head-row">
               {selectable && (
                 <th className="table-head-cell w-10 text-center">
@@ -146,7 +146,7 @@ export function DataTable<T>({
               return (
                 <tr
                   key={key}
-                  className={`hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+                  className={`hover:bg-[#f5f9ff] ${onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={() => onRowClick?.(row)}
                 >
                   {selectable && (

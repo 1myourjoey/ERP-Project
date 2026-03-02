@@ -49,27 +49,27 @@ function DashboardTaskList({
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={onHeaderClick}
-          className={`text-sm font-semibold ${onHeaderClick ? 'text-slate-700 hover:text-blue-600' : 'text-slate-700'}`}
+          className={`text-sm font-semibold ${onHeaderClick ? 'text-[#0f1f3d] hover:text-[#558ef8]' : 'text-[#0f1f3d]'}`}
         >
           {title}
         </button>
         <div className="flex items-center gap-1">
           {headerAction}
-          <span className="text-xs text-slate-500">{tasks.length}건</span>
+          <span className="text-xs text-[#64748b]">{tasks.length}건</span>
           <button
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded p-1 hover:bg-slate-100"
+            className="rounded p-1 hover:bg-[#fff7d6]"
           >
             <ChevronDown
               size={14}
-              className={`text-slate-500 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+              className={`text-[#64748b] transition-transform ${collapsed ? '-rotate-90' : ''}`}
             />
           </button>
         </div>
       </div>
       {!collapsed && (
         !hasAnyTasks ? (
-          <div className="rounded-lg border border-dashed border-slate-200">
+          <div className="rounded-lg border border-dashed border-[#d8e5fb]">
             <EmptyState
               emoji={emptyEmoji}
               message={emptyMessage}
@@ -84,22 +84,22 @@ function DashboardTaskList({
               <div key={`${title}-${category}`}>
                 <div className="mb-1 flex items-center gap-2">
                   <span className={categoryBadgeClass(category)}>{category}</span>
-                  <span className="text-[10px] text-slate-500">{categoryTasks.length}건</span>
+                  <span className="text-[10px] text-[#64748b]">{categoryTasks.length}건</span>
                 </div>
                 <div className="space-y-2">
                   {categoryTasks.map((task) => (
                     <div
                       key={task.id}
                       onClick={() => onClickTask(task)}
-                      className="w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                      className="w-full cursor-pointer rounded-lg border border-[#d8e5fb] bg-white px-3 py-2 text-left hover:bg-[#f5f9ff]"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-slate-800">{task.title}</p>
-                          <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                          <p className="truncate text-sm font-medium text-[#0f1f3d]">{task.title}</p>
+                          <div className="mt-0.5 flex items-center gap-2 text-xs text-[#64748b]">
                             {task.deadline ? formatShortDate(task.deadline) : '마감 없음'}
                             {task.estimated_time && ` | 예상 ${task.estimated_time}`}
-                            {task.fund_name && <span className="text-blue-600">{task.fund_name}</span>}
+                            {task.fund_name && <span className="text-[#558ef8]">{task.fund_name}</span>}
                           </div>
                         </div>
                         {onQuickComplete && task.status !== 'completed' && (
@@ -109,7 +109,7 @@ function DashboardTaskList({
                               onQuickComplete(task)
                             }}
                             disabled={completingTaskId === task.id}
-                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-60"
+                            className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#fff7d6] disabled:opacity-60"
                           >
                             {completingTaskId === task.id ? '처리중' : '완료'}
                           </button>
@@ -132,7 +132,7 @@ function DashboardTaskList({
                     <div key={`${title}-no-deadline-${category}`}>
                       <div className="mb-1 flex items-center gap-2">
                         <span className={categoryBadgeClass(category)}>{category}</span>
-                        <span className="text-[10px] text-slate-500">{categoryTasks.length}건</span>
+                        <span className="text-[10px] text-[#64748b]">{categoryTasks.length}건</span>
                       </div>
                       <div className="space-y-1.5">
                         {categoryTasks.map((task) => (
@@ -143,10 +143,10 @@ function DashboardTaskList({
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-slate-800">{task.title}</p>
-                                <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                                <p className="truncate text-sm font-medium text-[#0f1f3d]">{task.title}</p>
+                                <div className="mt-0.5 flex items-center gap-2 text-xs text-[#64748b]">
                                   {task.estimated_time && `예상 ${task.estimated_time}`}
-                                  {task.fund_name && <span className="text-blue-600">{task.fund_name}</span>}
+                                  {task.fund_name && <span className="text-[#558ef8]">{task.fund_name}</span>}
                                 </div>
                               </div>
                               {onQuickComplete && task.status !== 'completed' && (
@@ -156,7 +156,7 @@ function DashboardTaskList({
                                     onQuickComplete(task)
                                   }}
                                   disabled={completingTaskId === task.id}
-                                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-60"
+                                  className="rounded-lg border border-[#d8e5fb] px-2 py-1 text-xs text-[#64748b] hover:bg-[#fff7d6] disabled:opacity-60"
                                 >
                                   {completingTaskId === task.id ? '처리중' : '완료'}
                                 </button>

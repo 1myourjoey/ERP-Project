@@ -112,7 +112,7 @@ function CompanyForm({
   const [form, setForm] = useState<CompanyInput>(initial)
 
   return (
-    <div className="grid grid-cols-1 gap-2 rounded border bg-slate-50 p-2 md:grid-cols-6">
+    <div className="grid grid-cols-1 gap-2 rounded border bg-[#f5f9ff] p-2 md:grid-cols-6">
       <div><label className="form-label">회사명</label><input value={form.name || ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="예: 주식회사 OOO" className="form-input" /></div>
       <div><label className="form-label">사업자번호</label><input value={form.business_number || ''} onChange={e => setForm(prev => ({ ...prev, business_number: e.target.value }))} placeholder="예: 123-45-67890" className="form-input" /></div>
       <div><label className="form-label">법인등록번호</label><input value={form.corp_number || ''} onChange={e => setForm(prev => ({ ...prev, corp_number: e.target.value }))} placeholder="선택 입력" className="form-input" /></div>
@@ -444,8 +444,8 @@ export default function InvestmentsPage() {
 
       <section className="card-base flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-800">투자 포트폴리오 그리드</h3>
-          <span className="text-xs text-slate-500">총 {filteredInvestments.length}건</span>
+          <h3 className="text-base font-semibold text-[#0f1f3d]">투자 포트폴리오 그리드</h3>
+          <span className="text-xs text-[#64748b]">총 {filteredInvestments.length}건</span>
         </div>
 
         {invLoading ? (
@@ -471,17 +471,17 @@ export default function InvestmentsPage() {
                 return (
                   <button
                     type="button"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left"
+                    className="w-full rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-left"
                     onClick={() => navigate(`/investments/${row.id}`)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-800">{row.company_name || `투자 #${row.id}`}</p>
+                      <p className="text-sm font-medium text-[#0f1f3d]">{row.company_name || `투자 #${row.id}`}</p>
                       <StatusBadge status={meta.tone} label={meta.label} />
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[#64748b]">
                       {row.fund_name || '-'} · {row.instrument || '-'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[#64748b]">
                       {row.amount != null ? `${row.amount.toLocaleString()}원` : '-'} · {row.investment_date || '-'}
                     </p>
                   </button>
@@ -551,7 +551,7 @@ export default function InvestmentsPage() {
                 ) : (
                   <>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-800">{company.name}</p>
+                      <p className="text-sm font-medium text-[#0f1f3d]">{company.name}</p>
                       <div className="flex gap-1">
                         <button className="secondary-btn" onClick={() => setEditingCompanyId(company.id)}>수정</button>
                         <button
@@ -566,10 +566,10 @@ export default function InvestmentsPage() {
                         </button>
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[#64748b]">
                       {company.industry || '-'} | 대표 {company.ceo || '-'} | 담당 {company.analyst || '-'}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-[#64748b]">
                       담당자 {company.contact_name || '-'} | {company.contact_email || '-'} | {company.contact_phone || '-'}
                     </p>
                   </>
@@ -577,7 +577,7 @@ export default function InvestmentsPage() {
               </div>
             ))}
             {filteredCompanies.length === 0 && (
-              <p className="py-6 text-center text-sm text-slate-500">검색 조건에 맞는 회사가 없습니다.</p>
+              <p className="py-6 text-center text-sm text-[#64748b]">검색 조건에 맞는 회사가 없습니다.</p>
             )}
           </div>
         </div>
@@ -642,7 +642,7 @@ function InvestmentForm({
       : 'tag tag-green'
 
   return (
-    <div className="grid grid-cols-1 gap-2 rounded border bg-slate-50 p-2 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 rounded border bg-[#f5f9ff] p-2 md:grid-cols-3">
       <div>
         <label className="form-label">조합</label>
         <select value={form.fund_id || ''} onChange={e => setForm(prev => ({ ...prev, fund_id: Number(e.target.value) }))} className="form-input"><option value="">조합 선택</option>{funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select>
@@ -661,8 +661,8 @@ function InvestmentForm({
       </div>
 
       {form.company_id === -1 && (
-        <div className="rounded border border-blue-200 bg-blue-50 p-3 md:col-span-3">
-          <p className="mb-2 text-xs font-medium text-blue-700">새 회사 정보</p>
+        <div className="rounded border border-[#c5d8fb] bg-[#f5f9ff] p-3 md:col-span-3">
+          <p className="mb-2 text-xs font-medium text-[#1a3660]">새 회사 정보</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <div><label className="form-label">회사명</label><input value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} placeholder="예: 주식회사 OOO" className="form-input" /></div>
             <div><label className="form-label">사업자번호</label><input value={newCompanyBizNum} onChange={e => setNewCompanyBizNum(e.target.value)} placeholder="선택 입력" className="form-input" /></div>
@@ -689,8 +689,8 @@ function InvestmentForm({
         </select>
       </div>
 
-      <div className="space-y-2 rounded border border-slate-200 bg-white p-2 md:col-span-3">
-        <p className="text-xs font-medium text-slate-600">투자수단별 금액</p>
+      <div className="space-y-2 rounded border border-[#d8e5fb] bg-white p-2 md:col-span-3">
+        <p className="text-xs font-medium text-[#64748b]">투자수단별 금액</p>
         {instrumentEntries.map((entry, index) => (
           <div key={`instrument-${index}`} className="flex items-center gap-2">
             <div className="flex-1">
@@ -744,7 +744,7 @@ function InvestmentForm({
         </button>
       </div>
 
-      <div className="rounded border border-slate-200 bg-white p-2 md:col-span-3">
+      <div className="rounded border border-[#d8e5fb] bg-white p-2 md:col-span-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="secondary-btn"
@@ -779,7 +779,7 @@ function InvestmentForm({
         {limitResult && (
           <div className="mt-2 space-y-1 text-xs">
             {limitResult.checks.map((item, idx) => (
-              <div key={`${item.rule_code}-${idx}`} className="rounded border border-slate-100 bg-slate-50 px-2 py-1 text-slate-700">
+              <div key={`${item.rule_code}-${idx}`} className="rounded border border-[#e6eefc] bg-[#f5f9ff] px-2 py-1 text-[#0f1f3d]">
                 <span className="font-medium">{item.rule_code}</span>
                 {' · '}
                 <span>{item.result}</span>

@@ -96,15 +96,15 @@ export default function CompleteModal({
         <div className="modal-content w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-emerald-700">✅ 업무 완료</h3>
-            <button onClick={onCancel} className="icon-btn text-slate-500 hover:text-slate-600" aria-label="닫기">
+            <button onClick={onCancel} className="icon-btn text-[#64748b] hover:text-[#64748b]" aria-label="닫기">
               <X size={20} />
             </button>
           </div>
 
-          <p className="mb-1 text-sm text-slate-700">{task.title}</p>
+          <p className="mb-1 text-sm text-[#0f1f3d]">{task.title}</p>
           <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
-            {task.fund_name && <p className="text-blue-600">{task.fund_name}</p>}
-            {task.category && <p className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{task.category}</p>}
+            {task.fund_name && <p className="text-[#558ef8]">{task.fund_name}</p>}
+            {task.category && <p className="rounded-full bg-[#fff7d6] px-2 py-0.5 text-[#64748b]">{task.category}</p>}
           </div>
 
           <div className="mb-3 overflow-hidden rounded-lg border border-amber-200 bg-amber-50">
@@ -131,9 +131,9 @@ export default function CompleteModal({
                   <p className="text-xs text-amber-800">참고할 과거 교훈이 없습니다.</p>
                 ) : (
                   lessonQuery.data!.map((lesson) => (
-                    <div key={lesson.id} className="rounded border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700">
+                    <div key={lesson.id} className="rounded border border-amber-200 bg-white px-2 py-1.5 text-xs text-[#0f1f3d]">
                       <p>• {lesson.content}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-[#64748b]">
                         {lesson.is_same_fund ? '같은 조합' : '다른 조합'}
                         {lesson.fund_name ? ` · ${lesson.fund_name}` : ''}
                       </p>
@@ -145,7 +145,7 @@ export default function CompleteModal({
           </div>
 
           {isChecking && (
-            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            <div className="mb-3 rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-2 text-xs text-[#1a3660]">
               완료 전 필수 조건을 확인하는 중입니다...
             </div>
           )}
@@ -173,7 +173,7 @@ export default function CompleteModal({
                   return (
                     <div key={document.id} className="rounded border border-red-200 bg-white px-2 py-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-sm font-medium text-[#0f1f3d]">
                           {document.name}
                           {document.required ? ' (필수)' : ''}
                         </p>
@@ -186,14 +186,14 @@ export default function CompleteModal({
                             {document.checked ? '확인됨' : '미확인'}
                           </span>
                           {document.has_attachment && (
-                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] text-blue-700">첨부됨</span>
+                            <span className="rounded-full bg-[#e6efff] px-2 py-0.5 text-[10px] text-[#1a3660]">첨부됨</span>
                           )}
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <label
                           htmlFor={`complete-modal-attach-${document.id}`}
-                          className={`cursor-pointer rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50 ${
+                          className={`cursor-pointer rounded border border-[#d8e5fb] px-2 py-1 text-[11px] text-[#0f1f3d] hover:bg-[#f5f9ff] ${
                             attachPending ? 'pointer-events-none opacity-60' : ''
                           }`}
                         >
@@ -219,7 +219,7 @@ export default function CompleteModal({
                               checked: document.checked,
                             })
                           }
-                          className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          className="rounded border border-[#d8e5fb] px-2 py-1 text-[11px] text-[#0f1f3d] hover:bg-[#f5f9ff] disabled:opacity-60"
                         >
                           {checkPending ? '처리 중...' : document.checked ? '확인 해제' : '확인 완료'}
                         </button>
@@ -260,19 +260,19 @@ export default function CompleteModal({
             />
           </div>
 
-          <label className="mb-1 block text-xs text-slate-500">실제 소요 시간</label>
+          <label className="mb-1 block text-xs text-[#64748b]">실제 소요 시간</label>
           <TimeSelect value={actualTime} onChange={setActualTime} />
 
-          <label className="mb-1 mt-3 block text-xs text-slate-500">메모 (업무기록 반영)</label>
+          <label className="mb-1 mt-3 block text-xs text-[#64748b]">메모 (업무기록 반영)</label>
           <textarea
             value={memo}
             onChange={(event) => setMemo(event.target.value)}
             rows={2}
             placeholder="완료 소감, 특이사항 등"
-            className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full resize-none rounded-lg border border-[#d8e5fb] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#558ef8]"
           />
 
-          <label className="mb-4 mt-3 flex items-center gap-2 text-sm text-slate-700">
+          <label className="mb-4 mt-3 flex items-center gap-2 text-sm text-[#0f1f3d]">
             <input
               type="checkbox"
               checked={autoWorklog}

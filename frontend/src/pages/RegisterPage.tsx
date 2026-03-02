@@ -170,8 +170,8 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         {submitted ? (
           <div className="space-y-4 text-center">
-            <h1 className="text-xl font-semibold text-slate-900">가입 신청 완료</h1>
-            <p className="text-sm text-slate-600">
+            <h1 className="text-xl font-semibold text-[#0f1f3d]">가입 신청 완료</h1>
+            <p className="text-sm text-[#64748b]">
               가입 신청이 정상적으로 접수되었습니다.
               <br />
               관리자 승인 후 로그인할 수 있습니다.
@@ -181,11 +181,11 @@ export default function RegisterPage() {
             </button>
           </div>
         ) : inviteLoading ? (
-          <div className="py-6 text-center text-sm text-slate-600">초대 정보를 확인하는 중...</div>
+          <div className="py-6 text-center text-sm text-[#64748b]">초대 정보를 확인하는 중...</div>
         ) : inviteMode && !inviteInfo ? (
           <div className="space-y-4 text-center">
-            <h1 className="text-xl font-semibold text-slate-900">초대 링크를 사용할 수 없습니다</h1>
-            <p className="text-sm text-slate-600">{inviteMessage || '유효하지 않은 초대 링크입니다.'}</p>
+            <h1 className="text-xl font-semibold text-[#0f1f3d]">초대 링크를 사용할 수 없습니다</h1>
+            <p className="text-sm text-[#64748b]">{inviteMessage || '유효하지 않은 초대 링크입니다.'}</p>
             <Link to="/login" className="primary-btn inline-flex w-full items-center justify-center">
               로그인으로 이동
             </Link>
@@ -194,11 +194,11 @@ export default function RegisterPage() {
           <>
             <div className="mb-4 text-center">
               <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-              <h1 className="mt-3 text-lg font-semibold text-slate-900">
+              <h1 className="mt-3 text-lg font-semibold text-[#0f1f3d]">
                 {inviteMode ? 'V:ON ERP 초대 가입' : 'V:ON ERP 회원가입'}
               </h1>
               {inviteInfo && (
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 text-xs text-[#64748b]">
                   역할: <span className="font-medium">{inviteInfo.role}</span>
                 </p>
               )}
@@ -213,7 +213,7 @@ export default function RegisterPage() {
                   className="form-input"
                   placeholder="park_invest"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[#64748b]">
                   {usernameState.checking
                     ? '중복 확인 중...'
                     : usernameState.message || '영문 소문자, 숫자, _ 만 가능 (4~20자)'}
@@ -260,7 +260,7 @@ export default function RegisterPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   className="form-input"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[#64748b]">
                   강도:{' '}
                   <span
                     className={
@@ -314,9 +314,9 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <p className="mt-4 text-center text-xs text-slate-500">
+            <p className="mt-4 text-center text-xs text-[#64748b]">
               이미 계정이 있으신가요?{' '}
-              <Link to="/login" className="text-blue-600 hover:underline">
+              <Link to="/login" className="text-[#558ef8] hover:underline">
                 로그인
               </Link>
             </p>

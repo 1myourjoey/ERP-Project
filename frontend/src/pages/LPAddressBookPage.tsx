@@ -129,7 +129,7 @@ export default function LPAddressBookPage() {
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{editing ? '주소록 수정' : '주소록 등록'}</h3>
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">{editing ? '주소록 수정' : '주소록 등록'}</h3>
           {editing && (
             <button
               onClick={() => {
@@ -216,7 +216,7 @@ export default function LPAddressBookPage() {
 
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-700">주소록 목록</h3>
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">주소록 목록</h3>
           <div className="flex items-center gap-2">
             <input
               value={keyword}
@@ -224,7 +224,7 @@ export default function LPAddressBookPage() {
               placeholder="이름/유형/사업자번호 검색"
               className="form-input-sm w-72"
             />
-            <label className="inline-flex items-center gap-1 text-xs text-slate-600">
+            <label className="inline-flex items-center gap-1 text-xs text-[#64748b]">
               <input
                 type="checkbox"
                 checked={showInactive}
@@ -236,11 +236,11 @@ export default function LPAddressBookPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">불러오는 중...</p>
+          <p className="text-sm text-[#64748b]">불러오는 중...</p>
         ) : filteredBooks.length === 0 ? (
-          <p className="text-sm text-slate-500">등록된 주소록이 없습니다.</p>
+          <p className="text-sm text-[#64748b]">등록된 주소록이 없습니다.</p>
         ) : (
-          <div className="overflow-auto rounded-lg border border-slate-200">
+          <div className="overflow-auto rounded-lg border border-[#d8e5fb]">
             <table className="min-w-full">
               <thead className="table-head-row">
                 <tr>
@@ -255,7 +255,7 @@ export default function LPAddressBookPage() {
               </thead>
               <tbody>
                 {filteredBooks.map((book) => (
-                  <tr key={book.id} className="hover:bg-slate-50">
+                  <tr key={book.id} className="hover:bg-[#f5f9ff]">
                     <td className="table-body-cell">{book.name}</td>
                     <td className="table-body-cell">{LP_TYPE_LABEL[book.type] || book.type}</td>
                     <td className="table-body-cell">{book.business_number || '-'}</td>

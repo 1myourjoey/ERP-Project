@@ -22,7 +22,7 @@ interface ConfirmDialogProps {
 function variantIcon(variant: ConfirmDialogProps['variant']) {
   if (variant === 'danger') return <AlertTriangle size={16} className="text-red-600" />
   if (variant === 'warning') return <AlertTriangle size={16} className="text-amber-600" />
-  return <Info size={16} className="text-blue-600" />
+  return <Info size={16} className="text-[#558ef8]" />
 }
 
 export function ConfirmDialog({
@@ -105,7 +105,7 @@ export function ConfirmDialog({
             <h3 className="text-base font-semibold">{title}</h3>
           </div>
 
-          <p className="text-sm text-slate-600">{message}</p>
+          <p className="text-sm text-[#64748b]">{message}</p>
           {detail && (
             <div className="warning-banner mt-3">
               <div className="info-banner-icon">

@@ -89,7 +89,7 @@ function scopeMeta(scope?: string): { icon: string; label: string; className: st
   return {
     icon: '🌐',
     label: '공통 법령',
-    className: 'border-slate-200 bg-slate-100 text-slate-700',
+    className: 'border-[#d8e5fb] bg-[#fff7d6] text-[#0f1f3d]',
   }
 }
 
@@ -384,7 +384,7 @@ export default function CompliancePage() {
 
   function tabClass(tab: TabKey): string {
     return `rounded px-3 py-1 text-sm ${
-      activeTab === tab ? 'primary-btn' : 'secondary-btn text-slate-700'
+      activeTab === tab ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'
     }`
   }
 
@@ -420,8 +420,8 @@ export default function CompliancePage() {
       <div className="card-base space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">법률 질의</h3>
-            <p className="mt-1 text-xs text-slate-500">L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다.</p>
+            <h3 className="text-sm font-semibold text-[#0f1f3d]">법률 질의</h3>
+            <p className="mt-1 text-xs text-[#64748b]">L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다.</p>
           </div>
           <span className={`tag ${interpretResult?.tier === 'L1' ? 'tag-green' : 'tag-indigo'}`}>
             {interpretResult?.tier ? `최근 답변: ${interpretResult.tier}` : '아직 답변이 없습니다'}
@@ -454,20 +454,20 @@ export default function CompliancePage() {
             {interpretMut.isPending ? '질의 중...' : '질의'}
           </button>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[#64748b]">
           조합을 선택하면 공통 법령(🌐) + 조합유형 가이드(📋) + 해당 조합 문서(🏢)까지 함께 검색합니다. 조합을 선택하지 않으면
           공통 법령만 검색합니다.
         </p>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 lg:col-span-2">
-            <p className="mb-1 text-xs font-semibold text-slate-600">답변</p>
+          <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 lg:col-span-2">
+            <p className="mb-1 text-xs font-semibold text-[#64748b]">답변</p>
             {interpretResult ? (
               <>
-                <pre className="whitespace-pre-wrap text-sm text-slate-800">{interpretResult.answer}</pre>
+                <pre className="whitespace-pre-wrap text-sm text-[#0f1f3d]">{interpretResult.answer}</pre>
                 {interpretResult.sources.length > 0 && (
                   <div className="mt-3 space-y-1">
-                    <p className="text-xs font-semibold text-slate-600">근거 문서</p>
+                    <p className="text-xs font-semibold text-[#64748b]">근거 문서</p>
                     {interpretResult.sources.map((source, idx) => {
                       const similarity =
                         source.distance == null || Number.isNaN(source.distance)
@@ -477,21 +477,21 @@ export default function CompliancePage() {
                       return (
                         <div
                           key={`${source.collection}-${idx}`}
-                          className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs text-slate-700"
+                          className="rounded-lg border border-[#e6eefc] bg-[#f5f9ff] px-2 py-1.5 text-xs text-[#0f1f3d]"
                         >
                           <div className="mb-1 flex flex-wrap items-center gap-1 text-[11px]">
                             <span className={`inline-flex items-center rounded border px-1.5 py-0.5 ${scope.className}`}>
                               {scope.icon} {scope.label}
                             </span>
-                            <span className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-slate-600">
+                            <span className="inline-flex items-center rounded border border-[#d8e5fb] bg-white px-1.5 py-0.5 text-[#64748b]">
                               [{source.collection}]
                             </span>
-                            <span className="text-slate-500">
+                            <span className="text-[#64748b]">
                               {source.article || '해당없음'} | 유사도 {similarity}
                             </span>
                           </div>
-                          {source.title && <div className="font-medium text-slate-700">{source.title}</div>}
-                          <div className="mt-0.5 text-slate-600">{source.text}</div>
+                          {source.title && <div className="font-medium text-[#0f1f3d]">{source.title}</div>}
+                          <div className="mt-0.5 text-[#64748b]">{source.text}</div>
                         </div>
                       )
                     })}
@@ -499,13 +499,13 @@ export default function CompliancePage() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-slate-500">질의를 입력하면 법률 해석 결과를 확인할 수 있습니다.</p>
+              <p className="text-sm text-[#64748b]">질의를 입력하면 법률 해석 결과를 확인할 수 있습니다.</p>
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
+          <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-slate-600">토큰 사용량</p>
+              <p className="text-xs font-semibold text-[#64748b]">토큰 사용량</p>
               <select
                 className="form-input-sm w-auto"
                 value={usagePeriod}
@@ -517,9 +517,9 @@ export default function CompliancePage() {
               </select>
             </div>
             {isUsageLoading ? (
-              <p className="text-xs text-slate-500">불러오는 중...</p>
+              <p className="text-xs text-[#64748b]">불러오는 중...</p>
             ) : (
-              <div className="space-y-2 text-xs text-slate-700">
+              <div className="space-y-2 text-xs text-[#0f1f3d]">
                 <p>
                   사용: <span className="font-semibold">{(llmUsage?.used_tokens ?? 0).toLocaleString()}</span> 토큰
                 </p>
@@ -529,15 +529,15 @@ export default function CompliancePage() {
                       한도: <span className="font-semibold">{llmUsage.limit_tokens.toLocaleString()}</span> | 잔여:{' '}
                       <span className="font-semibold">{(llmUsage.remaining_tokens ?? 0).toLocaleString()}</span>
                     </p>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-2 overflow-hidden rounded-full bg-[#fff7d6]">
                       <div
                         className={`h-full rounded-full ${
-                          usageProgress >= 90 ? 'bg-red-500' : usageProgress >= 70 ? 'bg-amber-500' : 'bg-blue-500'
+                          usageProgress >= 90 ? 'bg-red-500' : usageProgress >= 70 ? 'bg-amber-500' : 'bg-[#558ef8]'
                         }`}
                         style={{ width: `${usageProgress}%` }}
                       />
                     </div>
-                    <p className="text-[11px] text-slate-500">사용률 {usageProgress.toFixed(1)}%</p>
+                    <p className="text-[11px] text-[#64748b]">사용률 {usageProgress.toFixed(1)}%</p>
                   </>
                 )}
                 <p>예상 비용: ${(llmUsage?.used_cost_usd ?? 0).toFixed(4)}</p>
@@ -577,24 +577,24 @@ export default function CompliancePage() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <div className="card-base">
-              <p className="text-xs text-slate-500">총 규칙 수</p>
-              <p className="mt-1 text-xl font-semibold text-slate-800">{summaryRules}</p>
+              <p className="text-xs text-[#64748b]">총 규칙 수</p>
+              <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{summaryRules}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-slate-500">진행 중 위반</p>
+              <p className="text-xs text-[#64748b]">진행 중 위반</p>
               <p className="mt-1 text-xl font-semibold text-red-600">{summaryViolations}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-slate-500">경고</p>
+              <p className="text-xs text-[#64748b]">경고</p>
               <p className="mt-1 text-xl font-semibold text-amber-600">{summaryWarnings}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-slate-500">적합</p>
+              <p className="text-xs text-[#64748b]">적합</p>
               <p className="mt-1 text-xl font-semibold text-green-700">{summaryPassed}</p>
             </div>
             <div className="card-base">
-              <p className="text-xs text-slate-500">준수율</p>
-              <p className="mt-1 text-xl font-semibold text-slate-800">{summaryRate.toFixed(1)}%</p>
+              <p className="text-xs text-[#64748b]">준수율</p>
+              <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{summaryRate.toFixed(1)}%</p>
             </div>
           </div>
 
@@ -613,40 +613,40 @@ export default function CompliancePage() {
 
             <div className="card-base space-y-3">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">인덱싱 및 LLM 사용량</h3>
-                <p className="mt-1 text-xs text-slate-500">벡터 문서 청크 수와 월간 법률 LLM 사용량입니다.</p>
+                <h3 className="text-sm font-semibold text-[#0f1f3d]">인덱싱 및 LLM 사용량</h3>
+                <p className="mt-1 text-xs text-[#64748b]">벡터 문서 청크 수와 월간 법률 LLM 사용량입니다.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">법률</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.laws ?? 0}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-[#0f1f3d]">
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">법률</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.laws ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">시행령/규칙</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.regulations ?? 0}</p>
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">시행령/규칙</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.regulations ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">가이드라인</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.guidelines ?? 0}</p>
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">가이드라인</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.guidelines ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">규약/계약</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.agreements ?? 0}</p>
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">규약/계약</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.agreements ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">내부지침</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.internal ?? 0}</p>
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">내부지침</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.internal ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                  <p className="text-slate-500">총 청크 수</p>
-                  <p className="text-lg font-semibold text-slate-800">{dashboardDocumentStats?.total_chunks ?? 0}</p>
+                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                  <p className="text-[#64748b]">총 청크 수</p>
+                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.total_chunks ?? 0}</p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-700">
+              <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 text-xs text-[#0f1f3d]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-700">월간 토큰 사용량</p>
+                  <p className="font-semibold text-[#0f1f3d]">월간 토큰 사용량</p>
                   <span className={dashboardLlmUsageProgress >= 90 ? 'tag tag-red' : dashboardLlmUsageProgress >= 70 ? 'tag tag-amber' : 'tag tag-blue'}>
                     {dashboardLlmUsageProgress.toFixed(1)}%
                   </span>
@@ -654,14 +654,14 @@ export default function CompliancePage() {
                 <p className="mt-2">
                   {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} 토큰
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#fff7d6]">
                   <div
                     className={`h-full rounded-full ${
                       dashboardLlmUsageProgress >= 90
                         ? 'bg-red-500'
                         : dashboardLlmUsageProgress >= 70
                           ? 'bg-amber-500'
-                          : 'bg-blue-500'
+                          : 'bg-[#558ef8]'
                     }`}
                     style={{ width: `${dashboardLlmUsageProgress}%` }}
                   />
@@ -676,11 +676,11 @@ export default function CompliancePage() {
       {activeTab === 'obligations' && (
         <>
           <div className="card-base">
-            <p className="mb-2 text-xs font-semibold text-slate-600">조합 필터</p>
+            <p className="mb-2 text-xs font-semibold text-[#64748b]">조합 필터</p>
             <div className="flex flex-wrap gap-2">
               <button
                 className={`rounded px-2 py-1 text-xs ${
-                  fundFilter === '' ? 'primary-btn' : 'secondary-btn text-slate-700'
+                  fundFilter === '' ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'
                 }`}
                 onClick={() => setFundFilter('')}
               >
@@ -690,7 +690,7 @@ export default function CompliancePage() {
                 <button
                   key={fund.id}
                   className={`rounded px-2 py-1 text-xs ${
-                    fundFilter === fund.id ? 'primary-btn' : 'secondary-btn text-slate-700'
+                    fundFilter === fund.id ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'
                   }`}
                   onClick={() => setFundFilter(fund.id)}
                 >
@@ -703,7 +703,7 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">상태</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">상태</label>
                 <select className="form-input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="">전체</option>
                   <option value="pending">대기</option>
@@ -714,7 +714,7 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">카테고리</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">카테고리</label>
                 <select className="form-input" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
                   <option value="">전체</option>
                   <option value="reporting">보고</option>
@@ -739,7 +739,7 @@ export default function CompliancePage() {
               <EmptyState emoji="i" message="준수 의무 항목이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2 text-left">상태</th>
                     <th className="px-3 py-2 text-left">마감일</th>
@@ -767,7 +767,7 @@ export default function CompliancePage() {
                         <td className="px-3 py-2">{row.fund_name || '-'}</td>
                         <td className="px-3 py-2">
                           {row.status === 'completed' || row.status === 'waived' ? (
-                            <span className="text-xs text-slate-500">완료</span>
+                            <span className="text-xs text-[#64748b]">완료</span>
                           ) : (
                             <button className="secondary-btn btn-sm" onClick={() => setTargetRow(row)}>
                               완료 처리
@@ -789,7 +789,7 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
                 <select
                   className="form-input"
                   value={ruleFundFilter}
@@ -804,7 +804,7 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">레벨</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">레벨</label>
                 <select className="form-input" value={ruleLevelFilter} onChange={(event) => setRuleLevelFilter(event.target.value)}>
                   <option value="">전체</option>
                   <option value="L1">L1</option>
@@ -827,9 +827,9 @@ export default function CompliancePage() {
 
           <div className="card-base space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">{editingRuleId ? `규칙 수정 #${editingRuleId}` : '규칙 생성'}</p>
+              <p className="text-sm font-semibold text-[#0f1f3d]">{editingRuleId ? `규칙 수정 #${editingRuleId}` : '규칙 생성'}</p>
               {editingRuleId && (
-                <button className="text-xs text-slate-500 hover:text-slate-700" onClick={startCreateRule}>
+                <button className="text-xs text-[#64748b] hover:text-[#0f1f3d]" onClick={startCreateRule}>
                   취소
                 </button>
               )}
@@ -906,7 +906,7 @@ export default function CompliancePage() {
               <EmptyState emoji="r" message="규칙이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2 text-left">코드</th>
                     <th className="px-3 py-2 text-left">이름</th>
@@ -954,7 +954,7 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
                 <select
                   className="form-input"
                   value={ruleFundFilter}
@@ -969,7 +969,7 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">결과</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">결과</label>
                 <select className="form-input" value={checkResultFilter} onChange={(event) => setCheckResultFilter(event.target.value)}>
                   <option value="">전체</option>
                   <option value="pass">적합</option>
@@ -993,7 +993,7 @@ export default function CompliancePage() {
               <EmptyState emoji="c" message="점검 기록이 없습니다." className="py-8" />
             ) : (
               <table className="min-w-[1180px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2 text-left">점검 시각</th>
                     <th className="px-3 py-2 text-left">조합</th>
@@ -1013,7 +1013,7 @@ export default function CompliancePage() {
                         <td className="px-3 py-2">{check.checked_at ? new Date(check.checked_at).toLocaleString() : '-'}</td>
                         <td className="px-3 py-2">{check.fund_name || `#${check.fund_id}`}</td>
                         <td className="px-3 py-2">
-                          <div className="font-mono text-xs text-slate-500">{check.rule_code || '-'}</div>
+                          <div className="font-mono text-xs text-[#64748b]">{check.rule_code || '-'}</div>
                           <div>{check.rule_name || '-'}</div>
                         </td>
                         <td className="px-3 py-2">{check.level || '-'}</td>
@@ -1025,7 +1025,7 @@ export default function CompliancePage() {
                         </td>
                         <td className="px-3 py-2">
                           <div>{check.trigger_type || '-'}</div>
-                          <div className="text-xs text-slate-500">{check.trigger_source || '-'}</div>
+                          <div className="text-xs text-[#64748b]">{check.trigger_source || '-'}</div>
                         </td>
                         <td className="px-3 py-2">
                           {check.remediation_task_id ? (
@@ -1050,7 +1050,7 @@ export default function CompliancePage() {
         <div className="space-y-3">
           <div className="card-base space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-800">정기 준수 점검 스케줄</h3>
+              <h3 className="text-sm font-semibold text-[#0f1f3d]">정기 준수 점검 스케줄</h3>
               <select
                 className="form-input-sm w-auto"
                 value={scanPeriod}
@@ -1068,14 +1068,14 @@ export default function CompliancePage() {
             ) : (
               <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
                 {scanHistory.schedules.map((job) => (
-                  <div key={job.job_id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
+                  <div key={job.job_id} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-800">{job.label}</p>
+                      <p className="text-sm font-semibold text-[#0f1f3d]">{job.label}</p>
                       <span className={`tag ${job.enabled ? 'tag-green' : 'tag-gray'}`}>{job.enabled ? '활성' : '비활성'}</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{job.cron}</p>
-                    <p className="mt-2 text-xs text-slate-600">다음 실행: {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : '-'}</p>
-                    <p className="text-xs text-slate-600">최근 실행: {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : '-'}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{job.cron}</p>
+                    <p className="mt-2 text-xs text-[#64748b]">다음 실행: {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : '-'}</p>
+                    <p className="text-xs text-[#64748b]">최근 실행: {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : '-'}</p>
                   </div>
                 ))}
               </div>
@@ -1083,7 +1083,7 @@ export default function CompliancePage() {
           </div>
 
           <div className="card-base space-y-3">
-            <h3 className="text-sm font-semibold text-slate-800">수동 스캔</h3>
+            <h3 className="text-sm font-semibold text-[#0f1f3d]">수동 스캔</h3>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <select
                 className="form-input"
@@ -1112,7 +1112,7 @@ export default function CompliancePage() {
               </button>
             </div>
             {manualScanResult && (
-              <div className="rounded-xl border border-slate-200 bg-white/70 p-3 text-xs text-slate-700">
+              <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 text-xs text-[#0f1f3d]">
                 {manualScanResult.scan_type ? (
                   <div className="space-y-1">
                     <p>
@@ -1141,8 +1141,8 @@ export default function CompliancePage() {
 
           <div className="card-base overflow-auto">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-800">최근 스캔 이력</h3>
-              <span className="text-xs text-slate-500">{scanHistory?.period ?? scanPeriod}</span>
+              <h3 className="text-sm font-semibold text-[#0f1f3d]">최근 스캔 이력</h3>
+              <span className="text-xs text-[#64748b]">{scanHistory?.period ?? scanPeriod}</span>
             </div>
             {isScanHistoryLoading ? (
               <PageLoading />
@@ -1150,7 +1150,7 @@ export default function CompliancePage() {
               <EmptyState emoji="h" message="스캔 이력이 없습니다." className="py-6" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2 text-left">스캔</th>
                     <th className="px-3 py-2 text-left">일자</th>
@@ -1181,14 +1181,14 @@ export default function CompliancePage() {
           </div>
 
           <div className="card-base overflow-auto">
-            <h3 className="mb-2 text-sm font-semibold text-slate-800">법령 개정 알림</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">법령 개정 알림</h3>
             {isAmendmentsLoading ? (
               <PageLoading />
             ) : amendmentAlerts.length === 0 ? (
               <EmptyState emoji="a" message="아직 법령 개정 알림이 없습니다." className="py-6" />
             ) : (
               <table className="min-w-[980px] w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
+                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2 text-left">제목</th>
                     <th className="px-3 py-2 text-left">시행일</th>
@@ -1219,7 +1219,7 @@ export default function CompliancePage() {
           <div className="card-base">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
                 <select
                   className="form-input"
                   value={historyFundId}
@@ -1234,7 +1234,7 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">패턴 분석 기간</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">패턴 분석 기간</label>
                 <select
                   className="form-input"
                   value={patternMonths}
@@ -1246,7 +1246,7 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">리포트 월</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">리포트 월</label>
                 <input
                   className="form-input"
                   type="month"
@@ -1269,17 +1269,17 @@ export default function CompliancePage() {
       {targetRow && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
-            <h3 className="mb-2 text-base font-semibold text-slate-900">의무사항 완료 처리</h3>
-            <p className="mb-3 text-xs text-slate-500">
+            <h3 className="mb-2 text-base font-semibold text-[#0f1f3d]">의무사항 완료 처리</h3>
+            <p className="mb-3 text-xs text-[#64748b]">
               {targetRow.rule_title || targetRow.rule_code || '-'} | 마감 {targetRow.due_date || '-'}
             </p>
             <div className="space-y-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">완료자</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">완료자</label>
                 <input className="form-input" value={completedBy} onChange={(event) => setCompletedBy(event.target.value)} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">근거 메모</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">근거 메모</label>
                 <textarea className="form-input" rows={3} value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} />
               </div>
             </div>

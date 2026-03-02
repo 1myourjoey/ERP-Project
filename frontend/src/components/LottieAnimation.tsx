@@ -62,7 +62,7 @@ export default function LottieAnimation({ src, loop = true, autoplay = true, cla
 
   const fallbackClass = useMemo(() => {
     const base = className || 'h-10 w-10'
-    return `inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-400 ${base}`
+    return `inline-flex items-center justify-center rounded-full bg-[#fff7d6] text-[#94a3b8] ${base}`
   }, [className])
 
   if (reducedMotion || loadFailed || !DotLottieReact) {

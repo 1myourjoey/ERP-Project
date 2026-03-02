@@ -53,7 +53,7 @@ export default function KrwAmountInput({
   onChange,
   className = 'form-input',
   placeholder = '\uC22B\uC790\uB9CC \uC785\uB825',
-  helperClassName = 'mt-1 text-[11px] text-slate-500',
+  helperClassName = 'mt-1 text-[11px] text-[#64748b]',
 }: KrwAmountInputProps) {
   const [displayValue, setDisplayValue] = useState<string>(formatNumber(value))
 

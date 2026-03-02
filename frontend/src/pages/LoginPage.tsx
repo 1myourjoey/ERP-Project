@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-xl backdrop-blur-xl">
         <div className="mb-5 text-center">
           <img src="/logo.svg" alt="V:ON" className="mx-auto h-8 w-auto" />
-          <p className="mt-3 text-sm text-slate-600">V:ON ERP 로그인</p>
+          <p className="mt-3 text-sm text-[#64748b]">V:ON ERP 로그인</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -89,10 +89,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-2 text-xs text-slate-500">
-          <div className="h-px flex-1 bg-slate-200" />
+        <div className="my-4 flex items-center gap-2 text-xs text-[#64748b]">
+          <div className="h-px flex-1 bg-[#d8e5fb]" />
           또는
-          <div className="h-px flex-1 bg-slate-200" />
+          <div className="h-px flex-1 bg-[#d8e5fb]" />
         </div>
 
         <div className="flex justify-center">
@@ -117,16 +117,16 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="mt-4 space-y-1 text-center text-xs text-slate-500">
+        <div className="mt-4 space-y-1 text-center text-xs text-[#64748b]">
           <p>
             계정이 없으신가요?{' '}
-            <Link to="/register" className="text-blue-600 hover:underline">
+            <Link to="/register" className="text-[#558ef8] hover:underline">
               회원가입
             </Link>
           </p>
           <p>
             비밀번호를 잊으셨나요?{' '}
-            <Link to="/forgot-password" className="text-blue-600 hover:underline">
+            <Link to="/forgot-password" className="text-[#558ef8] hover:underline">
               비밀번호 찾기
             </Link>
           </p>

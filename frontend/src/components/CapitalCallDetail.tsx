@@ -157,20 +157,20 @@ export default function CapitalCallDetail({
   }
 
   if (isLoading) {
-    return <p className="text-xs text-slate-500">로딩중...</p>
+    return <p className="text-xs text-[#64748b]">로딩중...</p>
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-slate-600">LP별 납입 상세</p>
+        <p className="text-xs font-semibold text-[#64748b]">LP별 납입 상세</p>
         {editable && (
-          <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-slate-500">
+          <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-[#64748b]">
             <input
               type="checkbox"
               checked={showUnpaidOnly}
               onChange={(e) => setShowUnpaidOnly(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-[#bfcff0]"
             />
             미납만 보기
           </label>
@@ -178,17 +178,17 @@ export default function CapitalCallDetail({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-white text-slate-500">
+          <thead className="bg-white text-[#64748b]">
             <tr>
               {editable && (
                 <th className="w-8 px-2 py-1 text-center">
-                  <label className="inline-flex items-center gap-1 text-[10px] text-slate-500">
+                  <label className="inline-flex items-center gap-1 text-[10px] text-[#64748b]">
                     전체
                     <input
                       type="checkbox"
                       checked={visibleUnpaidItems.length > 0 && visibleUnpaidItems.every((item) => selectedIds.has(item.id))}
                       onChange={(e) => toggleSelectAllVisibleUnpaid(e.target.checked)}
-                      className="rounded border-slate-300"
+                      className="rounded border-[#bfcff0]"
                     />
                   </label>
                 </th>
@@ -207,17 +207,17 @@ export default function CapitalCallDetail({
                 {editable && (
                   <td className="px-2 py-1 text-center">
                     {!item.paid ? (
-                      <label className="inline-flex items-center gap-1 text-[10px] text-slate-500">
+                      <label className="inline-flex items-center gap-1 text-[10px] text-[#64748b]">
                         선택
                         <input
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
                           onChange={(e) => toggleSelectOne(item.id, e.target.checked)}
-                          className="rounded border-slate-300"
+                          className="rounded border-[#bfcff0]"
                         />
                       </label>
                     ) : (
-                      <span className="text-[10px] text-gray-300">-</span>
+                      <span className="text-[10px] text-[#94a3b8]">-</span>
                     )}
                   </td>
                 )}
@@ -233,7 +233,7 @@ export default function CapitalCallDetail({
                         type="checkbox"
                         checked={item.paid}
                         onChange={(e) => handlePaidToggle(item, e.target.checked)}
-                        className="rounded border-slate-300"
+                        className="rounded border-[#bfcff0]"
                       />
                       <span className={`text-[10px] ${item.paid ? 'text-emerald-700' : 'text-red-700'}`}>
                         {item.paid ? '납입' : '미납'}
@@ -249,10 +249,10 @@ export default function CapitalCallDetail({
                     </span>
                   )}
                 </td>
-                <td className="px-2 py-1 text-slate-500">
+                <td className="px-2 py-1 text-[#64748b]">
                   {editable && !item.paid ? (
                     <div>
-                      <label className="mb-0.5 block text-[10px] font-medium text-slate-500">납입일</label>
+                      <label className="mb-0.5 block text-[10px] font-medium text-[#64748b]">납입일</label>
                       <input
                         type="date"
                         value={item.paid_date ?? ''}
@@ -264,10 +264,10 @@ export default function CapitalCallDetail({
                     formatDate(item.paid_date)
                   )}
                 </td>
-                <td className="px-2 py-1 text-slate-500">
+                <td className="px-2 py-1 text-[#64748b]">
                   {editable ? (
                     <div>
-                      <label className="mb-0.5 block text-[10px] font-medium text-slate-500">비고</label>
+                      <label className="mb-0.5 block text-[10px] font-medium text-[#64748b]">비고</label>
                       <input
                         type="text"
                         defaultValue={item.memo ?? ''}
@@ -284,7 +284,7 @@ export default function CapitalCallDetail({
             ))}
             {!filteredItems.length && (
               <tr>
-                <td className="px-2 py-2 text-center text-slate-500" colSpan={editable ? 7 : 6}>
+                <td className="px-2 py-2 text-center text-[#64748b]" colSpan={editable ? 7 : 6}>
                   {showUnpaidOnly ? '미납 항목이 없습니다.' : '등록된 LP 항목이 없습니다.'}
                 </td>
               </tr>
@@ -307,7 +307,7 @@ export default function CapitalCallDetail({
             <button
               onClick={() => batchConfirmMut.mutate(unpaidItems.map((item) => item.id))}
               disabled={batchConfirmMut.isPending}
-              className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded bg-[#0f1f3d] px-3 py-1.5 text-xs text-white hover:bg-[#0a1630] disabled:opacity-60"
             >
               전원 납입완료 처리
             </button>

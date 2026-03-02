@@ -380,7 +380,7 @@ export default function Layout() {
               <img src="/logo.svg" alt="V:ON" className="h-6 w-auto" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#fff7d6]"
                 aria-label="메뉴 닫기"
               >
                 <X size={20} />
@@ -390,7 +390,7 @@ export default function Layout() {
             <div className="space-y-5">
               {mobileGroups.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.label}</p>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#64748b]">{group.label}</p>
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const active = isPathActive(location.pathname, item.to)
@@ -400,7 +400,7 @@ export default function Layout() {
                           to={item.to}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`block rounded-xl px-3 py-2.5 text-sm ${
-                            active ? 'bg-blue-50 font-medium text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                            active ? 'bg-[#f5f9ff] font-medium text-[#558ef8]' : 'text-[#0f1f3d] hover:bg-[#f5f9ff]'
                           }`}
                         >
                           {item.label}
@@ -412,10 +412,10 @@ export default function Layout() {
               ))}
             </div>
 
-            <div className="mt-6 border-t border-slate-200 pt-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-700">{user?.name}</p>
-                <p className="text-[11px] text-slate-500">{user?.username}</p>
+            <div className="mt-6 border-t border-[#d8e5fb] pt-4">
+              <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+                <p className="text-xs font-semibold text-[#0f1f3d]">{user?.name}</p>
+                <p className="text-[11px] text-[#64748b]">{user?.username}</p>
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => {

@@ -46,12 +46,12 @@ export default function FundComplianceGrid({
   return (
     <div className="card-base overflow-auto">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">조합별 준수 현황</h3>
-        <span className="text-xs text-slate-500">{rows.length}개 조합</span>
+        <h3 className="text-sm font-semibold text-[#0f1f3d]">조합별 준수 현황</h3>
+        <span className="text-xs text-[#64748b]">{rows.length}개 조합</span>
       </div>
 
       <table className="min-w-[760px] w-full text-sm">
-        <thead className="bg-slate-50 text-xs text-slate-500">
+        <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
           <tr>
             <th className="px-3 py-2 text-left">조합</th>
             <th className="px-3 py-2 text-left">점검 규칙 수</th>
@@ -66,16 +66,16 @@ export default function FundComplianceGrid({
             const violations = row.violation_count ?? row.failed
             const active = selectedFundId !== '' && Number(selectedFundId) === row.fund_id
             return (
-              <tr key={row.fund_id} className={active ? 'bg-blue-50/70' : ''}>
-                <td className="px-3 py-2 font-medium text-slate-800">{row.fund_name}</td>
-                <td className="px-3 py-2 text-slate-700">{row.total_rules}</td>
+              <tr key={row.fund_id} className={active ? 'bg-[#f5f9ff]/70' : ''}>
+                <td className="px-3 py-2 font-medium text-[#0f1f3d]">{row.fund_name}</td>
+                <td className="px-3 py-2 text-[#0f1f3d]">{row.total_rules}</td>
                 <td className="px-3 py-2">
                   <span className={rateClass(row.compliance_rate)}>{row.compliance_rate.toFixed(1)}%</span>
                 </td>
                 <td className="px-3 py-2">
                   <span className={violations > 0 ? 'tag tag-red' : 'tag tag-green'}>{violations}</span>
                 </td>
-                <td className="px-3 py-2 text-xs text-slate-600">{lastCheckedLabel(row.last_checked)}</td>
+                <td className="px-3 py-2 text-xs text-[#64748b]">{lastCheckedLabel(row.last_checked)}</td>
                 <td className="px-3 py-2">
                   <button
                     className="secondary-btn btn-sm"
