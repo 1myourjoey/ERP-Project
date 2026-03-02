@@ -66,12 +66,12 @@ type LinkPath = LinkCandidate & {
 }
 
 const RELATION_STROKE: Record<RelationType, string> = {
-  workflow: '#2563eb',
-  investment: '#4f46e5',
-  fund: '#0284c7',
-  gp: '#d97706',
+  workflow: '#558ef8',
+  investment: '#3f79e0',
+  fund: '#0f1f3d',
+  gp: '#1a3660',
   company: '#64748b',
-  noticeReport: '#db2777',
+  noticeReport: '#0f1f3d',
 }
 
 function areLinkPathsEqual(prev: LinkPath[], next: LinkPath[]): boolean {

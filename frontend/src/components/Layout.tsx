@@ -228,7 +228,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="rounded-lg p-1.5 text-slate-700 hover:bg-slate-100 md:hidden"
+              className="rounded-lg p-1.5 text-[#f1f1e6] hover:bg-[#558ef8]/20 md:hidden"
               aria-label="메뉴 열기"
             >
               <Menu size={20} />
@@ -277,7 +277,7 @@ export default function Layout() {
                             to={to}
                             onClick={() => setOpenDropdown(null)}
                             className={`mx-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                              active ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+                              active ? 'bg-[#e9f0ff] text-[#0f1f3d]' : 'text-[#0f1f3d] hover:bg-[#f7f9ff]'
                             }`}
                           >
                             <Icon size={16} />
@@ -296,7 +296,7 @@ export default function Layout() {
             <div className="relative">
               <button
                 type="button"
-                className="icon-btn relative"
+                className="icon-btn relative !text-[#f1f1e6] hover:!bg-[#558ef8]/20 hover:!text-white"
                 aria-label={`알림 ${unreadCount}건`}
                 onClick={() => {
                   setOpenDropdown(null)
@@ -315,11 +315,11 @@ export default function Layout() {
             </div>
             <button
               onClick={() => setSearchOpen(true)}
-              className="secondary-btn btn-sm gap-2"
+              className="secondary-btn btn-sm gap-2 !border-[#d6dced] !bg-[#f1f1e6] !text-[#0f1f3d] hover:!bg-white"
             >
               <Search size={14} />
               <span className="hidden sm:inline">검색</span>
-              <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">Ctrl+Space</kbd>
+              <kbd className="rounded bg-[#e4e7ee] px-1.5 py-0.5 text-[10px] text-[#586b8d]">Ctrl+Space</kbd>
             </button>
             <div className="relative">
               <button
@@ -328,25 +328,25 @@ export default function Layout() {
                   setNotificationPanelOpen(false)
                   setUserMenuOpen((prev) => !prev)
                 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#d6dced] bg-[#f1f1e6] px-2 py-1.5 text-xs text-[#0f1f3d] hover:bg-white"
               >
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
                 ) : (
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[11px] font-semibold text-blue-700">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#dce8ff] text-[11px] font-semibold text-[#1a3660]">
                     {userInitials(user?.name)}
                   </span>
                 )}
                 <span className="hidden sm:inline">{user?.name || '사용자'}</span>
               </button>
               <div
-                className={`absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-white/30 bg-white/90 p-1.5 shadow-lg backdrop-blur-xl transition-all duration-150 ${
+                className={`absolute right-0 top-full z-40 mt-2 w-52 rounded-xl border border-[#d6dced] bg-white p-1.5 shadow-lg transition-all duration-150 ${
                   userMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 }`}
               >
-                <div className="mb-1 rounded-lg bg-slate-50 px-2.5 py-2">
-                  <p className="text-xs font-semibold text-slate-800">{user?.name}</p>
-                  <p className="text-[11px] text-slate-500">
+                <div className="mb-1 rounded-lg bg-[#f7f9ff] px-2.5 py-2">
+                  <p className="text-xs font-semibold text-[#0f1f3d]">{user?.name}</p>
+                  <p className="text-[11px] text-[#64748b]">
                     {user?.username} · {ROLE_LABEL[user?.role || ''] || user?.role}
                   </p>
                 </div>
@@ -356,7 +356,7 @@ export default function Layout() {
                     setNotificationPanelOpen(false)
                     navigate('/profile')
                   }}
-                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[#0f1f3d] hover:bg-[#f7f9ff]"
                 >
                   내 프로필
                 </button>

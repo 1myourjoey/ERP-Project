@@ -295,14 +295,14 @@ function renderPrintWindow(title: string, body: string) {
       <head>
         <title>${escapeHtml(title)}</title>
         <style>
-          body { font-family: 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; padding: 24px; color: #111827; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { font-family: 'Pretendard', 'Apple SD Gothic Neo', '맑은 고딕', sans-serif; font-weight: 600; margin: 0; padding: 24px; color: #0f1f3d; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .sheet { max-width: 900px; margin: 0 auto; }
-          h1 { margin: 0; font-size: 20px; color: #1E3A5F; }
-          .meta { margin-top: 8px; color: #4b5563; font-size: 13px; line-height: 1.6; }
-          h2 { margin-top: 20px; margin-bottom: 8px; font-size: 14px; color: #374151; }
-          table { width: 100%; border-collapse: collapse; font-size: 13px; }
-          th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 8px; vertical-align: top; }
-          th { border-bottom: 2px solid #111827; }
+          h1 { margin: 0; font-size: 20px; color: #0f1f3d; font-family: 'GmarketSans', 'Pretendard', sans-serif; }
+          .meta { margin-top: 8px; color: #64748b; font-size: 13px; line-height: 1.6; }
+          h2 { margin-top: 20px; margin-bottom: 8px; font-size: 14px; color: #0f1f3d; font-family: 'GmarketSans', 'Pretendard', sans-serif; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'IBM Plex Sans KR', 'Pretendard', sans-serif; }
+          th, td { text-align: left; border-bottom: 1px solid #dce3f0; padding: 8px; vertical-align: top; }
+          th { border-bottom: 2px solid #0f1f3d; }
           ul { margin: 0; padding-left: 18px; font-size: 13px; }
           li { margin: 4px 0; }
           @media print { @page { margin: 20mm; } body { padding: 12px; } }

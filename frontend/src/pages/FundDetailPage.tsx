@@ -3279,9 +3279,9 @@ export default function FundDetailPage() {
                 <div className="rounded border border-slate-200 bg-white p-3">
                   <svg viewBox="0 0 100 36" className="h-32 w-full">
                     {navSparklinePath ? (
-                      <path d={navSparklinePath} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" />
+                      <path d={navSparklinePath} fill="none" stroke="#558ef8" strokeWidth="2.2" strokeLinecap="round" />
                     ) : (
-                      <line x1="0" y1="18" x2="100" y2="18" stroke="#93c5fd" strokeWidth="2" />
+                      <line x1="0" y1="18" x2="100" y2="18" stroke="#dce8ff" strokeWidth="2" />
                     )}
                   </svg>
                   <div className="mt-2 overflow-auto">
