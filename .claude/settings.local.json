@@ -5,7 +5,10 @@
       "WebFetch(domain:guide.vcworks.kr)",
       "Bash(ls:*)",
       "Bash(wc:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ui-ux-pro-max-skill.nextlevelbuilder.io)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
