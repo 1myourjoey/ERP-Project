@@ -27,6 +27,10 @@
   },
   dashboard: {
     base: ['dashboard', 'base'] as const,
+    health: ['dashboard', 'health'] as const,
+    deadlines: ['dashboard', 'deadlines'] as const,
+    fundsSnapshot: ['dashboard', 'funds-snapshot'] as const,
+    pipeline: ['dashboard', 'pipeline'] as const,
     workflows: ['dashboard', 'workflows'] as const,
     sidebar: ['dashboard', 'sidebar'] as const,
     completed: ['dashboard', 'completed'] as const,

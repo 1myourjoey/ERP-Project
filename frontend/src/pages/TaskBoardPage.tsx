@@ -7,6 +7,9 @@ import CompleteModal from '../components/CompleteModal'
 import EmptyState from '../components/EmptyState'
 import MiniCalendar from '../components/MiniCalendar'
 import TaskPipelineView from '../components/TaskPipelineView'
+import CompletedTasksSection from '../components/taskboard/CompletedTasksSection'
+import TaskSidePanel from '../components/taskboard/TaskSidePanel'
+import TaskSummaryBar from '../components/taskboard/TaskSummaryBar'
 import TaskAttachmentSection from '../components/common/TaskAttachmentSection'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
@@ -35,6 +38,7 @@ import {
   fetchTaskBoard,
   instantiateWorkflow,
   moveTask,
+  undoCompleteTask,
   updateTask,
 } from '../lib/api'
 import type {
@@ -211,6 +215,7 @@ interface TaskItemProps {
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  onOpenDetail: (task: Task) => void
   selected: boolean
   selectionMode: boolean
   onToggleSelect: (taskId: number, selected: boolean) => void
@@ -222,6 +227,7 @@ const TaskItem = memo(function TaskItem({
   onComplete,
   onDelete,
   onEdit,
+  onOpenDetail,
   selected,
   selectionMode,
   onToggleSelect,
@@ -232,7 +238,7 @@ const TaskItem = memo(function TaskItem({
     : null
   const urgencyMeta = taskUrgencyMeta(task)
   const [isDragging, setIsDragging] = useState(false)
-  const displayTag =
+  const urgencyTag =
     urgencyMeta.label && urgencyMeta.badgeStatus
       ? {
           label: urgencyMeta.label,
@@ -243,12 +249,34 @@ const TaskItem = memo(function TaskItem({
                 ? 'tag tag-gray'
                 : 'tag tag-red',
         }
-      : task.category
-        ? {
-            label: task.category,
-            className: categoryBadgeClass(task.category),
-          }
+      : task.status === 'completed'
+        ? { label: '완료', className: 'tag tag-emerald' }
+        : { label: '예정', className: 'tag tag-blue' }
+  const categoryTag = task.category
+    ? { label: task.category, className: categoryBadgeClass(task.category) }
+    : { label: '미분류', className: 'tag tag-gray' }
+  const staleDays = typeof task.stale_days === 'number' ? task.stale_days : null
+  const staleLabel = !task.deadline && staleDays != null && staleDays >= 5
+    ? `기한 미설정 ${staleDays}일`
+    : staleDays != null && staleDays >= 7
+      ? `방치 ${staleDays}일`
+      : staleDays != null && staleDays >= 3
+        ? `방치 ${staleDays}일`
         : null
+  const staleClass = staleDays != null && staleDays >= 7 ? 'tag tag-red' : 'tag tag-amber'
+  const dDayLabel = (() => {
+    if (!task.deadline) return '기한없음'
+    const deadline = new Date(task.deadline)
+    if (Number.isNaN(deadline.getTime())) return '기한없음'
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    deadline.setHours(0, 0, 0, 0)
+    const diff = Math.floor((deadline.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+    if (diff < 0) return `D+${Math.abs(diff)}`
+    if (diff === 0) return 'D-day'
+    return `D-${diff}`
+  })()
+  const targetLabel = task.fund_name || task.gp_entity_name || '공통'
 
   return (
     <div
@@ -282,11 +310,20 @@ const TaskItem = memo(function TaskItem({
           aria-label={`업무 선택: ${task.title}`}
         />
       </div>
-      <div className="min-w-0 flex-1 cursor-pointer space-y-1" onClick={() => onEdit(task)}>
+      <div className="min-w-0 flex-1 cursor-pointer space-y-1" onClick={() => onOpenDetail(task)}>
         <p className="text-sm font-medium leading-snug text-[#0f1f3d]">{task.title}</p>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b]">
-          {displayTag && <span className={displayTag.className}>{displayTag.label}</span>}
+        <div className="flex flex-wrap items-center gap-1 text-xs text-[#64748b]">
+          <span className={urgencyTag.className}>{urgencyTag.label}</span>
+          <span className={categoryTag.className}>{categoryTag.label}</span>
+          {task.workflow_name && <span className="tag tag-indigo">{task.workflow_name}</span>}
+          {task.obligation_id && <span className="tag tag-red">컴플연결</span>}
+          {staleLabel && <span className={staleClass}>{staleLabel}</span>}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#64748b]">
+          <span>{targetLabel}</span>
+          <span>·</span>
           {deadlineStr && <span>{deadlineStr}</span>}
+          <span>{dDayLabel}</span>
           {task.estimated_time && (
             <span className="flex items-center gap-0.5">
               <Clock size={11} /> {task.estimated_time}
@@ -326,10 +363,13 @@ interface WorkflowGroupCardProps {
   onComplete: (task: Task) => void
   onDelete: (id: number) => void
   onEdit: (task: Task) => void
+  onOpenDetail: (task: Task) => void
   selectionMode: boolean
   selectedTaskIds: Set<number>
   onToggleSelect: (taskId: number, selected: boolean) => void
   blinkingId: number | null
+  expanded: boolean
+  onToggleExpand: () => void
 }
 
 const WorkflowGroupCard = memo(function WorkflowGroupCard({
@@ -337,23 +377,17 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
   onComplete,
   onDelete,
   onEdit,
+  onOpenDetail,
   selectionMode,
   selectedTaskIds,
   onToggleSelect,
   blinkingId,
+  expanded,
+  onToggleExpand,
 }: WorkflowGroupCardProps) {
-  const hasBlinkingTask = blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
-  const [expanded, setExpanded] = useState(hasBlinkingTask)
-
-  useEffect(() => {
-    if (hasBlinkingTask) {
-      setExpanded(true)
-    }
-  }, [hasBlinkingTask])
-
   return (
     <div className="rounded-xl border border-[#c5d8fb] bg-[#f5f9ff] p-3">
-      <button onClick={() => setExpanded((prev) => !prev)} className="flex w-full items-center gap-2.5 text-left">
+      <button onClick={onToggleExpand} className="flex w-full items-center gap-2.5 text-left">
         <span className="text-[#558ef8]">
           <GitBranch size={13} />
         </span>
@@ -388,6 +422,7 @@ const WorkflowGroupCard = memo(function WorkflowGroupCard({
                   onComplete={onComplete}
                   onDelete={onDelete}
                   onEdit={onEdit}
+                  onOpenDetail={onOpenDetail}
                   selected={selectedTaskIds.has(task.id)}
                   selectionMode={selectionMode}
                   onToggleSelect={onToggleSelect}
@@ -1142,6 +1177,11 @@ export default function TaskBoardPage() {
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
+  const [boardPanelTask, setBoardPanelTask] = useState<Task | null>(null)
+  const [boardPanelMode, setBoardPanelMode] = useState<'detail' | 'edit'>('detail')
+  const [completedSectionOpen, setCompletedSectionOpen] = useState(false)
+  const [quadrantExpandState, setQuadrantExpandState] = useState<Record<string, boolean>>({})
+  const [workflowExpandState, setWorkflowExpandState] = useState<Record<number, boolean>>({})
 
   const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
 
@@ -1173,6 +1213,13 @@ export default function TaskBoardPage() {
     queryKey: ['tasks', { status: 'all' }],
     queryFn: () => fetchTasks({ status: 'all' }),
     enabled: boardView === 'calendar',
+  })
+
+  const { data: completedTasks = [] } = useQuery<Task[]>({
+    queryKey: ['tasks', { status: 'completed-inline' }],
+    queryFn: () => fetchTasks({ status: 'completed' }),
+    enabled: boardView === 'board',
+    staleTime: 30_000,
   })
 
   const { data: pipelineBaseData, isLoading: pipelineBaseLoading } = useQuery<DashboardBaseResponse>({
@@ -1213,6 +1260,13 @@ export default function TaskBoardPage() {
 
     return () => window.clearTimeout(timer)
   }, [boardView, highlightTaskId])
+
+  useEffect(() => {
+    if (boardView !== 'board' && boardPanelTask) {
+      setBoardPanelTask(null)
+      setBoardPanelMode('detail')
+    }
+  }, [boardPanelTask, boardView])
 
   useEffect(() => {
     if (!pendingScrollId || boardView !== 'board') return
@@ -1331,6 +1385,11 @@ export default function TaskBoardPage() {
     [categoryFilter, fundFilter, quickDueFilter, searchKeyword],
   )
 
+  const applyCompletedTaskFilters = useCallback(
+    (tasks: Task[]) => filterBySearch(filterByCategory(filterByFund(tasks))),
+    [categoryFilter, fundFilter, searchKeyword],
+  )
+
   const sortTasksForQuadrant = (tasks: Task[], quadrantKey: string): Task[] => {
     if (quadrantKey !== 'Q1') return tasks
     return [...tasks].sort((a, b) => {
@@ -1341,11 +1400,19 @@ export default function TaskBoardPage() {
     })
   }
 
+  const isUrgentTaskForSmartCollapse = useCallback((task: Task) => {
+    if (task.status === 'completed') return false
+    const tone = resolveDeadlineTone(task.deadline)
+    return tone === 'overdue' || tone === 'today'
+  }, [])
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TaskCreate> }) => updateTask(id, data),
     onSuccess: () => {
       invalidateTaskRelated(queryClient)
       setEditingTask(null)
+      setBoardPanelTask(null)
+      setBoardPanelMode('detail')
       addToast('success', '작업이 수정되었습니다.')
     },
   })
@@ -1364,6 +1431,14 @@ export default function TaskBoardPage() {
     }) => completeTask(id, actualTime, autoWorklog, memo),
     onSuccess: () => {
       invalidateTaskRelated(queryClient)
+    },
+  })
+
+  const undoCompleteMutation = useMutation({
+    mutationFn: (taskId: number) => undoCompleteTask(taskId),
+    onSuccess: () => {
+      invalidateTaskRelated(queryClient)
+      addToast('success', '완료 상태를 되돌렸습니다.')
     },
   })
 
@@ -1389,6 +1464,8 @@ export default function TaskBoardPage() {
     mutationFn: deleteTask,
     onSuccess: () => {
       invalidateTaskRelated(queryClient)
+      setBoardPanelTask(null)
+      setBoardPanelMode('detail')
       addToast('success', '작업이 삭제되었습니다.')
     },
   })
@@ -1608,6 +1685,20 @@ export default function TaskBoardPage() {
       }),
     [allVisibleTasks],
   )
+  const todayCompletedTasks = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const nextDay = new Date(today)
+    nextDay.setDate(nextDay.getDate() + 1)
+    return applyCompletedTaskFilters(
+      completedTasks.filter((task) => {
+        if (task.status !== 'completed' || !task.completed_at) return false
+        const completedAt = new Date(task.completed_at).getTime()
+        if (Number.isNaN(completedAt)) return false
+        return completedAt >= today.getTime() && completedAt < nextDay.getTime()
+      }),
+    )
+  }, [applyCompletedTaskFilters, completedTasks])
   const pipelineTodayTasks = useMemo(
     () => applyTaskFilters(pipelineBaseData?.today?.tasks ?? []),
     [applyTaskFilters, pipelineBaseData],
@@ -1822,6 +1913,31 @@ export default function TaskBoardPage() {
     }, 3000)
   }, [urgentTasks])
 
+  const handleThisWeekConfirm = useCallback(() => {
+    setStatusFilter('pending')
+    setFundFilter('')
+    setCategoryFilter('')
+    setSearchKeyword('')
+    setQuickDueFilter('this_week')
+    setBoardView('board')
+  }, [])
+
+  const handleCompletedTodayConfirm = useCallback(() => {
+    setStatusFilter('completed')
+    setFundFilter('')
+    setCategoryFilter('')
+    setSearchKeyword('')
+    setQuickDueFilter('all')
+    setCompletedYear(currentYear)
+    setCompletedMonth(currentMonth)
+    setBoardView('board')
+  }, [currentMonth, currentYear])
+
+  const openBoardSidePanel = useCallback((task: Task, mode: 'detail' | 'edit' = 'detail') => {
+    setBoardPanelTask(task)
+    setBoardPanelMode(mode)
+  }, [])
+
   if (isLoading) return <PageLoading />
 
   return (
@@ -1871,7 +1987,7 @@ export default function TaskBoardPage() {
         visibleCount={3}
       />
 
-      <div className="mt-4 space-y-5">
+      <div className={`mt-4 space-y-5 ${boardView === 'board' && boardPanelTask ? 'xl:pr-[430px]' : ''}`}>
         <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-1">
           {VIEW_TABS.map((tab) => (
             <button
@@ -1888,6 +2004,16 @@ export default function TaskBoardPage() {
             </button>
           ))}
         </div>
+
+      {boardView === 'board' && (
+        <TaskSummaryBar
+          summary={board?.summary}
+          onClickOverdue={handleOverdueConfirm}
+          onClickToday={handleUrgentConfirm}
+          onClickThisWeek={handleThisWeekConfirm}
+          onClickCompletedToday={handleCompletedTodayConfirm}
+        />
+      )}
 
       {boardView === 'board' && selectedVisibleTasks.length > 0 && (
         <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-[#d8e5fb] bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
@@ -1972,6 +2098,7 @@ export default function TaskBoardPage() {
           )}
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {QUADRANTS.map((quadrant) => {
             const allTasks = sortTasksForQuadrant(
@@ -1979,6 +2106,14 @@ export default function TaskBoardPage() {
               quadrant.key,
             )
             const { standalone, workflows } = groupTasksByWorkflow(allTasks)
+            const collapseMode = allTasks.length >= 16 ? 'high' : allTasks.length >= 9 ? 'medium' : 'none'
+            const quadrantExpanded = quadrantExpandState[quadrant.key] ?? false
+            const urgentStandalone = standalone.filter((task) => isUrgentTaskForSmartCollapse(task))
+            const deferredStandalone = standalone.filter((task) => !isUrgentTaskForSmartCollapse(task))
+            const visibleStandalone =
+              collapseMode === 'none' || quadrantExpanded ? standalone : urgentStandalone
+            const hiddenStandaloneCount =
+              collapseMode === 'none' || quadrantExpanded ? 0 : deferredStandalone.length
 
             return (
               <div
@@ -2007,12 +2142,13 @@ export default function TaskBoardPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {standalone.map((task) => (
+                  {visibleStandalone.map((task) => (
                     <TaskItem
                       key={task.id}
                       task={task}
                       onComplete={setCompletingTask}
-                      onEdit={setEditingTask}
+                      onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
+                      onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
                       onDelete={handleDeleteTask}
                       selected={selectedTaskIds.has(task.id)}
                       selectionMode={selectionMode}
@@ -2022,18 +2158,53 @@ export default function TaskBoardPage() {
                   ))}
 
                   {workflows.map((group) => (
-                    <WorkflowGroupCard
-                      key={group.workflowInstanceId}
-                      group={group}
-                      onComplete={setCompletingTask}
-                      onEdit={setEditingTask}
-                      onDelete={handleDeleteTask}
-                      selectionMode={selectionMode}
-                      selectedTaskIds={selectedTaskIds}
-                      onToggleSelect={toggleTaskSelection}
-                      blinkingId={blinkingId}
-                    />
+                    (() => {
+                      const workflowKey = group.workflowInstanceId
+                      const autoExpanded =
+                        blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
+                          ? true
+                          : collapseMode === 'none'
+                            ? true
+                            : !!group.currentStep && isUrgentTaskForSmartCollapse(group.currentStep)
+                      const expanded = workflowExpandState[workflowKey] ?? autoExpanded
+
+                      return (
+                        <WorkflowGroupCard
+                          key={workflowKey}
+                          group={group}
+                          onComplete={setCompletingTask}
+                          onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
+                          onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
+                          onDelete={handleDeleteTask}
+                          selectionMode={selectionMode}
+                          selectedTaskIds={selectedTaskIds}
+                          onToggleSelect={toggleTaskSelection}
+                          blinkingId={blinkingId}
+                          expanded={expanded}
+                          onToggleExpand={() =>
+                            setWorkflowExpandState((prev) => ({
+                              ...prev,
+                              [workflowKey]: !(prev[workflowKey] ?? autoExpanded),
+                            }))
+                          }
+                        />
+                      )
+                    })()
                   ))}
+                  {hiddenStandaloneCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQuadrantExpandState((prev) => ({
+                          ...prev,
+                          [quadrant.key]: !(prev[quadrant.key] ?? false),
+                        }))
+                      }
+                      className="w-full rounded-lg border border-dashed border-[#bfcff0] bg-[#f5f9ff] px-3 py-2 text-left text-xs font-medium text-[#1a3660] hover:bg-[#eef4ff]"
+                    >
+                      {quadrantExpanded ? `접기` : `이번 주 외 ${hiddenStandaloneCount}건 보기`}
+                    </button>
+                  )}
                   {allTasks.length === 0 && (
                     <div className="rounded-lg border border-dashed border-[#d8e5fb]">
                       <EmptyState message="등록된 업무가 없습니다." className="py-6" />
@@ -2048,6 +2219,14 @@ export default function TaskBoardPage() {
             )
           })}
         </div>
+        <CompletedTasksSection
+          tasks={todayCompletedTasks}
+          open={completedSectionOpen}
+          onToggle={() => setCompletedSectionOpen((prev) => !prev)}
+          onUndo={(taskId) => undoCompleteMutation.mutate(taskId)}
+          undoPending={undoCompleteMutation.isPending}
+        />
+        </>
       )}
       </div>
 
@@ -2064,6 +2243,24 @@ export default function TaskBoardPage() {
           }}
           creating={createCategoryMutation.isPending}
           deletingCategoryId={deletingCategoryId}
+        />
+      )}
+
+      {boardView === 'board' && boardPanelTask && (
+        <TaskSidePanel
+          task={boardPanelTask}
+          mode={boardPanelMode}
+          onModeChange={setBoardPanelMode}
+          onClose={() => {
+            setBoardPanelTask(null)
+            setBoardPanelMode('detail')
+          }}
+          onSave={(id, data) => updateMutation.mutate({ id, data })}
+          onComplete={(task) => setCompletingTask(task)}
+          onDelete={handleDeleteTask}
+          fundsForFilter={fundsForFilter}
+          gpEntities={gpEntities}
+          categoryOptions={categoryNames}
         />
       )}
 

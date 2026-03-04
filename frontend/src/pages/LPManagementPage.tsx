@@ -264,19 +264,19 @@ export default function LPManagementPage() {
       </div>
 
       <div className="card-base space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-[#0f1f3d]">LP 목록</h3>
-          <div className="flex gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="shrink-0 text-sm font-semibold text-[#0f1f3d]">LP 목록</h3>
+          <div className="grid w-full max-w-[760px] min-w-0 grid-cols-[minmax(0,1fr)_160px_auto] items-center gap-2">
             <input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               placeholder="이름/유형/사업자번호 검색"
-              className="form-input-sm w-64"
+              className="form-input-sm w-full"
             />
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
-              className="form-input-sm"
+              className="form-input-sm w-full"
             >
               <option value="">전체 유형</option>
               {Array.from(new Set(books.map((book) => book.type).filter(Boolean))).map((type) => (
@@ -285,8 +285,13 @@ export default function LPManagementPage() {
                 </option>
               ))}
             </select>
-            <label className="inline-flex items-center gap-1 text-xs text-[#64748b]">
-              <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+            <label className="inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-md border border-[#d8e5fb] bg-[#f5f9ff] px-2 text-xs text-[#64748b]">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => setShowInactive(event.target.checked)}
+                className="h-3.5 w-3.5 accent-[#558ef8]"
+              />
               비활성 포함
             </label>
           </div>
@@ -297,86 +302,138 @@ export default function LPManagementPage() {
         ) : groupedLPs.length === 0 ? (
           <p className="text-sm text-[#64748b]">표시할 LP가 없습니다.</p>
         ) : (
-          <div className="space-y-2">
-            {groupedLPs.map((lp) => {
-              const expanded = expandedLPs.has(lp.name)
-              const baseEntry = lp.entries[0]
-              const fundCommitmentMap = new Map<string, { fundName: string; commitment: number }>()
+          <div className="overflow-auto rounded-lg border border-[#d8e5fb]">
+            <table className="min-w-[1100px] w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
+              <thead className="table-head-row sticky top-0 z-10 border-b border-[#d8e5fb] bg-[#f5f9ff]">
+                <tr>
+                  <th className="table-head-cell !text-center">LP</th>
+                  <th className="table-head-cell !text-center">유형</th>
+                  <th className="table-head-cell !text-center">연락처</th>
+                  <th className="table-head-cell !text-center">사업자번호</th>
+                  <th className="table-head-cell !text-center">조합 수</th>
+                  <th className="table-head-cell !text-center">총 약정</th>
+                  <th className="table-head-cell !text-center">상태</th>
+                  <th className="table-head-cell !text-center">작업</th>
+                </tr>
+              </thead>
 
-              for (const entry of lp.entries) {
-                const relatedFunds = entry.related_funds?.length
-                  ? entry.related_funds
-                  : [{ fund_id: 0, fund_name: '공통' }]
-                const totalCommitment = Number(entry.total_commitment || 0)
-                const distributedCommitment =
-                  relatedFunds.length > 0 ? totalCommitment / relatedFunds.length : totalCommitment
+              {groupedLPs.map((lp) => {
+                const expanded = expandedLPs.has(lp.name)
+                const baseEntry = lp.entries[0]
+                const fundCommitmentMap = new Map<string, { fundName: string; commitment: number }>()
 
-                for (const fund of relatedFunds) {
-                  const key = fund.fund_id > 0 ? `fund-${fund.fund_id}` : `name-${fund.fund_name || '공통'}`
-                  const current = fundCommitmentMap.get(key)
-                  fundCommitmentMap.set(key, {
-                    fundName: fund.fund_name || '공통',
-                    commitment: (current?.commitment || 0) + distributedCommitment,
-                  })
+                for (const entry of lp.entries) {
+                  const relatedFunds = entry.related_funds?.length
+                    ? entry.related_funds
+                    : [{ fund_id: 0, fund_name: '공통' }]
+                  const totalCommitment = Number(entry.total_commitment || 0)
+                  const distributedCommitment =
+                    relatedFunds.length > 0 ? totalCommitment / relatedFunds.length : totalCommitment
+
+                  for (const fund of relatedFunds) {
+                    const key = fund.fund_id > 0 ? `fund-${fund.fund_id}` : `name-${fund.fund_name || '공통'}`
+                    const current = fundCommitmentMap.get(key)
+                    fundCommitmentMap.set(key, {
+                      fundName: fund.fund_name || '공통',
+                      commitment: (current?.commitment || 0) + distributedCommitment,
+                    })
+                  }
                 }
-              }
 
-              const fundRows = Array.from(fundCommitmentMap.values()).sort((a, b) =>
-                a.fundName.localeCompare(b.fundName, 'ko'),
-              )
+                const fundRows = Array.from(fundCommitmentMap.values()).sort((a, b) =>
+                  a.fundName.localeCompare(b.fundName, 'ko'),
+                )
+                const totalCommitment = fundRows.reduce((sum, fund) => sum + fund.commitment, 0)
 
-              return (
-                <div key={lp.name} className="rounded-xl border border-[#d8e5fb] bg-white shadow-sm">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#0f1f3d]">{lp.name}</p>
-                      <p className="truncate text-xs text-[#64748b]">
-                        {LP_TYPE_LABEL[lp.type] || lp.type} · {lp.contact || '-'}
-                        {lp.business_number ? ` · ${lp.business_number}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="tag tag-gray">{fundRows.length}개 조합</span>
-                      <button onClick={() => toggleExpand(lp.name)} className="icon-btn">
-                        <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {expanded && (
-                    <div className="border-t border-[#e6eefc] px-4 pb-3 pt-2">
-                      <div className="space-y-1.5">
-                        {fundRows.map((fund) => (
-                          <div key={fund.fundName} className="flex items-center justify-between rounded-lg bg-[#f5f9ff] px-3 py-2 text-xs">
-                            <span className="font-medium text-[#0f1f3d]">
-                              {fund.fundName}
-                            </span>
-                            <span className="text-[#64748b]">약정 {formatAmount(fund.commitment)}</span>
+                return (
+                  <tbody key={lp.name} className="group">
+                    <tr className="align-top transition-colors hover:bg-[#f5f9ff]">
+                      <td className="table-body-cell">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#0f1f3d]">{lp.name}</p>
+                            <p className="truncate text-xs text-[#64748b]">{lp.address || '주소 미등록'}</p>
                           </div>
-                        ))}
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <button onClick={() => startEdit(baseEntry)} className="secondary-btn btn-xs">
-                          수정
-                        </button>
-                        {baseEntry.is_active ? (
-                          <button onClick={() => deactivateMut.mutate(baseEntry.id)} className="danger-btn btn-xs">
-                            비활성화
-                          </button>
-                        ) : (
                           <button
-                            onClick={() => updateMut.mutate({ id: baseEntry.id, data: { is_active: 1 } })}
-                            className="secondary-btn btn-xs"
+                            onClick={() => toggleExpand(lp.name)}
+                            className="icon-btn h-6 w-6 shrink-0"
+                            aria-label={`${lp.name} 상세 보기`}
                           >
-                            복원
+                            <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
                           </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                        </div>
+                      </td>
+                      <td className="table-body-cell text-center">{LP_TYPE_LABEL[lp.type] || lp.type}</td>
+                      <td className="table-body-cell text-center">{lp.contact || '-'}</td>
+                      <td className="table-body-cell text-center">{lp.business_number || '-'}</td>
+                      <td className="table-body-cell text-center tabular-nums">{fundRows.length}</td>
+                      <td className="table-body-cell text-right font-semibold text-[#0f1f3d]">
+                        {formatAmount(totalCommitment)}
+                      </td>
+                      <td className="table-body-cell text-center">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            baseEntry.is_active ? 'bg-[#f5f9ff] text-[#1a3660]' : 'bg-[#f1f1e6] text-[#64748b]'
+                          }`}
+                        >
+                          {baseEntry.is_active ? '활성' : '비활성'}
+                        </span>
+                      </td>
+                      <td className="table-body-cell">
+                        <div className="flex justify-center gap-1">
+                          <button onClick={() => startEdit(baseEntry)} className="secondary-btn btn-xs">
+                            수정
+                          </button>
+                          {baseEntry.is_active ? (
+                            <button onClick={() => deactivateMut.mutate(baseEntry.id)} className="danger-btn btn-xs">
+                              비활성화
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => updateMut.mutate({ id: baseEntry.id, data: { is_active: 1 } })}
+                              className="secondary-btn btn-xs"
+                            >
+                              복원
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {expanded && (
+                      <tr className="bg-[#f5f9ff]">
+                        <td colSpan={8} className="px-3 pb-3 pt-1.5">
+                          <div className="rounded-lg border border-[#d8e5fb] bg-white">
+                            <div className="grid grid-cols-[minmax(0,1fr)_170px] border-b border-[#e4e7ee] bg-[#f7f9ff] px-3 py-1.5 text-[11px] font-semibold text-[#64748b]">
+                              <span className="text-center">참여 조합</span>
+                              <span className="text-center">약정 금액</span>
+                            </div>
+                            <div className="divide-y divide-[#e4e7ee]">
+                              {fundRows.map((fund) => (
+                                <div key={fund.fundName} className="grid grid-cols-[minmax(0,1fr)_170px] items-center px-3 py-2 text-xs">
+                                  <span className="truncate font-medium text-[#0f1f3d]">{fund.fundName}</span>
+                                  <span className="text-right tabular-nums text-[#64748b]">{formatAmount(fund.commitment)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                )
+              })}
+            </table>
           </div>
         )}
       </div>

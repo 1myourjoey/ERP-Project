@@ -9,7 +9,7 @@ from database import get_db
 from models.biz_report import BizReport, BizReportRequest
 from models.compliance import ComplianceObligation, ComplianceRule
 from models.fee import ManagementFee
-from models.fund import Fund, FundNoticePeriod
+from models.fund import Fund, FundNoticePeriod, LP
 from models.gp_entity import GPEntity
 from models.investment import Investment, InvestmentDocument, PortfolioCompany
 from models.internal_review import InternalReview
@@ -22,12 +22,17 @@ from models.workflow_instance import WorkflowInstance
 from schemas.dashboard import (
     DashboardBaseResponse,
     DashboardCompletedResponse,
+    DashboardDeadlinesResponse,
+    DashboardFundsSnapshotResponse,
+    DashboardHealthResponse,
+    DashboardPipelineResponse,
     DashboardSidebarResponse,
     DashboardTodayResponse,
     DashboardWorkflowsResponse,
     UpcomingNoticeItem,
 )
 from schemas.task import TaskResponse
+from services.health_score import build_dashboard_health
 from services.workflow_service import reconcile_workflow_instance_state
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -1028,6 +1033,327 @@ def get_dashboard_sidebar(db: Session = Depends(get_db)):
 def get_dashboard_completed(db: Session = Depends(get_db)):
     today = date.today()
     return _dashboard_completed_payload(db, today)
+
+
+def _deadline_severity(days_remaining: int | None) -> str:
+    if days_remaining is None:
+        return "good"
+    if days_remaining < 0:
+        return "danger"
+    if days_remaining <= 3:
+        return "warning"
+    return "good"
+
+
+def _build_deadlines_payload(db: Session, today: date) -> dict:
+    week_end = today + timedelta(days=7)
+    all_items: list[dict] = []
+
+    task_rows = (
+        db.query(Task)
+        .filter(
+            Task.status.in_(["pending", "in_progress"]),
+            Task.deadline.isnot(None),
+            func.date(Task.deadline) <= week_end,
+        )
+        .order_by(Task.deadline.asc(), Task.id.asc())
+        .all()
+    )
+    task_context = _build_task_lookup_context(db, task_rows)
+    for row in task_rows:
+        deadline = row.deadline.date() if isinstance(row.deadline, datetime) else row.deadline
+        if deadline is None:
+            continue
+        task_payload = _task_response(db, row, task_context)
+        days_remaining = (deadline - today).days
+        all_items.append(
+            {
+                "type": "task",
+                "id": row.id,
+                "title": row.title,
+                "due_date": deadline.isoformat(),
+                "days_remaining": days_remaining,
+                "context": task_payload.fund_name or task_payload.gp_entity_name or task_payload.company_name,
+                "action_url": "/tasks",
+                "severity": _deadline_severity(days_remaining),
+            }
+        )
+
+    submitted_statuses = ["제출완료", "전송완료", "submitted", "sent"]
+    report_rows = (
+        db.query(RegularReport)
+        .filter(
+            RegularReport.status.notin_(submitted_statuses),
+            RegularReport.due_date.isnot(None),
+            RegularReport.due_date <= week_end,
+        )
+        .order_by(RegularReport.due_date.asc(), RegularReport.id.asc())
+        .all()
+    )
+    for row in report_rows:
+        if row.due_date is None:
+            continue
+        fund = db.get(Fund, row.fund_id) if row.fund_id else None
+        days_remaining = (row.due_date - today).days
+        all_items.append(
+            {
+                "type": "report",
+                "id": row.id,
+                "title": row.report_target,
+                "due_date": row.due_date.isoformat(),
+                "days_remaining": days_remaining,
+                "context": fund.name if fund else None,
+                "action_url": "/reports",
+                "severity": _deadline_severity(days_remaining),
+            }
+        )
+
+    document_rows = (
+        db.query(InvestmentDocument, Investment, PortfolioCompany, Fund)
+        .join(Investment, Investment.id == InvestmentDocument.investment_id)
+        .join(PortfolioCompany, PortfolioCompany.id == Investment.company_id)
+        .join(Fund, Fund.id == Investment.fund_id)
+        .filter(
+            InvestmentDocument.status != "collected",
+            InvestmentDocument.due_date.isnot(None),
+            InvestmentDocument.due_date <= week_end,
+        )
+        .order_by(InvestmentDocument.due_date.asc(), InvestmentDocument.id.asc())
+        .all()
+    )
+    for doc, _investment, company, fund in document_rows:
+        if doc.due_date is None:
+            continue
+        days_remaining = (doc.due_date - today).days
+        all_items.append(
+            {
+                "type": "document",
+                "id": doc.id,
+                "title": doc.name,
+                "due_date": doc.due_date.isoformat(),
+                "days_remaining": days_remaining,
+                "context": f"{fund.name} / {company.name}",
+                "action_url": "/documents",
+                "severity": _deadline_severity(days_remaining),
+            }
+        )
+
+    obligation_rows = (
+        db.query(ComplianceObligation, Fund)
+        .join(Fund, Fund.id == ComplianceObligation.fund_id)
+        .filter(
+            ComplianceObligation.status.notin_(["completed", "waived"]),
+            ComplianceObligation.due_date <= week_end,
+        )
+        .order_by(ComplianceObligation.due_date.asc(), ComplianceObligation.id.asc())
+        .all()
+    )
+    for obligation, fund in obligation_rows:
+        days_remaining = (obligation.due_date - today).days
+        all_items.append(
+            {
+                "type": "compliance",
+                "id": obligation.id,
+                "title": f"컴플라이언스 의무 #{obligation.id}",
+                "due_date": obligation.due_date.isoformat(),
+                "days_remaining": days_remaining,
+                "context": fund.name,
+                "action_url": "/compliance",
+                "severity": _deadline_severity(days_remaining),
+            }
+        )
+
+    all_items.sort(
+        key=lambda row: (
+            row["days_remaining"] if row["days_remaining"] is not None else 9999,
+            row["due_date"] or "9999-12-31",
+            row["title"],
+        )
+    )
+
+    priority_items = [row for row in all_items if row["days_remaining"] is not None and row["days_remaining"] <= 3]
+    if len(priority_items) < 8:
+        existing_keys = {(row["type"], row["id"]) for row in priority_items}
+        for row in all_items:
+            key = (row["type"], row["id"])
+            if key in existing_keys:
+                continue
+            priority_items.append(row)
+            existing_keys.add(key)
+            if len(priority_items) >= 8:
+                break
+
+    week_items = [row for row in all_items if row["days_remaining"] is not None and row["days_remaining"] <= 7][:20]
+
+    return {
+        "generated_at": today.isoformat(),
+        "today_priorities": priority_items[:8],
+        "this_week_deadlines": week_items,
+    }
+
+
+def _build_funds_snapshot_payload(db: Session, today: date) -> dict:
+    funds = db.query(Fund).order_by(Fund.id.desc()).all()
+
+    lp_rows = (
+        db.query(
+            LP.fund_id,
+            func.count(LP.id),
+            func.coalesce(func.sum(LP.paid_in), 0),
+        )
+        .group_by(LP.fund_id)
+        .all()
+    )
+    lp_stats_by_fund = {
+        int(fund_id): {
+            "lp_count": int(lp_count or 0),
+            "paid_in_total": float(paid_in_total or 0),
+        }
+        for fund_id, lp_count, paid_in_total in lp_rows
+        if fund_id is not None
+    }
+
+    latest_valuations = (
+        db.query(Valuation)
+        .order_by(Valuation.as_of_date.desc(), Valuation.id.desc())
+        .all()
+    )
+    latest_by_investment: dict[int, Valuation] = {}
+    for row in latest_valuations:
+        if row.investment_id not in latest_by_investment:
+            latest_by_investment[row.investment_id] = row
+
+    nav_by_fund: dict[int, float] = {}
+    for row in latest_by_investment.values():
+        nav_by_fund[row.fund_id] = nav_by_fund.get(row.fund_id, 0.0) + float(row.total_fair_value or row.value or 0)
+
+    compliance_rows = (
+        db.query(
+            ComplianceObligation.fund_id,
+            func.count(ComplianceObligation.id),
+        )
+        .filter(
+            ComplianceObligation.status.notin_(["completed", "waived"]),
+            ComplianceObligation.due_date < today,
+        )
+        .group_by(ComplianceObligation.fund_id)
+        .all()
+    )
+    compliance_overdue_by_fund = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in compliance_rows
+        if fund_id is not None
+    }
+
+    missing_doc_rows = (
+        db.query(
+            Investment.fund_id,
+            func.count(InvestmentDocument.id),
+        )
+        .join(InvestmentDocument, InvestmentDocument.investment_id == Investment.id)
+        .filter(InvestmentDocument.status != "collected")
+        .group_by(Investment.fund_id)
+        .all()
+    )
+    missing_doc_by_fund = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in missing_doc_rows
+        if fund_id is not None
+    }
+
+    rows: list[dict] = []
+    for fund in funds:
+        lp_stats = lp_stats_by_fund.get(fund.id, {"lp_count": 0, "paid_in_total": 0.0})
+        nav = float(nav_by_fund.get(fund.id, 0.0))
+        lp_count = int(lp_stats["lp_count"])
+        paid_in_total = float(lp_stats["paid_in_total"])
+        commitment_total = float(fund.commitment_total or 0)
+        contribution_rate = None
+        if commitment_total > 0:
+            contribution_rate = max(0.0, min(100.0, round((paid_in_total / commitment_total) * 100, 1)))
+
+        compliance_overdue = int(compliance_overdue_by_fund.get(fund.id, 0))
+        missing_documents = int(missing_doc_by_fund.get(fund.id, 0))
+
+        if compliance_overdue > 0:
+            compliance_status = "danger"
+        elif missing_documents > 0:
+            compliance_status = "warning"
+        else:
+            compliance_status = "good"
+
+        rows.append(
+            {
+                "id": fund.id,
+                "name": fund.name,
+                "nav": nav,
+                "lp_count": lp_count,
+                "contribution_rate": contribution_rate,
+                "compliance_status": compliance_status,
+                "compliance_overdue": compliance_overdue,
+                "missing_documents": missing_documents,
+            }
+        )
+
+    rows.sort(key=lambda row: (row["nav"], row["name"]), reverse=True)
+
+    return {
+        "rows": rows,
+        "totals": {
+            "total_nav": sum(float(row["nav"] or 0) for row in rows),
+            "total_lp_count": sum(int(row["lp_count"] or 0) for row in rows),
+            "total_missing_documents": sum(int(row["missing_documents"] or 0) for row in rows),
+        },
+    }
+
+
+def _build_pipeline_payload(db: Session) -> dict:
+    active_reviews = (
+        db.query(InvestmentReview)
+        .filter(InvestmentReview.status.notin_(["완료", "중단"]))
+        .all()
+    )
+
+    stage_counts: dict[str, int] = {}
+    for row in active_reviews:
+        stage = (row.status or row.stage or "기타").strip() or "기타"
+        stage_counts[stage] = stage_counts.get(stage, 0) + 1
+
+    stage_order = ["소싱", "검토중", "실사중", "투자심의", "의결", "협상", "실행"]
+    ordered_stages: list[dict] = []
+    for stage in stage_order:
+        if stage in stage_counts:
+            ordered_stages.append({"stage": stage, "count": stage_counts.pop(stage)})
+    for stage, count in sorted(stage_counts.items(), key=lambda row: row[0]):
+        ordered_stages.append({"stage": stage, "count": count})
+
+    return {
+        "total_count": len(active_reviews),
+        "stages": ordered_stages,
+    }
+
+
+@router.get("/health", response_model=DashboardHealthResponse)
+def get_dashboard_health(db: Session = Depends(get_db)):
+    today = date.today()
+    return build_dashboard_health(db, today)
+
+
+@router.get("/deadlines", response_model=DashboardDeadlinesResponse)
+def get_dashboard_deadlines(db: Session = Depends(get_db)):
+    today = date.today()
+    return _build_deadlines_payload(db, today)
+
+
+@router.get("/funds-snapshot", response_model=DashboardFundsSnapshotResponse)
+def get_dashboard_funds_snapshot(db: Session = Depends(get_db)):
+    today = date.today()
+    return _build_funds_snapshot_payload(db, today)
+
+
+@router.get("/pipeline", response_model=DashboardPipelineResponse)
+def get_dashboard_pipeline(db: Session = Depends(get_db)):
+    return _build_pipeline_payload(db)
 
 
 @router.get("/today", response_model=DashboardTodayResponse)

@@ -1,0 +1,91 @@
+import type { TaskBoardSummary } from '../../lib/api'
+import { formatDuration } from '../../lib/format'
+
+interface TaskSummaryBarProps {
+  summary?: TaskBoardSummary | null
+  onClickOverdue: () => void
+  onClickToday: () => void
+  onClickThisWeek: () => void
+  onClickCompletedToday: () => void
+}
+
+const EMPTY_SUMMARY: TaskBoardSummary = {
+  overdue_count: 0,
+  today_count: 0,
+  this_week_count: 0,
+  completed_today_count: 0,
+  total_pending_count: 0,
+  total_estimated_minutes: 0,
+  completed_estimated_minutes: 0,
+  stale_count: 0,
+  work_score: 0,
+  progress_count_pct: 0,
+  progress_time_pct: 0,
+}
+
+function StatButton({
+  label,
+  value,
+  tone,
+  onClick,
+}: {
+  label: string
+  value: number
+  tone: 'danger' | 'primary' | 'accent' | 'success'
+  onClick: () => void
+}) {
+  const toneClass =
+    tone === 'danger'
+      ? 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]'
+      : tone === 'success'
+        ? 'border-[#bed7c9] bg-[#eef6f2] text-[#1f5b45]'
+        : tone === 'accent'
+          ? 'border-[#bfcff0] bg-[#eef4ff] text-[#1a3660]'
+          : 'border-[#d8e5fb] bg-[#f5f9ff] text-[#0f1f3d]'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg border px-3 py-2 text-left transition-colors hover:bg-white ${toneClass}`}
+    >
+      <p className="text-[11px] font-semibold">{label}</p>
+      <p className="mt-0.5 text-base font-bold">{value}건</p>
+    </button>
+  )
+}
+
+export default function TaskSummaryBar({
+  summary,
+  onClickOverdue,
+  onClickToday,
+  onClickThisWeek,
+  onClickCompletedToday,
+}: TaskSummaryBarProps) {
+  const value = summary || EMPTY_SUMMARY
+
+  return (
+    <section className="rounded-xl border border-[#d8e5fb] bg-white p-3 shadow-sm">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+        <StatButton label="지연" value={value.overdue_count} tone="danger" onClick={onClickOverdue} />
+        <StatButton label="오늘" value={value.today_count} tone="primary" onClick={onClickToday} />
+        <StatButton label="이번 주" value={value.this_week_count} tone="accent" onClick={onClickThisWeek} />
+        <StatButton label="오늘 완료" value={value.completed_today_count} tone="success" onClick={onClickCompletedToday} />
+        <div className="col-span-2 rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#1a3660]">
+            <span>진척률(업무)</span>
+            <span>{value.progress_count_pct}%</span>
+          </div>
+          <div className="mt-1 h-1.5 rounded-full bg-[#d8e5fb]">
+            <div className="h-1.5 rounded-full bg-[#558ef8]" style={{ width: `${value.progress_count_pct}%` }} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-[#64748b]">
+            <span>진척률(시간) {value.progress_time_pct}%</span>
+            <span>{formatDuration(value.completed_estimated_minutes)} / {formatDuration(value.total_estimated_minutes)}</span>
+          </div>
+          <p className="mt-1 text-[11px] font-medium text-[#0f1f3d]">업무 점수 {value.work_score}점</p>
+        </div>
+      </div>
+    </section>
+  )
+}

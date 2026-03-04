@@ -14,6 +14,10 @@ export function invalidateTaskRelated(queryClient: QueryClient) {
     queryKeys.tasks.board(),
     queryKeys.tasks.categories,
     queryKeys.dashboard.base,
+    queryKeys.dashboard.health,
+    queryKeys.dashboard.deadlines,
+    queryKeys.dashboard.fundsSnapshot,
+    queryKeys.dashboard.pipeline,
     queryKeys.dashboard.workflows,
     queryKeys.dashboard.sidebar,
     queryKeys.dashboard.completed,
@@ -89,6 +93,8 @@ export function invalidateFeeRelated(queryClient: QueryClient, fundId?: number |
     ['fees', 'config'],
     ['fees', 'waterfall'],
     queryKeys.dashboard.base,
+    queryKeys.dashboard.health,
+    queryKeys.dashboard.fundsSnapshot,
   ])
   if (fundId) {
     invalidateMany(queryClient, [
@@ -111,6 +117,8 @@ export function invalidateBizReportRelated(queryClient: QueryClient) {
     ['internalReviews'],
     ['internalReview'],
     queryKeys.dashboard.base,
+    queryKeys.dashboard.health,
+    queryKeys.dashboard.deadlines,
   ])
 }
 

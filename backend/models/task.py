@@ -14,6 +14,7 @@ class Task(Base):
     status = Column(String, default="pending", index=True)  # pending, in_progress, completed
     delegate_to = Column(String, nullable=True)  # Q3 delegation
     created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
     completed_at = Column(DateTime, nullable=True)
     actual_time = Column(String, nullable=True)
 

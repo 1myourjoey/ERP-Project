@@ -228,8 +228,14 @@ class TestTaskBoardAndReminders:
         board_response = client.get("/api/tasks/board")
         assert board_response.status_code == 200
         board = board_response.json()
+        assert "summary" in board
+        assert isinstance(board["summary"].get("overdue_count"), int)
+        assert isinstance(board["summary"].get("work_score"), int)
         assert "Q1" in board
-        assert any(row["id"] == task["id"] for row in board["Q1"])
+        matched = next((row for row in board["Q1"] if row["id"] == task["id"]), None)
+        assert matched is not None
+        assert "stale_days" in matched
+        assert "workflow_name" in matched
 
     def test_generate_monthly_reminders(self, client):
         now = datetime.now()

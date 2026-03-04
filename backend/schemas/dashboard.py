@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -171,3 +171,72 @@ class UpcomingNoticeItem(BaseModel):
     workflow_instance_id: Optional[int] = None
     task_id: Optional[int] = None
     source_label: Optional[str] = None
+
+
+class DashboardHealthDomain(BaseModel):
+    score: int
+    factors: dict[str, Any] = Field(default_factory=dict)
+    label: str
+    severity: Literal["good", "warning", "danger"]
+
+
+class DashboardHealthAlertItem(BaseModel):
+    type: str
+    message: str
+    domain: str
+    action_url: str
+
+
+class DashboardHealthResponse(BaseModel):
+    overall_score: int
+    domains: dict[str, DashboardHealthDomain]
+    alerts: list[DashboardHealthAlertItem] = Field(default_factory=list)
+
+
+class DashboardDeadlineItem(BaseModel):
+    type: Literal["task", "report", "document", "compliance"]
+    id: int
+    title: str
+    due_date: Optional[str] = None
+    days_remaining: Optional[int] = None
+    context: Optional[str] = None
+    action_url: str
+    severity: Literal["good", "warning", "danger"] = "warning"
+
+
+class DashboardDeadlinesResponse(BaseModel):
+    generated_at: str
+    today_priorities: list[DashboardDeadlineItem] = Field(default_factory=list)
+    this_week_deadlines: list[DashboardDeadlineItem] = Field(default_factory=list)
+
+
+class DashboardFundSnapshotItem(BaseModel):
+    id: int
+    name: str
+    nav: float = 0.0
+    lp_count: int = 0
+    contribution_rate: Optional[float] = None
+    compliance_status: Literal["good", "warning", "danger"] = "good"
+    compliance_overdue: int = 0
+    missing_documents: int = 0
+
+
+class DashboardFundSnapshotTotals(BaseModel):
+    total_nav: float = 0.0
+    total_lp_count: int = 0
+    total_missing_documents: int = 0
+
+
+class DashboardFundsSnapshotResponse(BaseModel):
+    rows: list[DashboardFundSnapshotItem] = Field(default_factory=list)
+    totals: DashboardFundSnapshotTotals = Field(default_factory=DashboardFundSnapshotTotals)
+
+
+class DashboardPipelineStageItem(BaseModel):
+    stage: str
+    count: int
+
+
+class DashboardPipelineResponse(BaseModel):
+    total_count: int = 0
+    stages: list[DashboardPipelineStageItem] = Field(default_factory=list)

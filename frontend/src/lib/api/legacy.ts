@@ -1971,6 +1971,7 @@ export interface Task {
   status: string
   delegate_to: string | null
   created_at: string | null
+  updated_at: string | null
   completed_at: string | null
   actual_time: string | null
   workflow_instance_id: number | null
@@ -1979,11 +1980,14 @@ export interface Task {
   fund_id: number | null
   investment_id: number | null
   gp_entity_id: number | null
+  obligation_id?: number | null
   is_notice: boolean
   is_report: boolean
   fund_name: string | null
   gp_entity_name: string | null
   company_name: string | null
+  workflow_name?: string | null
+  stale_days?: number | null
   attachment_count?: number
 }
 
@@ -2003,7 +2007,22 @@ export interface TaskCompletionCheckDocument {
   attachment_ids: number[]
 }
 
+export interface TaskBoardSummary {
+  overdue_count: number
+  today_count: number
+  this_week_count: number
+  completed_today_count: number
+  total_pending_count: number
+  total_estimated_minutes: number
+  completed_estimated_minutes: number
+  stale_count: number
+  work_score: number
+  progress_count_pct: number
+  progress_time_pct: number
+}
+
 export interface TaskBoard {
+  summary: TaskBoardSummary
   Q1: Task[]
   Q2: Task[]
   Q3: Task[]

@@ -13,6 +13,8 @@ interface TaskPipelineViewProps {
   onClickTask: (task: Task, options?: { editable?: boolean }) => void
   onClickWorkflow: (wf: ActiveWorkflow) => void
   fullScreen?: boolean
+  embedded?: boolean
+  heightClass?: string
 }
 
 type Accent = {
@@ -265,6 +267,8 @@ export default function TaskPipelineView({
   onClickTask,
   onClickWorkflow,
   fullScreen = false,
+  embedded = false,
+  heightClass,
 }: TaskPipelineViewProps) {
   const [activeCardKey, setActiveCardKey] = useState<string | null>(null)
   const pipelineRef = useRef<HTMLDivElement | null>(null)
@@ -603,10 +607,12 @@ export default function TaskPipelineView({
   })
 
   return (
-    <div className={fullScreen ? '' : 'card-base'}>
+    <div className={fullScreen || embedded ? '' : 'card-base'}>
       <div
         ref={pipelineRef}
-        className={`relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-[#d8e5fb] bg-white p-3 ${fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[620px]'}`}
+        className={`relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-2xl border border-[#d8e5fb] bg-white p-3 ${
+          heightClass || (fullScreen ? 'h-[calc(100vh-140px)]' : 'h-[620px]')
+        }`}
       >
         <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" aria-hidden="true">
           {linkPaths.map((link) => {

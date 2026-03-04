@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -179,11 +179,123 @@ def _build_task_lookup_context(db: Session, tasks: list[Task]) -> dict[str, dict
     }
 
 
+def _parse_time_to_minutes(value: str | None) -> int:
+    if not value:
+        return 0
+    total = 0
+    normalized = value.split('~')[0] if '~' in value else value
+    h_match = re.search(r'(\d+)h', normalized)
+    m_match = re.search(r'(\d+)m', normalized)
+    d_match = re.search(r'(\d+)d', normalized)
+    if h_match:
+        total += int(h_match.group(1)) * 60
+    if m_match:
+        total += int(m_match.group(1))
+    if d_match:
+        total += int(d_match.group(1)) * 480
+    return total
+
+
+def _task_date(value: datetime | date | None) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
+
+def _compute_stale_days(task: Task, now_dt: datetime) -> int | None:
+    if task.status == 'completed':
+        return None
+    reference = task.updated_at or task.created_at
+    if reference is None:
+        return None
+    delta = now_dt - reference
+    return max(0, delta.days)
+
+
+def _resolve_task_work_score(db: Session, today: date) -> int:
+    try:
+        from services.health_score import build_dashboard_health
+    except Exception:
+        return 0
+    try:
+        payload = build_dashboard_health(db, today)
+        score = int((payload.get('domains') or {}).get('tasks', {}).get('score', 0))
+        return max(0, min(100, score))
+    except Exception:
+        return 0
+
+
+def _build_task_board_summary(db: Session, tasks: list[Task]) -> dict[str, int]:
+    today = date.today()
+    now_dt = datetime.now()
+    week_end = today + timedelta(days=7)
+
+    pending_statuses = {'pending', 'in_progress'}
+    pending_tasks = [task for task in tasks if task.status in pending_statuses]
+    completed_today_tasks = [
+        task
+        for task in tasks
+        if task.status == 'completed' and _task_date(task.completed_at) == today
+    ]
+
+    overdue_count = 0
+    today_count = 0
+    this_week_count = 0
+    stale_count = 0
+    today_pending_tasks: list[Task] = []
+
+    for task in pending_tasks:
+        deadline_date = _task_date(task.deadline)
+        if deadline_date is not None:
+            if deadline_date < today:
+                overdue_count += 1
+            elif deadline_date == today:
+                today_count += 1
+                today_pending_tasks.append(task)
+            elif deadline_date <= week_end:
+                this_week_count += 1
+
+        stale_days = _compute_stale_days(task, now_dt)
+        if stale_days is not None and stale_days >= 3:
+            stale_count += 1
+
+    today_scope_tasks = [*today_pending_tasks, *completed_today_tasks]
+    completed_estimated_minutes = sum(
+        _parse_time_to_minutes(task.estimated_time)
+        for task in completed_today_tasks
+    )
+    total_estimated_minutes = sum(
+        _parse_time_to_minutes(task.estimated_time)
+        for task in today_scope_tasks
+    )
+
+    today_scope_count = len(today_scope_tasks)
+    progress_count_pct = int(round((len(completed_today_tasks) / today_scope_count) * 100)) if today_scope_count else 0
+    progress_time_pct = int(round((completed_estimated_minutes / total_estimated_minutes) * 100)) if total_estimated_minutes else 0
+
+    return {
+        'overdue_count': overdue_count,
+        'today_count': today_count,
+        'this_week_count': this_week_count,
+        'completed_today_count': len(completed_today_tasks),
+        'total_pending_count': len(pending_tasks),
+        'total_estimated_minutes': total_estimated_minutes,
+        'completed_estimated_minutes': completed_estimated_minutes,
+        'stale_count': stale_count,
+        'work_score': _resolve_task_work_score(db, today),
+        'progress_count_pct': progress_count_pct,
+        'progress_time_pct': progress_time_pct,
+    }
+
+
 def _to_task_response(
     db: Session,
     task: Task,
     lookup_context: dict[str, dict[int, object]] | None = None,
 ) -> TaskResponse:
+    now_dt = datetime.now()
     context = lookup_context or {}
     investment_by_id: dict[int, Investment] = context.get('investments', {})  # type: ignore[assignment]
     instance_by_id: dict[int, WorkflowInstance] = context.get('instances', {})  # type: ignore[assignment]
@@ -216,37 +328,42 @@ def _to_task_response(
         company = company_by_id.get(investment.company_id) or db.get(PortfolioCompany, investment.company_id)
         company_name = company.name if company else None
 
-    if (not fund_name or not company_name or not gp_entity_name) and task.workflow_instance_id:
-        instance = (
+    workflow_instance = None
+    if task.workflow_instance_id:
+        workflow_instance = (
             instance_by_id.get(task.workflow_instance_id)
             or db.get(WorkflowInstance, task.workflow_instance_id)
         )
-        if instance:
-            if not fund_name and instance.fund_id:
-                wf_fund = fund_by_id.get(instance.fund_id) or db.get(Fund, instance.fund_id)
-                fund_name = wf_fund.name if wf_fund else None
-                if fund_id is None:
-                    fund_id = instance.fund_id
-            if not gp_entity_name and instance.gp_entity_id:
-                gp_entity = (
-                    gp_entity_by_id.get(instance.gp_entity_id)
-                    or db.get(GPEntity, instance.gp_entity_id)
-                )
-                gp_entity_name = gp_entity.name if gp_entity else None
-                if gp_entity_id is None:
-                    gp_entity_id = instance.gp_entity_id
-            if not company_name and instance.company_id:
-                wf_company = (
-                    company_by_id.get(instance.company_id)
-                    or db.get(PortfolioCompany, instance.company_id)
-                )
-                company_name = wf_company.name if wf_company else None
+
+    if (not fund_name or not company_name or not gp_entity_name) and workflow_instance:
+        instance = workflow_instance
+        if not fund_name and instance.fund_id:
+            wf_fund = fund_by_id.get(instance.fund_id) or db.get(Fund, instance.fund_id)
+            fund_name = wf_fund.name if wf_fund else None
+            if fund_id is None:
+                fund_id = instance.fund_id
+        if not gp_entity_name and instance.gp_entity_id:
+            gp_entity = (
+                gp_entity_by_id.get(instance.gp_entity_id)
+                or db.get(GPEntity, instance.gp_entity_id)
+            )
+            gp_entity_name = gp_entity.name if gp_entity else None
+            if gp_entity_id is None:
+                gp_entity_id = instance.gp_entity_id
+        if not company_name and instance.company_id:
+            wf_company = (
+                company_by_id.get(instance.company_id)
+                or db.get(PortfolioCompany, instance.company_id)
+            )
+            company_name = wf_company.name if wf_company else None
 
     payload['fund_id'] = fund_id
     payload['gp_entity_id'] = gp_entity_id
     payload['fund_name'] = fund_name or gp_entity_name
     payload['gp_entity_name'] = gp_entity_name
     payload['company_name'] = company_name
+    payload['workflow_name'] = workflow_instance.name if workflow_instance else None
+    payload['stale_days'] = _compute_stale_days(task, now_dt)
     payload['attachment_count'] = int(
         attachment_count_by_task.get(task.id)
         if task.id in attachment_count_by_task
@@ -393,6 +510,9 @@ def get_task_board(
     month: int | None = None,
     db: Session = Depends(get_db),
 ):
+    summary_source_tasks = db.query(Task).all()
+    summary = _build_task_board_summary(db, summary_source_tasks)
+
     query = db.query(Task)
     if status != 'all':
         query = query.filter(Task.status == status)
@@ -410,7 +530,10 @@ def get_task_board(
     for task in tasks:
         if task.quadrant in board:
             board[task.quadrant].append(_to_task_response(db, task, lookup_context))
-    return board
+    return {
+        'summary': summary,
+        **board,
+    }
 
 
 @router.get('', response_model=list[TaskResponse])

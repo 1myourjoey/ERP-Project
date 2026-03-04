@@ -74,6 +74,33 @@ class TestDashboard:
         assert "completed_today" in completed_payload
         assert "completed_today_count" in completed_payload
 
+    def test_dashboard_redesign_endpoints(self, client):
+        health = client.get("/api/dashboard/health")
+        assert health.status_code == 200
+        health_payload = health.json()
+        assert "overall_score" in health_payload
+        assert "domains" in health_payload
+        assert "alerts" in health_payload
+
+        deadlines = client.get("/api/dashboard/deadlines")
+        assert deadlines.status_code == 200
+        deadlines_payload = deadlines.json()
+        assert "generated_at" in deadlines_payload
+        assert "today_priorities" in deadlines_payload
+        assert "this_week_deadlines" in deadlines_payload
+
+        funds_snapshot = client.get("/api/dashboard/funds-snapshot")
+        assert funds_snapshot.status_code == 200
+        funds_payload = funds_snapshot.json()
+        assert "rows" in funds_payload
+        assert "totals" in funds_payload
+
+        pipeline = client.get("/api/dashboard/pipeline")
+        assert pipeline.status_code == 200
+        pipeline_payload = pipeline.json()
+        assert "total_count" in pipeline_payload
+        assert "stages" in pipeline_payload
+
     def test_upcoming_notices(self, client, sample_fund):
         notice_response = client.put(
             f"/api/funds/{sample_fund['id']}/notice-periods",

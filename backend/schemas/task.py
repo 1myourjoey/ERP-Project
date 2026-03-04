@@ -76,6 +76,7 @@ class TaskResponse(BaseModel):
     status: Literal["pending", "in_progress", "completed"]
     delegate_to: Optional[str] = None
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     actual_time: Optional[str] = None
     workflow_instance_id: Optional[int] = None
@@ -92,12 +93,29 @@ class TaskResponse(BaseModel):
     fund_name: Optional[str] = None
     gp_entity_name: Optional[str] = None
     company_name: Optional[str] = None
+    workflow_name: Optional[str] = None
+    stale_days: Optional[int] = None
     attachment_count: int = 0
 
     model_config = {"from_attributes": True}
 
 
+class TaskBoardSummary(BaseModel):
+    overdue_count: int = 0
+    today_count: int = 0
+    this_week_count: int = 0
+    completed_today_count: int = 0
+    total_pending_count: int = 0
+    total_estimated_minutes: int = 0
+    completed_estimated_minutes: int = 0
+    stale_count: int = 0
+    work_score: int = 0
+    progress_count_pct: int = 0
+    progress_time_pct: int = 0
+
+
 class TaskBoardResponse(BaseModel):
+    summary: TaskBoardSummary
     Q1: list[TaskResponse]
     Q2: list[TaskResponse]
     Q3: list[TaskResponse]
