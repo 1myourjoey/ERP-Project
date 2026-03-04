@@ -97,7 +97,7 @@ export function FilterPanel({
   }
 
   const renderGrid = (items: FilterConfig[]) => (
-    <div className="grid gap-3 md:grid-cols-3">
+    <div className="grid gap-2 md:grid-cols-3">
       {items.map((filter) => (
         <div key={filter.key}>{renderFilter(filter)}</div>
       ))}
@@ -105,33 +105,33 @@ export function FilterPanel({
   )
 
   return (
-    <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white px-4 py-3 shadow-sm">
+    <div className="space-y-2 rounded-xl border border-[#d8e5fb] bg-white px-3 py-2 shadow-sm">
       <div className="hidden items-center justify-between md:flex">
-        <div className="inline-flex items-center gap-2 text-sm font-semibold">
-          <Filter size={15} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}
+        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a3660]">
+          <Filter size={13} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {hidden.length > 0 && (
-            <button type="button" className="ghost-btn btn-sm" onClick={() => setExpanded((prev) => !prev)}>
+            <button type="button" className="ghost-btn btn-xs" onClick={() => setExpanded((prev) => !prev)}>
               필터 더보기 ({hidden.length})
             </button>
           )}
-          <button type="button" className="secondary-btn btn-sm" onClick={onReset} disabled={activeCount === 0}>
+          <button type="button" className="secondary-btn btn-xs" onClick={onReset} disabled={activeCount === 0}>
             초기화
           </button>
         </div>
       </div>
 
-      <div className="hidden md:block space-y-3">
+      <div className="hidden space-y-2 md:block">
         {renderGrid(visible)}
         {expanded && hidden.length > 0 && <div className="collapsible-enter-active">{renderGrid(hidden)}</div>}
       </div>
 
       <div className="md:hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="secondary-btn btn-sm flex-1 inline-flex items-center justify-center gap-1"
+            className="secondary-btn btn-sm inline-flex flex-1 items-center justify-center gap-1"
             onClick={() => setMobileOpen((prev) => !prev)}
           >
             필터 {activeCount > 0 ? `(${activeCount})` : ''}
@@ -141,7 +141,7 @@ export function FilterPanel({
             초기화
           </button>
         </div>
-        {mobileOpen && <div className="mt-3 space-y-3">{renderGrid(filters)}</div>}
+        {mobileOpen && <div className="mt-2 space-y-2">{renderGrid(filters)}</div>}
       </div>
     </div>
   )

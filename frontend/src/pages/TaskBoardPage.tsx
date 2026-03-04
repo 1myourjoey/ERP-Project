@@ -1,6 +1,6 @@
 ﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, Clock, GitBranch, GripVertical, Plus, Tag, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Clock, GitBranch, GripVertical, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -119,42 +119,48 @@ function isOverdueTask(task: Task, now = new Date()): boolean {
 }
 
 function taskUrgencyMeta(task: Task): {
-  leftBorderClass: string
+  topBarClass: string
   badgeStatus: 'danger' | 'warning' | 'pending' | 'overdue' | null
   label: string | null
+  priorityWeight: number
 } {
   const tone: TaskDeadlineTone = task.status === 'completed' ? 'later' : resolveDeadlineTone(task.deadline)
   switch (tone) {
     case 'overdue':
       return {
-        leftBorderClass: 'border-l-[var(--color-danger)]',
+        topBarClass: 'bg-[#bfa5a7]',
         badgeStatus: 'overdue',
         label: '지연',
+        priorityWeight: 500,
       }
     case 'today':
       return {
-        leftBorderClass: 'border-l-[var(--color-danger)]',
+        topBarClass: 'bg-[#bfa5a7]',
         badgeStatus: 'danger',
         label: '오늘마감',
+        priorityWeight: 420,
       }
     case 'this_week':
       return {
-        leftBorderClass: 'border-l-[var(--color-warning)]',
+        topBarClass: 'bg-[#558ef8]',
         badgeStatus: 'warning',
         label: '이번주',
+        priorityWeight: 320,
       }
     case 'none':
       return {
-        leftBorderClass: 'border-l-[#bfcff0]',
+        topBarClass: 'bg-[#d8e5fb]',
         badgeStatus: 'pending',
         label: '기한없음',
+        priorityWeight: 80,
       }
     case 'later':
     default:
       return {
-        leftBorderClass: 'border-l-[#bfcff0]',
+        topBarClass: task.status === 'completed' ? 'bg-emerald-300' : 'bg-[#d8e5fb]',
         badgeStatus: null,
         label: null,
+        priorityWeight: 200,
       }
   }
 }
@@ -277,6 +283,13 @@ const TaskItem = memo(function TaskItem({
     return `D-${diff}`
   })()
   const targetLabel = task.fund_name || task.gp_entity_name || '공통'
+  const traitTags = [
+    task.obligation_id ? { label: '컴플연계', className: 'tag tag-red' } : null,
+    task.workflow_name ? { label: '워크플로', className: 'tag tag-indigo' } : null,
+    task.is_notice || task.is_report ? { label: '통지/보고', className: 'tag tag-blue' } : null,
+    staleLabel ? { label: staleLabel, className: staleClass } : null,
+  ].filter(Boolean) as Array<{ label: string; className: string }>
+  const compactTraits = traitTags.slice(0, 1)
 
   return (
     <div
@@ -288,70 +301,74 @@ const TaskItem = memo(function TaskItem({
         setIsDragging(true)
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`group flex items-start gap-3 rounded-xl border border-[#d8e5fb] border-l-4 bg-white px-3.5 py-3 transition-shadow hover:shadow-sm ${
-        urgencyMeta.leftBorderClass
-      } ${
+      className={`group overflow-hidden rounded-xl border border-[#d8e5fb] bg-white transition-all hover:border-[#bfcff0] hover:shadow-sm ${
         isBlinking ? 'animate-pulse ring-2 ring-[#558ef8]' : ''
-      } ${
-        isDragging ? 'opacity-70' : ''
-      }`}
+      } ${isDragging ? 'opacity-70' : ''}`}
     >
-      <div className="hidden text-[#94a3b8] transition-colors group-hover:text-[#64748b] md:block">
-        <GripVertical size={13} />
-      </div>
-      <div className="flex h-full items-start pt-1" onClick={(event) => event.stopPropagation()}>
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={(event) => onToggleSelect(task.id, event.target.checked)}
-          className={`h-4 w-4 cursor-pointer rounded border-[#bfcff0] text-[#558ef8] focus:ring-[#558ef8] ${
-            selected || selectionMode ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
-          }`}
-          aria-label={`업무 선택: ${task.title}`}
-        />
-      </div>
-      <div className="min-w-0 flex-1 cursor-pointer space-y-1" onClick={() => onOpenDetail(task)}>
-        <p className="text-sm font-medium leading-snug text-[#0f1f3d]">{task.title}</p>
-        <div className="flex flex-wrap items-center gap-1 text-xs text-[#64748b]">
+      <div className={`h-[3px] w-full ${urgencyMeta.topBarClass}`} />
+      <div className="px-2.5 py-2">
+        <div className="flex items-start gap-1.5">
+          <div className="mt-0.5 hidden text-[#94a3b8] transition-colors group-hover:text-[#64748b] md:block">
+            <GripVertical size={12} />
+          </div>
+          <div className="mt-0.5 flex h-full items-start" onClick={(event) => event.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(event) => onToggleSelect(task.id, event.target.checked)}
+              className={`h-3.5 w-3.5 cursor-pointer rounded border-[#bfcff0] text-[#558ef8] focus:ring-[#558ef8] ${
+                selected || selectionMode ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
+              }`}
+              aria-label={`업무 선택: ${task.title}`}
+            />
+          </div>
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onOpenDetail(task)}>
+            <p className="line-clamp-1 text-[13px] font-semibold leading-tight text-[#0f1f3d]">{task.title}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              onClick={() => onComplete(task)}
+              className="icon-btn h-7 w-7 p-1 text-emerald-700 hover:bg-emerald-50"
+              title="완료"
+            >
+              <Check size={13} />
+            </button>
+            <button
+              onClick={() => onEdit(task)}
+              className="icon-btn h-7 w-7 p-1 text-[#1a3660] hover:bg-[#eef4ff]"
+              title="수정"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              onClick={() => onDelete(task.id)}
+              className="icon-btn h-7 w-7 p-1 text-[#64748b] opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
+              title="삭제"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
           <span className={urgencyTag.className}>{urgencyTag.label}</span>
           <span className={categoryTag.className}>{categoryTag.label}</span>
-          {task.workflow_name && <span className="tag tag-indigo">{task.workflow_name}</span>}
-          {task.obligation_id && <span className="tag tag-red">컴플연결</span>}
-          {staleLabel && <span className={staleClass}>{staleLabel}</span>}
+          {compactTraits.map((trait) => (
+            <span key={trait.label} className={trait.className}>{trait.label}</span>
+          ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#64748b]">
-          <span>{targetLabel}</span>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
+          <span className="max-w-[70px] truncate">{targetLabel}</span>
           <span>·</span>
           {deadlineStr && <span>{deadlineStr}</span>}
           <span>{dDayLabel}</span>
           {task.estimated_time && (
             <span className="flex items-center gap-0.5">
-              <Clock size={11} /> {task.estimated_time}
+              <Clock size={10} /> {task.estimated_time}
             </span>
           )}
         </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-        <button
-          onClick={() => onComplete(task)}
-          className="icon-btn text-emerald-700 hover:bg-emerald-50"
-          title="완료"
-        >
-          <Check size={14} />
-        </button>
-        <button
-          onClick={() => onEdit(task)}
-          className="btn-sm rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] px-3 py-1.5 text-xs font-medium text-[#1a3660] transition-colors hover:bg-[#e6efff]"
-        >
-          수정
-        </button>
-        <button
-          onClick={() => onDelete(task.id)}
-          className="icon-btn text-[#64748b] opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
-          title="삭제"
-        >
-          <Trash2 size={14} />
-        </button>
       </div>
     </div>
   )
@@ -1390,12 +1407,29 @@ export default function TaskBoardPage() {
     [categoryFilter, fundFilter, searchKeyword],
   )
 
-  const sortTasksForQuadrant = (tasks: Task[], quadrantKey: string): Task[] => {
-    if (quadrantKey !== 'Q1') return tasks
+  const sortTasksForQuadrant = (tasks: Task[]): Task[] => {
     return [...tasks].sort((a, b) => {
+      const urgencyA = taskUrgencyMeta(a).priorityWeight
+      const urgencyB = taskUrgencyMeta(b).priorityWeight
+      const staleA = Math.min(Math.max(a.stale_days ?? 0, 0), 14) * 4
+      const staleB = Math.min(Math.max(b.stale_days ?? 0, 0), 14) * 4
+      const complianceA = a.obligation_id ? 70 : 0
+      const complianceB = b.obligation_id ? 70 : 0
+      const workflowA = a.workflow_instance_id ? 40 : 0
+      const workflowB = b.workflow_instance_id ? 40 : 0
+      const noticeA = a.is_notice || a.is_report ? 20 : 0
+      const noticeB = b.is_notice || b.is_report ? 20 : 0
+
+      const scoreA = urgencyA + staleA + complianceA + workflowA + noticeA
+      const scoreB = urgencyB + staleB + complianceB + workflowB + noticeB
+      if (scoreA !== scoreB) return scoreB - scoreA
+
       const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY
       const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY
       if (aDeadline !== bDeadline) return aDeadline - bDeadline
+      const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
+      const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
+      if (aUpdated !== bUpdated) return aUpdated - bUpdated
       return a.id - b.id
     })
   }
@@ -1942,7 +1976,7 @@ export default function TaskBoardPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header mb-3 items-center">
+      <div className="page-header mb-2 items-center !px-4 !py-3">
         <div className="flex items-center gap-2">
           <h2 className="page-title">업무 보드</h2>
           {overdueCount > 0 && (
@@ -1957,11 +1991,11 @@ export default function TaskBoardPage() {
             오늘의 현황
           </Link>
         </div>
-        <div className="flex flex-wrap items-start gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => setSelectionMode((prev) => !prev)}
-            className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs ${
+            className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] ${
               selectionMode
                 ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
                 : 'border-[#d8e5fb] bg-white text-[#0f1f3d] hover:bg-[#f5f9ff]'
@@ -1971,7 +2005,7 @@ export default function TaskBoardPage() {
           </button>
           <button
             onClick={() => setShowCategoryManager(true)}
-            className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-2 py-1 text-xs text-[#0f1f3d] hover:bg-[#f5f9ff]"
+            className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-2 py-1 text-[11px] text-[#0f1f3d] hover:bg-[#f5f9ff]"
           >
             <Tag size={12} />
             카테고리 관리
@@ -1984,17 +2018,23 @@ export default function TaskBoardPage() {
         values={taskFilterValues}
         onChange={handleFilterPanelChange}
         onReset={resetFilters}
-        visibleCount={3}
+        visibleCount={2}
       />
 
-      <div className={`mt-4 space-y-5 ${boardView === 'board' && boardPanelTask ? 'xl:pr-[430px]' : ''}`}>
-        <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-1">
+      <div
+        className={
+          boardView === 'board'
+            ? 'mt-3 space-y-2 lg:space-y-2.5'
+            : 'mt-4 space-y-5'
+        }
+      >
+        <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-0.5">
           {VIEW_TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setBoardView(tab.key)}
-              className={`tab-btn flex-1 justify-center rounded-lg px-4 py-1.5 text-sm font-medium ${
+              className={`tab-btn flex-1 justify-center rounded-lg px-3 py-1 text-xs font-semibold lg:px-4 lg:text-sm ${
                 boardView === tab.key
                   ? 'active bg-white shadow-sm'
                   : ''
@@ -2016,44 +2056,44 @@ export default function TaskBoardPage() {
       )}
 
       {boardView === 'board' && selectedVisibleTasks.length > 0 && (
-        <div className="sticky top-3 z-20 mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-[#d8e5fb] bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <span className="text-sm font-semibold text-[#0f1f3d]">{selectedVisibleTasks.length}개 선택됨</span>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#d8e5fb] bg-white px-2.5 py-1.5 shadow-sm">
+          <span className="text-xs font-semibold text-[#0f1f3d]">{selectedVisibleTasks.length}개 선택됨</span>
           <button
             onClick={handleBulkComplete}
             disabled={bulkCompleteMutation.isPending || completeMutation.isPending}
-            className="primary-btn btn-sm disabled:opacity-60"
+            className="primary-btn btn-xs disabled:opacity-60"
           >
             일괄 완료
           </button>
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleteMutation.isPending}
-            className="danger-btn btn-sm disabled:opacity-60"
+            className="danger-btn btn-xs disabled:opacity-60"
           >
             일괄 삭제
           </button>
           <button
             onClick={clearSelectedTasks}
-            className="secondary-btn btn-sm"
+            className="secondary-btn btn-xs"
           >
             선택 해제
           </button>
         </div>
       )}
 
-      {overdueTasks.length > 0 && (
-        <div className="mb-2 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-          <p className="text-sm font-medium text-red-900">기한 경과 업무가 {overdueTasks.length}건 있습니다.</p>
-          <button onClick={handleOverdueConfirm} className="btn-sm rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100">
+      {boardView === 'board' && overdueTasks.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-2.5 py-1.5">
+          <p className="text-[11px] font-semibold text-red-900">기한 경과 {overdueTasks.length}건</p>
+          <button onClick={handleOverdueConfirm} className="btn-xs rounded-md border border-red-300 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100">
             업무 확인
           </button>
         </div>
       )}
 
-      {urgentTasks.length > 0 && (
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
-          <p className="text-sm font-medium text-orange-900">24시간 이내 마감 업무가 {urgentTasks.length}건 있습니다.</p>
-          <button onClick={handleUrgentConfirm} className="btn-sm rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100">
+      {boardView === 'board' && urgentTasks.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-2.5 py-1.5">
+          <p className="text-[11px] font-semibold text-orange-900">24시간 내 마감 {urgentTasks.length}건</p>
+          <button onClick={handleUrgentConfirm} className="btn-xs rounded-md border border-orange-300 bg-white px-2 py-1 text-[11px] font-medium text-orange-700 hover:bg-orange-100">
             업무 확인
           </button>
         </div>
@@ -2099,12 +2139,10 @@ export default function TaskBoardPage() {
         </div>
       ) : (
         <>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="w-full">
+        <div className="grid grid-cols-1 gap-2.5 lg:min-h-[calc(100vh-220px)] lg:grid-cols-2 lg:grid-rows-2">
           {QUADRANTS.map((quadrant) => {
-            const allTasks = sortTasksForQuadrant(
-              applyTaskFilters(board?.[quadrant.key] || []),
-              quadrant.key,
-            )
+            const allTasks = sortTasksForQuadrant(applyTaskFilters(board?.[quadrant.key] || []))
             const { standalone, workflows } = groupTasksByWorkflow(allTasks)
             const collapseMode = allTasks.length >= 16 ? 'high' : allTasks.length >= 9 ? 'medium' : 'none'
             const quadrantExpanded = quadrantExpandState[quadrant.key] ?? false
@@ -2131,93 +2169,98 @@ export default function TaskBoardPage() {
                   if (!taskId || !fromQuadrant || fromQuadrant === quadrant.key) return
                   moveMutation.mutate({ id: taskId, quadrant: quadrant.key })
                 }}
-                className={`rounded-xl border border-[#d8e5fb] border-l-4 bg-white p-4 shadow-sm ${quadrant.color} ${
+                className={`flex flex-col rounded-xl border border-[#d8e5fb] border-l-4 bg-white p-2.5 shadow-sm lg:h-full ${quadrant.color} ${
                   dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-[#558ef8] bg-[#f5f9ff]/30' : ''
                 }`}
               >
-                <div className="mb-3.5 flex items-center gap-2">
+                <div className="mb-1.5 flex items-center gap-1.5">
                   <span className={`h-2.5 w-2.5 rounded-full ${quadrant.badge}`} />
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">{quadrant.label}</h3>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{quadrant.label}</h3>
                   <span className="ml-auto text-xs text-[#94a3b8]">{allTasks.length}</span>
                 </div>
 
-                <div className="space-y-3">
-                  {visibleStandalone.map((task) => (
-                    <TaskItem
-                      key={task.id}
-                      task={task}
-                      onComplete={setCompletingTask}
-                      onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
-                      onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
-                      onDelete={handleDeleteTask}
-                      selected={selectedTaskIds.has(task.id)}
-                      selectionMode={selectionMode}
-                      onToggleSelect={toggleTaskSelection}
-                      isBlinking={blinkingId === task.id}
-                    />
-                  ))}
-
-                  {workflows.map((group) => (
-                    (() => {
-                      const workflowKey = group.workflowInstanceId
-                      const autoExpanded =
-                        blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
-                          ? true
-                          : collapseMode === 'none'
-                            ? true
-                            : !!group.currentStep && isUrgentTaskForSmartCollapse(group.currentStep)
-                      const expanded = workflowExpandState[workflowKey] ?? autoExpanded
-
-                      return (
-                        <WorkflowGroupCard
-                          key={workflowKey}
-                          group={group}
+                <div className="pr-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2">
+                    {visibleStandalone.map((task) => (
+                      <div key={task.id} className="col-span-1">
+                        <TaskItem
+                          task={task}
                           onComplete={setCompletingTask}
                           onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
                           onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
                           onDelete={handleDeleteTask}
+                          selected={selectedTaskIds.has(task.id)}
                           selectionMode={selectionMode}
-                          selectedTaskIds={selectedTaskIds}
                           onToggleSelect={toggleTaskSelection}
-                          blinkingId={blinkingId}
-                          expanded={expanded}
-                          onToggleExpand={() =>
-                            setWorkflowExpandState((prev) => ({
-                              ...prev,
-                              [workflowKey]: !(prev[workflowKey] ?? autoExpanded),
-                            }))
-                          }
+                          isBlinking={blinkingId === task.id}
                         />
-                      )
-                    })()
-                  ))}
-                  {hiddenStandaloneCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setQuadrantExpandState((prev) => ({
-                          ...prev,
-                          [quadrant.key]: !(prev[quadrant.key] ?? false),
-                        }))
-                      }
-                      className="w-full rounded-lg border border-dashed border-[#bfcff0] bg-[#f5f9ff] px-3 py-2 text-left text-xs font-medium text-[#1a3660] hover:bg-[#eef4ff]"
-                    >
-                      {quadrantExpanded ? `접기` : `이번 주 외 ${hiddenStandaloneCount}건 보기`}
-                    </button>
-                  )}
-                  {allTasks.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-[#d8e5fb]">
-                      <EmptyState message="등록된 업무가 없습니다." className="py-6" />
-                    </div>
-                  )}
+                      </div>
+                    ))}
+
+                    {workflows.map((group) => (
+                      (() => {
+                        const workflowKey = group.workflowInstanceId
+                        const autoExpanded =
+                          blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
+                            ? true
+                            : collapseMode === 'none'
+                              ? true
+                              : !!group.currentStep && isUrgentTaskForSmartCollapse(group.currentStep)
+                        const expanded = workflowExpandState[workflowKey] ?? autoExpanded
+
+                        return (
+                          <div key={workflowKey} className="col-span-2">
+                            <WorkflowGroupCard
+                              group={group}
+                              onComplete={setCompletingTask}
+                              onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
+                              onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
+                              onDelete={handleDeleteTask}
+                              selectionMode={selectionMode}
+                              selectedTaskIds={selectedTaskIds}
+                              onToggleSelect={toggleTaskSelection}
+                              blinkingId={blinkingId}
+                              expanded={expanded}
+                              onToggleExpand={() =>
+                                setWorkflowExpandState((prev) => ({
+                                  ...prev,
+                                  [workflowKey]: !(prev[workflowKey] ?? autoExpanded),
+                                }))
+                              }
+                            />
+                          </div>
+                        )
+                      })()
+                    ))}
+                    {hiddenStandaloneCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuadrantExpandState((prev) => ({
+                            ...prev,
+                            [quadrant.key]: !(prev[quadrant.key] ?? false),
+                          }))
+                        }
+                        className="col-span-2 w-full rounded-lg border border-dashed border-[#bfcff0] bg-[#f5f9ff] px-3 py-2 text-left text-xs font-medium text-[#1a3660] hover:bg-[#eef4ff]"
+                      >
+                        {quadrantExpanded ? `접기` : `이번 주 외 ${hiddenStandaloneCount}건 보기`}
+                      </button>
+                    )}
+                    {allTasks.length === 0 && (
+                      <div className="col-span-2 rounded-lg border border-dashed border-[#d8e5fb]">
+                        <EmptyState message="등록된 업무가 없습니다." className="py-6" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-3">
+                <div className="mt-1.5">
                   <AddTaskForm quadrant={quadrant.key} categoryOptions={categoryNames} />
                 </div>
               </div>
             )
           })}
+        </div>
         </div>
         <CompletedTasksSection
           tasks={todayCompletedTasks}

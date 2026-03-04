@@ -57,7 +57,7 @@ export default function DashboardMainContent({
           rows={fundRows}
           totals={fundTotals}
           onOpenFund={onOpenFund}
-          onOpenFunds={() => onNavigate('/funds')}
+          onOpenFunds={() => onNavigate('/fund-overview')}
         />
       </div>
     </section>

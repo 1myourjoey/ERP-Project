@@ -1155,12 +1155,19 @@ export const deleteCalendarEvent = (id: number) => api.delete(`/calendar-events/
 
 // -- WorkLogs --
 export const fetchWorkLogs = (params?: { date_from?: string; date_to?: string; category?: string }): Promise<WorkLog[]> => api.get('/worklogs', { params }).then(r => r.data)
+export const fetchWorkLog = (id: number): Promise<WorkLog> => api.get(`/worklogs/${id}`).then(r => r.data)
 export const fetchWorkLogCategories = (): Promise<string[]> => api.get('/worklogs/categories').then(r => r.data)
 export const createWorkLog = (data: WorkLogInput): Promise<WorkLog> => api.post('/worklogs', data).then(r => r.data)
 export const updateWorkLog = (id: number, data: Partial<WorkLogInput>): Promise<WorkLog> => api.put(`/worklogs/${id}`, data).then(r => r.data)
 export const deleteWorkLog = (id: number) => api.delete(`/worklogs/${id}`)
 export const fetchWorkLogLessonsByCategory = (
-  params: { category: string; fund_id?: number | null; limit?: number },
+  params: {
+    category: string
+    fund_id?: number | null
+    investment_id?: number | null
+    company_name?: string | null
+    limit?: number
+  },
 ): Promise<WorkLogLessonReminder[]> => api.get('/worklogs/lessons', { params }).then(r => r.data)
 export const fetchWorkLogInsights = (period: 'week' | 'month' | 'quarter' = 'month'): Promise<WorkLogInsights> =>
   api.get('/worklogs/insights', { params: { period } }).then(r => r.data)
@@ -3878,7 +3885,11 @@ export interface WorkLogLessonReminder {
   task_title: string | null
   fund_id: number | null
   fund_name: string | null
+  investment_id: number | null
+  company_name: string | null
   is_same_fund: boolean
+  match_score: number
+  match_flags: string[]
 }
 
 export interface WorkLogInsights {

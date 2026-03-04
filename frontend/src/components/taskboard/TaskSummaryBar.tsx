@@ -47,10 +47,10 @@ function StatButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border px-3 py-2 text-left transition-colors hover:bg-white ${toneClass}`}
+      className={`rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-white ${toneClass}`}
     >
-      <p className="text-[11px] font-semibold">{label}</p>
-      <p className="mt-0.5 text-base font-bold">{value}건</p>
+      <p className="text-[10px] font-semibold">{label}</p>
+      <p className="mt-0.5 text-sm font-bold">{value}건</p>
     </button>
   )
 }
@@ -65,25 +65,27 @@ export default function TaskSummaryBar({
   const value = summary || EMPTY_SUMMARY
 
   return (
-    <section className="rounded-xl border border-[#d8e5fb] bg-white p-3 shadow-sm">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
-        <StatButton label="지연" value={value.overdue_count} tone="danger" onClick={onClickOverdue} />
-        <StatButton label="오늘" value={value.today_count} tone="primary" onClick={onClickToday} />
-        <StatButton label="이번 주" value={value.this_week_count} tone="accent" onClick={onClickThisWeek} />
-        <StatButton label="오늘 완료" value={value.completed_today_count} tone="success" onClick={onClickCompletedToday} />
-        <div className="col-span-2 rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[#1a3660]">
+    <section className="rounded-xl border border-[#d8e5fb] bg-white px-2.5 py-2 shadow-sm">
+      <div className="flex flex-col gap-1.5 lg:flex-row lg:items-stretch">
+        <div className="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <StatButton label="지연" value={value.overdue_count} tone="danger" onClick={onClickOverdue} />
+          <StatButton label="오늘" value={value.today_count} tone="primary" onClick={onClickToday} />
+          <StatButton label="이번 주" value={value.this_week_count} tone="accent" onClick={onClickThisWeek} />
+          <StatButton label="오늘 완료" value={value.completed_today_count} tone="success" onClick={onClickCompletedToday} />
+        </div>
+        <div className="rounded-md border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1.5 lg:min-w-[280px]">
+          <div className="flex items-center justify-between text-[10px] font-semibold text-[#1a3660]">
             <span>진척률(업무)</span>
             <span>{value.progress_count_pct}%</span>
           </div>
-          <div className="mt-1 h-1.5 rounded-full bg-[#d8e5fb]">
-            <div className="h-1.5 rounded-full bg-[#558ef8]" style={{ width: `${value.progress_count_pct}%` }} />
+          <div className="mt-1 h-1 rounded-full bg-[#d8e5fb]">
+            <div className="h-1 rounded-full bg-[#558ef8]" style={{ width: `${value.progress_count_pct}%` }} />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-[#64748b]">
+          <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#64748b]">
             <span>진척률(시간) {value.progress_time_pct}%</span>
             <span>{formatDuration(value.completed_estimated_minutes)} / {formatDuration(value.total_estimated_minutes)}</span>
           </div>
-          <p className="mt-1 text-[11px] font-medium text-[#0f1f3d]">업무 점수 {value.work_score}점</p>
+          <p className="mt-1 text-[10px] font-medium text-[#0f1f3d]">업무 점수 {value.work_score}점</p>
         </div>
       </div>
     </section>
