@@ -3,6 +3,7 @@ import type {
   DashboardDeadlineItem,
   DashboardFundSnapshotItem,
   DashboardFundsSnapshotResponse,
+  DashboardPrioritizedTask,
   Task,
 } from '../../lib/api'
 import FundSnapshot from './FundSnapshot'
@@ -11,6 +12,7 @@ import TodayPriorities from './TodayPriorities'
 interface DashboardMainContentProps {
   todayPriorities: DashboardDeadlineItem[]
   weekDeadlines: DashboardDeadlineItem[]
+  prioritizedTasks: DashboardPrioritizedTask[]
   pipelineTodayTasks: Task[]
   pipelineTomorrowTasks: Task[]
   pipelineThisWeekTasks: Task[]
@@ -26,6 +28,7 @@ interface DashboardMainContentProps {
 export default function DashboardMainContent({
   todayPriorities,
   weekDeadlines,
+  prioritizedTasks,
   pipelineTodayTasks,
   pipelineTomorrowTasks,
   pipelineThisWeekTasks,
@@ -43,6 +46,7 @@ export default function DashboardMainContent({
         <TodayPriorities
           todayPriorities={todayPriorities}
           weekDeadlines={weekDeadlines}
+          prioritizedTasks={prioritizedTasks}
           pipelineTodayTasks={pipelineTodayTasks}
           pipelineTomorrowTasks={pipelineTomorrowTasks}
           pipelineThisWeekTasks={pipelineThisWeekTasks}

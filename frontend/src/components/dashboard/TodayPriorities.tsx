@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import type { ActiveWorkflow, DashboardDeadlineItem, Task } from '../../lib/api'
+import type { ActiveWorkflow, DashboardDeadlineItem, DashboardPrioritizedTask, Task } from '../../lib/api'
 import { formatDate } from '../../lib/format'
 import DashboardMiniFlowChart from './DashboardMiniFlowChart'
 import type { FlowStageKey } from './flowStageModel'
@@ -9,6 +9,7 @@ import DashboardFlowChartModal from './modals/DashboardFlowChartModal'
 interface TodayPrioritiesProps {
   todayPriorities: DashboardDeadlineItem[]
   weekDeadlines: DashboardDeadlineItem[]
+  prioritizedTasks: DashboardPrioritizedTask[]
   pipelineTodayTasks: Task[]
   pipelineTomorrowTasks: Task[]
   pipelineThisWeekTasks: Task[]
@@ -33,9 +34,23 @@ function dueLabel(daysRemaining: number | null): string {
   return `D-${daysRemaining}`
 }
 
+function typeBadge(type: DashboardDeadlineItem['type']): { label: string; className: string } {
+  if (type === 'task') return { label: '업무', className: 'border-[#d8e5fb] bg-[#f5f9ff] text-[#1a3660]' }
+  if (type === 'report') return { label: '보고', className: 'border-[#c6ddff] bg-[#eef4ff] text-[#1a3660]' }
+  if (type === 'document') return { label: '서류', className: 'border-[#d7e8dc] bg-[#eff7f1] text-[#1f5b45]' }
+  return { label: '컴플라이언스', className: 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]' }
+}
+
+function dateMeta(item: DashboardDeadlineItem): string {
+  if (item.days_remaining != null) return dueLabel(item.days_remaining)
+  if (item.due_date) return formatDate(item.due_date, 'short')
+  return '기한 미정'
+}
+
 export default function TodayPriorities({
   todayPriorities,
   weekDeadlines,
+  prioritizedTasks,
   pipelineTodayTasks,
   pipelineTomorrowTasks,
   pipelineThisWeekTasks,
@@ -47,6 +62,10 @@ export default function TodayPriorities({
   const [mode, setMode] = useState<'priorities' | 'pipeline'>('priorities')
   const [isFlowModalOpen, setIsFlowModalOpen] = useState(false)
   const [selectedFlowStage, setSelectedFlowStage] = useState<FlowStageKey>('today')
+  const prioritizedTaskById = useMemo(
+    () => new Map(prioritizedTasks.map((item) => [item.task.id, item.task])),
+    [prioritizedTasks],
+  )
 
   const topToday = todayPriorities.slice(0, 5)
   const topWeek = weekDeadlines.filter((row) => (row.days_remaining ?? 99) > 0).slice(0, 3)
@@ -81,23 +100,43 @@ export default function TodayPriorities({
       {mode === 'priorities' ? (
         <div className="mt-2 grid grid-cols-2 gap-1.5">
           {topToday.length === 0 && <p className="col-span-2 text-xs text-[#64748b]">우선 처리할 항목이 없습니다.</p>}
-          {topToday.map((item) => (
-            <button
-              key={`${item.type}-${item.id}`}
-              type="button"
-              className="flex min-h-[66px] w-full items-start justify-between rounded-lg border border-[#d8e5fb] bg-white px-2.5 py-2 text-left hover:bg-[#f5f9ff]"
-              onClick={() => onNavigate(item.action_url)}
-            >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-[#0f1f3d]">
-                  <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${urgencyDot(item.days_remaining)}`} />
-                  {item.title}
-                </p>
-                <p className="truncate text-[11px] text-[#64748b]">{item.context || '-'}</p>
-              </div>
-              <span className="ml-2 shrink-0 text-[11px] font-semibold text-[#64748b]">{dueLabel(item.days_remaining)}</span>
-            </button>
-          ))}
+          {topToday.map((item) => {
+            const badge = typeBadge(item.type)
+            const linkedTask = item.type === 'task' ? prioritizedTaskById.get(item.id) : null
+            const taskCategory = linkedTask?.category || '일반'
+            const taskContext =
+              linkedTask?.fund_name ||
+              linkedTask?.company_name ||
+              linkedTask?.gp_entity_name ||
+              item.context ||
+              '-'
+            const meta =
+              item.type === 'task'
+                ? [taskCategory, dateMeta(item), taskContext].join(' · ')
+                : [badge.label, dateMeta(item), item.context || '-'].join(' · ')
+
+            return (
+              <button
+                key={`${item.type}-${item.id}`}
+                type="button"
+                className="flex min-h-[66px] w-full flex-col justify-between rounded-lg border border-[#d8e5fb] bg-white px-2.5 py-2 text-left hover:bg-[#f5f9ff]"
+                onClick={() => onNavigate(item.action_url)}
+              >
+                <div className="flex w-full items-start justify-between gap-2">
+                  <p className="min-w-0 truncate text-xs font-semibold text-[#0f1f3d]">
+                    <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${urgencyDot(item.days_remaining)}`} />
+                    {item.title}
+                  </p>
+                  <span
+                    className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+                <p className="w-full truncate text-[11px] text-[#64748b]">{meta}</p>
+              </button>
+            )
+          })}
         </div>
       ) : (
         <div className="mt-2">
@@ -167,4 +206,3 @@ export default function TodayPriorities({
     </section>
   )
 }
-

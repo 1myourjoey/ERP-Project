@@ -137,6 +137,7 @@ export default function DashboardPage() {
       <DashboardMainContent
         todayPriorities={deadlinesData.today_priorities}
         weekDeadlines={deadlinesData.this_week_deadlines}
+        prioritizedTasks={baseData.prioritized_tasks}
         pipelineTodayTasks={pipelineTodayTasks}
         pipelineTomorrowTasks={pipelineTomorrowTasks}
         pipelineThisWeekTasks={pipelineThisWeekTasks}
