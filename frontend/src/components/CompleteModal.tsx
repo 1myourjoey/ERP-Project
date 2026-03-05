@@ -106,6 +106,11 @@ export default function CompleteModal({
             {task.fund_name && <p className="text-[#558ef8]">{task.fund_name}</p>}
             {task.category && <p className="rounded-full bg-[#f5f9ff] px-2 py-0.5 text-[#64748b]">{task.category}</p>}
           </div>
+          {task.workflow_instance_id && (
+            <p className="mb-3 rounded-lg border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-xs text-[#1a3660]">
+              현재 단계 업무만 완료 처리됩니다. 워크플로우 전체 완료는 모든 단계 완료 시 자동 처리됩니다.
+            </p>
+          )}
 
           <div className="mb-3 overflow-hidden rounded-lg border border-amber-200 bg-amber-50">
             <button

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def _create_task(client, title: str = "테스트 업무") -> dict:
@@ -236,6 +236,159 @@ class TestTaskBoardAndReminders:
         assert matched is not None
         assert "stale_days" in matched
         assert "workflow_name" in matched
+
+    def test_task_board_pending_includes_in_progress(self, client):
+        pending_task = _create_task(client, "보드 대기 업무")
+        in_progress_task = _create_task(client, "보드 진행 업무")
+
+        update_response = client.put(
+            f"/api/tasks/{in_progress_task['id']}",
+            json={"status": "in_progress"},
+        )
+        assert update_response.status_code == 200
+        assert update_response.json()["status"] == "in_progress"
+
+        board_response = client.get("/api/tasks/board")
+        assert board_response.status_code == 200
+        board = board_response.json()
+        visible_rows = [*board["Q1"], *board["Q2"], *board["Q3"], *board["Q4"]]
+        visible_ids = {row["id"] for row in visible_rows}
+
+        assert pending_task["id"] in visible_ids
+        assert in_progress_task["id"] in visible_ids
+        in_progress_row = next((row for row in visible_rows if row["id"] == in_progress_task["id"]), None)
+        assert in_progress_row is not None
+        assert in_progress_row["status"] == "in_progress"
+
+    def test_task_board_summary_counts_workflow_as_single_unit(self, client):
+        template_response = client.post(
+            "/api/workflows",
+            json={
+                "name": "집계 단위 테스트 템플릿",
+                "category": "조합결성",
+                "trigger_description": "집계 검증",
+                "steps": [
+                    {
+                        "order": 1,
+                        "name": "현재 단계(5일 후)",
+                        "timing": "D-day",
+                        "timing_offset_days": 5,
+                        "estimated_time": "30m",
+                        "quadrant": "Q1",
+                    },
+                    {
+                        "order": 2,
+                        "name": "후속 단계(오늘)",
+                        "timing": "D-day",
+                        "timing_offset_days": 0,
+                        "estimated_time": "30m",
+                        "quadrant": "Q1",
+                    },
+                    {
+                        "order": 3,
+                        "name": "후속 단계(1일 후)",
+                        "timing": "D-day",
+                        "timing_offset_days": 1,
+                        "estimated_time": "30m",
+                        "quadrant": "Q1",
+                    },
+                ],
+                "documents": [],
+                "warnings": [],
+            },
+        )
+        assert template_response.status_code == 201
+        template_id = template_response.json()["id"]
+
+        today = datetime.now().date().isoformat()
+        instantiate_response = client.post(
+            f"/api/workflows/{template_id}/instantiate",
+            json={
+                "name": "집계 단위 테스트 인스턴스",
+                "trigger_date": today,
+            },
+        )
+        assert instantiate_response.status_code == 200
+
+        standalone_response = client.post(
+            "/api/tasks",
+            json={
+                "title": "단독 업무(원거리 기한)",
+                "quadrant": "Q1",
+                "estimated_time": "30m",
+                "category": "fund_mgmt",
+                "deadline": (datetime.now() + timedelta(days=15)).replace(microsecond=0).isoformat(),
+            },
+        )
+        assert standalone_response.status_code == 201
+
+        board_response = client.get("/api/tasks/board")
+        assert board_response.status_code == 200
+        summary = board_response.json()["summary"]
+
+        # 워크플로우(3단계)는 1건으로, 단독 업무 1건과 합쳐 총 2건
+        assert summary["total_pending_count"] == 2
+        # 현재 단계(order=1, +5일) 기준으로 this_week만 1건 반영
+        assert summary["today_count"] == 0
+        assert summary["this_week_count"] == 1
+        assert summary["overdue_count"] == 0
+
+    def test_task_board_progress_is_100_when_no_due_by_today_scope(self, client):
+        create_response = client.post(
+            "/api/tasks",
+            json={
+                "title": "future-scope-only",
+                "quadrant": "Q1",
+                "estimated_time": "30m",
+                "category": "fund_mgmt",
+                "deadline": (datetime.now() + timedelta(days=3)).replace(microsecond=0).isoformat(),
+            },
+        )
+        assert create_response.status_code == 201
+
+        board_response = client.get("/api/tasks/board")
+        assert board_response.status_code == 200
+        summary = board_response.json()["summary"]
+        assert summary["progress_count_pct"] == 100
+        assert summary["progress_time_pct"] == 100
+
+    def test_task_board_progress_uses_due_by_today_scope(self, client):
+        overdue_response = client.post(
+            "/api/tasks",
+            json={
+                "title": "overdue-pending",
+                "quadrant": "Q1",
+                "estimated_time": "30m",
+                "category": "fund_mgmt",
+                "deadline": (datetime.now() - timedelta(days=1)).replace(microsecond=0).isoformat(),
+            },
+        )
+        assert overdue_response.status_code == 201
+
+        due_today_response = client.post(
+            "/api/tasks",
+            json={
+                "title": "due-today-completed",
+                "quadrant": "Q1",
+                "estimated_time": "30m",
+                "category": "fund_mgmt",
+                "deadline": datetime.now().replace(microsecond=0).isoformat(),
+            },
+        )
+        assert due_today_response.status_code == 201
+
+        complete_today_response = client.patch(
+            f"/api/tasks/{due_today_response.json()['id']}/complete",
+            json={"actual_time": "30m", "auto_worklog": False},
+        )
+        assert complete_today_response.status_code == 200
+
+        board_response = client.get("/api/tasks/board")
+        assert board_response.status_code == 200
+        summary = board_response.json()["summary"]
+
+        assert summary["progress_count_pct"] == 50
+        assert summary["progress_time_pct"] == 50
 
     def test_generate_monthly_reminders(self, client):
         now = datetime.now()

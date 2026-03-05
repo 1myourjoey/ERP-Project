@@ -50,7 +50,7 @@ export function FilterPanel({
         <select
           value={value}
           onChange={(event) => onChange(filter.key, event.target.value)}
-          className="form-input-sm"
+          className="form-input-sm min-h-[28px] !py-1 !text-[11px]"
         >
           <option value="">{filter.placeholder || `${filter.label} 선택`}</option>
           {(filter.options || []).map((option) => (
@@ -68,7 +68,7 @@ export function FilterPanel({
           type="date"
           value={value}
           onChange={(event) => onChange(filter.key, event.target.value)}
-          className="form-input-sm"
+          className="form-input-sm min-h-[28px] !py-1 !text-[11px]"
         />
       )
     }
@@ -77,7 +77,7 @@ export function FilterPanel({
       return (
         <button
           type="button"
-          className={`secondary-btn btn-sm ${value ? 'ring-2 ring-blue-300' : ''}`}
+          className={`secondary-btn btn-xs ${value ? 'ring-2 ring-blue-300' : ''}`}
           onClick={() => onChange(filter.key, !value)}
         >
           {value ? 'ON' : 'OFF'}
@@ -91,13 +91,13 @@ export function FilterPanel({
         value={value}
         onChange={(event) => onChange(filter.key, event.target.value)}
         placeholder={filter.placeholder || `${filter.label} 입력`}
-        className="form-input-sm"
+        className="form-input-sm min-h-[28px] !py-1 !text-[11px]"
       />
     )
   }
 
   const renderGrid = (items: FilterConfig[]) => (
-    <div className="grid gap-2 md:grid-cols-3">
+    <div className="grid gap-1.5 md:grid-cols-3">
       {items.map((filter) => (
         <div key={filter.key}>{renderFilter(filter)}</div>
       ))}
@@ -105,12 +105,19 @@ export function FilterPanel({
   )
 
   return (
-    <div className="space-y-2 rounded-xl border border-[#d8e5fb] bg-white px-3 py-2 shadow-sm">
-      <div className="hidden items-center justify-between md:flex">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a3660]">
-          <Filter size={13} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}
+    <div className="space-y-1.5 rounded-xl border border-[#d8e5fb] bg-white px-2.5 py-1.5 shadow-sm">
+      <div className="hidden md:flex md:items-center md:gap-1.5">
+        <div className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#1a3660]">
+          <Filter size={12} /> 필터 {activeCount > 0 ? `(${activeCount})` : ''}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+          {visible.map((filter) => (
+            <div key={filter.key} className="min-w-0">
+              {renderFilter(filter)}
+            </div>
+          ))}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {hidden.length > 0 && (
             <button type="button" className="ghost-btn btn-xs" onClick={() => setExpanded((prev) => !prev)}>
               필터 더보기 ({hidden.length})
@@ -122,26 +129,25 @@ export function FilterPanel({
         </div>
       </div>
 
-      <div className="hidden space-y-2 md:block">
-        {renderGrid(visible)}
+      <div className="hidden md:block">
         {expanded && hidden.length > 0 && <div className="collapsible-enter-active">{renderGrid(hidden)}</div>}
       </div>
 
       <div className="md:hidden">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            className="secondary-btn btn-sm inline-flex flex-1 items-center justify-center gap-1"
+            className="secondary-btn btn-xs inline-flex flex-1 items-center justify-center gap-1"
             onClick={() => setMobileOpen((prev) => !prev)}
           >
             필터 {activeCount > 0 ? `(${activeCount})` : ''}
-            <ChevronDown size={14} className={mobileOpen ? 'rotate-180' : ''} />
+            <ChevronDown size={12} className={mobileOpen ? 'rotate-180' : ''} />
           </button>
-          <button type="button" className="ghost-btn btn-sm" onClick={onReset} disabled={activeCount === 0}>
+          <button type="button" className="ghost-btn btn-xs" onClick={onReset} disabled={activeCount === 0}>
             초기화
           </button>
         </div>
-        {mobileOpen && <div className="mt-2 space-y-2">{renderGrid(filters)}</div>}
+        {mobileOpen && <div className="mt-1.5 space-y-1.5">{renderGrid(filters)}</div>}
       </div>
     </div>
   )

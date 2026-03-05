@@ -1020,6 +1020,7 @@ def get_dashboard_base(db: Session = Depends(get_db)):
 
 @router.get("/workflows", response_model=DashboardWorkflowsResponse)
 def get_dashboard_workflows(db: Session = Depends(get_db)):
+    _sync_workflow_state(db)
     return _dashboard_workflows_payload(db)
 
 

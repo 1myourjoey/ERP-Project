@@ -1,6 +1,6 @@
-﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, Clock, GitBranch, GripVertical, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
+import { Check, Clock, GitBranch, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import CompleteModal from '../components/CompleteModal'
@@ -8,13 +8,13 @@ import EmptyState from '../components/EmptyState'
 import MiniCalendar from '../components/MiniCalendar'
 import TaskPipelineView from '../components/TaskPipelineView'
 import CompletedTasksSection from '../components/taskboard/CompletedTasksSection'
+import TaskAlertPopup from '../components/taskboard/TaskAlertPopup'
 import TaskSidePanel from '../components/taskboard/TaskSidePanel'
-import TaskSummaryBar from '../components/taskboard/TaskSummaryBar'
+import TaskTopControlStrip from '../components/taskboard/TaskTopControlStrip'
 import TaskAttachmentSection from '../components/common/TaskAttachmentSection'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
-import FilterPanel, { type FilterConfig } from '../components/ui/FilterPanel'
 import PageLoading from '../components/PageLoading'
 import { useToast } from '../contexts/ToastContext'
 import {
@@ -51,9 +51,11 @@ import type {
   TaskCategory,
   TaskBoard,
   TaskCreate,
+  WorkflowInstance,
   WorkflowListItem,
 } from '../lib/api'
 import { invalidateFundRelated, invalidateTaskRelated } from '../lib/queryInvalidation'
+import { queryKeys } from '../lib/queryKeys'
 import { resolveDeadlineTone, type TaskDeadlineTone } from '../lib/taskUrgency'
 
 const QUADRANTS = [
@@ -63,15 +65,10 @@ const QUADRANTS = [
   { key: 'Q4', label: '비긴급·비중요 (Q4)', color: 'border-[#bfcff0]', bg: 'bg-[#f5f9ff]', badge: 'bg-[#64748b]' },
 ] as const
 
-const VIEW_TABS = [
-  { key: 'board', label: '보드' },
-  { key: 'calendar', label: '캘린더' },
-  { key: 'pipeline', label: '파이프라인' },
-] as const
-
 const DEFAULT_TASK_CATEGORY_NAMES = ['투자실행', 'LP보고', '사후관리', '규약/총회', '서류관리', '일반'] as const
 
-type BoardView = (typeof VIEW_TABS)[number]['key']
+type BoardView = 'board' | 'calendar' | 'pipeline'
+type QuadrantKey = (typeof QUADRANTS)[number]['key']
 
 interface WorkflowGroup {
   workflowInstanceId: number
@@ -82,6 +79,42 @@ interface WorkflowGroup {
   totalSteps: number
   progressPercent: number
   progress: string
+}
+
+interface WorkflowProgressOverride {
+  completedSteps: number
+  totalSteps: number
+  progressPercent: number
+  progressLabel: string
+}
+
+interface QuadrantBoardBucket {
+  allTasks: Task[]
+  standalone: Task[]
+  workflows: WorkflowGroup[]
+}
+
+interface WorkflowTimelineRow {
+  id: number
+  order: number
+  title: string
+  deadline: string | null
+  status: string
+  task: Task | null
+  isCurrent: boolean
+}
+
+interface WorkflowLaneMeta {
+  progressPercent: number
+  completedLabel: string
+  currentLabel: string
+  nextLabel: string
+  isBlocked: boolean
+  blockedReason: string | null
+  dependencyLabel: string | null
+  tooltipCurrent: string
+  tooltipNext: string
+  tooltipSummary: string
 }
 
 function categoryBadgeClass(category: string): string {
@@ -165,13 +198,56 @@ function taskUrgencyMeta(task: Task): {
   }
 }
 
+function computeTaskPriorityScore(task: Task): number {
+  const urgency = taskUrgencyMeta(task).priorityWeight
+  const stale = Math.min(Math.max(task.stale_days ?? 0, 0), 14) * 4
+  const compliance = task.obligation_id ? 70 : 0
+  const workflow = task.workflow_instance_id ? 40 : 0
+  const notice = task.is_notice || task.is_report ? 20 : 0
+  return urgency + stale + compliance + workflow + notice
+}
+
+function resolveTaskPriorityGrade(score: number): { label: 'A' | 'B' | 'C' | 'D'; className: string } {
+  if (score >= 500) {
+    return { label: 'A', className: 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]' }
+  }
+  if (score >= 380) {
+    return { label: 'B', className: 'border-[#e2d8bc] bg-[#fff7d6] text-[#8a6f2e]' }
+  }
+  if (score >= 260) {
+    return { label: 'C', className: 'border-[#c8daf8] bg-[#f5f9ff] text-[#1a3660]' }
+  }
+  return { label: 'D', className: 'border-[#d8e5fb] bg-white text-[#64748b]' }
+}
+
 type DeleteConfirmState =
   | { type: 'task'; taskId: number }
   | { type: 'bulk'; taskIds: number[] }
   | { type: 'category'; category: TaskCategory }
   | null
 
-function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: WorkflowGroup[] } {
+function parseWorkflowProgress(progress: string | null | undefined): WorkflowProgressOverride | null {
+  if (!progress) return null
+  const matched = progress.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/)
+  if (!matched) return null
+  const completedSteps = Number(matched[1])
+  const totalSteps = Number(matched[2])
+  if (!Number.isFinite(completedSteps) || !Number.isFinite(totalSteps) || totalSteps <= 0) {
+    return null
+  }
+  const normalizedCompleted = Math.max(0, Math.min(completedSteps, totalSteps))
+  return {
+    completedSteps: normalizedCompleted,
+    totalSteps,
+    progressPercent: Math.round((normalizedCompleted / totalSteps) * 100),
+    progressLabel: `${normalizedCompleted}/${totalSteps}`,
+  }
+}
+
+function groupTasksByWorkflow(
+  tasks: Task[],
+  progressOverrideMap?: Map<number, WorkflowProgressOverride>,
+): { standalone: Task[]; workflows: WorkflowGroup[] } {
   const standalone: Task[] = []
   const wfMap = new Map<number, Task[]>()
 
@@ -198,8 +274,16 @@ function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: W
           (task.workflow_step_order || 0) > (currentStep.workflow_step_order || 0),
       ) || null
       : null
-    const completedCount = sorted.filter((task) => task.status === 'completed').length
-    const totalSteps = sorted.length
+    const fallbackCompletedCount = sorted.filter((task) => task.status === 'completed').length
+    const fallbackTotalSteps = sorted.length
+    const override = progressOverrideMap?.get(workflowInstanceId)
+    const hasOpenStep = sorted.some((task) => task.status !== 'completed')
+    const totalSteps = override?.totalSteps ?? fallbackTotalSteps
+    const rawCompletedCount = override?.completedSteps ?? fallbackCompletedCount
+    const completedCount =
+      hasOpenStep && totalSteps > 0
+        ? Math.min(rawCompletedCount, Math.max(totalSteps - 1, 0))
+        : rawCompletedCount
     workflows.push({
       workflowInstanceId,
       tasks: sorted,
@@ -207,13 +291,64 @@ function groupTasksByWorkflow(tasks: Task[]): { standalone: Task[]; workflows: W
       nextStep,
       completedSteps: completedCount,
       totalSteps,
-      progressPercent: totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0,
-      progress: `${completedCount}/${sorted.length}`,
+      progressPercent: override?.progressPercent ?? (totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0),
+      progress: override?.progressLabel ?? `${completedCount}/${totalSteps}`,
     })
   }
 
   workflows.sort((a, b) => (a.currentStep?.workflow_step_order || 0) - (b.currentStep?.workflow_step_order || 0))
   return { standalone, workflows }
+}
+
+function formatTaskDday(deadline: string | null): string {
+  if (!deadline) return '마감일 없음'
+  const due = new Date(deadline)
+  if (Number.isNaN(due.getTime())) return '마감일 없음'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  due.setHours(0, 0, 0, 0)
+  const diff = Math.floor((due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+  if (diff < 0) return `D+${Math.abs(diff)}`
+  if (diff === 0) return 'D-day'
+  return `D-${diff}`
+}
+
+function buildWorkflowLaneMeta(group: WorkflowGroup): WorkflowLaneMeta {
+  const logicalStepCount = Math.max(group.totalSteps, group.tasks.length, 1)
+  const progressPercent = Math.max(0, Math.min(group.progressPercent, 100))
+  const safeTotalSteps = Math.max(group.totalSteps, logicalStepCount)
+  const completedLabel = `${group.completedSteps}/${safeTotalSteps}`
+  const currentIsOverdue =
+    group.currentStep?.status !== 'completed' && resolveDeadlineTone(group.currentStep?.deadline ?? null) === 'overdue'
+  const blockedReason = !group.currentStep
+    ? '현재 진행 단계 없음'
+    : currentIsOverdue
+      ? '현재 단계 기한 경과'
+      : null
+  const isBlocked = blockedReason !== null
+  const dependencyLabel = group.nextStep ? '다음 단계는 현재 단계 완료 후 진행' : null
+  const currentLabel = group.currentStep?.title || '없음'
+  const nextLabel = group.nextStep?.title || '없음'
+  const tooltipCurrent = group.currentStep
+    ? `${group.currentStep.title} · ${formatTaskDday(group.currentStep.deadline)}`
+    : '없음'
+  const tooltipNext = group.nextStep
+    ? `${group.nextStep.title} · ${formatTaskDday(group.nextStep.deadline)}`
+    : '없음'
+  const tooltipSummary = `단계진행률 ${completedLabel} (${progressPercent}%)`
+
+  return {
+    progressPercent,
+    completedLabel,
+    currentLabel,
+    nextLabel,
+    isBlocked,
+    blockedReason,
+    dependencyLabel,
+    tooltipCurrent,
+    tooltipNext,
+    tooltipSummary,
+  }
 }
 
 interface TaskItemProps {
@@ -243,6 +378,14 @@ const TaskItem = memo(function TaskItem({
     ? new Date(task.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : null
   const urgencyMeta = taskUrgencyMeta(task)
+  const taskSurfaceToneClass =
+    urgencyMeta.badgeStatus === 'overdue' || urgencyMeta.badgeStatus === 'danger'
+      ? 'border-[#e8d9db] bg-[#fffdfd] shadow-[0_1px_2px_rgba(15,31,61,0.05)] hover:border-[#d5bdc0]'
+      : urgencyMeta.badgeStatus === 'warning'
+        ? 'border-[#d4e1f8] bg-[#fafdff] shadow-[0_1px_2px_rgba(15,31,61,0.05)] hover:border-[#bfd0f2]'
+        : 'border-[#d8e5fb] bg-white shadow-[0_1px_2px_rgba(15,31,61,0.05)] hover:border-[#c3d4f2]'
+  const priorityScore = computeTaskPriorityScore(task)
+  const priorityGrade = resolveTaskPriorityGrade(priorityScore)
   const [isDragging, setIsDragging] = useState(false)
   const urgencyTag =
     urgencyMeta.label && urgencyMeta.badgeStatus
@@ -283,13 +426,12 @@ const TaskItem = memo(function TaskItem({
     return `D-${diff}`
   })()
   const targetLabel = task.fund_name || task.gp_entity_name || '공통'
-  const traitTags = [
+  const traitTag = [
     task.obligation_id ? { label: '컴플연계', className: 'tag tag-red' } : null,
     task.workflow_name ? { label: '워크플로', className: 'tag tag-indigo' } : null,
     task.is_notice || task.is_report ? { label: '통지/보고', className: 'tag tag-blue' } : null,
     staleLabel ? { label: staleLabel, className: staleClass } : null,
-  ].filter(Boolean) as Array<{ label: string; className: string }>
-  const compactTraits = traitTags.slice(0, 1)
+  ].filter(Boolean)[0] as { label: string; className: string } | undefined
 
   return (
     <div
@@ -301,161 +443,444 @@ const TaskItem = memo(function TaskItem({
         setIsDragging(true)
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`group overflow-hidden rounded-xl border border-[#d8e5fb] bg-white transition-all hover:border-[#bfcff0] hover:shadow-sm ${
+      className={`group relative overflow-visible rounded-xl border px-2.5 py-2 transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_10px_22px_rgba(15,31,61,0.08)] ${taskSurfaceToneClass} ${
         isBlinking ? 'animate-pulse ring-2 ring-[#558ef8]' : ''
       } ${isDragging ? 'opacity-70' : ''}`}
     >
-      <div className={`h-[3px] w-full ${urgencyMeta.topBarClass}`} />
-      <div className="px-2.5 py-2">
+      <div className="min-w-0 cursor-pointer" onClick={() => onOpenDetail(task)}>
         <div className="flex items-start gap-1.5">
-          <div className="mt-0.5 hidden text-[#94a3b8] transition-colors group-hover:text-[#64748b] md:block">
-            <GripVertical size={12} />
-          </div>
-          <div className="mt-0.5 flex h-full items-start" onClick={(event) => event.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={(event) => onToggleSelect(task.id, event.target.checked)}
-              className={`h-3.5 w-3.5 cursor-pointer rounded border-[#bfcff0] text-[#558ef8] focus:ring-[#558ef8] ${
-                selected || selectionMode ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
-              }`}
-              aria-label={`업무 선택: ${task.title}`}
-            />
-          </div>
-          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onOpenDetail(task)}>
-            <p className="line-clamp-1 text-[13px] font-semibold leading-tight text-[#0f1f3d]">{task.title}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              onClick={() => onComplete(task)}
-              className="icon-btn h-7 w-7 p-1 text-emerald-700 hover:bg-emerald-50"
-              title="완료"
+          <p className="line-clamp-2 min-w-0 flex-1 text-[12px] font-semibold leading-[1.3] text-[#0f1f3d]">
+            {task.title}
+          </p>
+          <div className="inline-flex shrink-0 items-center gap-1">
+            <span
+              title={`우선순위 점수 ${priorityScore}`}
+              className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border px-1 text-[10px] font-semibold ${priorityGrade.className}`}
             >
-              <Check size={13} />
-            </button>
-            <button
-              onClick={() => onEdit(task)}
-              className="icon-btn h-7 w-7 p-1 text-[#1a3660] hover:bg-[#eef4ff]"
-              title="수정"
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              onClick={() => onDelete(task.id)}
-              className="icon-btn h-7 w-7 p-1 text-[#64748b] opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
-              title="삭제"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
-          <span className={urgencyTag.className}>{urgencyTag.label}</span>
-          <span className={categoryTag.className}>{categoryTag.label}</span>
-          {compactTraits.map((trait) => (
-            <span key={trait.label} className={trait.className}>{trait.label}</span>
-          ))}
-        </div>
-
-        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
-          <span className="max-w-[70px] truncate">{targetLabel}</span>
-          <span>·</span>
-          {deadlineStr && <span>{deadlineStr}</span>}
-          <span>{dDayLabel}</span>
-          {task.estimated_time && (
-            <span className="flex items-center gap-0.5">
-              <Clock size={10} /> {task.estimated_time}
+              {priorityGrade.label}
             </span>
+            <span className={urgencyTag.className}>{urgencyTag.label}</span>
+          </div>
+        </div>
+        <div className="mt-1 flex items-start justify-between gap-1 text-[10px] leading-none text-[#64748b]">
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
+            <span className={categoryTag.className}>{categoryTag.label}</span>
+            {traitTag && <span className={traitTag.className}>{traitTag.label}</span>}
+            <span className="max-w-[92px] truncate">{targetLabel}</span>
+            {deadlineStr && <span>·</span>}
+            {deadlineStr && <span>{deadlineStr}</span>}
+            <span>{dDayLabel}</span>
+            {task.estimated_time && (
+              <span className="inline-flex items-center gap-0.5">
+                <Clock size={10} /> {task.estimated_time}
+              </span>
+            )}
+          </div>
+          {selectionMode && (
+            <button
+              type="button"
+              aria-pressed={selected}
+              aria-label={`업무 선택: ${task.title}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                onToggleSelect(task.id, !selected)
+              }}
+              className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-full border px-1.5 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#558ef8]/45 ${
+                selected
+                  ? 'border-[#0f1f3d] bg-[#0f1f3d] text-white'
+                  : 'border-[#d8e5fb] bg-white text-[#64748b] hover:border-[#bfcff0] hover:bg-[#f5f9ff]'
+              }`}
+            >
+              <Check size={10} />
+              <span>{selected ? '선택됨' : '선택'}</span>
+            </button>
           )}
         </div>
+      </div>
+      <div className="absolute -top-2.5 right-1.5 z-20 inline-flex items-center gap-0.5 rounded-full border border-[#d8e5fb] bg-white/96 p-0.5 shadow-[0_5px_14px_rgba(15,31,61,0.14)] backdrop-blur-sm md:pointer-events-none md:translate-y-1 md:opacity-0 md:transition-all md:duration-200 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100">
+        <button
+          onClick={() => onComplete(task)}
+          className="icon-btn h-5 w-5 min-h-0 min-w-0 rounded-full p-0 text-emerald-700 hover:bg-emerald-50"
+          title="완료"
+          aria-label="완료"
+        >
+          <Check size={11} />
+        </button>
+        <button
+          onClick={() => onEdit(task)}
+          className="icon-btn h-5 w-5 min-h-0 min-w-0 rounded-full p-0 text-[#1a3660] hover:bg-[#eef4ff]"
+          title="수정"
+          aria-label="수정"
+        >
+          <Pencil size={10} />
+        </button>
+        <button
+          onClick={() => onDelete(task.id)}
+          className="icon-btn h-5 w-5 min-h-0 min-w-0 rounded-full p-0 text-[#64748b] hover:bg-[#f3f5fb] hover:text-red-500"
+          title="삭제"
+          aria-label="삭제"
+        >
+          <Trash2 size={11} />
+        </button>
       </div>
     </div>
   )
 })
 TaskItem.displayName = 'TaskItem'
 
-interface WorkflowGroupCardProps {
-  group: WorkflowGroup
-  onComplete: (task: Task) => void
-  onDelete: (id: number) => void
-  onEdit: (task: Task) => void
-  onOpenDetail: (task: Task) => void
-  selectionMode: boolean
-  selectedTaskIds: Set<number>
-  onToggleSelect: (taskId: number, selected: boolean) => void
-  blinkingId: number | null
-  expanded: boolean
-  onToggleExpand: () => void
+function resolveWorkflowGroupTitle(group: WorkflowGroup): string {
+  return (
+    group.currentStep?.fund_name ||
+    group.currentStep?.gp_entity_name ||
+    group.currentStep?.company_name ||
+    '워크플로우'
+  )
 }
 
-const WorkflowGroupCard = memo(function WorkflowGroupCard({
-  group,
-  onComplete,
-  onDelete,
-  onEdit,
-  onOpenDetail,
-  selectionMode,
-  selectedTaskIds,
-  onToggleSelect,
-  blinkingId,
-  expanded,
-  onToggleExpand,
-}: WorkflowGroupCardProps) {
-  return (
-    <div className="rounded-xl border border-[#c5d8fb] bg-[#f5f9ff] p-3">
-      <button onClick={onToggleExpand} className="flex w-full items-center gap-2.5 text-left">
-        <span className="text-[#558ef8]">
-          <GitBranch size={13} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-[#0f1f3d]">{group.currentStep?.fund_name || '워크플로'}</p>
-          <p className="truncate text-xs text-[#64748b]">현재: {group.currentStep?.title || '-'}</p>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#d8e5fb]/80">
-            <div
-              className="h-1.5 rounded-full bg-[#558ef8] transition-all"
-              style={{ width: `${group.progressPercent}%` }}
-            />
-          </div>
-          <p className="mt-1.5 truncate text-[11px] text-[#1a3660]">
-            진행률 {group.completedSteps}/{group.totalSteps} ({group.progressPercent}%)
-            {group.nextStep ? ` | 다음: ${group.nextStep.title}` : ''}
-          </p>
-        </div>
-        <span className="tag tag-blue shrink-0">
-          {group.progress}
-        </span>
-        <ChevronDown size={14} className={`text-[#558ef8] transition-transform ${expanded ? '' : '-rotate-90'}`} />
-      </button>
+interface WorkflowCompactCardProps {
+  group: WorkflowGroup
+  onOpenWorkflow: (workflowInstanceId: number) => void
+}
 
-      {expanded && (
-        <div className="ml-3 mt-2 space-y-2 border-l-2 border-[#c5d8fb] pl-3">
-          {group.tasks.map((task) => {
-            const isCurrent = group.currentStep?.id === task.id
-            return (
-              <div key={task.id} className={isCurrent ? 'rounded-md ring-2 ring-[#b2cbfb]' : ''}>
-                <TaskItem
-                  task={task}
-                  onComplete={onComplete}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  onOpenDetail={onOpenDetail}
-                  selected={selectedTaskIds.has(task.id)}
-                  selectionMode={selectionMode}
-                  onToggleSelect={onToggleSelect}
-                  isBlinking={blinkingId === task.id}
-                />
-              </div>
-            )
-          })}
+const WorkflowCompactCard = memo(function WorkflowCompactCard({
+  group,
+  onOpenWorkflow,
+}: WorkflowCompactCardProps) {
+  const title = resolveWorkflowGroupTitle(group)
+  const currentStep = group.currentStep
+  const priorityScore = currentStep ? computeTaskPriorityScore(currentStep) : 0
+  const priorityGrade = resolveTaskPriorityGrade(priorityScore)
+  const laneMeta = buildWorkflowLaneMeta(group)
+  const ringColor = laneMeta.isBlocked ? '#bfa5a7' : '#0f1f3d'
+  const [animatedPercent, setAnimatedPercent] = useState(laneMeta.progressPercent)
+  const animatedPercentRef = useRef(laneMeta.progressPercent)
+  const animationFrameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const target = laneMeta.progressPercent
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (animationFrameRef.current != null) {
+      window.cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    if (reducedMotion) {
+      animatedPercentRef.current = target
+      setAnimatedPercent(target)
+      return
+    }
+
+    const startValue = animatedPercentRef.current
+    if (Math.abs(target - startValue) < 0.1) {
+      animatedPercentRef.current = target
+      setAnimatedPercent(target)
+      return
+    }
+
+    const durationMs = 520
+    const startAt = performance.now()
+
+    const step = (now: number) => {
+      const elapsed = Math.min(1, (now - startAt) / durationMs)
+      const eased = 1 - Math.pow(1 - elapsed, 3)
+      const value = startValue + (target - startValue) * eased
+      animatedPercentRef.current = value
+      setAnimatedPercent(value)
+      if (elapsed < 1) {
+        animationFrameRef.current = window.requestAnimationFrame(step)
+      } else {
+        animationFrameRef.current = null
+      }
+    }
+
+    animationFrameRef.current = window.requestAnimationFrame(step)
+    return () => {
+      if (animationFrameRef.current != null) {
+        window.cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
+  }, [laneMeta.progressPercent])
+
+  const displayPercent = Math.round(animatedPercent)
+  const ringBackground = `conic-gradient(${ringColor} ${animatedPercent}%, #d8e5fb ${animatedPercent}% 100%)`
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenWorkflow(group.workflowInstanceId)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpenWorkflow(group.workflowInstanceId)
+        }
+      }}
+      className={`group relative rounded-xl border px-2 py-2 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#558ef8]/45 ${
+        laneMeta.isBlocked ? 'border-[#d6c3c5] bg-[#f7f0f1]' : 'border-[#c5d8fb] bg-[#f5f9ff]'
+      }`}
+    >
+      <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-2">
+        <div className="relative h-14 w-14">
+          <div className="absolute inset-0 rounded-full" style={{ background: ringBackground }} />
+          <div className="absolute inset-[6px] flex flex-col items-center justify-center rounded-full border border-[#e4e7ee] bg-white">
+            <span className="font-data text-[10px] font-semibold leading-none text-[#0f1f3d]">
+              {displayPercent}%
+            </span>
+            <span className="font-data mt-0.5 text-[9px] leading-none text-[#64748b]">{laneMeta.completedLabel}</span>
+          </div>
         </div>
-      )}
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <span className={laneMeta.isBlocked ? 'text-[#7d6468]' : 'text-[#558ef8]'}>
+              <GitBranch size={12} />
+            </span>
+            <p className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#0f1f3d]">{title}</p>
+            <span
+              title={`우선순위 점수 ${priorityScore}`}
+              className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border px-1 text-[10px] font-semibold ${priorityGrade.className}`}
+            >
+              {priorityGrade.label}
+            </span>
+          </div>
+
+          <p className="mt-1 truncate text-[10px] text-[#0f1f3d]">
+            <span className="font-semibold text-[#1a3660]">현재</span> {laneMeta.currentLabel}
+          </p>
+          <p className="mt-0.5 truncate text-[10px] text-[#64748b]">
+            <span className="font-semibold text-[#1a3660]">다음</span> {laneMeta.nextLabel}
+          </p>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {laneMeta.isBlocked && (
+              <span className="inline-flex items-center rounded border border-[#d4b9bc] bg-[#f1e8e9] px-1.5 py-0.5 text-[10px] font-semibold text-[#73585c]">
+                BLOCKED
+              </span>
+            )}
+            {laneMeta.dependencyLabel && (
+              <span className="inline-flex items-center rounded border border-[#c8daf8] bg-[#f5f9ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#1a3660]">
+                선행
+              </span>
+            )}
+            {laneMeta.blockedReason && (
+              <span className="inline-flex items-center rounded border border-[#e4e7ee] bg-white px-1.5 py-0.5 text-[10px] text-[#64748b]">
+                {laneMeta.blockedReason}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute left-2 right-2 top-[calc(100%+6px)] z-20 hidden rounded-lg border border-[#d8e5fb] bg-white/95 px-2.5 py-2 text-[10px] text-[#475569] shadow-lg opacity-0 transition-opacity duration-150 md:block md:group-hover:opacity-100 md:group-focus-visible:opacity-100">
+        <p className="font-semibold text-[#0f1f3d]">{laneMeta.tooltipSummary}</p>
+        <p className="mt-0.5">
+          현재 단계: <span className="font-medium text-[#1a3660]">{laneMeta.tooltipCurrent}</span>
+        </p>
+        <p className="mt-0.5">
+          다음 단계: <span className="font-medium text-[#1a3660]">{laneMeta.tooltipNext}</span>
+        </p>
+        {laneMeta.dependencyLabel && <p className="mt-1 text-[#64748b]">{laneMeta.dependencyLabel}</p>}
+      </div>
     </div>
   )
 })
-WorkflowGroupCard.displayName = 'WorkflowGroupCard'
+WorkflowCompactCard.displayName = 'WorkflowCompactCard'
 
-function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; categoryOptions: string[] }) {
+interface WorkflowSidePanelProps {
+  group: WorkflowGroup | null
+  workflowInstance: WorkflowInstance | null
+  timelineTaskLookup: Map<number, Task>
+  onClose: () => void
+  onOpenTaskDetail: (task: Task) => void
+  onOpenTaskEdit: (task: Task) => void
+  onCompleteTask: (task: Task) => void
+  onOpenWorkflowPage: (workflowInstanceId: number) => void
+}
+
+function WorkflowSidePanel({
+  group,
+  workflowInstance,
+  timelineTaskLookup,
+  onClose,
+  onOpenTaskDetail,
+  onOpenTaskEdit,
+  onCompleteTask,
+  onOpenWorkflowPage,
+}: WorkflowSidePanelProps) {
+  if (!group) return null
+
+  const title = resolveWorkflowGroupTitle(group)
+  const sorted = [...group.tasks].sort((a, b) => (a.workflow_step_order || 0) - (b.workflow_step_order || 0))
+  const currentTask = group.currentStep
+  const nextTask = group.nextStep
+  const timelineRows: WorkflowTimelineRow[] = (() => {
+    if (workflowInstance?.step_instances?.length) {
+      const currentStepInstance =
+        workflowInstance.step_instances.find((step) => step.status === 'in_progress') ||
+        workflowInstance.step_instances.find((step) => step.status === 'pending') ||
+        null
+
+      return workflowInstance.step_instances.map((step, index) => {
+        const relatedTask =
+          (step.task_id != null ? timelineTaskLookup.get(step.task_id) : null) ||
+          sorted.find((task) => task.id === step.task_id) ||
+          null
+        return {
+          id: step.id,
+          order: index + 1,
+          title: step.step_name || relatedTask?.title || `단계 ${index + 1}`,
+          deadline: step.calculated_date || relatedTask?.deadline || null,
+          status: step.status,
+          task: relatedTask,
+          isCurrent: currentStepInstance ? currentStepInstance.id === step.id : false,
+        }
+      })
+    }
+
+    return sorted.map((task, index) => ({
+      id: task.id,
+      order: task.workflow_step_order || index + 1,
+      title: task.title,
+      deadline: task.deadline,
+      status: task.status,
+      task,
+      isCurrent: currentTask?.id === task.id,
+    }))
+  })()
+
+  return (
+    <aside className="fixed right-0 top-[54px] z-40 h-[calc(100vh-54px)] w-full max-w-[500px] border-l border-[#d8e5fb] bg-white shadow-2xl sm:right-2 sm:top-[58px] sm:h-[calc(100vh-66px)] sm:rounded-2xl xl:right-4">
+      <div className="flex h-full flex-col">
+        <div className="flex items-center justify-between border-b border-[#d8e5fb] px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-wide text-[#64748b]">워크플로 상세</p>
+            <h3 className="line-clamp-1 text-base font-semibold text-[#0f1f3d]">{title}</h3>
+            <p className="mt-0.5 text-xs text-[#64748b]">
+              단계진행률 {group.completedSteps}/{group.totalSteps} ({group.progressPercent}%)
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="icon-btn text-[#64748b]" aria-label="워크플로 상세 닫기">
+            ×
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">현재 단계</p>
+            <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{currentTask?.title || '진행 단계 없음'}</p>
+            <p className="mt-1 text-xs text-[#64748b]">
+              {currentTask?.deadline
+                ? `마감 ${new Date(currentTask.deadline).toLocaleDateString('ko-KR')}`
+                : '마감일 없음'}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {currentTask && (
+                <>
+                  <button type="button" onClick={() => onOpenTaskDetail(currentTask)} className="secondary-btn btn-xs">
+                    상세 보기
+                  </button>
+                  <button type="button" onClick={() => onOpenTaskEdit(currentTask)} className="secondary-btn btn-xs">
+                    수정
+                  </button>
+                  {currentTask.status !== 'completed' && (
+                    <button type="button" onClick={() => onCompleteTask(currentTask)} className="primary-btn btn-xs">
+                      현재 단계 완료
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#d8e5fb] bg-white p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">다음 단계</p>
+            <p className="mt-1 text-sm text-[#0f1f3d]">{nextTask?.title || '없음'}</p>
+          </div>
+
+          <div className="rounded-xl border border-[#d8e5fb] bg-white p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">단계 타임라인</p>
+            <div className="mt-2 space-y-1.5">
+              {timelineRows.map((row) => {
+                const isDone = row.status === 'completed' || row.status === 'skipped'
+                const statusClass =
+                  row.status === 'completed' || row.status === 'skipped'
+                    ? 'inline-flex items-center rounded border border-[#dbe3ee] bg-[#f3f6fa] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a8da8]'
+                    : row.status === 'in_progress'
+                      ? 'inline-flex items-center rounded border border-[#bfd2f6] bg-[#eef4ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#1a3660]'
+                      : 'inline-flex items-center rounded border border-[#e4e7ee] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#64748b]'
+                const rowToneClass = row.isCurrent
+                  ? 'border-[#a9c4f4] bg-[#edf4ff] shadow-sm'
+                  : isDone
+                    ? 'border-[#e7edf5] bg-[#f8fafc] opacity-60'
+                    : row.status === 'in_progress'
+                      ? 'border-[#d2e2fb] bg-[#f5f9ff]'
+                      : 'border-[#e4e7ee] bg-white'
+                return (
+                  <div
+                    key={row.id}
+                    className={`rounded-lg border px-2.5 py-2 transition-colors ${rowToneClass}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className={`truncate text-xs font-semibold ${row.isCurrent ? 'text-[#0f1f3d]' : isDone ? 'text-[#7d8da6]' : 'text-[#1f304f]'}`}>
+                          {row.order}. {row.title}
+                        </p>
+                        <p className={`mt-0.5 text-[11px] ${isDone ? 'text-[#8ea0b8]' : 'text-[#64748b]'}`}>
+                          {row.deadline ? new Date(row.deadline).toLocaleDateString('ko-KR') : '마감일 없음'}
+                        </p>
+                      </div>
+                      <span className={statusClass}>
+                        {row.status === 'completed' || row.status === 'skipped' ? '완료' : row.status === 'in_progress' ? '진행중' : '대기'}
+                      </span>
+                    </div>
+                    {!isDone && row.task && (
+                      <div className="mt-1.5 flex items-center gap-1">
+                        <button type="button" onClick={() => onOpenTaskDetail(row.task!)} className="secondary-btn btn-xs">
+                          상세
+                        </button>
+                        <button type="button" onClick={() => onOpenTaskEdit(row.task!)} className="secondary-btn btn-xs">
+                          수정
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 border-t border-[#d8e5fb] px-5 py-3">
+          <button
+            type="button"
+            onClick={() => onOpenWorkflowPage(group.workflowInstanceId)}
+            className="secondary-btn btn-sm flex-1"
+          >
+            워크플로우 페이지로 이동
+          </button>
+          <button type="button" onClick={onClose} className="ghost-btn btn-sm">
+            닫기
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+function AddTaskForm({
+  quadrant,
+  categoryOptions,
+  compact = false,
+}: {
+  quadrant: string
+  categoryOptions: string[]
+  compact?: boolean
+}) {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [open, setOpen] = useState(false)
@@ -559,14 +984,18 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
     return (
       <button
         onClick={() => setOpen(true)}
-        className="secondary-btn btn-sm inline-flex w-full items-center justify-center gap-1 text-[#64748b]"
+        className={
+          compact
+            ? 'secondary-btn btn-xs inline-flex items-center gap-1 text-[#64748b]'
+            : 'secondary-btn btn-sm inline-flex w-full items-center justify-center gap-1 text-[#64748b]'
+        }
       >
         <Plus size={14} /> 추가
       </button>
     )
   }
 
-  return (
+  const formContent = (
     <div className="space-y-2 rounded-lg border border-[#d8e5fb] bg-white p-3">
       <div>
         <input
@@ -675,6 +1104,21 @@ function AddTaskForm({ quadrant, categoryOptions }: { quadrant: string; category
         <button onClick={() => setOpen(false)} className="secondary-btn btn-sm flex-1">취소</button>
       </div>
     </div>
+  )
+
+  if (!compact) {
+    return formContent
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/35" onClick={() => setOpen(false)} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl" onClick={(event) => event.stopPropagation()}>
+          {formContent}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -1169,19 +1613,12 @@ export default function TaskBoardPage() {
     setSearchParams(nextView === 'board' ? {} : { view: nextView }, { replace: false })
   }
 
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
-
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'all' | 'completed'>('pending')
   const [fundFilter, setFundFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
   const [quickDueFilter, setQuickDueFilter] = useState<'all' | 'today' | 'this_week' | 'overdue'>('all')
-  const [completedYear, setCompletedYear] = useState(currentYear)
-  const [completedMonth, setCompletedMonth] = useState<number | ''>(currentMonth)
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
   const [blinkingId, setBlinkingId] = useState<number | null>(null)
@@ -1196,20 +1633,19 @@ export default function TaskBoardPage() {
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
   const [boardPanelTask, setBoardPanelTask] = useState<Task | null>(null)
   const [boardPanelMode, setBoardPanelMode] = useState<'detail' | 'edit'>('detail')
+  const [workflowPanelInstanceId, setWorkflowPanelInstanceId] = useState<number | null>(null)
   const [completedSectionOpen, setCompletedSectionOpen] = useState(false)
-  const [quadrantExpandState, setQuadrantExpandState] = useState<Record<string, boolean>>({})
-  const [workflowExpandState, setWorkflowExpandState] = useState<Record<number, boolean>>({})
-
-  const completedYearOptions = [0, 1, 2].map((offset) => currentYear - offset)
+  const [alertPopup, setAlertPopup] = useState<{ open: boolean; focus: 'overdue' | 'urgent' }>({
+    open: false,
+    focus: 'overdue',
+  })
+  const prevOverdueCountRef = useRef(0)
+  const prevUrgentCountRef = useRef(0)
+  const alertPopupTimerRef = useRef<number | null>(null)
 
   const { data: board, isLoading } = useQuery<TaskBoard>({
-    queryKey: ['taskBoard', statusFilter, completedYear, completedMonth],
-    queryFn: () =>
-      fetchTaskBoard(
-        statusFilter,
-        statusFilter === 'completed' ? completedYear : undefined,
-        statusFilter === 'completed' && completedMonth !== '' ? completedMonth : undefined,
-      ),
+    queryKey: ['taskBoard', 'pending'],
+    queryFn: () => fetchTaskBoard('pending'),
   })
 
   const { data: taskCategories = [] } = useQuery<TaskCategory[]>({
@@ -1247,9 +1683,9 @@ export default function TaskBoardPage() {
   })
 
   const { data: pipelineWorkflowsData, isLoading: pipelineWorkflowsLoading } = useQuery<DashboardWorkflowsResponse>({
-    queryKey: ['dashboard-workflows'],
+    queryKey: queryKeys.dashboard.workflows,
     queryFn: fetchDashboardWorkflows,
-    enabled: boardView === 'pipeline',
+    enabled: boardView === 'board' || boardView === 'pipeline',
     staleTime: 30_000,
   })
 
@@ -1261,7 +1697,6 @@ export default function TaskBoardPage() {
   useEffect(() => {
     if (!highlightTaskId) return
 
-    setStatusFilter('all')
     setFundFilter('')
     if (boardView !== 'board') {
       setBoardView('board')
@@ -1284,6 +1719,12 @@ export default function TaskBoardPage() {
       setBoardPanelMode('detail')
     }
   }, [boardPanelTask, boardView])
+
+  useEffect(() => {
+    if (boardView !== 'board' && workflowPanelInstanceId != null) {
+      setWorkflowPanelInstanceId(null)
+    }
+  }, [boardView, workflowPanelInstanceId])
 
   useEffect(() => {
     if (!pendingScrollId || boardView !== 'board') return
@@ -1409,19 +1850,8 @@ export default function TaskBoardPage() {
 
   const sortTasksForQuadrant = (tasks: Task[]): Task[] => {
     return [...tasks].sort((a, b) => {
-      const urgencyA = taskUrgencyMeta(a).priorityWeight
-      const urgencyB = taskUrgencyMeta(b).priorityWeight
-      const staleA = Math.min(Math.max(a.stale_days ?? 0, 0), 14) * 4
-      const staleB = Math.min(Math.max(b.stale_days ?? 0, 0), 14) * 4
-      const complianceA = a.obligation_id ? 70 : 0
-      const complianceB = b.obligation_id ? 70 : 0
-      const workflowA = a.workflow_instance_id ? 40 : 0
-      const workflowB = b.workflow_instance_id ? 40 : 0
-      const noticeA = a.is_notice || a.is_report ? 20 : 0
-      const noticeB = b.is_notice || b.is_report ? 20 : 0
-
-      const scoreA = urgencyA + staleA + complianceA + workflowA + noticeA
-      const scoreB = urgencyB + staleB + complianceB + workflowB + noticeB
+      const scoreA = computeTaskPriorityScore(a)
+      const scoreB = computeTaskPriorityScore(b)
       if (scoreA !== scoreB) return scoreB - scoreA
 
       const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY
@@ -1434,11 +1864,46 @@ export default function TaskBoardPage() {
     })
   }
 
-  const isUrgentTaskForSmartCollapse = useCallback((task: Task) => {
-    if (task.status === 'completed') return false
-    const tone = resolveDeadlineTone(task.deadline)
-    return tone === 'overdue' || tone === 'today'
-  }, [])
+  const workflowProgressOverrideMap = useMemo(() => {
+    const map = new Map<number, WorkflowProgressOverride>()
+    for (const workflow of pipelineWorkflowsData?.active_workflows ?? []) {
+      const parsed = parseWorkflowProgress(workflow.progress)
+      if (parsed) {
+        map.set(workflow.id, parsed)
+      }
+    }
+    return map
+  }, [pipelineWorkflowsData])
+
+  const quadrantBuckets = useMemo(() => {
+    const next = {} as Record<QuadrantKey, QuadrantBoardBucket>
+    for (const quadrant of QUADRANTS) {
+      const allTasks = sortTasksForQuadrant(applyTaskFilters(board?.[quadrant.key] || []))
+      const { standalone, workflows } = groupTasksByWorkflow(allTasks, workflowProgressOverrideMap)
+      next[quadrant.key] = { allTasks, standalone, workflows }
+    }
+    return next
+  }, [applyTaskFilters, board, workflowProgressOverrideMap])
+
+  const workflowGroupMap = useMemo(() => {
+    const map = new Map<number, WorkflowGroup>()
+    for (const quadrant of QUADRANTS) {
+      const groups = quadrantBuckets[quadrant.key]?.workflows ?? []
+      for (const group of groups) {
+        const previous = map.get(group.workflowInstanceId)
+        if (!previous) {
+          map.set(group.workflowInstanceId, group)
+          continue
+        }
+        const prevOrder = previous.currentStep?.workflow_step_order ?? Number.POSITIVE_INFINITY
+        const nextOrder = group.currentStep?.workflow_step_order ?? Number.POSITIVE_INFINITY
+        if (nextOrder < prevOrder) {
+          map.set(group.workflowInstanceId, group)
+        }
+      }
+    }
+    return map
+  }, [quadrantBuckets])
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TaskCreate> }) => updateTask(id, data),
@@ -1605,9 +2070,9 @@ export default function TaskBoardPage() {
   const allVisibleTasks = useMemo(
     () =>
       QUADRANTS.flatMap((quadrant) =>
-        applyTaskFilters(board?.[quadrant.key] || []),
+        quadrantBuckets[quadrant.key]?.allTasks ?? [],
       ),
-    [applyTaskFilters, board],
+    [quadrantBuckets],
   )
   const selectedVisibleTasks = useMemo(
     () => allVisibleTasks.filter((task) => selectedTaskIds.has(task.id)),
@@ -1627,78 +2092,33 @@ export default function TaskBoardPage() {
     return [...names]
   }, [board, taskCategories])
 
-  const taskFilterConfigs = useMemo<FilterConfig[]>(
-    () => [
-      {
-        key: 'status',
-        label: '상태',
-        type: 'select',
-        options: [
-          { value: 'pending', label: '진행 중' },
-          { value: 'all', label: '전체' },
-          { value: 'completed', label: '완료' },
-        ],
-      },
-      {
-        key: 'search',
-        label: '검색',
-        type: 'text',
-        placeholder: '업무 검색...',
-      },
-      {
-        key: 'due',
-        label: '기한',
-        type: 'select',
-        options: [
-          { value: 'all', label: '모든 업무' },
-          { value: 'today', label: '오늘 마감' },
-          { value: 'this_week', label: '이번 주' },
-          { value: 'overdue', label: '기한 초과' },
-        ],
-      },
-      {
-        key: 'year',
-        label: '완료 연도',
-        type: 'select',
-        options: completedYearOptions.map((year) => ({ value: String(year), label: `${year}년` })),
-      },
-      {
-        key: 'month',
-        label: '완료 월',
-        type: 'select',
-        options: Array.from({ length: 12 }, (_, idx) => ({ value: String(idx + 1), label: `${idx + 1}월` })),
-      },
-      {
-        key: 'target',
-        label: '대상',
-        type: 'select',
-        options: [
-          ...gpEntities.map((entity) => ({ value: `gp:${entity.id}`, label: `고유계정 · ${entity.name}` })),
-          ...fundsForFilter.map((fund) => ({ value: `fund:${fund.id}`, label: `조합 · ${fund.name}` })),
-        ],
-      },
-      {
-        key: 'category',
-        label: '카테고리',
-        type: 'select',
-        options: categoryNames.map((name) => ({ value: name, label: name })),
-      },
-    ],
-    [categoryNames, completedYearOptions, fundsForFilter, gpEntities],
-  )
+  const boardTaskLookup = useMemo(() => {
+    const map = new Map<number, Task>()
+    for (const quadrant of QUADRANTS) {
+      for (const task of board?.[quadrant.key] || []) {
+        map.set(task.id, task)
+      }
+    }
+    return map
+  }, [board])
 
-  const taskFilterValues = useMemo(
-    () => ({
-      status: statusFilter,
-      search: searchKeyword,
-      due: quickDueFilter,
-      year: String(completedYear),
-      month: completedMonth === '' ? '' : String(completedMonth),
-      target: fundFilter,
-      category: categoryFilter,
-    }),
-    [boardView, categoryFilter, completedMonth, completedYear, fundFilter, quickDueFilter, searchKeyword, statusFilter],
-  )
+  const workflowPanelGroup = useMemo(() => {
+    if (workflowPanelInstanceId == null) return null
+    return workflowGroupMap.get(workflowPanelInstanceId) ?? null
+  }, [workflowGroupMap, workflowPanelInstanceId])
+
+  const { data: workflowPanelInstance } = useQuery<WorkflowInstance>({
+    queryKey: ['workflow-instance', workflowPanelInstanceId],
+    queryFn: () => fetchWorkflowInstance(workflowPanelInstanceId as number),
+    enabled: boardView === 'board' && workflowPanelInstanceId != null,
+    staleTime: 10_000,
+  })
+
+  useEffect(() => {
+    if (workflowPanelInstanceId != null && !workflowGroupMap.has(workflowPanelInstanceId)) {
+      setWorkflowPanelInstanceId(null)
+    }
+  }, [workflowGroupMap, workflowPanelInstanceId])
 
   const overdueTasks = useMemo(
     () => allVisibleTasks.filter((task) => isOverdueTask(task)),
@@ -1719,6 +2139,7 @@ export default function TaskBoardPage() {
       }),
     [allVisibleTasks],
   )
+  const urgentCount = useMemo(() => urgentTasks.length, [urgentTasks])
   const todayCompletedTasks = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -1760,6 +2181,46 @@ export default function TaskBoardPage() {
   const isPipelineLoading = boardView === 'pipeline' && (pipelineBaseLoading || pipelineWorkflowsLoading)
 
   useEffect(() => {
+    if (boardView !== 'board') {
+      prevOverdueCountRef.current = overdueCount
+      prevUrgentCountRef.current = urgentCount
+      setAlertPopup((prev) => (prev.open ? { ...prev, open: false } : prev))
+      if (alertPopupTimerRef.current != null) {
+        window.clearTimeout(alertPopupTimerRef.current)
+        alertPopupTimerRef.current = null
+      }
+      return
+    }
+
+    const overdueIncreased = overdueCount > prevOverdueCountRef.current
+    const urgentIncreased = urgentCount > prevUrgentCountRef.current
+
+    if (overdueIncreased || urgentIncreased) {
+      setAlertPopup({
+        open: true,
+        focus: overdueIncreased ? 'overdue' : 'urgent',
+      })
+      if (alertPopupTimerRef.current != null) {
+        window.clearTimeout(alertPopupTimerRef.current)
+      }
+      alertPopupTimerRef.current = window.setTimeout(() => {
+        setAlertPopup((prev) => (prev.open ? { ...prev, open: false } : prev))
+        alertPopupTimerRef.current = null
+      }, 4500)
+    }
+
+    prevOverdueCountRef.current = overdueCount
+    prevUrgentCountRef.current = urgentCount
+  }, [boardView, overdueCount, urgentCount])
+
+  useEffect(() => {
+    return () => {
+      if (alertPopupTimerRef.current != null) {
+        window.clearTimeout(alertPopupTimerRef.current)
+      }
+    }
+  }, [])
+  useEffect(() => {
     const visibleTaskIdSet = new Set(allVisibleTasks.map((task) => task.id))
     setSelectedTaskIds((prev) => {
       if (prev.size === 0) return prev
@@ -1789,53 +2250,23 @@ export default function TaskBoardPage() {
     setSelectedTaskIds(new Set())
   }, [])
 
-  const handleFilterPanelChange = useCallback((key: string, value: string) => {
-    switch (key) {
-      case 'view':
-        if (value === 'board' || value === 'calendar' || value === 'pipeline') {
-          setBoardView(value)
-        }
-        break
-      case 'status':
-        if (value === 'pending' || value === 'all' || value === 'completed') {
-          setStatusFilter(value)
-        }
-        break
-      case 'search':
-        setSearchKeyword(value)
-        break
-      case 'due':
-        if (value === 'all' || value === 'today' || value === 'this_week' || value === 'overdue') {
-          setQuickDueFilter(value)
-        }
-        break
-      case 'year':
-        if (value) setCompletedYear(Number(value))
-        break
-      case 'month':
-        setCompletedMonth(value ? Number(value) : '')
-        break
-      case 'target':
-        setFundFilter(value)
-        break
-      case 'category':
-        setCategoryFilter(value)
-        break
-      default:
-        break
-    }
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      const next = !prev
+      if (!next) {
+        setSelectedTaskIds(new Set())
+      }
+      return next
+    })
   }, [])
 
-  const resetFilters = useCallback(() => {
-    setBoardView('board')
-    setStatusFilter('pending')
+  const handleAllConfirm = useCallback(() => {
     setSearchKeyword('')
     setQuickDueFilter('all')
-    setCompletedYear(currentYear)
-    setCompletedMonth(currentMonth)
     setFundFilter('')
     setCategoryFilter('')
-  }, [currentMonth, currentYear])
+    setBoardView('board')
+  }, [])
 
   const handleBulkComplete = useCallback(() => {
     const pendingTasks = selectedVisibleTasks.filter((task) => task.status !== 'completed')
@@ -1912,7 +2343,6 @@ export default function TaskBoardPage() {
   }, [bulkDeleteMutation, deleteCategoryMutation, deleteConfirm, deleteMutation])
 
   const handleOverdueConfirm = useCallback(() => {
-    setStatusFilter('pending')
     setFundFilter('')
     setCategoryFilter('')
     setSearchKeyword('')
@@ -1930,7 +2360,6 @@ export default function TaskBoardPage() {
   }, [overdueTasks])
 
   const handleUrgentConfirm = useCallback(() => {
-    setStatusFilter('pending')
     setFundFilter('')
     setCategoryFilter('')
     setSearchKeyword('')
@@ -1948,7 +2377,6 @@ export default function TaskBoardPage() {
   }, [urgentTasks])
 
   const handleThisWeekConfirm = useCallback(() => {
-    setStatusFilter('pending')
     setFundFilter('')
     setCategoryFilter('')
     setSearchKeyword('')
@@ -1956,21 +2384,175 @@ export default function TaskBoardPage() {
     setBoardView('board')
   }, [])
 
-  const handleCompletedTodayConfirm = useCallback(() => {
-    setStatusFilter('completed')
-    setFundFilter('')
-    setCategoryFilter('')
-    setSearchKeyword('')
-    setQuickDueFilter('all')
-    setCompletedYear(currentYear)
-    setCompletedMonth(currentMonth)
-    setBoardView('board')
-  }, [currentMonth, currentYear])
+  const openWorkflowSidePanel = useCallback((workflowInstanceId: number) => {
+    setBoardPanelTask(null)
+    setBoardPanelMode('detail')
+    setWorkflowPanelInstanceId(workflowInstanceId)
+  }, [])
 
   const openBoardSidePanel = useCallback((task: Task, mode: 'detail' | 'edit' = 'detail') => {
+    setWorkflowPanelInstanceId(null)
     setBoardPanelTask(task)
     setBoardPanelMode(mode)
   }, [])
+
+  const closeWorkflowSidePanel = useCallback(() => {
+    setWorkflowPanelInstanceId(null)
+  }, [])
+
+  const closeAlertPopup = useCallback(() => {
+    setAlertPopup((prev) => (prev.open ? { ...prev, open: false } : prev))
+    if (alertPopupTimerRef.current != null) {
+      window.clearTimeout(alertPopupTimerRef.current)
+      alertPopupTimerRef.current = null
+    }
+  }, [])
+
+  const renderQuadrantPanel = (quadrantKey: QuadrantKey, mini = false) => {
+    const quadrant = QUADRANTS.find((row) => row.key === quadrantKey)
+    if (!quadrant) return null
+
+    const bucket = quadrantBuckets[quadrantKey] || { allTasks: [], standalone: [], workflows: [] }
+    const allTasks = bucket.allTasks
+    const standalone = bucket.standalone
+    const workflows = bucket.workflows
+
+    return (
+      <div
+        key={quadrant.key}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragOverQuadrant(quadrant.key)
+        }}
+        onDragLeave={() => setDragOverQuadrant((prev) => (prev === quadrant.key ? null : prev))}
+        onDrop={(event) => {
+          event.preventDefault()
+          setDragOverQuadrant(null)
+          const taskId = Number(event.dataTransfer.getData('taskId'))
+          const fromQuadrant = event.dataTransfer.getData('fromQuadrant')
+          if (!taskId || !fromQuadrant || fromQuadrant === quadrant.key) return
+          moveMutation.mutate({ id: taskId, quadrant: quadrant.key })
+        }}
+        className={`flex h-full min-h-0 flex-col rounded-xl border border-[#d8e5fb] border-l-4 bg-white ${mini ? 'p-2' : 'p-2.5'} shadow-sm ${quadrant.color} ${
+          dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-[#558ef8] bg-[#f5f9ff]/30' : ''
+        }`}
+      >
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className={`h-2.5 w-2.5 rounded-full ${quadrant.badge}`} />
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{quadrant.label}</h3>
+          <span className="ml-auto text-xs text-[#94a3b8]">{allTasks.length}</span>
+        </div>
+
+        <div className={`pr-1 min-h-0 flex-1 overflow-y-auto ${mini ? '' : 'pt-2'}`}>
+          {mini ? (
+            <div className="space-y-1.5">
+              {standalone.map((task) => {
+                const urgency = taskUrgencyMeta(task)
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move'
+                      event.dataTransfer.setData('taskId', String(task.id))
+                      event.dataTransfer.setData('fromQuadrant', task.quadrant)
+                    }}
+                    onClick={() => openBoardSidePanel(task, 'detail')}
+                    className={`w-full cursor-grab rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-[#f5f9ff] active:cursor-grabbing ${blinkingId === task.id ? 'border-[#558ef8] ring-2 ring-[#558ef8]/35' : 'border-[#d8e5fb]'}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={`h-1.5 w-1.5 rounded-full ${urgency.topBarClass}`} />
+                      <p className="truncate text-[11px] font-semibold text-[#0f1f3d]">{task.title}</p>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-[#64748b]">
+                      {task.deadline ? new Date(task.deadline).toLocaleDateString('ko-KR') : '마감일 없음'}
+                      {task.estimated_time ? ` · ${task.estimated_time}` : ''}
+                    </p>
+                  </button>
+                )
+              })}
+
+              {workflows.map((group) => (
+                <button
+                  key={group.workflowInstanceId}
+                  type="button"
+                  draggable={Boolean(group.currentStep)}
+                  onDragStart={(event) => {
+                    const currentStep = group.currentStep
+                    if (!currentStep) {
+                      event.preventDefault()
+                      return
+                    }
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData('taskId', String(currentStep.id))
+                    event.dataTransfer.setData('fromQuadrant', currentStep.quadrant)
+                  }}
+                  onClick={() => openWorkflowSidePanel(group.workflowInstanceId)}
+                  className={`w-full rounded-md border border-[#c5d8fb] bg-[#f5f9ff] px-2 py-1.5 text-left transition-colors hover:bg-white ${
+                    group.currentStep ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[11px] font-semibold text-[#1a3660]">
+                      {group.currentStep?.title || '워크플로 단계'}
+                    </p>
+                    <span className="tag tag-blue">{group.progress}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-[#64748b]">
+                    {group.nextStep ? `다음: ${group.nextStep.title}` : '다음 단계 없음'}
+                  </p>
+                </button>
+              ))}
+
+              {allTasks.length === 0 && (
+                <div className="rounded-lg border border-dashed border-[#d8e5fb]">
+                  <EmptyState message="등록된 업무가 없습니다." className="py-4" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {standalone.map((task) => (
+                <div key={task.id} className="col-span-1">
+                  <TaskItem
+                    task={task}
+                    onComplete={setCompletingTask}
+                    onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
+                    onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
+                    onDelete={handleDeleteTask}
+                    selected={selectedTaskIds.has(task.id)}
+                    selectionMode={selectionMode}
+                    onToggleSelect={toggleTaskSelection}
+                    isBlinking={blinkingId === task.id}
+                  />
+                </div>
+              ))}
+
+              {workflows.map((group) => (
+                <div key={group.workflowInstanceId} className="col-span-1">
+                  <WorkflowCompactCard
+                    group={group}
+                    onOpenWorkflow={openWorkflowSidePanel}
+                  />
+                </div>
+              ))}
+
+              {allTasks.length === 0 && (
+                <div className="col-span-2 rounded-lg border border-dashed border-[#d8e5fb]">
+                  <EmptyState message="등록된 업무가 없습니다." className="py-6" />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={`mt-1.5 ${mini ? 'flex justify-end' : ''}`}>
+          <AddTaskForm quadrant={quadrant.key} categoryOptions={categoryNames} compact={mini} />
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) return <PageLoading />
 
@@ -1994,7 +2576,7 @@ export default function TaskBoardPage() {
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setSelectionMode((prev) => !prev)}
+            onClick={toggleSelectionMode}
             className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] ${
               selectionMode
                 ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
@@ -2013,45 +2595,49 @@ export default function TaskBoardPage() {
         </div>
       </div>
 
-      <FilterPanel
-        filters={taskFilterConfigs}
-        values={taskFilterValues}
-        onChange={handleFilterPanelChange}
-        onReset={resetFilters}
-        visibleCount={2}
+      <TaskTopControlStrip
+        boardView={boardView}
+        onChangeBoardView={setBoardView}
+        summary={board?.summary}
+        onClickAll={handleAllConfirm}
+        onClickOverdue={handleOverdueConfirm}
+        onClickToday={handleUrgentConfirm}
+        onClickThisWeek={handleThisWeekConfirm}
       />
+
+      {boardView === 'board' && (
+        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
+          <span className="font-semibold text-[#1a3660]">우선순위</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#d6c3c5] bg-[#f1e8e9] px-1 text-[10px] font-semibold text-[#73585c]">A</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#e2d8bc] bg-[#fff7d6] px-1 text-[10px] font-semibold text-[#8a6f2e]">B</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#c8daf8] bg-[#f5f9ff] px-1 text-[10px] font-semibold text-[#1a3660]">C</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#d8e5fb] bg-white px-1 text-[10px] font-semibold text-[#64748b]">D</span>
+          <span className="text-[#94a3b8]">기한·방치·컴플·워크플로·통지 기준</span>
+        </div>
+      )}
 
       <div
         className={
           boardView === 'board'
-            ? 'mt-3 space-y-2 lg:space-y-2.5'
-            : 'mt-4 space-y-5'
+            ? 'mt-2 space-y-2 lg:space-y-2.5'
+            : 'mt-2 space-y-4'
         }
       >
-        <div className="flex gap-1 rounded-xl bg-[#f5f9ff] p-0.5">
-          {VIEW_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setBoardView(tab.key)}
-              className={`tab-btn flex-1 justify-center rounded-lg px-3 py-1 text-xs font-semibold lg:px-4 lg:text-sm ${
-                boardView === tab.key
-                  ? 'active bg-white shadow-sm'
-                  : ''
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
       {boardView === 'board' && (
-        <TaskSummaryBar
-          summary={board?.summary}
-          onClickOverdue={handleOverdueConfirm}
-          onClickToday={handleUrgentConfirm}
-          onClickThisWeek={handleThisWeekConfirm}
-          onClickCompletedToday={handleCompletedTodayConfirm}
+        <TaskAlertPopup
+          open={alertPopup.open}
+          focus={alertPopup.focus}
+          overdueCount={overdueCount}
+          urgentCount={urgentCount}
+          onClose={closeAlertPopup}
+          onClickOverdue={() => {
+            closeAlertPopup()
+            handleOverdueConfirm()
+          }}
+          onClickUrgent={() => {
+            closeAlertPopup()
+            handleUrgentConfirm()
+          }}
         />
       )}
 
@@ -2081,23 +2667,6 @@ export default function TaskBoardPage() {
         </div>
       )}
 
-      {boardView === 'board' && overdueTasks.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-2.5 py-1.5">
-          <p className="text-[11px] font-semibold text-red-900">기한 경과 {overdueTasks.length}건</p>
-          <button onClick={handleOverdueConfirm} className="btn-xs rounded-md border border-red-300 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100">
-            업무 확인
-          </button>
-        </div>
-      )}
-
-      {boardView === 'board' && urgentTasks.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-2.5 py-1.5">
-          <p className="text-[11px] font-semibold text-orange-900">24시간 내 마감 {urgentTasks.length}건</p>
-          <button onClick={handleUrgentConfirm} className="btn-xs rounded-md border border-orange-300 bg-white px-2 py-1 text-[11px] font-medium text-orange-700 hover:bg-orange-100">
-            업무 확인
-          </button>
-        </div>
-      )}
 
       {boardView === 'calendar' ? (
         <div className="w-full">
@@ -2139,128 +2708,17 @@ export default function TaskBoardPage() {
         </div>
       ) : (
         <>
-        <div className="w-full">
-        <div className="grid grid-cols-1 gap-2.5 lg:min-h-[calc(100vh-220px)] lg:grid-cols-2 lg:grid-rows-2">
-          {QUADRANTS.map((quadrant) => {
-            const allTasks = sortTasksForQuadrant(applyTaskFilters(board?.[quadrant.key] || []))
-            const { standalone, workflows } = groupTasksByWorkflow(allTasks)
-            const collapseMode = allTasks.length >= 16 ? 'high' : allTasks.length >= 9 ? 'medium' : 'none'
-            const quadrantExpanded = quadrantExpandState[quadrant.key] ?? false
-            const urgentStandalone = standalone.filter((task) => isUrgentTaskForSmartCollapse(task))
-            const deferredStandalone = standalone.filter((task) => !isUrgentTaskForSmartCollapse(task))
-            const visibleStandalone =
-              collapseMode === 'none' || quadrantExpanded ? standalone : urgentStandalone
-            const hiddenStandaloneCount =
-              collapseMode === 'none' || quadrantExpanded ? 0 : deferredStandalone.length
-
-            return (
-              <div
-                key={quadrant.key}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setDragOverQuadrant(quadrant.key)
-                }}
-                onDragLeave={() => setDragOverQuadrant((prev) => (prev === quadrant.key ? null : prev))}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  setDragOverQuadrant(null)
-                  const taskId = Number(e.dataTransfer.getData('taskId'))
-                  const fromQuadrant = e.dataTransfer.getData('fromQuadrant')
-                  if (!taskId || !fromQuadrant || fromQuadrant === quadrant.key) return
-                  moveMutation.mutate({ id: taskId, quadrant: quadrant.key })
-                }}
-                className={`flex flex-col rounded-xl border border-[#d8e5fb] border-l-4 bg-white p-2.5 shadow-sm lg:h-full ${quadrant.color} ${
-                  dragOverQuadrant === quadrant.key ? 'border-dashed ring-2 ring-[#558ef8] bg-[#f5f9ff]/30' : ''
-                }`}
-              >
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <span className={`h-2.5 w-2.5 rounded-full ${quadrant.badge}`} />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{quadrant.label}</h3>
-                  <span className="ml-auto text-xs text-[#94a3b8]">{allTasks.length}</span>
-                </div>
-
-                <div className="pr-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-2">
-                    {visibleStandalone.map((task) => (
-                      <div key={task.id} className="col-span-1">
-                        <TaskItem
-                          task={task}
-                          onComplete={setCompletingTask}
-                          onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
-                          onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
-                          onDelete={handleDeleteTask}
-                          selected={selectedTaskIds.has(task.id)}
-                          selectionMode={selectionMode}
-                          onToggleSelect={toggleTaskSelection}
-                          isBlinking={blinkingId === task.id}
-                        />
-                      </div>
-                    ))}
-
-                    {workflows.map((group) => (
-                      (() => {
-                        const workflowKey = group.workflowInstanceId
-                        const autoExpanded =
-                          blinkingId != null && group.tasks.some((task) => task.id === blinkingId)
-                            ? true
-                            : collapseMode === 'none'
-                              ? true
-                              : !!group.currentStep && isUrgentTaskForSmartCollapse(group.currentStep)
-                        const expanded = workflowExpandState[workflowKey] ?? autoExpanded
-
-                        return (
-                          <div key={workflowKey} className="col-span-2">
-                            <WorkflowGroupCard
-                              group={group}
-                              onComplete={setCompletingTask}
-                              onOpenDetail={(selectedTask) => openBoardSidePanel(selectedTask, 'detail')}
-                              onEdit={(selectedTask) => openBoardSidePanel(selectedTask, 'edit')}
-                              onDelete={handleDeleteTask}
-                              selectionMode={selectionMode}
-                              selectedTaskIds={selectedTaskIds}
-                              onToggleSelect={toggleTaskSelection}
-                              blinkingId={blinkingId}
-                              expanded={expanded}
-                              onToggleExpand={() =>
-                                setWorkflowExpandState((prev) => ({
-                                  ...prev,
-                                  [workflowKey]: !(prev[workflowKey] ?? autoExpanded),
-                                }))
-                              }
-                            />
-                          </div>
-                        )
-                      })()
-                    ))}
-                    {hiddenStandaloneCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuadrantExpandState((prev) => ({
-                            ...prev,
-                            [quadrant.key]: !(prev[quadrant.key] ?? false),
-                          }))
-                        }
-                        className="col-span-2 w-full rounded-lg border border-dashed border-[#bfcff0] bg-[#f5f9ff] px-3 py-2 text-left text-xs font-medium text-[#1a3660] hover:bg-[#eef4ff]"
-                      >
-                        {quadrantExpanded ? `접기` : `이번 주 외 ${hiddenStandaloneCount}건 보기`}
-                      </button>
-                    )}
-                    {allTasks.length === 0 && (
-                      <div className="col-span-2 rounded-lg border border-dashed border-[#d8e5fb]">
-                        <EmptyState message="등록된 업무가 없습니다." className="py-6" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-1.5">
-                  <AddTaskForm quadrant={quadrant.key} categoryOptions={categoryNames} />
-                </div>
+          <div className="w-full">
+          <div className="grid h-[calc(100dvh-220px)] min-h-[520px] grid-cols-1 gap-2.5 lg:grid-cols-[1.25fr_1fr]">
+            {renderQuadrantPanel('Q1')}
+            <div className="grid h-full min-h-0 grid-cols-1 gap-2.5 lg:grid-rows-[2fr_1fr]">
+              {renderQuadrantPanel('Q2')}
+              <div className="grid h-full min-h-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {renderQuadrantPanel('Q3', true)}
+                {renderQuadrantPanel('Q4', true)}
               </div>
-            )
-          })}
-        </div>
+            </div>
+          </div>
         </div>
         <CompletedTasksSection
           tasks={todayCompletedTasks}
@@ -2286,6 +2744,25 @@ export default function TaskBoardPage() {
           }}
           creating={createCategoryMutation.isPending}
           deletingCategoryId={deletingCategoryId}
+        />
+      )}
+
+      {boardView === 'board' && workflowPanelGroup && (
+        <WorkflowSidePanel
+          group={workflowPanelGroup}
+          workflowInstance={
+            workflowPanelInstance?.id === workflowPanelGroup.workflowInstanceId
+              ? workflowPanelInstance
+              : null
+          }
+          timelineTaskLookup={boardTaskLookup}
+          onClose={closeWorkflowSidePanel}
+          onOpenTaskDetail={(task) => openBoardSidePanel(task, 'detail')}
+          onOpenTaskEdit={(task) => openBoardSidePanel(task, 'edit')}
+          onCompleteTask={setCompletingTask}
+          onOpenWorkflowPage={(workflowInstanceId) => {
+            navigate('/workflows', { state: { expandInstanceId: workflowInstanceId } })
+          }}
         />
       )}
 
@@ -2398,8 +2875,5 @@ export default function TaskBoardPage() {
     </div>
   )
 }
-
-
-
 
 

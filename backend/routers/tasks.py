@@ -227,6 +227,42 @@ def _resolve_task_work_score(db: Session, today: date) -> int:
         return 0
 
 
+def _select_workflow_representative_task(tasks: list[Task]) -> Task | None:
+    if not tasks:
+        return None
+
+    in_progress_tasks = [task for task in tasks if task.status == 'in_progress']
+    candidates = in_progress_tasks or tasks
+
+    def sort_key(task: Task) -> tuple[int, datetime, int]:
+        step_order = task.workflow_step_order if task.workflow_step_order is not None else 10**9
+        deadline_value = task.deadline if task.deadline is not None else datetime.max
+        task_id = task.id if task.id is not None else 10**9
+        return (step_order, deadline_value, task_id)
+
+    return sorted(candidates, key=sort_key)[0]
+
+
+def _build_actionable_pending_tasks(pending_tasks: list[Task]) -> list[Task]:
+    standalone_tasks: list[Task] = []
+    workflow_task_map: dict[int, list[Task]] = {}
+
+    for task in pending_tasks:
+        workflow_instance_id = task.workflow_instance_id
+        if workflow_instance_id is None:
+            standalone_tasks.append(task)
+            continue
+        workflow_task_map.setdefault(workflow_instance_id, []).append(task)
+
+    actionable_tasks = list(standalone_tasks)
+    for workflow_tasks in workflow_task_map.values():
+        representative = _select_workflow_representative_task(workflow_tasks)
+        if representative is not None:
+            actionable_tasks.append(representative)
+
+    return actionable_tasks
+
+
 def _build_task_board_summary(db: Session, tasks: list[Task]) -> dict[str, int]:
     today = date.today()
     now_dt = datetime.now()
@@ -234,6 +270,7 @@ def _build_task_board_summary(db: Session, tasks: list[Task]) -> dict[str, int]:
 
     pending_statuses = {'pending', 'in_progress'}
     pending_tasks = [task for task in tasks if task.status in pending_statuses]
+    actionable_pending_tasks = _build_actionable_pending_tasks(pending_tasks)
     completed_today_tasks = [
         task
         for task in tasks
@@ -244,16 +281,14 @@ def _build_task_board_summary(db: Session, tasks: list[Task]) -> dict[str, int]:
     today_count = 0
     this_week_count = 0
     stale_count = 0
-    today_pending_tasks: list[Task] = []
 
-    for task in pending_tasks:
+    for task in actionable_pending_tasks:
         deadline_date = _task_date(task.deadline)
         if deadline_date is not None:
             if deadline_date < today:
                 overdue_count += 1
             elif deadline_date == today:
                 today_count += 1
-                today_pending_tasks.append(task)
             elif deadline_date <= week_end:
                 this_week_count += 1
 
@@ -261,26 +296,40 @@ def _build_task_board_summary(db: Session, tasks: list[Task]) -> dict[str, int]:
         if stale_days is not None and stale_days >= 3:
             stale_count += 1
 
-    today_scope_tasks = [*today_pending_tasks, *completed_today_tasks]
+    today_due_pending_tasks = [
+        task
+        for task in actionable_pending_tasks
+        if (deadline_date := _task_date(task.deadline)) is not None and deadline_date <= today
+    ]
+    completed_today_due_tasks = [
+        task
+        for task in completed_today_tasks
+        if (deadline_date := _task_date(task.deadline)) is not None and deadline_date <= today
+    ]
     completed_estimated_minutes = sum(
         _parse_time_to_minutes(task.estimated_time)
-        for task in completed_today_tasks
+        for task in completed_today_due_tasks
     )
     total_estimated_minutes = sum(
         _parse_time_to_minutes(task.estimated_time)
-        for task in today_scope_tasks
+        for task in [*today_due_pending_tasks, *completed_today_due_tasks]
     )
 
-    today_scope_count = len(today_scope_tasks)
-    progress_count_pct = int(round((len(completed_today_tasks) / today_scope_count) * 100)) if today_scope_count else 0
-    progress_time_pct = int(round((completed_estimated_minutes / total_estimated_minutes) * 100)) if total_estimated_minutes else 0
+    today_scope_count = len(today_due_pending_tasks) + len(completed_today_due_tasks)
+    progress_count_pct = int(round((len(completed_today_due_tasks) / today_scope_count) * 100)) if today_scope_count else 100
+    if not today_scope_count:
+        progress_time_pct = 100
+    elif total_estimated_minutes:
+        progress_time_pct = int(round((completed_estimated_minutes / total_estimated_minutes) * 100))
+    else:
+        progress_time_pct = progress_count_pct
 
     return {
         'overdue_count': overdue_count,
         'today_count': today_count,
         'this_week_count': this_week_count,
         'completed_today_count': len(completed_today_tasks),
-        'total_pending_count': len(pending_tasks),
+        'total_pending_count': len(actionable_pending_tasks),
         'total_estimated_minutes': total_estimated_minutes,
         'completed_estimated_minutes': completed_estimated_minutes,
         'stale_count': stale_count,
@@ -515,7 +564,10 @@ def get_task_board(
 
     query = db.query(Task)
     if status != 'all':
-        query = query.filter(Task.status == status)
+        if status == 'pending':
+            query = query.filter(Task.status.in_(('pending', 'in_progress')))
+        else:
+            query = query.filter(Task.status == status)
     if status == 'completed' and (year or month):
         query = query.filter(Task.completed_at.isnot(None))
         if year:
