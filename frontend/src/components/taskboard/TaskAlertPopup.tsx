@@ -28,8 +28,8 @@ function AlertActionButton({
 }) {
   const toneClass =
     tone === 'overdue'
-      ? 'border-[#e8d4d5] bg-[#f6efef] text-[#73585c] hover:bg-[#f1e8e9]'
-      : 'border-[#e7d9bf] bg-[#fff7d6] text-[#876b2b] hover:bg-[#f8efcd]'
+      ? 'border-[#bfa5a7] bg-[#f1e8e9] text-[#3b1219] hover:bg-[#eadcdf]'
+      : 'border-[#d4a418] bg-[#fff7d6] text-[#624100] hover:bg-[#fff2c4]'
 
   return (
     <button

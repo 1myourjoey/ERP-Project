@@ -9,7 +9,7 @@ export default function DashboardAlertBar({ alerts, onNavigate }: DashboardAlert
   if (!alerts.length) return null
 
   return (
-    <section className="card-base flex min-h-[36px] items-center gap-2 border-[#bfa5a7] bg-[#f5f9ff] px-3 py-2 text-xs text-[#0f1f3d]">
+    <section className="card-base flex min-h-[36px] items-center gap-2 border-[#d4a418] bg-[#f5f9ff] px-3 py-2 text-xs text-[#0f1f3d]">
       <span className="font-semibold text-[#1a3660]">긴급 알림</span>
       <div className="flex flex-1 flex-wrap items-center gap-1.5">
         {alerts.slice(0, 4).map((alert) => (

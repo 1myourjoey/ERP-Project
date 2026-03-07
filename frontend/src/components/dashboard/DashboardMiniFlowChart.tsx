@@ -35,16 +35,16 @@ const STYLES_BY_SEVERITY: Record<FlowSeverity, SeverityStyle> = {
     badge: 'bg-[#f5f9ff] text-[#1a3660]',
   },
   warning: {
-    border: 'border-[#bfa5a7]',
-    bg: 'bg-[#f1e8e9]',
-    title: 'text-[#7b5f62]',
-    badge: 'bg-white text-[#7b5f62]',
+    border: 'border-[#d4a418]',
+    bg: 'bg-[#fff7d6]',
+    title: 'text-[#624100]',
+    badge: 'bg-white text-[#624100]',
   },
   danger: {
     border: 'border-[#bfa5a7]',
     bg: 'bg-[#f1e8e9]',
-    title: 'text-[#7b5f62]',
-    badge: 'bg-white text-[#7b5f62]',
+    title: 'text-[#3b1219]',
+    badge: 'bg-white text-[#3b1219]',
   },
 }
 

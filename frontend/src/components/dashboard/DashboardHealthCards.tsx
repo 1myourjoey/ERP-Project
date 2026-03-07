@@ -38,13 +38,13 @@ function scoreWidth(score: number): string {
 
 function severityBarColor(severity: DashboardHealthDomain['severity']): string {
   if (severity === 'good') return 'bg-[#558ef8]'
-  if (severity === 'warning') return 'bg-[#bfa5a7]'
+  if (severity === 'warning') return 'bg-[#b68a00]'
   return 'bg-[#0f1f3d]'
 }
 
 function severityTextColor(severity: DashboardHealthDomain['severity']): string {
   if (severity === 'good') return 'text-[#1a3660]'
-  if (severity === 'warning') return 'text-[#7b5f62]'
+  if (severity === 'warning') return 'text-[#624100]'
   return 'text-[#0f1f3d]'
 }
 

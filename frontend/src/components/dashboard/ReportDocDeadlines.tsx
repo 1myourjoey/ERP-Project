@@ -16,7 +16,7 @@ function ddayText(days: number | null): string {
 function ddayColor(days: number | null): string {
   if (days == null) return 'text-[#94a3b8]'
   if (days < 0) return 'text-[#0f1f3d]'
-  if (days <= 3) return 'text-[#7b5f62]'
+  if (days <= 3) return 'text-[#624100]'
   return 'text-[#64748b]'
 }
 

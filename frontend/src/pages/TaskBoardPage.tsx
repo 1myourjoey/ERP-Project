@@ -161,14 +161,14 @@ function taskUrgencyMeta(task: Task): {
   switch (tone) {
     case 'overdue':
       return {
-        topBarClass: 'bg-[#bfa5a7]',
+        topBarClass: 'bg-[#6d3e44]',
         badgeStatus: 'overdue',
         label: '지연',
         priorityWeight: 500,
       }
     case 'today':
       return {
-        topBarClass: 'bg-[#bfa5a7]',
+        topBarClass: 'bg-[#b68a00]',
         badgeStatus: 'danger',
         label: '오늘마감',
         priorityWeight: 420,
@@ -209,10 +209,10 @@ function computeTaskPriorityScore(task: Task): number {
 
 function resolveTaskPriorityGrade(score: number): { label: 'A' | 'B' | 'C' | 'D'; className: string } {
   if (score >= 500) {
-    return { label: 'A', className: 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]' }
+    return { label: 'A', className: 'border-[#bfa5a7] bg-[#f1e8e9] text-[#3b1219]' }
   }
   if (score >= 380) {
-    return { label: 'B', className: 'border-[#e2d8bc] bg-[#fff7d6] text-[#8a6f2e]' }
+    return { label: 'B', className: 'border-[#d4a418] bg-[#fff7d6] text-[#624100]' }
   }
   if (score >= 260) {
     return { label: 'C', className: 'border-[#c8daf8] bg-[#f5f9ff] text-[#1a3660]' }
@@ -551,7 +551,7 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
   const priorityScore = currentStep ? computeTaskPriorityScore(currentStep) : 0
   const priorityGrade = resolveTaskPriorityGrade(priorityScore)
   const laneMeta = buildWorkflowLaneMeta(group)
-  const ringColor = laneMeta.isBlocked ? '#bfa5a7' : '#0f1f3d'
+  const ringColor = laneMeta.isBlocked ? '#6d3e44' : '#0f1f3d'
   const [animatedPercent, setAnimatedPercent] = useState(laneMeta.progressPercent)
   const animatedPercentRef = useRef(laneMeta.progressPercent)
   const animationFrameRef = useRef<number | null>(null)
@@ -621,7 +621,7 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
         }
       }}
       className={`group relative rounded-xl border px-2 py-2 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#558ef8]/45 ${
-        laneMeta.isBlocked ? 'border-[#d6c3c5] bg-[#f7f0f1]' : 'border-[#c5d8fb] bg-[#f5f9ff]'
+        laneMeta.isBlocked ? 'border-[#bfa5a7] bg-[#f1e8e9]' : 'border-[#c5d8fb] bg-[#f5f9ff]'
       }`}
     >
       <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-2">
@@ -658,7 +658,7 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
 
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {laneMeta.isBlocked && (
-              <span className="inline-flex items-center rounded border border-[#d4b9bc] bg-[#f1e8e9] px-1.5 py-0.5 text-[10px] font-semibold text-[#73585c]">
+              <span className="inline-flex items-center rounded border border-[#bfa5a7] bg-[#f1e8e9] px-1.5 py-0.5 text-[10px] font-semibold text-[#3b1219]">
                 BLOCKED
               </span>
             )}
@@ -2608,8 +2608,8 @@ export default function TaskBoardPage() {
       {boardView === 'board' && (
         <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[#64748b]">
           <span className="font-semibold text-[#1a3660]">우선순위</span>
-          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#d6c3c5] bg-[#f1e8e9] px-1 text-[10px] font-semibold text-[#73585c]">A</span>
-          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#e2d8bc] bg-[#fff7d6] px-1 text-[10px] font-semibold text-[#8a6f2e]">B</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#bfa5a7] bg-[#f1e8e9] px-1 text-[10px] font-semibold text-[#3b1219]">A</span>
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#d4a418] bg-[#fff7d6] px-1 text-[10px] font-semibold text-[#624100]">B</span>
           <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#c8daf8] bg-[#f5f9ff] px-1 text-[10px] font-semibold text-[#1a3660]">C</span>
           <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[#d8e5fb] bg-white px-1 text-[10px] font-semibold text-[#64748b]">D</span>
           <span className="text-[#94a3b8]">기한·방치·컴플·워크플로·통지 기준</span>

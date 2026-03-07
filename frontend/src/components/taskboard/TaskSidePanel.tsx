@@ -263,7 +263,7 @@ export default function TaskSidePanel({
                         })
                       )}
                       {showLessonWarning && uncheckedCriticalCount > 0 && (
-                        <div className="flex items-center gap-1 rounded border border-[#e8d4d5] bg-[#f6efef] px-2 py-1 text-[11px] text-[#73585c]">
+                        <div className="flex items-center gap-1 rounded border border-[#bfa5a7] bg-[#f1e8e9] px-2 py-1 text-[11px] text-[#3b1219]">
                           <AlertTriangle size={12} />
                           핵심 교훈 {uncheckedCriticalCount}건 미확인 상태입니다.
                         </div>

@@ -298,7 +298,7 @@ function nextLabelForItem(item: PipelineItem | undefined): string | null {
 
 function chainRoleBadge(role: ChainRole | null): { label: string; className: string } | null {
   if (role === 'current') return { label: '현재', className: 'bg-[#f5f9ff] text-[#1a3660]' }
-  if (role === 'next') return { label: '다음', className: 'bg-[#f1f1e6] text-[#7b5f62]' }
+  if (role === 'next') return { label: '다음', className: 'bg-[#fff7d6] text-[#624100]' }
   if (role === 'prev') return { label: '이전', className: 'bg-white text-[#64748b] border border-[#d8e5fb]' }
   return null
 }

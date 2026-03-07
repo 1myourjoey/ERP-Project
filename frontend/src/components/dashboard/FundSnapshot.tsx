@@ -16,7 +16,7 @@ function complianceBadge(status: DashboardFundSnapshotItem['compliance_status'])
 
 function complianceColor(status: DashboardFundSnapshotItem['compliance_status']): string {
   if (status === 'danger') return 'text-[#0f1f3d]'
-  if (status === 'warning') return 'text-[#7b5f62]'
+  if (status === 'warning') return 'text-[#624100]'
   return 'text-[#1a3660]'
 }
 

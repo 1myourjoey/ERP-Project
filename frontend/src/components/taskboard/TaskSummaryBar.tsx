@@ -36,7 +36,7 @@ function StatButton({
 }) {
   const toneClass =
     tone === 'danger'
-      ? 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]'
+      ? 'border-[#bfa5a7] bg-[#f1e8e9] text-[#3b1219]'
       : tone === 'success'
         ? 'border-[#bed7c9] bg-[#eef6f2] text-[#1f5b45]'
         : tone === 'accent'

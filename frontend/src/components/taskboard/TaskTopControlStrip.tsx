@@ -39,7 +39,7 @@ function SummaryChip({
 }) {
   const toneClass =
     tone === 'danger'
-      ? 'border-[#d6c3c5] bg-[#f1e8e9] text-[#5f4448]'
+      ? 'border-[#bfa5a7] bg-[#f1e8e9] text-[#3b1219]'
       : tone === 'success'
         ? 'border-[#b9d7ca] bg-[#eef6f2] text-[#1a5a44]'
         : tone === 'accent'

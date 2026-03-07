@@ -21,8 +21,24 @@
   --color-primary-light: #f5f9ff;
   --color-accent: #558ef8;
   --color-accent-strong: #3f79e0;
-  --color-danger: #bfa5a7;
-  --color-warning: #bfa5a7;
+  --tone-info-bg: #f5f9ff;
+  --tone-info-border: #d8e5fb;
+  --tone-info-text: #1a3660;
+  --tone-warning-main: #b68a00;
+  --tone-warning-main-soft: #d4b55a;
+  --tone-warning-bg: #fff7d6;
+  --tone-warning-bg-soft: #fdf1c2;
+  --tone-warning-bg-hover: #fff2c4;
+  --tone-warning-border: #d4a418;
+  --tone-warning-text: #624100;
+  --tone-danger-main: #6d3e44;
+  --tone-danger-bg: #f1e8e9;
+  --tone-danger-bg-soft: #ecdfe1;
+  --tone-danger-bg-hover: #eadcdf;
+  --tone-danger-border: #bfa5a7;
+  --tone-danger-text: #3b1219;
+  --color-danger: var(--tone-danger-main);
+  --color-warning: var(--tone-warning-main);
   --color-success: #256b4a;
   /* Neutral */
   --color-bg: #f5f9ff;
@@ -44,10 +60,10 @@
   --tag-blue-text: #0f1f3d;
   --tag-green-bg: #edf6f1;
   --tag-green-text: #256b4a;
-  --tag-amber-bg: #f1e8e9;
-  --tag-amber-text: #7b5f62;
-  --tag-red-bg: #f1e8e9;
-  --tag-red-text: #73585c;
+  --tag-amber-bg: var(--tone-warning-bg);
+  --tag-amber-text: var(--tone-warning-text);
+  --tag-red-bg: var(--tone-danger-bg);
+  --tag-red-text: var(--tone-danger-text);
   --tag-purple-bg: #f0ecff;
   --tag-purple-text: #5846a0;
   --tag-indigo-bg: #ebefff;
@@ -269,17 +285,17 @@ input[type="radio"] {
 }
 
 .secondary-btn:hover {
-  background-color: #fff2c4;
+  background-color: var(--color-hover);
 }
 
 .danger-btn {
-  background-color: #f1e8e9;
-  color: #73585c;
-  border-color: #d6c3c5;
+  background-color: var(--tone-danger-bg);
+  color: var(--tone-danger-text);
+  border-color: var(--tone-danger-border);
 }
 
 .danger-btn:hover {
-  background-color: #e8d9db;
+  background-color: var(--tone-danger-bg-hover);
 }
 
 .ghost-btn {
@@ -430,7 +446,7 @@ input[type="radio"] {
 
 .tab-btn.active {
   border-color: rgba(85, 142, 248, 0.5);
-  background: #eef4ff;
+  background: var(--tone-info-bg);
   color: var(--color-accent-strong);
 }
 
@@ -497,7 +513,7 @@ input[type="radio"] {
 }
 
 .info-banner {
-  background: #f5f9ff;
+  background: var(--tone-info-bg);
   border: 1px solid rgba(85, 142, 248, 0.35);
 }
 
@@ -520,15 +536,188 @@ input[type="radio"] {
 }
 
 .warning-banner {
-  background: #f1e8e9;
-  border: 1px solid #d6c3c5;
-  color: #73585c;
+  background: var(--tone-warning-bg);
+  border: 1px solid var(--tone-warning-border);
+  color: var(--tone-warning-text);
 }
 
 .success-banner {
   background: #eef6f2;
   border: 1px solid #bed7c9;
   color: #1f5b45;
+}
+
+.tone-info {
+  border: 1px solid var(--tone-info-border);
+  background: var(--tone-info-bg);
+  color: var(--tone-info-text);
+}
+
+.tone-warning {
+  border: 1px solid var(--tone-warning-border);
+  background: var(--tone-warning-bg);
+  color: var(--tone-warning-text);
+}
+
+.tone-danger {
+  border: 1px solid var(--tone-danger-border);
+  background: var(--tone-danger-bg);
+  color: var(--tone-danger-text);
+}
+
+.tone-success {
+  border: 1px solid #bed7c9;
+  background: #eef6f2;
+  color: #1f5b45;
+}
+
+.status-pill-warning {
+  border: 1px solid var(--tone-warning-border);
+  background: var(--tone-warning-bg);
+  color: var(--tone-warning-text);
+}
+
+.status-pill-danger {
+  border: 1px solid var(--tone-danger-border);
+  background: var(--tone-danger-bg);
+  color: var(--tone-danger-text);
+}
+
+/* Legacy utility color remapping */
+.bg-red-50,
+.bg-red-100 {
+  background-color: var(--tone-danger-bg) !important;
+}
+
+.bg-red-500,
+.bg-red-600 {
+  background-color: var(--tone-danger-main) !important;
+}
+
+.bg-red-50\/50 {
+  background-color: color-mix(in srgb, var(--tone-danger-bg) 62%, transparent) !important;
+}
+
+.bg-red-50\/60 {
+  background-color: color-mix(in srgb, var(--tone-danger-bg) 72%, transparent) !important;
+}
+
+.text-red-500,
+.text-red-600 {
+  color: var(--tone-danger-main) !important;
+}
+
+.text-red-700,
+.text-red-800,
+.text-red-900 {
+  color: var(--tone-danger-text) !important;
+}
+
+.border-red-100,
+.border-red-200,
+.border-red-300 {
+  border-color: var(--tone-danger-border) !important;
+}
+
+.border-red-500 {
+  border-color: var(--tone-danger-main) !important;
+}
+
+.border-l-red-400,
+.border-l-red-500 {
+  border-left-color: var(--tone-danger-main) !important;
+}
+
+.hover\:bg-red-50:hover,
+.hover\:bg-red-100:hover {
+  background-color: var(--tone-danger-bg-hover) !important;
+}
+
+.hover\:text-red-500:hover,
+.hover\:text-red-600:hover,
+.hover\:text-red-700:hover,
+.hover\:text-red-800:hover {
+  color: var(--tone-danger-text) !important;
+}
+
+.bg-orange-50,
+.bg-amber-50 {
+  background-color: var(--tone-warning-bg) !important;
+}
+
+.bg-orange-100,
+.bg-amber-100 {
+  background-color: var(--tone-warning-bg-soft) !important;
+}
+
+.bg-orange-200,
+.bg-amber-200,
+.bg-orange-300,
+.bg-amber-300,
+.bg-orange-400,
+.bg-amber-400 {
+  background-color: color-mix(in srgb, var(--tone-warning-main-soft) 55%, white) !important;
+}
+
+.bg-amber-100\/70 {
+  background-color: color-mix(in srgb, var(--tone-warning-bg-soft) 70%, transparent) !important;
+}
+
+.bg-amber-200\/80 {
+  background-color: color-mix(in srgb, var(--tone-warning-main-soft) 68%, white) !important;
+}
+
+.bg-orange-500,
+.bg-amber-500 {
+  background-color: var(--tone-warning-main) !important;
+}
+
+.bg-amber-50\/50,
+.bg-orange-50\/50 {
+  background-color: color-mix(in srgb, var(--tone-warning-bg) 62%, transparent) !important;
+}
+
+.bg-amber-50\/40 {
+  background-color: color-mix(in srgb, var(--tone-warning-bg) 50%, transparent) !important;
+}
+
+.text-orange-500,
+.text-orange-600,
+.text-orange-700,
+.text-orange-800,
+.text-orange-900,
+.text-amber-500,
+.text-amber-600,
+.text-amber-700,
+.text-amber-800,
+.text-amber-900 {
+  color: var(--tone-warning-text) !important;
+}
+
+.border-orange-200,
+.border-orange-300,
+.border-amber-200,
+.border-amber-300 {
+  border-color: var(--tone-warning-border) !important;
+}
+
+.border-l-orange-500,
+.border-l-amber-400 {
+  border-left-color: var(--tone-warning-main) !important;
+}
+
+.hover\:bg-orange-50:hover,
+.hover\:bg-orange-100:hover,
+.hover\:bg-amber-50:hover,
+.hover\:bg-amber-100:hover {
+  background-color: var(--tone-warning-bg-hover) !important;
+}
+
+.hover\:text-orange-700:hover,
+.hover\:text-orange-800:hover,
+.hover\:text-amber-700:hover,
+.hover\:text-amber-800:hover {
+  color: var(--tone-warning-text) !important;
 }
 
 /* Loading / empty */

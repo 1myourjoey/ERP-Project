@@ -22,7 +22,7 @@ interface TodayPrioritiesProps {
 function urgencyDot(daysRemaining: number | null): string {
   if (daysRemaining == null) return 'bg-[#94a3b8]'
   if (daysRemaining < 0) return 'bg-[#0f1f3d]'
-  if (daysRemaining === 0) return 'bg-[#bfa5a7]'
+  if (daysRemaining === 0) return 'bg-[#b68a00]'
   if (daysRemaining <= 3) return 'bg-[#558ef8]'
   return 'bg-[#94a3b8]'
 }
@@ -38,7 +38,7 @@ function typeBadge(type: DashboardDeadlineItem['type']): { label: string; classN
   if (type === 'task') return { label: '업무', className: 'border-[#d8e5fb] bg-[#f5f9ff] text-[#1a3660]' }
   if (type === 'report') return { label: '보고', className: 'border-[#c6ddff] bg-[#eef4ff] text-[#1a3660]' }
   if (type === 'document') return { label: '서류', className: 'border-[#d7e8dc] bg-[#eff7f1] text-[#1f5b45]' }
-  return { label: '컴플라이언스', className: 'border-[#d6c3c5] bg-[#f1e8e9] text-[#73585c]' }
+  return { label: '컴플라이언스', className: 'border-[#d4a418] bg-[#fff7d6] text-[#624100]' }
 }
 
 function dateMeta(item: DashboardDeadlineItem): string {
