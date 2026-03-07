@@ -497,7 +497,7 @@ const TaskItem = memo(function TaskItem({
           )}
         </div>
       </div>
-      <div className="absolute -top-2.5 right-1.5 z-20 inline-flex items-center gap-0.5 rounded-full border border-[#d8e5fb] bg-white/96 p-0.5 shadow-[0_5px_14px_rgba(15,31,61,0.14)] backdrop-blur-sm md:pointer-events-none md:translate-y-1 md:opacity-0 md:transition-all md:duration-200 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100">
+      <div className="absolute -top-2 right-1.5 z-20 inline-flex items-center gap-0.5 rounded-full border border-[#d8e5fb] bg-white/96 p-0.5 shadow-[0_5px_14px_rgba(15,31,61,0.14)] backdrop-blur-sm md:pointer-events-none md:translate-y-1 md:opacity-0 md:transition-all md:duration-200 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100">
         <button
           onClick={() => onComplete(task)}
           className="icon-btn h-5 w-5 min-h-0 min-w-0 rounded-full p-0 text-emerald-700 hover:bg-emerald-50"
@@ -1618,7 +1618,7 @@ export default function TaskBoardPage() {
   const [fundFilter, setFundFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
-  const [quickDueFilter, setQuickDueFilter] = useState<'all' | 'today' | 'this_week' | 'overdue'>('all')
+  const [quickDueFilter, setQuickDueFilter] = useState<'all' | 'today' | 'this_week' | 'overdue' | 'urgent_24h'>('all')
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null)
   const [blinkingId, setBlinkingId] = useState<number | null>(null)
@@ -1798,6 +1798,7 @@ export default function TaskBoardPage() {
   const filterByQuickDue = (tasks: Task[]) => {
     if (quickDueFilter === 'all') return tasks
     const now = new Date()
+    const nowMs = now.getTime()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     const endOfToday = startOfToday + 24 * 60 * 60 * 1000
     const endOfWeek = startOfToday + 7 * 24 * 60 * 60 * 1000
@@ -1812,6 +1813,9 @@ export default function TaskBoardPage() {
       }
       if (quickDueFilter === 'today') {
         return deadlineMs >= startOfToday && deadlineMs < endOfToday
+      }
+      if (quickDueFilter === 'urgent_24h') {
+        return deadlineMs >= nowMs && deadlineMs <= nowMs + 24 * 60 * 60 * 1000
       }
       if (quickDueFilter === 'this_week') {
         return deadlineMs >= startOfToday && deadlineMs < endOfWeek
@@ -2128,6 +2132,18 @@ export default function TaskBoardPage() {
     () => overdueTasks.length,
     [overdueTasks],
   )
+  const todayTasks = useMemo(() => {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const endOfToday = startOfToday + 24 * 60 * 60 * 1000
+
+    return allVisibleTasks.filter((task) => {
+      if (task.status === 'completed' || !task.deadline) return false
+      const deadline = new Date(task.deadline).getTime()
+      if (Number.isNaN(deadline)) return false
+      return deadline >= startOfToday && deadline < endOfToday
+    })
+  }, [allVisibleTasks])
   const urgentTasks = useMemo(
     () =>
       allVisibleTasks.filter((task) => {
@@ -2359,11 +2375,28 @@ export default function TaskBoardPage() {
     }, 3000)
   }, [overdueTasks])
 
-  const handleUrgentConfirm = useCallback(() => {
+  const handleTodayConfirm = useCallback(() => {
     setFundFilter('')
     setCategoryFilter('')
     setSearchKeyword('')
     setQuickDueFilter('today')
+    setBoardView('board')
+
+    const firstTodayTask = todayTasks[0]
+    if (!firstTodayTask) return
+
+    setPendingScrollId(firstTodayTask.id)
+    setBlinkingId(firstTodayTask.id)
+    window.setTimeout(() => {
+      setBlinkingId((prev) => (prev === firstTodayTask.id ? null : prev))
+    }, 3000)
+  }, [todayTasks])
+
+  const handleUrgentConfirm = useCallback(() => {
+    setFundFilter('')
+    setCategoryFilter('')
+    setSearchKeyword('')
+    setQuickDueFilter('urgent_24h')
     setBoardView('board')
 
     const firstUrgentTask = urgentTasks[0]
@@ -2443,7 +2476,7 @@ export default function TaskBoardPage() {
           <span className="ml-auto text-xs text-[#94a3b8]">{allTasks.length}</span>
         </div>
 
-        <div className={`pr-1 min-h-0 flex-1 overflow-y-auto ${mini ? '' : 'pt-2'}`}>
+        <div className={`pr-1 min-h-0 flex-1 overflow-y-auto ${mini ? '' : 'pt-3'}`}>
           {mini ? (
             <div className="space-y-1.5">
               {standalone.map((task) => {
@@ -2601,7 +2634,7 @@ export default function TaskBoardPage() {
         summary={board?.summary}
         onClickAll={handleAllConfirm}
         onClickOverdue={handleOverdueConfirm}
-        onClickToday={handleUrgentConfirm}
+        onClickToday={handleTodayConfirm}
         onClickThisWeek={handleThisWeekConfirm}
       />
 

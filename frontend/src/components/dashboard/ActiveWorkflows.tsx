@@ -4,6 +4,7 @@ import { formatDate } from '../../lib/format'
 interface ActiveWorkflowsProps {
   workflows: ActiveWorkflow[]
   onNavigate: (path: string) => void
+  onOpenWorkflow: (workflow: ActiveWorkflow) => void
 }
 
 function parseProgress(value: string | null | undefined): { done: number; total: number; pct: number } {
@@ -17,7 +18,7 @@ function parseProgress(value: string | null | undefined): { done: number; total:
   return { done, total, pct: Math.max(0, Math.min(100, Math.round((done / total) * 100))) }
 }
 
-export default function ActiveWorkflows({ workflows, onNavigate }: ActiveWorkflowsProps) {
+export default function ActiveWorkflows({ workflows, onNavigate, onOpenWorkflow }: ActiveWorkflowsProps) {
   return (
     <section className="card-base min-h-[320px] p-3">
       <div className="flex items-center justify-between">
@@ -34,7 +35,7 @@ export default function ActiveWorkflows({ workflows, onNavigate }: ActiveWorkflo
               key={workflow.id}
               type="button"
               className="w-full rounded-lg border border-[#e4e7ee] px-2.5 py-2 text-left hover:bg-[#f5f9ff]"
-              onClick={() => onNavigate('/workflows')}
+              onClick={() => onOpenWorkflow(workflow)}
             >
               <p className="truncate text-xs font-medium text-[#0f1f3d]">{workflow.name}</p>
               <p className="mt-0.5 truncate text-[11px] text-[#64748b]">

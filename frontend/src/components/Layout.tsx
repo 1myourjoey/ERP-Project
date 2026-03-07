@@ -439,7 +439,7 @@ export default function Layout() {
         </div>
       )}
 
-      <main className="relative z-10 flex-1 overflow-auto">
+      <main className="app-main-scroll relative z-10 flex-1">
         <ErrorBoundary>
           <Suspense fallback={<PageSkeleton type="table" />}>
             <Outlet />

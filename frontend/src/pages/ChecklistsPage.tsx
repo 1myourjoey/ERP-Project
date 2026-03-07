@@ -42,10 +42,17 @@ const EMPTY_ITEM: ChecklistItemInput = {
   notes: '',
 }
 
-export default function ChecklistsPage({ embedded = false }: { embedded?: boolean }) {
+export default function ChecklistsPage({
+  embedded = false,
+  embeddedVariant = 'default',
+}: {
+  embedded?: boolean
+  embeddedVariant?: 'workflow' | 'default'
+}) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { addToast } = useToast()
+  const isWorkflowEmbedded = embedded && embeddedVariant === 'workflow'
 
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -260,7 +267,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
   }
 
   return (
-    <div className={embedded ? 'space-y-4' : 'page-container'}>
+    <div className={embedded ? 'space-y-3' : 'page-container'}>
       {!embedded ? (
         <div className="page-header">
           <div>
@@ -271,18 +278,44 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
             + 체크리스트
           </button>
         </div>
+      ) : isWorkflowEmbedded ? (
+        <div className="rounded-2xl border border-[#d8e5fb] bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold text-[#0f1f3d]">체크리스트 유틸리티</h3>
+                <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-0.5 text-[11px] font-semibold text-[#64748b]">
+                  레거시 전환
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-[#64748b]">기존 점검표를 빠르게 확인하고 필요한 항목만 업무 또는 워크플로우로 전환합니다.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="secondary-btn"
+                onClick={() => handleConvertChecklist(checklist)}
+                disabled={convertToWorkflowMut.isPending || !checklist}
+              >
+                {convertToWorkflowMut.isPending ? '변환 중...' : '워크플로로 변환'}
+              </button>
+              <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
+                + 체크리스트
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-[#0f1f3d]">☑️ 체크리스트(레거시)</h3>
+          <h3 className="text-base font-semibold text-[#0f1f3d]">체크리스트(레거시)</h3>
           <button className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
             + 체크리스트
           </button>
         </div>
       )}
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-        <p className="text-sm font-semibold text-amber-900">💡 체크리스트 기능이 워크플로와 통합됩니다.</p>
-        <p className="mt-1 text-xs text-amber-800">
+      <div className={`rounded-xl border px-4 py-3 ${isWorkflowEmbedded ? 'border-[#d8e5fb] bg-[#f5f9ff]' : 'border-amber-200 bg-amber-50'}`}>
+        <p className={`text-sm font-semibold ${isWorkflowEmbedded ? 'text-[#0f1f3d]' : 'text-amber-900'}`}>체크리스트 기능이 워크플로와 통합됩니다.</p>
+        <p className={`mt-1 text-xs ${isWorkflowEmbedded ? 'text-[#64748b]' : 'text-amber-800'}`}>
           기존 체크리스트 항목을 워크플로 템플릿으로 변환해 단계형 업무 흐름으로 이어서 관리할 수 있습니다.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -319,10 +352,15 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
+      <div className={`grid grid-cols-1 gap-6 ${isWorkflowEmbedded ? 'xl:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.08fr)]' : 'lg:grid-cols-2'}`}>
+        <div className={isWorkflowEmbedded ? 'space-y-3' : ''}>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[#0f1f3d]">체크리스트 목록</h3>
+            {isWorkflowEmbedded && (
+              <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-0.5 text-[11px] font-semibold text-[#64748b]">
+                {filteredChecklists.length}건
+              </span>
+            )}
           </div>
 
           <div className="mb-3">
@@ -347,7 +385,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
           {isLoading ? (
             <PageLoading />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {filteredChecklists.map((cl: ChecklistListItem) => (
                 <button
                   id={`checklist-${cl.id}`}
@@ -356,20 +394,29 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                     setSelectedId(cl.id)
                     setEditingChecklist(false)
                   }}
-                  className={`w-full rounded border p-3 text-left ${selectedId === cl.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb] bg-white hover:bg-[#f5f9ff]'}`}
+                  className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${selectedId === cl.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb] bg-white hover:bg-[#f5f9ff]'}`}
                 >
-                  <p className="text-sm font-medium text-[#0f1f3d]">
-                    {cl.name}
-                    {convertedChecklistIds.has(cl.id) && (
-                      <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                        워크플로 변환됨
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[#0f1f3d]">
+                        {cl.name}
+                        {convertedChecklistIds.has(cl.id) && (
+                          <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            워크플로 변환됨
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs text-[#64748b]">{cl.category || '-'} · 완료 {cl.checked_items}/{cl.total_items} · 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
+                    </div>
+                    {isWorkflowEmbedded && (
+                      <span className="rounded-full border border-[#d8e5fb] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#64748b]">
+                        {cl.total_items ? Math.round((cl.checked_items / cl.total_items) * 100) : 0}%
                       </span>
                     )}
-                  </p>
-                  <p className="text-xs text-[#64748b]">{cl.category || '-'} | 완료 {cl.checked_items}/{cl.total_items} | 투자 {cl.investment_id ? `#${cl.investment_id}` : '미연결'}</p>
+                  </div>
                 </button>
               ))}
-              {!filteredChecklists.length && <EmptyState emoji="☑️" message="체크리스트가 없어요" className="py-8" />}
+              {!filteredChecklists.length && <EmptyState message="체크리스트가 없습니다." className="py-8" />}
             </div>
           )}
         </div>
@@ -390,8 +437,8 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
               onCancel={() => setEditingChecklist(false)}
             />
           ) : (
-            <div className="card-base">
-                <div className="flex items-center justify-between">
+            <div className={`card-base ${isWorkflowEmbedded ? 'space-y-4' : ''}`}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                   <h3 className="text-lg font-semibold text-[#0f1f3d]">
                     {checklist.name}
@@ -450,7 +497,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
 
                 <div className="space-y-2">
                   {checklist.items?.map((item: ChecklistItem) => (
-                    <div key={item.id} className="rounded border p-2">
+                    <div key={item.id} className={`rounded-xl border p-2.5 ${isWorkflowEmbedded ? 'border-[#d8e5fb] bg-[#fbfcff]' : ''}`}>
                       {editingItemId === item.id ? (
                         <ItemForm
                           initial={item}
@@ -458,7 +505,7 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                           onCancel={() => setEditingItemId(null)}
                         />
                       ) : (
-                        <div className="flex items-center gap-3">
+                        <div className={`grid gap-3 ${isWorkflowEmbedded ? 'md:grid-cols-[76px_minmax(0,1fr)_auto]' : 'md:grid-cols-[76px_minmax(0,1fr)_auto_auto]'} md:items-center`}>
                           <div className="flex flex-col items-center">
                             <label className="mb-1 block text-[10px] font-medium text-[#64748b]">완료</label>
                             <input
@@ -469,28 +516,30 @@ export default function ChecklistsPage({ embedded = false }: { embedded?: boolea
                               }
                             />
                           </div>
-                          <div className="flex-1">
+                          <div className="min-w-0">
                             <p className={`text-sm ${item.checked ? 'line-through text-[#64748b]' : 'text-[#0f1f3d]'}`}>
                               {item.order}. {item.name}
                             </p>
                             <p className="text-xs text-[#64748b]">필수: {item.required ? 'Y' : 'N'} | 비고: {item.notes || '-'}</p>
                           </div>
-                          <button className="secondary-btn" onClick={() => setEditingItemId(item.id)}>수정</button>
-                          <button
-                            className="danger-btn"
-                            onClick={() => {
-                              if (confirm('이 항목을 삭제하시겠습니까?')) {
-                                deleteItemMut.mutate({ checklistId: selectedId, itemId: item.id })
-                              }
-                            }}
-                          >
-                            삭제
-                          </button>
+                          <div className="flex items-center gap-2 md:justify-end">
+                            <button className="secondary-btn" onClick={() => setEditingItemId(item.id)}>수정</button>
+                            <button
+                              className="danger-btn"
+                              onClick={() => {
+                                if (confirm('이 항목을 삭제하시겠습니까?')) {
+                                  deleteItemMut.mutate({ checklistId: selectedId, itemId: item.id })
+                                }
+                              }}
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
                   ))}
-              {!checklist.items?.length && <EmptyState emoji="☑️" message="항목이 없어요" className="py-8" />}
+              {!checklist.items?.length && <EmptyState message="항목이 없습니다." className="py-8" />}
                 </div>
               </div>
             </div>

@@ -78,6 +78,7 @@ import ChecklistsPage from './ChecklistsPage'
 
 type WorkflowLocationState = {
   expandInstanceId?: number
+  highlightWorkflowId?: number
 }
 
 type StepDocumentDraft = {
@@ -168,6 +169,30 @@ function isFormationAssemblyWorkflow(instance: WorkflowInstance): boolean {
 type InstanceListView = 'active' | 'completed'
 type ActiveFilter = 'all' | 'not_started' | 'in_progress' | 'overdue'
 type CompletedRange = 'all' | '7d' | '30d'
+type WorkflowPageTab = 'templates' | 'active' | 'completed' | 'checklists' | 'periodic'
+
+const WORKFLOW_TAB_META: Record<WorkflowPageTab, { title: string; subtitle: string }> = {
+  active: {
+    title: '미완료 워크플로우',
+    subtitle: '지금 처리해야 할 워크플로우를 짧은 요약행으로 보고, 필요한 순간에만 단계와 서류를 펼쳐서 확인합니다.',
+  },
+  completed: {
+    title: '완료 이력',
+    subtitle: '완료된 워크플로우와 취소 이력을 감사 관점으로 정리해 마지막 단계와 종료 시점을 빠르게 검토합니다.',
+  },
+  templates: {
+    title: '템플릿 관리',
+    subtitle: '카테고리별 템플릿을 압축형 목록으로 관리하고, 우측 프리뷰에서 단계 구조와 실행 가능성을 함께 점검합니다.',
+  },
+  periodic: {
+    title: '정기 업무',
+    subtitle: '분기 리본과 편집 패널을 한 화면에 두고 반복 업무와 연간 생성 계획을 함께 운영합니다.',
+  },
+  checklists: {
+    title: '체크리스트',
+    subtitle: '레거시 점검표를 빠르게 확인하고 업무 또는 워크플로우로 전환해 후속 조치를 놓치지 않도록 구성합니다.',
+  },
+}
 
 function dueToneBadge(meta: { tone: InstanceDueTone; diffDays: number | null }): { label: string; className: string } | null {
   if (meta.tone === 'overdue') {
@@ -214,6 +239,44 @@ function completionBucketBadge(bucket: WorkflowCompletionBucket | null): { label
   return null
 }
 
+function WorkflowProgressDonut({
+  percent,
+  tone = 'blue',
+}: {
+  percent: number
+  tone?: 'blue' | 'green' | 'slate'
+}) {
+  const normalized = Math.max(0, Math.min(100, percent))
+  const radius = 15
+  const circumference = 2 * Math.PI * radius
+  const dashOffset = circumference * (1 - normalized / 100)
+  const stroke =
+    tone === 'green' ? '#1f5b45'
+      : tone === 'slate' ? '#64748b'
+        : '#558ef8'
+
+  return (
+    <div className="relative flex h-10 w-10 items-center justify-center">
+      <svg viewBox="0 0 40 40" className="h-10 w-10 -rotate-90">
+        <circle cx="20" cy="20" r={radius} stroke="#d8e5fb" strokeWidth="4" fill="none" />
+        <circle
+          cx="20"
+          cy="20"
+          r={radius}
+          stroke={stroke}
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className="transition-[stroke-dashoffset] duration-300 ease-out"
+        />
+      </svg>
+      <span className="absolute text-[9px] font-semibold text-[#0f1f3d]">{normalized}%</span>
+    </div>
+  )
+}
+
 function formatInstanceDate(value: string | null): string {
   if (!value) return '기록 없음'
   return new Date(value).toLocaleString('ko-KR', {
@@ -231,6 +294,12 @@ function filterChipClass(active: boolean): string {
 }
 
 const PERIODIC_MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
+const PERIODIC_QUARTERS = [
+  { label: 'Q1', months: [1, 2, 3] },
+  { label: 'Q2', months: [4, 5, 6] },
+  { label: 'Q3', months: [7, 8, 9] },
+  { label: 'Q4', months: [10, 11, 12] },
+]
 
 function periodicOccurrenceMonths(schedule: Pick<PeriodicSchedule, 'recurrence' | 'base_month'>): number[] {
   const baseMonth = Math.max(1, Math.min(12, Number(schedule.base_month || 1)))
@@ -1405,11 +1474,13 @@ function WorkflowDetail({
 function InstanceList({
   view,
   expandId,
+  highlightId,
   onPrintInstance,
   onResumeInstance,
 }: {
   view: InstanceListView
   expandId?: number | null
+  highlightId?: number | null
   onPrintInstance: (instance: WorkflowInstance) => void
   onResumeInstance?: (instanceId: number) => void
 }) {
@@ -1897,6 +1968,16 @@ function InstanceList({
   }, [expandId])
 
   useEffect(() => {
+    if (expandId == null) return
+    if (view === 'active') {
+      setActiveFilter('all')
+      return
+    }
+    setCompletedRange('all')
+    setIncludeCancelled(false)
+  }, [expandId, view])
+
+  useEffect(() => {
     if (!openId) return
     if (!(data ?? []).some((instance) => instance.id === openId)) {
       setOpenId(null)
@@ -1974,6 +2055,35 @@ function InstanceList({
   const isActiveView = view === 'active'
   const visibleRows = isActiveView ? visibleActiveRows : completedRows
 
+  useEffect(() => {
+    if (expandId == null || openId !== expandId) return
+
+    let cancelled = false
+    let timer: number | null = null
+    let attempts = 0
+
+    const scrollToInstance = () => {
+      if (cancelled) return
+      const target = document.getElementById(`workflow-instance-${expandId}`)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      attempts += 1
+      if (attempts >= 10) return
+      timer = window.setTimeout(scrollToInstance, 120)
+    }
+
+    scrollToInstance()
+
+    return () => {
+      cancelled = true
+      if (timer != null) {
+        window.clearTimeout(timer)
+      }
+    }
+  }, [cancelledRows, expandId, openId, visibleRows])
+
   if (isLoading) return <PageLoading />
 
   return (
@@ -2040,6 +2150,7 @@ function InstanceList({
 
       {visibleRows.map((row) => {
         const { inst } = row
+        const isHighlighted = highlightId === inst.id
         const nextCompletableStep = row.currentStep
         const dueMeta = row.dueMeta
         const progressPercent = row.progressPercent
@@ -2057,83 +2168,156 @@ function InstanceList({
         const primaryBadge = primaryBucketBadge(row.primaryBucket)
         const completionBadge = completionBucketBadge(row.completionBucket)
         return (
-        <div key={inst.id} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left hover:bg-[#f5f9ff]">
-            <div className="min-w-0 flex-1 space-y-2">
+        <div
+          key={inst.id}
+          id={`workflow-instance-${inst.id}`}
+          className={`overflow-hidden rounded-2xl border shadow-sm transition-shadow ${
+            isHighlighted ? 'ring-2 ring-[#558ef8]/45 shadow-md' : ''
+          } ${instanceToneClass}`}
+        >
+          <div
+            onClick={() => setOpenId(openId === inst.id ? null : inst.id)}
+            className="grid w-full cursor-pointer gap-3 px-3 py-3 text-left transition-colors hover:bg-[#f5f9ff] lg:grid-cols-[minmax(0,2.35fr)_minmax(150px,1fr)_minmax(132px,.9fr)_minmax(0,1.45fr)_auto]"
+          >
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <p className="truncate text-[13px] font-semibold text-[#0f1f3d]">{inst.name}</p>
+                <p className="truncate text-sm font-semibold text-[#0f1f3d]">{inst.name}</p>
                 {isActiveView && primaryBadge && <span className={primaryBadge.className}>{primaryBadge.label}</span>}
                 {!isActiveView && completionBadge && <span className={completionBadge.className}>{completionBadge.label}</span>}
                 {isActiveView && dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
               </div>
-              <p className="truncate text-xs text-[#64748b]">{inst.workflow_name} · {inst.trigger_date} · {row.displayConnection}</p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#64748b]">
-                <span>완료 단계 {row.completedStepCount + row.skippedStepCount}/{row.totalStepCount}</span>
-                {isActiveView ? (
-                  <span>현재 단계 {row.currentStep?.step_name ?? '없음'}</span>
-                ) : (
-                  <span>마지막 완료 {row.lastCompletedStep?.step_name ?? '-'}</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-36 overflow-hidden rounded-full bg-[#d8e5fb]">
-                  <div className="h-full rounded-full bg-[#558ef8] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
-                </div>
-                <span className="text-xs font-medium text-[#64748b]">
-                  {inst.progress || `${row.completedStepCount + row.skippedStepCount}/${row.totalStepCount}`}
-                </span>
+              <p className="mt-1 truncate text-xs text-[#64748b]">{inst.workflow_name}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#64748b]">
+                <span>연결 {row.displayConnection}</span>
+                <span>기준일 {inst.trigger_date}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onPrintInstance(inst)
-                }}
-                className="secondary-btn btn-sm inline-flex items-center gap-1"
-              >
-                <Printer size={13} /> 인쇄
-              </button>
-              {isActiveView && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    toggleInstanceEdit(inst)
-                  }}
-                  className="secondary-btn btn-sm text-xs"
-                >
-                  수정
-                </button>
-              )}
-              {isActiveView && nextCompletableStep && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    setOpenId(inst.id)
-                  }}
-                  className="secondary-btn btn-sm text-xs"
-                >
-                  다음 단계 보기
-                </button>
-              )}
-              {isActiveView && canSwapWorkflowTemplate(inst) && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    openSwapTemplateModal(inst)
-                  }}
-                  className="secondary-btn btn-sm inline-flex items-center gap-1 text-xs"
-                  title="진행 전(0%) 워크플로 템플릿 교체"
-                >
-                  <RefreshCcw size={13} />
-                  템플릿 교체
-                </button>
-              )}
-              <ChevronRight size={16} className={`text-[#64748b] transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
+
+            <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
+                {isActiveView ? '기한' : '종료'}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">
+                {isActiveView
+                  ? dueMeta.tone === 'overdue'
+                    ? '기한 경과'
+                    : dueMeta.tone === 'today'
+                      ? '오늘 마감'
+                      : dueMeta.tone === 'this_week'
+                        ? dueBadge?.label ?? '이번 주'
+                        : dueMeta.tone === 'later'
+                          ? '기한 여유'
+                          : '기한 없음'
+                  : row.isCancelled
+                    ? '취소 시점 미기록'
+                    : formatInstanceDate(inst.completed_at)}
+              </p>
+              <p className="mt-1 text-[11px] text-[#64748b]">
+                {isActiveView
+                  ? `기준일 ${inst.trigger_date}`
+                  : row.isCancelled
+                    ? '취소 이력'
+                    : `종료 ${formatCompletedAt(inst.completed_at) ?? formatInstanceDate(inst.completed_at)}`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-[#d8e5fb] bg-white px-3 py-2">
+              <WorkflowProgressDonut percent={progressPercent} tone={!isActiveView && row.isCompleted ? 'green' : row.isCancelled ? 'slate' : 'blue'} />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">진척</p>
+                <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">
+                  {row.completedStepCount + row.skippedStepCount}/{row.totalStepCount}
+                </p>
+                <p className="mt-1 text-[11px] text-[#64748b]">
+                  {inst.progress || `${row.completedStepCount + row.skippedStepCount}/${row.totalStepCount}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
+                {isActiveView ? '현재 단계' : '최종 단계'}
+              </p>
+              <p className="mt-1 truncate text-sm font-semibold text-[#0f1f3d]">
+                {isActiveView ? row.currentStep?.step_name ?? '현재 단계 없음' : row.lastCompletedStep?.step_name ?? '기록 없음'}
+              </p>
+              <p className="mt-1 truncate text-[11px] text-[#64748b]">
+                {isActiveView
+                  ? row.upcomingSteps[0]?.step_name
+                    ? `다음 ${row.upcomingSteps[0].step_name}`
+                    : row.remainingStepCount <= 1
+                      ? '다음 단계 없음'
+                      : `남은 단계 ${row.remainingStepCount - 1}개`
+                  : `총 ${row.totalStepCount}단계 중 ${row.completedStepCount + row.skippedStepCount}단계 완료`}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end text-[#64748b]">
+              <ChevronRight size={17} className={`transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
             </div>
           </div>
           {openId === inst.id && (
             <div className="space-y-2 border-t border-[#e6eefc] px-3 py-2.5">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                <div className="grid flex-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">워크플로우</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{inst.workflow_name}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{inst.trigger_date}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">연결 대상</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.displayConnection}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{inst.memo || '메모 없음'}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">단계</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.completedStepCount + row.skippedStepCount}/{row.totalStepCount} 완료</p>
+                    <p className="mt-1 text-xs text-[#64748b]">남은 단계 {row.remainingStepCount}개</p>
+                  </div>
+                  <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">{isActiveView ? '현재 포커스' : '감사 요약'}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">
+                      {isActiveView ? row.currentStep?.step_name ?? '현재 단계 없음' : row.lastCompletedStep?.step_name ?? '마지막 단계 없음'}
+                    </p>
+                    <p className="mt-1 text-xs text-[#64748b]">
+                      {isActiveView
+                        ? `기한 ${row.currentStep?.calculated_date ?? '미정'}`
+                        : row.isCompleted
+                          ? formatInstanceDate(inst.completed_at)
+                          : '취소 시점 미기록'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 xl:max-w-[280px] xl:justify-end">
+                  <button
+                    onClick={() => onPrintInstance(inst)}
+                    className="secondary-btn btn-sm inline-flex items-center gap-1"
+                  >
+                    <Printer size={13} /> 인쇄
+                  </button>
+                  {isActiveView && (
+                    <button
+                      onClick={() => toggleInstanceEdit(inst)}
+                      className="secondary-btn btn-sm"
+                    >
+                      인스턴스 수정
+                    </button>
+                  )}
+                  {isActiveView && canSwapWorkflowTemplate(inst) && (
+                    <button
+                      onClick={() => openSwapTemplateModal(inst)}
+                      className="secondary-btn btn-sm inline-flex items-center gap-1"
+                      title="진행 전(0%) 워크플로 템플릿 교체"
+                    >
+                      <RefreshCcw size={13} />
+                      템플릿 교체
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {isActiveView && editingInstanceId === inst.id && editInstance && (
                 <div className="mb-2 space-y-2 rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] p-2.5">
                   <div>
@@ -2196,29 +2380,6 @@ function InstanceList({
                 </div>
               )}
 
-              {!isActiveView && (
-                <div className="mb-2 grid gap-2 md:grid-cols-4">
-                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Completed</p>
-                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">
-                      {row.isCompleted ? formatInstanceDate(inst.completed_at) : '취소 시점 미기록'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Last Step</p>
-                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.lastCompletedStep?.step_name ?? '-'}</p>
-                  </div>
-                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Progress</p>
-                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.completedStepCount + row.skippedStepCount}/{row.totalStepCount} 단계 완료</p>
-                  </div>
-                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Connection</p>
-                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.displayConnection}</p>
-                  </div>
-                </div>
-              )}
-
               {!isActiveView && row.isCompleted && row.lastCompletedStep && onResumeInstance && (
                 <div className="mb-2 flex justify-end">
                   <button
@@ -2269,25 +2430,25 @@ function InstanceList({
                   <div key={step.id} className="space-y-1.5">
                     {isActiveView && row.currentStep?.id === step.id && (
                       <div className="px-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Current</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">현재</p>
                         <p className="text-sm font-semibold text-[#0f1f3d]">현재 단계</p>
                       </div>
                     )}
                     {isActiveView && row.upcomingSteps[0]?.id === step.id && (
                       <div className="px-1 pt-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Upcoming</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">예정</p>
                         <p className="text-sm font-semibold text-[#0f1f3d]">예정 단계</p>
                       </div>
                     )}
                     {isActiveView && row.completedSteps[0]?.id === step.id && (
                       <div className="px-1 pt-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Completed</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">완료</p>
                         <p className="text-sm font-semibold text-[#0f1f3d]">완료된 단계</p>
                       </div>
                     )}
                     {!isActiveView && row.orderedSteps[0]?.id === step.id && (
                       <div className="px-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Timeline</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">타임라인</p>
                         <p className="text-sm font-semibold text-[#0f1f3d]">전체 단계 타임라인</p>
                       </div>
                     )}
@@ -2712,20 +2873,27 @@ function InstanceList({
         <section className="space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Cancelled</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">취소</p>
               <p className="text-sm font-semibold text-[#0f1f3d]">취소된 워크플로우</p>
             </div>
             <span className="text-xs text-[#64748b]">취소 시점은 별도 기록되지 않습니다.</span>
           </div>
           {cancelledRows.map((row) => {
             const { inst } = row
+            const isHighlighted = highlightId === inst.id
             const dueMeta = row.dueMeta
             const progressPercent = row.progressPercent
             const dueBadge = dueToneBadge(dueMeta)
             const instanceToneClass = 'border-[#cbd5e1] bg-[#f8fafc]'
             const completionBadge = completionBucketBadge(row.completionBucket)
             return (
-              <div key={`cancelled-${inst.id}`} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
+              <div
+                key={`cancelled-${inst.id}`}
+                id={`workflow-instance-${inst.id}`}
+                className={`overflow-hidden rounded-xl border shadow-sm transition-shadow ${
+                  isHighlighted ? 'ring-2 ring-[#558ef8]/45 shadow-md' : ''
+                } ${instanceToneClass}`}
+              >
                 <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left hover:bg-[#f5f9ff]">
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -2764,19 +2932,19 @@ function InstanceList({
                   <div className="space-y-2 border-t border-[#e6eefc] px-3 py-2.5">
                     <div className="mb-2 grid gap-2 md:grid-cols-4">
                       <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Completed</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">종료</p>
                         <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">취소 시점 미기록</p>
                       </div>
                       <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Last Step</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">최종 단계</p>
                         <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.lastCompletedStep?.step_name ?? '-'}</p>
                       </div>
                       <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Progress</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">진척</p>
                         <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.completedStepCount + row.skippedStepCount}/{row.totalStepCount} 단계 완료</p>
                       </div>
                       <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Connection</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">연결 대상</p>
                         <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.displayConnection}</p>
                       </div>
                     </div>
@@ -2981,69 +3149,111 @@ function PeriodicSchedulesPanel() {
     return byMonth
   }, [schedules])
 
+  const timelineByQuarter = useMemo(() => (
+    PERIODIC_QUARTERS.map((quarter) => ({
+      ...quarter,
+      entries: quarter.months.map((month) => ({
+        month,
+        label: PERIODIC_MONTH_LABELS[month - 1],
+        rows: timelineByMonth.get(month) ?? [],
+      })),
+    }))
+  ), [timelineByMonth])
+
   return (
-    <div className="space-y-4">
-      <div className="card-base flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-[#0f1f3d]">정기 업무 캘린더</h3>
-          <p className="text-sm text-[#64748b]">분기/반기/연간 템플릿을 연간 단위로 일괄 생성합니다.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="number"
-            min={2000}
-            max={2100}
-            value={year}
-            onChange={(event) => setYear(Number(event.target.value || new Date().getFullYear()))}
-            className="form-input w-28"
-          />
-          <button
-            onClick={() => generateMut.mutate(true)}
-            className="secondary-btn"
-            disabled={generateMut.isPending}
-          >
-            {generateMut.isPending ? '실행 중...' : '드라이런'}
-          </button>
-          <button
-            onClick={() => {
-              if (!confirm(`${year}년 정기 일정을 실제 생성하시겠습니까?`)) return
-              generateMut.mutate(false)
-            }}
-            className="primary-btn"
-            disabled={generateMut.isPending}
-          >
-            {generateMut.isPending ? '생성 중...' : `${year}년 일정 생성`}
-          </button>
+    <div className="space-y-2.5">
+      <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-3 shadow-sm">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-xs font-semibold text-[#1a3660]">
+                정기 업무 {schedules.length}건
+              </span>
+              <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
+                활성 규칙 {schedules.filter((schedule) => schedule.is_active).length}건
+              </span>
+              <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
+                템플릿 연결 {schedules.filter((schedule) => schedule.workflow_template_id).length}건
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-[#64748b]">연간 생성 전에 분기 리본으로 반복 시점을 검토하고, 아래 편집 패널에서 규칙을 바로 수정합니다.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="number"
+              min={2000}
+              max={2100}
+              value={year}
+              onChange={(event) => setYear(Number(event.target.value || new Date().getFullYear()))}
+              className="form-input w-28"
+            />
+            <button
+              onClick={() => generateMut.mutate(true)}
+              className="secondary-btn"
+              disabled={generateMut.isPending}
+            >
+              {generateMut.isPending ? '실행 중...' : '드라이런'}
+            </button>
+            <button
+              onClick={() => {
+                if (!confirm(`${year}년 정기 일정을 실제 생성하시겠습니까?`)) return
+                generateMut.mutate(false)
+              }}
+              className="primary-btn"
+              disabled={generateMut.isPending}
+            >
+              {generateMut.isPending ? '생성 중...' : `${year}년 일정 생성`}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="card-base overflow-hidden">
-        <div className="overflow-x-auto pb-2">
-          <div className="grid min-w-max grid-cols-12 gap-2 px-0.5">
-            {PERIODIC_MONTH_LABELS.map((label, monthIndex) => {
-              const month = monthIndex + 1
-              const rows = timelineByMonth.get(month) ?? []
-              return (
-                <div key={label} className="w-[96px] min-w-[96px] max-w-[96px] rounded-lg border border-[#d8e5fb] bg-white p-2">
-                  <p className="mb-2 text-xs font-semibold text-[#0f1f3d]">{label}</p>
-                  <div className="space-y-1">
-                    {rows.length === 0 ? (
-                      <p className="text-xs text-[#64748b]">-</p>
-                    ) : (
-                      rows.map((schedule) => (
-                        <p
-                          key={`${month}-${schedule.id}`}
-                          className={`rounded border px-1.5 py-0.5 text-xs leading-snug break-all ${periodicCategoryClass(schedule.category)}`}
-                        >
-                          {schedule.name}
-                        </p>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+      <div className="card-base space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-[#0f1f3d]">분기 리본</h3>
+            <p className="text-sm text-[#64748b]">분기별 반복 시점과 월별 발생 규칙을 한 화면에서 점검합니다.</p>
           </div>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-4">
+          {timelineByQuarter.map((quarter) => (
+            <div key={quarter.label} className="rounded-2xl border border-[#d8e5fb] bg-white p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">{quarter.label}</p>
+                  <p className="text-sm font-semibold text-[#0f1f3d]">분기 리본</p>
+                </div>
+                <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-0.5 text-[11px] font-semibold text-[#64748b]">
+                  {quarter.entries.reduce((sum, entry) => sum + entry.rows.length, 0)}건
+                </span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {quarter.entries.map((entry) => (
+                  <div key={`${quarter.label}-${entry.month}`} className="rounded-xl border border-[#e4ecfb] bg-[#f8fbff] px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#0f1f3d]">{entry.label}</p>
+                      <span className="text-[11px] text-[#94a3b8]">{entry.rows.length}건</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {entry.rows.length === 0 ? (
+                        <span className="text-[11px] text-[#94a3b8]">예정 없음</span>
+                      ) : (
+                        entry.rows.map((schedule) => (
+                          <span
+                            key={`${entry.month}-${schedule.id}`}
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${periodicCategoryClass(schedule.category)}`}
+                          >
+                            {schedule.name}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -3060,23 +3270,38 @@ function PeriodicSchedulesPanel() {
           ) : (
             <div className="space-y-1.5">
               {schedules.map((schedule) => (
-                <div key={schedule.id} className={`rounded-lg border p-2 ${editingId === schedule.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb] bg-white'}`}>
-                  <div className="flex items-start justify-between gap-2">
+                <div
+                  key={schedule.id}
+                  onClick={() => setEditingId(schedule.id)}
+                  className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${editingId === schedule.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb] bg-white hover:bg-[#f5f9ff]'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#0f1f3d] break-all">{schedule.name}</p>
-                      <p className="text-xs text-[#64748b] break-all">
-                        {schedule.category} | {periodicRecurrenceLabel(schedule.recurrence)} | {schedule.base_month}/{schedule.base_day}
-                        {schedule.fund_type_filter ? ` | 필터 ${schedule.fund_type_filter}` : ''}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-[#0f1f3d] break-all">{schedule.name}</p>
+                        <span className="rounded-full border border-[#d8e5fb] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#64748b]">
+                          {periodicRecurrenceLabel(schedule.recurrence)}
+                        </span>
+                        {!schedule.is_active && (
+                          <span className="rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-2 py-0.5 text-[10px] font-semibold text-[#64748b]">
+                            비활성
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-[#64748b] break-all">
+                        {schedule.category} · {schedule.base_month}/{schedule.base_day}
+                        {schedule.fund_type_filter ? ` · 필터 ${schedule.fund_type_filter}` : ''}
+                        {schedule.workflow_template_id ? ' · 템플릿 연결' : ' · 템플릿 미연결'}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <button onClick={() => setEditingId(schedule.id)} className="secondary-btn text-xs">수정</button>
                       <button
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation()
                           if (!confirm('이 정기 업무를 삭제하시겠습니까?')) return
                           deleteMut.mutate(schedule.id)
                         }}
-                        className="danger-btn text-xs"
+                        className="danger-btn btn-xs"
                         disabled={deleteMut.isPending}
                       >
                         삭제
@@ -3252,14 +3477,16 @@ export default function WorkflowsPage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const locationState = (location.state as WorkflowLocationState | null) ?? null
+  const requestedInstanceId = locationState?.expandInstanceId ?? locationState?.highlightWorkflowId ?? null
 
   const requestedTab = searchParams.get('tab')
-  const isSupportedTab = (value: string | null): value is 'templates' | 'active' | 'completed' | 'checklists' | 'periodic' =>
+  const isSupportedTab = (value: string | null): value is WorkflowPageTab =>
     value === 'templates' || value === 'active' || value === 'completed' || value === 'checklists' || value === 'periodic'
-  const [tab, setTab] = useState<'templates' | 'active' | 'completed' | 'checklists' | 'periodic'>(
+  const [tab, setTab] = useState<WorkflowPageTab>(
     isSupportedTab(requestedTab) ? requestedTab : 'active',
   )
-  const [focusedInstanceId, setFocusedInstanceId] = useState<number | null>(locationState?.expandInstanceId ?? null)
+  const [focusedInstanceId, setFocusedInstanceId] = useState<number | null>(requestedInstanceId)
+  const [highlightedInstanceId, setHighlightedInstanceId] = useState<number | null>(requestedInstanceId)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -3297,7 +3524,7 @@ export default function WorkflowsPage() {
     }
   }, [requestedTab, tab])
 
-  const changeTab = (nextTab: 'templates' | 'active' | 'completed' | 'checklists' | 'periodic') => {
+  const changeTab = (nextTab: WorkflowPageTab) => {
     setTab(nextTab)
     const nextParams = new URLSearchParams(searchParams)
     if (nextTab === 'active') nextParams.delete('tab')
@@ -3306,16 +3533,27 @@ export default function WorkflowsPage() {
   }
 
   useEffect(() => {
-    if (!locationState?.expandInstanceId) return
-    setFocusedInstanceId(locationState.expandInstanceId)
+    if (!requestedInstanceId) return
+    setFocusedInstanceId(requestedInstanceId)
+    setHighlightedInstanceId(requestedInstanceId)
     if (tab !== 'active') {
       setTab('active')
     }
-    if (requestedTab == null) return
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.delete('tab')
-    setSearchParams(nextParams, { replace: true })
-  }, [locationState?.expandInstanceId, requestedTab, searchParams, setSearchParams, tab])
+    if (requestedTab != null) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('tab')
+      setSearchParams(nextParams, { replace: true })
+    }
+    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
+  }, [requestedInstanceId, requestedTab, searchParams, setSearchParams, tab])
+
+  useEffect(() => {
+    if (!highlightedInstanceId) return
+    const timer = window.setTimeout(() => {
+      setHighlightedInstanceId((prev) => (prev === highlightedInstanceId ? null : prev))
+    }, 3000)
+    return () => window.clearTimeout(timer)
+  }, [highlightedInstanceId])
 
   const createMut = useMutation({
     mutationFn: createWorkflowTemplate,
@@ -3350,18 +3588,6 @@ export default function WorkflowsPage() {
     printWorkflowTemplateChecklist(template)
   }
 
-  const handlePrintTemplateById = async (workflowId: number) => {
-    try {
-      const template = await queryClient.fetchQuery({
-        queryKey: ['workflow', workflowId],
-        queryFn: () => fetchWorkflow(workflowId),
-      })
-      printWorkflowTemplateChecklist(template)
-    } catch {
-      addToast('error', '템플릿 정보를 불러오지 못했습니다.')
-    }
-  }
-
   const handlePrintInstance = async (instance: WorkflowInstance) => {
     try {
       const template = await queryClient.fetchQuery({
@@ -3388,21 +3614,33 @@ export default function WorkflowsPage() {
     }
   }
 
+  const headerMeta = WORKFLOW_TAB_META[tab]
+  const selectedTemplateMeta = templates?.find((template) => template.id === selectedId) ?? null
+
   return (
     <div className="page-container space-y-6">
       <div className="page-header">
-        <div>
-          <h2 className="page-title">워크플로우</h2>
-          <p className="page-subtitle">미완료 워크플로우를 우선 처리하고, 완료 이력을 감사 관점에서 확인합니다.</p>
+        <div className="min-w-0 flex-1 lg:max-w-[860px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="page-title">워크플로우</h2>
+            <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+              {headerMeta.title}
+            </span>
+          </div>
+          <p className="page-subtitle min-h-[40px]">{headerMeta.subtitle}</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => changeTab('templates')} className="secondary-btn">템플릿 관리</button>
-          <button onClick={() => { changeTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2"><Plus size={16} /> 템플릿 생성</button>
+        <div className="flex min-h-[40px] flex-wrap items-start justify-end gap-2 self-start">
+          <button onClick={() => changeTab('templates')} className="secondary-btn">
+            템플릿 관리
+          </button>
+          <button onClick={() => { changeTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2">
+            <Plus size={16} /> 템플릿 생성
+          </button>
         </div>
       </div>
 
-      <div className="border-b border-[#d8e5fb]">
-        <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="rounded-2xl border border-[#d8e5fb] bg-white px-3 py-2 shadow-sm">
+        <div className="flex gap-1 overflow-x-auto">
           {[
             { key: 'active' as const, label: '미완료' },
             { key: 'completed' as const, label: '완료' },
@@ -3426,84 +3664,132 @@ export default function WorkflowsPage() {
       </div>
 
       {tab === 'templates' && (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start">
-          <div className="card-base space-y-2 xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100vh-8rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden">
-            {isLoading ? (
-              <PageLoading />
-            ) : !(templates?.length) ? (
-              <EmptyState message="등록된 템플릿이 없습니다." className="py-10" />
-            ) : (
-              <div className="space-y-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
-                {Array.from(groupedTemplates.entries()).map(([category, items]) => (
-                  <div key={category} className="space-y-1">
-                    <button
-                      onClick={() => toggleCategory(category)}
-                      className="flex w-full items-center justify-between rounded-lg bg-[#f5f9ff] px-2 py-1 text-left hover:bg-[#f5f9ff]"
-                    >
-                      <div className="flex items-center gap-1">
-                        <ChevronRight
-                          size={12}
-                          className={`text-[#64748b] transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
-                        />
-                        <span className="text-xs font-semibold text-[#64748b]">{category}</span>
-                      </div>
-                      <span className="text-xs text-[#64748b]">{items.length}개</span>
-                    </button>
-                    {!collapsedCategories.has(category) && (
-                      <div className="space-y-2">
-                        {items.map((row: WorkflowListItem) => (
-                          <div key={row.id} className={`border rounded-lg p-2 ${selectedId === row.id ? 'border-[#b2cbfb] bg-[#f5f9ff]' : 'border-[#d8e5fb]'}`}>
-                            <div className="flex items-start justify-between gap-2">
-                              <button onClick={() => setSelectedId(row.id)} className="w-full text-left">
-                                <p className="text-sm font-medium text-[#0f1f3d]">{row.name}</p>
-                                <p className="text-xs text-[#64748b]">{row.step_count}단계{row.total_duration ? ` · ${row.total_duration}` : ''}</p>
-                              </button>
-                              <button
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  setSelectedId(selectedId === row.id ? null : row.id)
-                                }}
-                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selectedId === row.id
-                                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                                    : 'border-[#bfcff0] bg-white hover:border-[#9fb7e5]'
-                                  }`}
-                                aria-label="템플릿 체크"
-                                title={selectedId === row.id ? '체크 해제' : '체크'}
-                              >
-                                {selectedId === row.id && <Check size={12} />}
-                              </button>
-                            </div>
-                            <div className="mt-2 flex gap-1">
-                              <button
-                                onClick={() => handlePrintTemplateById(row.id)}
-                                className="secondary-btn inline-flex items-center gap-1"
-                              >
-                                <Printer size={14} /> 인쇄
-                              </button>
-                              <button onClick={() => { void openEditModal(row.id) }} className="secondary-btn">수정</button>
-                              <button onClick={() => { if (confirm('이 템플릿을 삭제하시겠습니까?')) deleteMut.mutate(row.id) }} className="danger-btn">삭제</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+        <div className="space-y-2.5">
+          <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-3 shadow-sm">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-xs font-semibold text-[#1a3660]">
+                    템플릿 {templates?.length ?? 0}개
+                  </span>
+                  <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
+                    카테고리 {groupedTemplates.size}개
+                  </span>
+                  <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
+                    {selectedTemplateMeta ? `선택 ${selectedTemplateMeta.name}` : '템플릿 선택 대기'}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[#64748b]">카테고리 인덱스와 상세 패널을 같은 기준선에서 탐색하고, 선택한 템플릿의 단계 구조를 바로 확인합니다.</p>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="xl:col-span-2">
-            {selectedId ? (
-              <WorkflowDetail
-                workflowId={selectedId}
-                onClose={() => setSelectedId(null)}
-                onEdit={() => { void openEditModal(selectedId) }}
-                onPrint={handlePrintTemplate}
-              />
-            ) : (
-              <div className="card-base text-sm text-[#64748b]">템플릿을 선택하세요.</div>
-            )}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] xl:items-start">
+            <div className="card-base space-y-3 xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100vh-8rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden">
+              <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">템플릿 인덱스</p>
+                <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">카테고리별 목록</p>
+                <p className="mt-1 text-xs text-[#64748b]">좌측에서 선택하고 우측 패널에서 실행 흐름을 검토합니다.</p>
+              </div>
+              {isLoading ? (
+                <PageLoading />
+              ) : !(templates?.length) ? (
+                <EmptyState message="등록된 템플릿이 없습니다." className="py-10" />
+              ) : (
+                <div className="space-y-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+                  {Array.from(groupedTemplates.entries()).map(([category, items]) => (
+                    <div key={category} className="space-y-1.5">
+                      <button
+                        onClick={() => toggleCategory(category)}
+                        className="flex w-full items-center justify-between rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-left hover:bg-white"
+                      >
+                        <div className="flex items-center gap-1">
+                          <ChevronRight
+                            size={13}
+                            className={`text-[#64748b] transition-transform ${collapsedCategories.has(category) ? '' : 'rotate-90'}`}
+                          />
+                          <span className="text-xs font-semibold text-[#64748b]">{category}</span>
+                        </div>
+                        <span className="rounded-full border border-[#d8e5fb] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#64748b]">
+                          {items.length}개
+                        </span>
+                      </button>
+                      {!collapsedCategories.has(category) && (
+                        <div className="space-y-1.5">
+                          {items.map((row: WorkflowListItem) => (
+                            <button
+                              key={row.id}
+                              onClick={() => setSelectedId(row.id)}
+                              className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                                selectedId === row.id
+                                  ? 'border-[#b2cbfb] bg-[#f5f9ff] shadow-sm'
+                                  : 'border-[#d8e5fb] bg-white hover:bg-[#f5f9ff]'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="truncate text-sm font-semibold text-[#0f1f3d]">{row.name}</p>
+                                    {selectedId === row.id && (
+                                      <span className="rounded-full border border-[#b2cbfb] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#1a3660]">
+                                        선택됨
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#64748b]">
+                                    {row.trigger_description || '트리거 설명이 없습니다.'}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-[11px] font-semibold text-[#0f1f3d]">{row.step_count}단계</p>
+                                  <p className="mt-1 text-[11px] text-[#64748b]">{row.total_duration || '소요시간 미정'}</p>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[#64748b]">
+                                <span className="rounded-full border border-[#d8e5fb] bg-white px-2 py-0.5">
+                                  {row.category || '미분류'}
+                                </span>
+                                <span>템플릿 상세는 우측 패널에서 확인</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {selectedId && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button onClick={() => { void openEditModal(selectedId) }} className="secondary-btn">
+                    템플릿 수정
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!selectedId) return
+                      if (!confirm('이 템플릿을 삭제하시겠습니까?')) return
+                      deleteMut.mutate(selectedId)
+                    }}
+                    className="danger-btn"
+                  >
+                    템플릿 삭제
+                  </button>
+                </div>
+              )}
+              {selectedId ? (
+                <WorkflowDetail
+                  workflowId={selectedId}
+                  onClose={() => setSelectedId(null)}
+                  onEdit={() => { void openEditModal(selectedId) }}
+                  onPrint={handlePrintTemplate}
+                />
+              ) : (
+                <div className="card-base text-sm text-[#64748b]">템플릿을 선택하면 단계 구조와 실행 옵션이 오른쪽에 표시됩니다.</div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -3512,22 +3798,25 @@ export default function WorkflowsPage() {
         <InstanceList
           view="active"
           expandId={focusedInstanceId}
+          highlightId={highlightedInstanceId}
           onPrintInstance={handlePrintInstance}
         />
       )}
       {tab === 'completed' && (
         <InstanceList
           view="completed"
+          highlightId={highlightedInstanceId}
           onPrintInstance={handlePrintInstance}
           onResumeInstance={(instanceId) => {
             setFocusedInstanceId(instanceId)
+            setHighlightedInstanceId(instanceId)
             changeTab('active')
           }}
         />
       )}
       {tab === 'periodic' && <PeriodicSchedulesPanel />}
       {tab === 'checklists' && (
-        <ChecklistsPage embedded />
+        <ChecklistsPage embedded embeddedVariant="workflow" />
       )}
 
       {mode === 'create' && (

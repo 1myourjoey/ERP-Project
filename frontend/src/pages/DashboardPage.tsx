@@ -147,6 +147,7 @@ export default function DashboardPage() {
         fundRows={fundsSnapshotData.rows}
         fundTotals={fundsSnapshotData.totals}
         onNavigate={(path) => navigate(path)}
+        onOpenTask={(taskId) => navigate('/tasks', { state: { highlightTaskId: taskId } })}
         onOpenFund={(fundId) => navigate(`/funds/${fundId}`)}
       />
 
@@ -155,6 +156,7 @@ export default function DashboardPage() {
         workflows={workflowsData.active_workflows}
         weekDeadlines={deadlinesData.this_week_deadlines}
         onNavigate={(path) => navigate(path)}
+        onOpenWorkflow={(workflow) => navigate('/workflows', { state: { expandInstanceId: workflow.id } })}
       />
     </div>
   )

@@ -17,6 +17,7 @@ interface TodayPrioritiesProps {
   pipelineNoDeadlineTasks: Task[]
   pipelineActiveWorkflows: ActiveWorkflow[]
   onNavigate: (path: string) => void
+  onOpenTask: (taskId: number) => void
 }
 
 function urgencyDot(daysRemaining: number | null): string {
@@ -58,6 +59,7 @@ export default function TodayPriorities({
   pipelineNoDeadlineTasks,
   pipelineActiveWorkflows,
   onNavigate,
+  onOpenTask,
 }: TodayPrioritiesProps) {
   const [mode, setMode] = useState<'priorities' | 'pipeline'>('priorities')
   const [isFlowModalOpen, setIsFlowModalOpen] = useState(false)
@@ -120,7 +122,7 @@ export default function TodayPriorities({
                 key={`${item.type}-${item.id}`}
                 type="button"
                 className="flex min-h-[66px] w-full flex-col justify-between rounded-lg border border-[#d8e5fb] bg-white px-2.5 py-2 text-left hover:bg-[#f5f9ff]"
-                onClick={() => onNavigate(item.action_url)}
+                onClick={() => (item.type === 'task' ? onOpenTask(item.id) : onNavigate(item.action_url))}
               >
                 <div className="flex w-full items-start justify-between gap-2">
                   <p className="min-w-0 truncate text-xs font-semibold text-[#0f1f3d]">
@@ -165,7 +167,7 @@ export default function TodayPriorities({
                 key={`week-${item.type}-${item.id}`}
                 type="button"
                 className="flex w-full items-center justify-between rounded px-2 py-1 text-left hover:bg-[#f5f9ff]"
-                onClick={() => onNavigate(item.action_url)}
+                onClick={() => (item.type === 'task' ? onOpenTask(item.id) : onNavigate(item.action_url))}
               >
                 <span className="truncate text-xs text-[#0f1f3d]">{item.title}</span>
                 <span className="ml-2 shrink-0 text-[11px] text-[#64748b]">

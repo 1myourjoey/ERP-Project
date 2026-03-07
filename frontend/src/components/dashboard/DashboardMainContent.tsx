@@ -22,6 +22,7 @@ interface DashboardMainContentProps {
   fundRows: DashboardFundSnapshotItem[]
   fundTotals: DashboardFundsSnapshotResponse['totals']
   onNavigate: (path: string) => void
+  onOpenTask: (taskId: number) => void
   onOpenFund: (fundId: number) => void
 }
 
@@ -38,6 +39,7 @@ export default function DashboardMainContent({
   fundRows,
   fundTotals,
   onNavigate,
+  onOpenTask,
   onOpenFund,
 }: DashboardMainContentProps) {
   return (
@@ -54,6 +56,7 @@ export default function DashboardMainContent({
           pipelineNoDeadlineTasks={pipelineNoDeadlineTasks}
           pipelineActiveWorkflows={pipelineActiveWorkflows}
           onNavigate={onNavigate}
+          onOpenTask={onOpenTask}
         />
       </div>
       <div className="xl:col-span-1">
