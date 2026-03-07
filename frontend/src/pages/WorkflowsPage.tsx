@@ -66,6 +66,14 @@ import PageLoading from '../components/PageLoading'
 import DrawerOverlay from '../components/common/DrawerOverlay'
 import FileAttachmentPanel from '../components/common/FileAttachmentPanel'
 import { invalidateFundRelated, invalidateWorkflowRelated } from '../lib/queryInvalidation'
+import {
+  buildWorkflowInstanceView,
+  isWithinRecentDays,
+  workflowPrimaryBucketRank,
+  type InstanceDueTone,
+  type WorkflowCompletionBucket,
+  type WorkflowPrimaryBucket,
+} from '../lib/workflowInstanceView'
 import ChecklistsPage from './ChecklistsPage'
 
 type WorkflowLocationState = {
@@ -157,94 +165,69 @@ function isFormationAssemblyWorkflow(instance: WorkflowInstance): boolean {
   return workflowName.includes('결성총회') || instanceName.includes('결성총회') || memo.includes('formation_slot=결성총회개최')
 }
 
-type InstanceDueTone = 'overdue' | 'today' | 'this_week' | 'later' | 'none'
-
-function parseInstanceProgress(progress: string): { percent: number } {
-  const match = progress.match(/(\d+)\/(\d+)/)
-  if (!match) return { percent: 0 }
-  const current = Number.parseInt(match[1], 10)
-  const total = Number.parseInt(match[2], 10)
-  if (!Number.isFinite(current) || !Number.isFinite(total) || total <= 0) return { percent: 0 }
-  return { percent: Math.max(0, Math.min(100, Math.round((current / total) * 100))) }
-}
-
-function parseIsoAsLocalDate(value: string | null | undefined): Date | null {
-  if (!value) return null
-  const normalized = value.includes('T') ? value : `${value}T00:00:00`
-  const parsed = new Date(normalized)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed
-}
-
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
-function isSameLocalDate(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate()
-  )
-}
-
-function resolveInstanceDueTone(nextStepDate: string | null | undefined, now = new Date()): { tone: InstanceDueTone; diffDays: number | null; dueTime: number } {
-  const parsedDate = parseIsoAsLocalDate(nextStepDate)
-  if (!parsedDate) {
-    return { tone: 'none', diffDays: null, dueTime: Number.MAX_SAFE_INTEGER }
-  }
-  const dueTime = parsedDate.getTime()
-  if (isSameLocalDate(parsedDate, now)) {
-    return { tone: 'today', diffDays: 0, dueTime }
-  }
-  if (dueTime < now.getTime()) {
-    return { tone: 'overdue', diffDays: null, dueTime }
-  }
-
-  const dayMs = 24 * 60 * 60 * 1000
-  const diffDays = Math.floor((startOfLocalDay(parsedDate).getTime() - startOfLocalDay(now).getTime()) / dayMs)
-  if (diffDays >= 1 && diffDays <= 7) {
-    return { tone: 'this_week', diffDays, dueTime }
-  }
-  return { tone: 'later', diffDays, dueTime }
-}
-
-function dueToneRank(tone: InstanceDueTone): number {
-  switch (tone) {
-    case 'overdue':
-      return 0
-    case 'today':
-      return 1
-    case 'this_week':
-      return 2
-    case 'later':
-      return 3
-    case 'none':
-    default:
-      return 4
-  }
-}
+type InstanceListView = 'active' | 'completed'
+type ActiveFilter = 'all' | 'not_started' | 'in_progress' | 'overdue'
+type CompletedRange = 'all' | '7d' | '30d'
 
 function dueToneBadge(meta: { tone: InstanceDueTone; diffDays: number | null }): { label: string; className: string } | null {
   if (meta.tone === 'overdue') {
     return {
       label: '지연',
-      className: 'rounded-full border border-red-300 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800',
+      className: 'rounded-full border border-[#bfa5a7] bg-[#f1e8e9] px-2 py-0.5 text-xs font-semibold text-[#3b1219]',
     }
   }
   if (meta.tone === 'today') {
     return {
       label: '오늘',
-      className: 'rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800',
+      className: 'rounded-full border border-[#d4a418] bg-[#fff7d6] px-2 py-0.5 text-xs font-semibold text-[#624100]',
     }
   }
   if (meta.tone === 'this_week') {
     return {
       label: meta.diffDays && meta.diffDays > 0 ? `D-${meta.diffDays}` : '이번주',
-      className: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800',
+      className: 'rounded-full border border-[#d4a418] bg-[#fff7d6] px-2 py-0.5 text-xs font-semibold text-[#624100]',
     }
   }
   return null
+}
+
+function primaryBucketBadge(bucket: WorkflowPrimaryBucket | null): { label: string; className: string } | null {
+  if (bucket === 'overdue') {
+    return { label: '지연', className: 'rounded-full border border-[#bfa5a7] bg-[#f1e8e9] px-2 py-0.5 text-[11px] font-semibold text-[#3b1219]' }
+  }
+  if (bucket === 'in_progress') {
+    return { label: '진행 중', className: 'rounded-full border border-[#b2cbfb] bg-[#e6efff] px-2 py-0.5 text-[11px] font-semibold text-[#1a3660]' }
+  }
+  if (bucket === 'not_started') {
+    return { label: '시작 전', className: 'rounded-full border border-[#d8e5fb] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#64748b]' }
+  }
+  return null
+}
+
+function completionBucketBadge(bucket: WorkflowCompletionBucket | null): { label: string; className: string } | null {
+  if (bucket === 'completed') {
+    return { label: '완료', className: 'rounded-full border border-[#bed7c9] bg-[#eef6f2] px-2 py-0.5 text-[11px] font-semibold text-[#1f5b45]' }
+  }
+  if (bucket === 'cancelled') {
+    return { label: '취소', className: 'rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-semibold text-[#475569]' }
+  }
+  return null
+}
+
+function formatInstanceDate(value: string | null): string {
+  if (!value) return '기록 없음'
+  return new Date(value).toLocaleString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function filterChipClass(active: boolean): string {
+  return active
+    ? 'border-[#558ef8] bg-white text-[#1a3660] shadow-sm'
+    : 'border-[#d8e5fb] bg-[#f5f9ff] text-[#64748b] hover:bg-white'
 }
 
 const PERIODIC_MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
@@ -1420,17 +1403,22 @@ function WorkflowDetail({
 }
 
 function InstanceList({
-  status,
+  view,
   expandId,
   onPrintInstance,
+  onResumeInstance,
 }: {
-  status: 'active' | 'completed'
+  view: InstanceListView
   expandId?: number | null
   onPrintInstance: (instance: WorkflowInstance) => void
+  onResumeInstance?: (instanceId: number) => void
 }) {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const [openId, setOpenId] = useState<number | null>(expandId ?? null)
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all')
+  const [completedRange, setCompletedRange] = useState<CompletedRange>('all')
+  const [includeCancelled, setIncludeCancelled] = useState(false)
   const [editingInstanceId, setEditingInstanceId] = useState<number | null>(null)
   const [editInstance, setEditInstance] = useState<{ name: string; trigger_date: string; memo: string } | null>(null)
   const [swapTarget, setSwapTarget] = useState<WorkflowInstance | null>(null)
@@ -1442,7 +1430,10 @@ function InstanceList({
     draft: StepDocumentDraft
   } | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['workflowInstances', { status }], queryFn: () => fetchWorkflowInstances({ status }) })
+  const { data, isLoading } = useQuery({
+    queryKey: ['workflowInstances', { status: 'all' }],
+    queryFn: () => fetchWorkflowInstances({ status: 'all' }),
+  })
   const { data: workflowTemplates = [] } = useQuery<WorkflowListItem[]>({
     queryKey: ['workflows'],
     queryFn: fetchWorkflows,
@@ -1900,90 +1891,197 @@ function InstanceList({
     })
   }
 
-  const instanceRows = useMemo(() => {
-    const rows = (data ?? []).map((inst) => {
-      const nextStep = inst.step_instances.find((step) => step.status !== 'completed' && step.status !== 'skipped') ?? null
-      const dueMeta = resolveInstanceDueTone(nextStep?.calculated_date)
-      const { percent } = parseInstanceProgress(inst.progress || '')
-      return {
-        inst,
-        nextStep,
-        dueMeta,
-        progressPercent: percent,
-      }
-    })
+  useEffect(() => {
+    if (expandId === undefined) return
+    setOpenId(expandId ?? null)
+  }, [expandId])
 
-    if (status === 'active') {
-      rows.sort((a, b) => {
-        const rankDiff = dueToneRank(a.dueMeta.tone) - dueToneRank(b.dueMeta.tone)
-        if (rankDiff !== 0) return rankDiff
+  useEffect(() => {
+    if (!openId) return
+    if (!(data ?? []).some((instance) => instance.id === openId)) {
+      setOpenId(null)
+    }
+  }, [data, openId])
+
+  const instanceRows = useMemo(() => {
+    const now = new Date()
+    return (data ?? []).map((inst) => buildWorkflowInstanceView(inst, now))
+  }, [data])
+
+  const activeRows = useMemo(() => (
+    [...instanceRows]
+      .filter((row) => row.inst.status === 'active')
+      .sort((a, b) => {
+        const bucketDiff = workflowPrimaryBucketRank(a.primaryBucket) - workflowPrimaryBucketRank(b.primaryBucket)
+        if (bucketDiff !== 0) return bucketDiff
         if (a.dueMeta.dueTime !== b.dueMeta.dueTime) return a.dueMeta.dueTime - b.dueMeta.dueTime
         return a.inst.id - b.inst.id
       })
-    } else {
-      rows.sort((a, b) => {
-        const completedA = a.inst.completed_at ? new Date(a.inst.completed_at).getTime() : 0
-        const completedB = b.inst.completed_at ? new Date(b.inst.completed_at).getTime() : 0
-        return completedB - completedA
+  ), [instanceRows])
+
+  const visibleActiveRows = useMemo(() => {
+    if (activeFilter === 'all') return activeRows
+    return activeRows.filter((row) => row.primaryBucket === activeFilter)
+  }, [activeFilter, activeRows])
+
+  const completedRows = useMemo(() => {
+    const now = new Date()
+    return [...instanceRows]
+      .filter((row) => row.isCompleted)
+      .filter((row) => {
+        if (completedRange === 'all') return true
+        return isWithinRecentDays(row.inst.completed_at, completedRange === '7d' ? 7 : 30, now)
       })
+      .sort((a, b) => {
+        if (a.completedAtMs !== b.completedAtMs) return b.completedAtMs - a.completedAtMs
+        return b.inst.id - a.inst.id
+      })
+  }, [completedRange, instanceRows])
+
+  const cancelledRows = useMemo(() => {
+    const now = new Date()
+    return [...instanceRows]
+      .filter((row) => row.isCancelled)
+      .filter((row) => {
+        if (completedRange === 'all') return true
+        return isWithinRecentDays(row.inst.created_at, completedRange === '7d' ? 7 : 30, now)
+      })
+      .sort((a, b) => {
+        if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs
+        return b.inst.id - a.inst.id
+      })
+  }, [completedRange, instanceRows])
+
+  const activeSummary = useMemo(() => ({
+    total: activeRows.length,
+    notStarted: activeRows.filter((row) => row.primaryBucket === 'not_started').length,
+    inProgress: activeRows.filter((row) => row.primaryBucket === 'in_progress').length,
+    overdue: activeRows.filter((row) => row.primaryBucket === 'overdue').length,
+    today: activeRows.filter((row) => row.dueMeta.tone === 'today').length,
+    weekDue: activeRows.filter((row) => row.dueMeta.tone === 'today' || row.dueMeta.tone === 'this_week').length,
+  }), [activeRows])
+
+  const completedSummary = useMemo(() => {
+    const now = new Date()
+    return {
+      total: instanceRows.filter((row) => row.isCompleted).length,
+      recent7d: instanceRows.filter((row) => row.isCompleted && isWithinRecentDays(row.inst.completed_at, 7, now)).length,
+      recent30d: instanceRows.filter((row) => row.isCompleted && isWithinRecentDays(row.inst.completed_at, 30, now)).length,
+      cancelled: instanceRows.filter((row) => row.isCancelled).length,
     }
+  }, [instanceRows])
 
-    return rows
-  }, [data, status])
-
-  const activeSummary = useMemo(() => {
-    if (status !== 'active') return null
-    const total = instanceRows.length
-    const overdue = instanceRows.filter((row) => row.dueMeta.tone === 'overdue').length
-    const weekDue = instanceRows.filter((row) => row.dueMeta.tone === 'today' || row.dueMeta.tone === 'this_week').length
-    return { total, overdue, weekDue }
-  }, [instanceRows, status])
+  const isActiveView = view === 'active'
+  const visibleRows = isActiveView ? visibleActiveRows : completedRows
 
   if (isLoading) return <PageLoading />
-  if (!(instanceRows.length)) {
-    return <EmptyState message={status === 'active' ? '진행 중인 워크플로가 없습니다.' : '완료된 워크플로가 없습니다.'} className="py-10" />
-  }
 
   return (
     <div className="space-y-2.5">
-      {activeSummary && (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-[#f5f9ff] px-2.5 py-1 font-medium text-[#64748b]">
-            전체 {activeSummary.total}건
-          </span>
-          {activeSummary.overdue > 0 && (
-            <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-700">
-              지연 {activeSummary.overdue}건
+      {isActiveView ? (
+        <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {[
+              { key: 'all' as const, label: '전체', count: activeSummary.total },
+              { key: 'not_started' as const, label: '시작 전', count: activeSummary.notStarted },
+              { key: 'in_progress' as const, label: '진행 중', count: activeSummary.inProgress },
+              { key: 'overdue' as const, label: '지연', count: activeSummary.overdue },
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setActiveFilter(filter.key)}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${filterChipClass(activeFilter === filter.key)}`}
+              >
+                {filter.label} {filter.count}건
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 font-medium text-[#64748b]">
+              오늘 마감 {activeSummary.today}건
             </span>
-          )}
-          {activeSummary.weekDue > 0 && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700">
+            <span className="rounded-full border border-[#d4a418] bg-[#fff7d6] px-2.5 py-1 font-medium text-[#624100]">
               이번 주 마감 {activeSummary.weekDue}건
             </span>
-          )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {[
+              { key: 'all' as const, label: '전체', count: completedSummary.total },
+              { key: '7d' as const, label: '최근 7일', count: completedSummary.recent7d },
+              { key: '30d' as const, label: '최근 30일', count: completedSummary.recent30d },
+            ].map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                onClick={() => setCompletedRange(range.key)}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${filterChipClass(completedRange === range.key)}`}
+              >
+                {range.label} {range.count}건
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setIncludeCancelled((prev) => !prev)}
+              className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${filterChipClass(includeCancelled)}`}
+            >
+              취소 포함 {completedSummary.cancelled}건
+            </button>
+          </div>
         </div>
       )}
 
-      {instanceRows.map(({ inst, nextStep: nextCompletableStep, dueMeta, progressPercent }) => {
+      {!visibleRows.length && !(view === 'completed' && includeCancelled && cancelledRows.length > 0) ? (
+        <EmptyState message={isActiveView ? '미완료 워크플로우가 없습니다.' : '완료된 워크플로우가 없습니다.'} className="py-10" />
+      ) : null}
+
+      {visibleRows.map((row) => {
+        const { inst } = row
+        const nextCompletableStep = row.currentStep
+        const dueMeta = row.dueMeta
+        const progressPercent = row.progressPercent
         const dueBadge = dueToneBadge(dueMeta)
         const instanceToneClass =
-          dueMeta.tone === 'overdue'
-            ? 'border-red-200 bg-red-50/50'
-            : dueMeta.tone === 'today'
-              ? 'border-amber-200 bg-amber-50/50'
+          isActiveView
+            ? row.primaryBucket === 'overdue'
+              ? 'border-[#bfa5a7] bg-[#fffafb]'
+              : row.primaryBucket === 'in_progress'
+                ? 'border-[#b2cbfb] bg-white'
+                : 'border-[#d8e5fb] bg-white'
+            : row.isCancelled
+              ? 'border-[#cbd5e1] bg-[#f8fafc]'
               : 'border-[#d8e5fb] bg-white'
+        const primaryBadge = primaryBucketBadge(row.primaryBucket)
+        const completionBadge = completionBucketBadge(row.completionBucket)
         return (
         <div key={inst.id} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
-          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f5f9ff]">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-[#0f1f3d]">{inst.name}</p>
-              <p className="truncate text-xs text-[#64748b]">{inst.workflow_name} | {inst.trigger_date}</p>
-              <div className="mt-1.5 flex items-center gap-1.5">
+          <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left hover:bg-[#f5f9ff]">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="truncate text-[13px] font-semibold text-[#0f1f3d]">{inst.name}</p>
+                {isActiveView && primaryBadge && <span className={primaryBadge.className}>{primaryBadge.label}</span>}
+                {!isActiveView && completionBadge && <span className={completionBadge.className}>{completionBadge.label}</span>}
+                {isActiveView && dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
+              </div>
+              <p className="truncate text-xs text-[#64748b]">{inst.workflow_name} · {inst.trigger_date} · {row.displayConnection}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#64748b]">
+                <span>완료 단계 {row.completedStepCount + row.skippedStepCount}/{row.totalStepCount}</span>
+                {isActiveView ? (
+                  <span>현재 단계 {row.currentStep?.step_name ?? '없음'}</span>
+                ) : (
+                  <span>마지막 완료 {row.lastCompletedStep?.step_name ?? '-'}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-36 overflow-hidden rounded-full bg-[#d8e5fb]">
                   <div className="h-full rounded-full bg-[#558ef8] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
                 </div>
-                <span className="text-xs font-medium text-[#64748b]">{inst.progress}</span>
-                {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
+                <span className="text-xs font-medium text-[#64748b]">
+                  {inst.progress || `${row.completedStepCount + row.skippedStepCount}/${row.totalStepCount}`}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1996,7 +2094,7 @@ function InstanceList({
               >
                 <Printer size={13} /> 인쇄
               </button>
-              {status === 'active' && (
+              {isActiveView && (
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
@@ -2007,7 +2105,7 @@ function InstanceList({
                   수정
                 </button>
               )}
-              {status === 'active' && nextCompletableStep && (
+              {isActiveView && nextCompletableStep && (
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
@@ -2018,7 +2116,7 @@ function InstanceList({
                   다음 단계 보기
                 </button>
               )}
-              {status === 'active' && canSwapWorkflowTemplate(inst) && (
+              {isActiveView && canSwapWorkflowTemplate(inst) && (
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
@@ -2036,7 +2134,7 @@ function InstanceList({
           </div>
           {openId === inst.id && (
             <div className="space-y-2 border-t border-[#e6eefc] px-3 py-2.5">
-              {status === 'active' && editingInstanceId === inst.id && editInstance && (
+              {isActiveView && editingInstanceId === inst.id && editInstance && (
                 <div className="mb-2 space-y-2 rounded-lg border border-[#c5d8fb] bg-[#f5f9ff] p-2.5">
                   <div>
                     <label className="form-label">인스턴스 이름</label>
@@ -2098,32 +2196,107 @@ function InstanceList({
                 </div>
               )}
 
-              {inst.step_instances.map((step: WorkflowStepInstance) => {
+              {!isActiveView && (
+                <div className="mb-2 grid gap-2 md:grid-cols-4">
+                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Completed</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">
+                      {row.isCompleted ? formatInstanceDate(inst.completed_at) : '취소 시점 미기록'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Last Step</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.lastCompletedStep?.step_name ?? '-'}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Progress</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.completedStepCount + row.skippedStepCount}/{row.totalStepCount} 단계 완료</p>
+                  </div>
+                  <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Connection</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.displayConnection}</p>
+                  </div>
+                </div>
+              )}
+
+              {!isActiveView && row.isCompleted && row.lastCompletedStep && onResumeInstance && (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm('가장 최근 완료 단계를 되돌리고 워크플로우를 재개하시겠습니까?')) return
+                      undoStepMut.mutate(
+                        { instanceId: inst.id, stepId: row.lastCompletedStep!.id },
+                        {
+                          onSuccess: (instance) => {
+                            setOpenId(null)
+                            onResumeInstance(instance.id)
+                          },
+                        },
+                      )
+                    }}
+                    className="secondary-btn btn-sm"
+                  >
+                    재개
+                  </button>
+                </div>
+              )}
+
+              {(
+                isActiveView
+                  ? [...(row.currentStep ? [row.currentStep] : []), ...row.upcomingSteps, ...row.completedSteps]
+                  : row.orderedSteps
+              ).map((step: WorkflowStepInstance) => {
                 const canComplete =
-                  status === 'active' &&
+                  isActiveView &&
                   nextCompletableStep?.id === step.id &&
                   step.status !== 'completed' &&
                   step.status !== 'skipped'
                 const isCurrentStep =
-                  status === 'active' &&
+                  isActiveView &&
                   nextCompletableStep?.id === step.id &&
                   step.status !== 'completed' &&
                   step.status !== 'skipped'
                 const stepDocuments = step.step_documents ?? []
                 const requiredUncheckedCount = stepDocuments.filter((doc) => doc.required && !doc.checked).length
                 const canMutateStepDocuments =
-                  status === 'active' && step.status !== 'completed' && step.status !== 'skipped'
+                  isActiveView && step.status !== 'completed' && step.status !== 'skipped'
                 const hasDraft = Boolean(newStepDocDrafts[step.id])
                 const newDraft = getNewStepDocDraft(step.id)
                 const editingCurrentDocument =
                   editingStepDocument && editingStepDocument.stepId === step.id ? editingStepDocument : null
                 return (
-                  <div key={step.id} className="flex-col space-y-1.5 rounded-lg bg-[#f5f9ff] px-2.5 py-2 text-xs">
+                  <div key={step.id} className="space-y-1.5">
+                    {isActiveView && row.currentStep?.id === step.id && (
+                      <div className="px-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Current</p>
+                        <p className="text-sm font-semibold text-[#0f1f3d]">현재 단계</p>
+                      </div>
+                    )}
+                    {isActiveView && row.upcomingSteps[0]?.id === step.id && (
+                      <div className="px-1 pt-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Upcoming</p>
+                        <p className="text-sm font-semibold text-[#0f1f3d]">예정 단계</p>
+                      </div>
+                    )}
+                    {isActiveView && row.completedSteps[0]?.id === step.id && (
+                      <div className="px-1 pt-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Completed</p>
+                        <p className="text-sm font-semibold text-[#0f1f3d]">완료된 단계</p>
+                      </div>
+                    )}
+                    {!isActiveView && row.orderedSteps[0]?.id === step.id && (
+                      <div className="px-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Timeline</p>
+                        <p className="text-sm font-semibold text-[#0f1f3d]">전체 단계 타임라인</p>
+                      </div>
+                    )}
+                    <div className={`flex-col space-y-1.5 rounded-lg px-2.5 py-2 text-xs ${step.status === 'completed' && !isActiveView ? 'border border-[#e2e8f0] bg-[#f8fafc] opacity-75' : step.status === 'completed' ? 'border border-[#e2e8f0] bg-[#f8fafc] opacity-85' : isCurrentStep ? 'border border-[#b2cbfb] bg-[#f5f9ff]' : 'border border-[#d8e5fb] bg-white'}`}>
                     <div className="flex items-center gap-1.5">
                       {step.status === 'completed' ? (
                         <div className="flex items-center gap-1">
                           <Check size={14} className="text-emerald-600" />
-                          {status === 'active' && (
+                          {isActiveView && row.lastCompletedStep?.id === step.id && (
                             <button
                               onClick={() => undoStepMut.mutate({ instanceId: inst.id, stepId: step.id })}
                               className="text-xs text-[#64748b] hover:text-[#558ef8]"
@@ -2132,7 +2305,7 @@ function InstanceList({
                             </button>
                           )}
                         </div>
-                      ) : status === 'active' ? (
+                      ) : isActiveView ? (
                         canComplete ? (
                           <button
                             onClick={() => handleCompleteStep(inst, step)}
@@ -2356,7 +2529,7 @@ function InstanceList({
                                         </label>
                                       )}
                                     </div>
-                                    <span className={`rounded px-1.5 py-0.5 text-xs ${doc.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    <span className={`rounded px-1.5 py-0.5 text-xs ${doc.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-[#fff7d6] text-[#624100]'}`}>
                                       {doc.checked ? '확인 완료' : '미확인'}
                                     </span>
                                     {canMutateStepDocuments && (
@@ -2496,15 +2669,16 @@ function InstanceList({
                       )}
 
                       {requiredUncheckedCount > 0 && (
-                        <p className="mt-1 text-xs font-medium text-amber-700">
+                        <p className="mt-1 text-xs font-medium text-[#624100]">
                           필수 서류 {requiredUncheckedCount}건 미확인
                         </p>
                       )}
                     </div>
                   </div>
+                  </div>
                 )
               })}
-              {status === 'active' && (
+              {isActiveView && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -2533,6 +2707,97 @@ function InstanceList({
         </div>
         )
       })}
+
+      {!isActiveView && includeCancelled && cancelledRows.length > 0 && (
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8]">Cancelled</p>
+              <p className="text-sm font-semibold text-[#0f1f3d]">취소된 워크플로우</p>
+            </div>
+            <span className="text-xs text-[#64748b]">취소 시점은 별도 기록되지 않습니다.</span>
+          </div>
+          {cancelledRows.map((row) => {
+            const { inst } = row
+            const dueMeta = row.dueMeta
+            const progressPercent = row.progressPercent
+            const dueBadge = dueToneBadge(dueMeta)
+            const instanceToneClass = 'border-[#cbd5e1] bg-[#f8fafc]'
+            const completionBadge = completionBucketBadge(row.completionBucket)
+            return (
+              <div key={`cancelled-${inst.id}`} className={`overflow-hidden rounded-xl border shadow-sm ${instanceToneClass}`}>
+                <div onClick={() => setOpenId(openId === inst.id ? null : inst.id)} className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left hover:bg-[#f5f9ff]">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate text-[13px] font-semibold text-[#0f1f3d]">{inst.name}</p>
+                      {completionBadge && <span className={completionBadge.className}>{completionBadge.label}</span>}
+                      {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
+                    </div>
+                    <p className="truncate text-xs text-[#64748b]">{inst.workflow_name} · {inst.trigger_date} · {row.displayConnection}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#64748b]">
+                      <span>완료 단계 {row.completedStepCount + row.skippedStepCount}/{row.totalStepCount}</span>
+                      <span>마지막 완료 {row.lastCompletedStep?.step_name ?? '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-36 overflow-hidden rounded-full bg-[#d8e5fb]">
+                        <div className="h-full rounded-full bg-[#94a3b8] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        {inst.progress || `${row.completedStepCount + row.skippedStepCount}/${row.totalStepCount}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onPrintInstance(inst)
+                      }}
+                      className="secondary-btn btn-sm inline-flex items-center gap-1"
+                    >
+                      <Printer size={13} /> 인쇄
+                    </button>
+                    <ChevronRight size={16} className={`text-[#64748b] transition-transform ${openId === inst.id ? 'rotate-90' : ''}`} />
+                  </div>
+                </div>
+                {openId === inst.id && (
+                  <div className="space-y-2 border-t border-[#e6eefc] px-3 py-2.5">
+                    <div className="mb-2 grid gap-2 md:grid-cols-4">
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Completed</p>
+                        <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">취소 시점 미기록</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Last Step</p>
+                        <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.lastCompletedStep?.step_name ?? '-'}</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Progress</p>
+                        <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.completedStepCount + row.skippedStepCount}/{row.totalStepCount} 단계 완료</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">Connection</p>
+                        <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{row.displayConnection}</p>
+                      </div>
+                    </div>
+                    {row.orderedSteps.map((step) => (
+                      <div key={`cancelled-step-${step.id}`} className={`flex-col space-y-1.5 rounded-lg border px-2.5 py-2 text-xs ${step.status === 'completed' ? 'border-[#e2e8f0] bg-[#f8fafc] opacity-75' : 'border-[#d8e5fb] bg-white'}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-4 w-4 rounded-full border border-[#d8e5fb] bg-white" />
+                          <span className={`flex-1 ${step.status === 'completed' ? 'line-through text-[#64748b]' : 'text-[#0f1f3d]'}`}>{step.step_name}</span>
+                          <span className="text-xs text-[#64748b]">{labelStatus(step.status)}</span>
+                          <span className="text-xs text-[#64748b]">{step.calculated_date}</span>
+                          {step.completed_at && <span className="text-xs text-[#64748b]">{formatCompletedAt(step.completed_at)}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       <DrawerOverlay
         open={!!swapTarget}
@@ -2994,6 +3259,7 @@ export default function WorkflowsPage() {
   const [tab, setTab] = useState<'templates' | 'active' | 'completed' | 'checklists' | 'periodic'>(
     isSupportedTab(requestedTab) ? requestedTab : 'active',
   )
+  const [focusedInstanceId, setFocusedInstanceId] = useState<number | null>(locationState?.expandInstanceId ?? null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<'create' | 'edit' | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
@@ -3041,6 +3307,7 @@ export default function WorkflowsPage() {
 
   useEffect(() => {
     if (!locationState?.expandInstanceId) return
+    setFocusedInstanceId(locationState.expandInstanceId)
     if (tab !== 'active') {
       setTab('active')
     }
@@ -3126,7 +3393,7 @@ export default function WorkflowsPage() {
       <div className="page-header">
         <div>
           <h2 className="page-title">워크플로우</h2>
-          <p className="page-subtitle">실행 중/완료 워크플로 중심으로 진행 상황을 관리합니다.</p>
+          <p className="page-subtitle">미완료 워크플로우를 우선 처리하고, 완료 이력을 감사 관점에서 확인합니다.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => changeTab('templates')} className="secondary-btn">템플릿 관리</button>
@@ -3137,7 +3404,7 @@ export default function WorkflowsPage() {
       <div className="border-b border-[#d8e5fb]">
         <div className="flex gap-1 overflow-x-auto pb-1">
           {[
-            { key: 'active' as const, label: '진행 중' },
+            { key: 'active' as const, label: '미완료' },
             { key: 'completed' as const, label: '완료' },
             { key: 'templates' as const, label: '템플릿 관리' },
             { key: 'periodic' as const, label: '정기 업무' },
@@ -3243,12 +3510,21 @@ export default function WorkflowsPage() {
 
       {tab === 'active' && (
         <InstanceList
-          status="active"
-          expandId={locationState?.expandInstanceId ?? null}
+          view="active"
+          expandId={focusedInstanceId}
           onPrintInstance={handlePrintInstance}
         />
       )}
-      {tab === 'completed' && <InstanceList status="completed" onPrintInstance={handlePrintInstance} />}
+      {tab === 'completed' && (
+        <InstanceList
+          view="completed"
+          onPrintInstance={handlePrintInstance}
+          onResumeInstance={(instanceId) => {
+            setFocusedInstanceId(instanceId)
+            changeTab('active')
+          }}
+        />
+      )}
       {tab === 'periodic' && <PeriodicSchedulesPanel />}
       {tab === 'checklists' && (
         <ChecklistsPage embedded />
