@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation, useSearchParams } from 'react-router-dom'
 
 import {
   calculateManagementFee,
@@ -31,6 +32,7 @@ import { useToast } from '../contexts/ToastContext'
 import { formatKRW } from '../lib/labels'
 
 type TabKey = 'overview' | 'management' | 'performance'
+type FeeManagementRouteState = { fundId?: number; tab?: TabKey } | null
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'overview', label: '보수 현황' },
@@ -84,6 +86,21 @@ function formatRatePercent(value: number | null | undefined) {
   return `${((value || 0) * 100).toFixed(2)}%`
 }
 
+function toPercentInputValue(value: number | null | undefined) {
+  if (value == null) return ''
+  return Number(((value || 0) * 100).toFixed(4))
+}
+
+function fromPercentInputValue(value: string) {
+  if (value.trim() === '') return 0
+  return Number(value) / 100
+}
+
+function fromNullablePercentInputValue(value: string) {
+  if (value.trim() === '') return null
+  return Number(value) / 100
+}
+
 function quarterStartDate(year: number, quarter: number) {
   return new Date(year, (quarter - 1) * 3, 1)
 }
@@ -123,9 +140,26 @@ function StatusPill({ status }: { status: string }) {
 export default function FeeManagementPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
 
-  const [activeTab, setActiveTab] = useState<TabKey>('overview')
-  const [selectedFundId, setSelectedFundId] = useState<number | null>(null)
+  const routeState = location.state as FeeManagementRouteState
+  const requestedFundId = useMemo(() => {
+    const fromSearch = Number(searchParams.get('fund') || '')
+    if (Number.isFinite(fromSearch) && fromSearch > 0) return fromSearch
+    return typeof routeState?.fundId === 'number' && routeState.fundId > 0 ? routeState.fundId : null
+  }, [routeState?.fundId, searchParams])
+  const requestedTab = useMemo<TabKey>(() => {
+    const fromSearch = searchParams.get('tab')
+    if (fromSearch === 'overview' || fromSearch === 'management' || fromSearch === 'performance') return fromSearch
+    if (routeState?.tab === 'overview' || routeState?.tab === 'management' || routeState?.tab === 'performance') {
+      return routeState.tab
+    }
+    return 'overview'
+  }, [routeState?.tab, searchParams])
+
+  const [activeTab, setActiveTab] = useState<TabKey>(requestedTab)
+  const [selectedFundId, setSelectedFundId] = useState<number | null>(requestedFundId)
   const [calcYear, setCalcYear] = useState<number>(new Date().getFullYear())
   const [calcQuarter, setCalcQuarter] = useState<number>(Math.ceil((new Date().getMonth() + 1) / 3))
   const [scenario, setScenario] = useState<'worst' | 'base' | 'best'>('base')
@@ -133,10 +167,18 @@ export default function FeeManagementPage() {
   const { data: funds = [] } = useQuery<Fund[]>({ queryKey: ['funds'], queryFn: fetchFunds })
 
   useEffect(() => {
+    if (requestedFundId && funds.some((fund) => fund.id === requestedFundId)) {
+      setSelectedFundId(requestedFundId)
+      return
+    }
     if (!selectedFundId && funds.length > 0) {
       setSelectedFundId(funds[0].id)
     }
-  }, [funds, selectedFundId])
+  }, [funds, requestedFundId, selectedFundId])
+
+  useEffect(() => {
+    setActiveTab(requestedTab)
+  }, [requestedTab])
 
   const { data: allManagementFees = [], isLoading: overviewLoading } = useQuery<ManagementFeeResponse[]>({
     queryKey: ['fees', 'management'],
@@ -425,7 +467,15 @@ export default function FeeManagementPage() {
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div>
                           <label className="form-label">연 관리보수율</label>
-                          <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={toPercentInputValue(draftConfig.mgmt_fee_rate)}
+                            onChange={(e) =>
+                              setDraftConfig((prev) => (prev ? { ...prev, mgmt_fee_rate: fromPercentInputValue(e.target.value) } : prev))
+                            }
+                            className="form-input"
+                          />
                         </div>
                         <div>
                           <label className="form-label">기준금액</label>
@@ -453,7 +503,16 @@ export default function FeeManagementPage() {
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div>
                           <label className="form-label">종료 후 연율</label>
-                          <input type="number" step="0.0001" value={draftConfig.liquidation_fee_rate ?? ''} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, liquidation_fee_rate: e.target.value === '' ? null : Number(e.target.value) } : prev)} className="form-input" placeholder="미입력 시 기존 연율 유지" />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={draftConfig.liquidation_fee_rate == null ? '' : toPercentInputValue(draftConfig.liquidation_fee_rate)}
+                            onChange={(e) =>
+                              setDraftConfig((prev) => (prev ? { ...prev, liquidation_fee_rate: fromNullablePercentInputValue(e.target.value) } : prev))
+                            }
+                            className="form-input"
+                            placeholder="미입력 시 기존 연율 유지"
+                          />
                         </div>
                         <div>
                           <label className="form-label">종료 후 기준금액</label>
@@ -464,11 +523,27 @@ export default function FeeManagementPage() {
                         </div>
                         <div>
                           <label className="form-label">허들율</label>
-                          <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={toPercentInputValue(draftConfig.hurdle_rate)}
+                            onChange={(e) =>
+                              setDraftConfig((prev) => (prev ? { ...prev, hurdle_rate: fromPercentInputValue(e.target.value) } : prev))
+                            }
+                            className="form-input"
+                          />
                         </div>
                         <div>
                           <label className="form-label">캐리율</label>
-                          <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={toPercentInputValue(draftConfig.carry_rate)}
+                            onChange={(e) =>
+                              setDraftConfig((prev) => (prev ? { ...prev, carry_rate: fromPercentInputValue(e.target.value) } : prev))
+                            }
+                            className="form-input"
+                          />
                         </div>
                       </div>
                     </div>

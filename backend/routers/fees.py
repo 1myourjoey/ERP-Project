@@ -43,6 +43,18 @@ def _to_float(value) -> float:
     return float(value)
 
 
+def _percent_to_decimal(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return round(float(value) / 100, 6)
+
+
+def _decimal_to_percent(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return round(float(value) * 100, 4)
+
+
 def _latest_nav(db: Session, fund_id: int) -> float:
     rows = (
         db.query(Valuation)
@@ -101,6 +113,25 @@ def _resolve_basis_amount(db: Session, fund: Fund, basis_type: str) -> float:
     if basis_type == "invested":
         return _total_invested(db, fund.id)
     return float(fund.commitment_total or 0)
+
+
+def _seed_config_from_fund(config: FeeConfig, fund: Fund | None) -> None:
+    if not fund:
+        return
+    if fund.mgmt_fee_rate is not None:
+        config.mgmt_fee_rate = _percent_to_decimal(fund.mgmt_fee_rate)
+    if fund.performance_fee_rate is not None:
+        config.carry_rate = _percent_to_decimal(fund.performance_fee_rate)
+    if fund.hurdle_rate is not None:
+        config.hurdle_rate = _percent_to_decimal(fund.hurdle_rate)
+
+
+def _sync_fund_rates_from_config(fund: Fund | None, config: FeeConfig) -> None:
+    if not fund:
+        return
+    fund.mgmt_fee_rate = _decimal_to_percent(_to_float(config.mgmt_fee_rate))
+    fund.performance_fee_rate = _decimal_to_percent(_to_float(config.carry_rate))
+    fund.hurdle_rate = _decimal_to_percent(_to_float(config.hurdle_rate))
 
 
 def _resolve_phase(fund: Fund, year: int, quarter: int) -> str:
@@ -250,7 +281,9 @@ def _get_or_create_config(db: Session, fund_id: int) -> FeeConfig:
     config = db.query(FeeConfig).filter(FeeConfig.fund_id == fund_id).first()
     if config:
         return config
+    fund = db.get(Fund, fund_id)
     config = FeeConfig(fund_id=fund_id)
+    _seed_config_from_fund(config, fund)
     db.add(config)
     db.flush()
     return config
@@ -375,6 +408,7 @@ def put_fee_config(
     payload = data.model_dump()
     for key, value in payload.items():
         setattr(config, key, value)
+    _sync_fund_rates_from_config(db.get(Fund, fund_id), config)
     try:
         db.commit()
     except Exception:

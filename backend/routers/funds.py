@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.fee import FeeConfig
 from models.fund import Fund, LP, FundNoticePeriod, FundKeyTerm
 from models.gp_entity import GPEntity
 from models.lp_address_book import LPAddressBook
@@ -50,6 +51,38 @@ from services.compliance_rule_engine import ComplianceRuleEngine
 router = APIRouter(tags=["funds"])
 logger = logging.getLogger(__name__)
 OVERVIEW_UNIT = 1_000_000
+
+
+def _percent_to_decimal(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return round(float(value) / 100, 6)
+
+
+def _sync_fee_config_from_fund(db: Session, fund: Fund, changed_keys: set[str] | None = None) -> None:
+    fee_keys = {"mgmt_fee_rate", "performance_fee_rate", "hurdle_rate"}
+    if changed_keys is not None and not (changed_keys & fee_keys):
+        return
+
+    if (
+        fund.mgmt_fee_rate is None
+        and fund.performance_fee_rate is None
+        and fund.hurdle_rate is None
+    ):
+        return
+
+    config = db.query(FeeConfig).filter(FeeConfig.fund_id == fund.id).first()
+    if config is None:
+        config = FeeConfig(fund_id=fund.id)
+        db.add(config)
+        db.flush()
+
+    if fund.mgmt_fee_rate is not None:
+        config.mgmt_fee_rate = _percent_to_decimal(fund.mgmt_fee_rate)
+    if fund.performance_fee_rate is not None:
+        config.carry_rate = _percent_to_decimal(fund.performance_fee_rate)
+    if fund.hurdle_rate is not None:
+        config.hurdle_rate = _percent_to_decimal(fund.hurdle_rate)
 
 MIGRATION_FUND_HEADERS = [
     "fund_key",
@@ -1703,6 +1736,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
         db.add(fund)
         db.flush()
         _cleanup_fund_capital_calls(db, fund.id)
+        _sync_fee_config_from_fund(db, fund)
 
         _ensure_gp_lp_record(
             db,
@@ -1746,6 +1780,7 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     for key, val in update_payload.items():
         setattr(fund, key, val)
 
+    _sync_fee_config_from_fund(db, fund, set(update_payload.keys()))
     db.commit()
     db.refresh(fund)
     _run_compliance_rule_checks(

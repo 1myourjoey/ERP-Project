@@ -24,10 +24,12 @@ import {
   fetchDistributions,
   fetchDocumentStatus,
   fetchFeeConfig,
+  fetchFeeWaterfall,
   fetchFund,
   fetchInvestments,
   fetchTasks,
   fetchManagementFeesByFund,
+  fetchPerformanceFeeSimulations,
   fetchLPTransfers,
   fetchLPAddressBooks,
   fetchValuations,
@@ -63,8 +65,10 @@ import {
   type LPTransferInput,
   type ManagementFeeResponse,
   type NoticeDeadlineResult,
+  type PerformanceFeeSimulationResponse,
   type Task,
   type Valuation,
+  type WaterfallResponse,
   type WorkflowInstance,
   type WorkflowListItem,
 } from '../lib/api'
@@ -78,6 +82,7 @@ import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import LPContributionPanel from '../components/fund/LPContributionPanel'
+import WaterfallSummary from '../components/finance/WaterfallSummary'
 import { generateLPReport, previewLPReportData } from '../lib/api/lpReports'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
 
@@ -302,6 +307,41 @@ function labelAssemblyType(value: string | null | undefined): string {
 function toDate(value: string | null | undefined): string {
   if (!value) return '-'
   return new Date(value).toLocaleDateString('ko-KR')
+}
+
+function formatPercentValue(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return '-'
+  return `${Number(value).toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`
+}
+
+function feeBasisLabel(value: string | null | undefined): string {
+  if (!value) return '-'
+  if (value === 'commitment') return '????'
+  if (value === 'nav') return '?????'
+  if (value === 'invested') return '????'
+  if (value === 'split') return '?? ? ?? ??'
+  return value
+}
+
+function prorationMethodLabel(value: string | null | undefined): string {
+  if (!value) return '-'
+  if (value === 'equal_quarter') return '????(??/4)'
+  if (value === 'actual_365') return '????(Actual/365)'
+  if (value === 'actual_366') return '????(Actual/366)'
+  if (value === 'actual_actual') return '????(Actual/Actual)'
+  return value
+}
+
+function scenarioLabel(value: string | null | undefined): string {
+  if (value === 'worst') return '???'
+  if (value === 'best') return '??'
+  return value === 'base' ? '??' : (value || '-')
+}
+
+function feePhaseLabel(value: string | null | undefined): string {
+  if (value === 'split') return '?? ? ?? ??'
+  if (value === 'post_investment') return '???? ?? ?'
+  return value === 'investment' ? '???? ?' : (value || '-')
 }
 
 function todayIso(): string {
@@ -1194,6 +1234,19 @@ export default function FundDetailPage() {
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
 
+  const { data: fundPerformanceFees = [] } = useQuery<PerformanceFeeSimulationResponse[]>({
+    queryKey: ['fees', 'performance', fundId],
+    queryFn: () => fetchPerformanceFeeSimulations(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0,
+  })
+
+  const { data: fundWaterfall } = useQuery<WaterfallResponse>({
+    queryKey: ['fees', 'waterfall', fundId],
+    queryFn: () => fetchFeeWaterfall(fundId),
+    enabled: Number.isFinite(fundId) && fundId > 0 && fundPerformanceFees.length > 0,
+    retry: false,
+  })
+
   const { data: missingDocs } = useQuery<DocumentStatusItem[]>({
     queryKey: ['documentStatus', { fund_id: fundId, status: 'pending' }],
     queryFn: () => fetchDocumentStatus({ fund_id: fundId, status: 'pending' }),
@@ -1353,6 +1406,17 @@ export default function FundDetailPage() {
     () => fundManagementFees.filter((row) => row.status !== '수령').length,
     [fundManagementFees],
   )
+
+  const latestPerformanceFee = fundPerformanceFees[0] ?? null
+  const effectiveMgmtFeeRate = fundFeeConfig?.mgmt_fee_rate != null
+    ? Number(fundFeeConfig.mgmt_fee_rate) * 100
+    : fundDetail?.mgmt_fee_rate ?? null
+  const effectivePerformanceFeeRate = fundFeeConfig?.carry_rate != null
+    ? Number(fundFeeConfig.carry_rate) * 100
+    : fundDetail?.performance_fee_rate ?? null
+  const effectiveHurdleRate = fundFeeConfig?.hurdle_rate != null
+    ? Number(fundFeeConfig.hurdle_rate) * 100
+    : fundDetail?.hurdle_rate ?? null
 
   const sortedCapitalCalls = useMemo(
     () => [...capitalCalls].sort((a, b) => (a.call_date || '').localeCompare(b.call_date || '')),
@@ -3340,64 +3404,136 @@ export default function FundDetailPage() {
           )}
 
           {isFinanceTab && (
-            <div className="card-base space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-[#0f1f3d]">보수</h3>
-                <button onClick={() => navigate('/fee-management')} className="secondary-btn">보수 관리 화면으로 이동</button>
+            <div className="space-y-3">
+              <div className="card-base space-y-3">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">??? ?? ??</h3>
+                    <p className="text-xs text-[#64748b]">?? ??? ???? ?? ? ??? ??? ?? ???? ??????.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => navigate(`/fee-management?fund=${fundId}&tab=management`)} className="secondary-btn">???? ??</button>
+                    <button onClick={() => navigate(`/fee-management?fund=${fundId}&tab=performance`)} className="secondary-btn">???? ??</button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ?????
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatPercentValue(effectiveMgmtFeeRate)}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ?????
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatPercentValue(effectivePerformanceFeeRate)}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ?????
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatPercentValue(effectiveHurdleRate)}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ???? ??
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{feeBasisLabel(fundFeeConfig?.mgmt_fee_basis)}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ?? ????
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatKRW(feeTotalAmount)}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    ??? ??
+                    <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{feePendingCount}?</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
-                  관리보수율
-                  <p className="mt-1 text-base font-semibold text-[#0f1f3d]">
-                    {fundFeeConfig?.mgmt_fee_rate != null ? `${(Number(fundFeeConfig.mgmt_fee_rate) * 100).toFixed(2)}%` : '-'}
-                  </p>
-                </div>
-                <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
-                  관리보수 기준
-                  <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{fundFeeConfig?.mgmt_fee_basis || '-'}</p>
-                </div>
-                <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
-                  누적 관리보수
-                  <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatKRW(feeTotalAmount)}</p>
-                </div>
-                <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
-                  미수령 건수
-                  <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{feePendingCount}건</p>
-                </div>
-              </div>
-
-              <div className="overflow-auto rounded border border-[#d8e5fb]">
-                <table className="min-w-[720px] w-full text-sm">
-                  <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
-                    <tr>
-                      <th className="px-3 py-2 text-left">분기</th>
-                      <th className="px-3 py-2 text-left">기준</th>
-                      <th className="px-3 py-2 text-right">기준금액</th>
-                      <th className="px-3 py-2 text-right">보수금액</th>
-                      <th className="px-3 py-2 text-left">상태</th>
-                      <th className="px-3 py-2 text-left">청구/수령일</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {fundManagementFees.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-sm text-[#64748b]">관리보수 이력이 없습니다.</td>
-                      </tr>
-                    ) : (
-                      fundManagementFees.map((row) => (
-                        <tr key={row.id}>
-                          <td className="px-3 py-2">{row.year} Q{row.quarter}</td>
-                          <td className="px-3 py-2">{row.fee_basis}</td>
-                          <td className="px-3 py-2 text-right">{formatKRW(row.basis_amount)}</td>
-                          <td className="px-3 py-2 text-right">{formatKRW(row.fee_amount)}</td>
-                          <td className="px-3 py-2">{row.status}</td>
-                          <td className="px-3 py-2">{toDate(row.payment_date || row.invoice_date)}</td>
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                <div className="card-base space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">???? ??</h3>
+                    <span className="text-xs text-[#64748b]">{fundManagementFees.length}?</span>
+                  </div>
+                  <div className="overflow-auto rounded border border-[#d8e5fb]">
+                    <table className="min-w-[860px] w-full text-sm">
+                      <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
+                        <tr>
+                          <th className="px-3 py-2 text-left">??</th>
+                          <th className="px-3 py-2 text-left">????</th>
+                          <th className="px-3 py-2 text-left">??</th>
+                          <th className="px-3 py-2 text-left">????</th>
+                          <th className="px-3 py-2 text-right">????</th>
+                          <th className="px-3 py-2 text-right">????</th>
+                          <th className="px-3 py-2 text-left">??</th>
+                          <th className="px-3 py-2 text-left">??/???</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody className="divide-y">
+                        {fundManagementFees.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="px-3 py-8 text-center text-sm text-[#64748b]">???? ??? ????.</td>
+                          </tr>
+                        ) : (
+                          fundManagementFees.map((row) => (
+                            <tr key={row.id}>
+                              <td className="px-3 py-2">{row.year} Q{row.quarter}</td>
+                              <td className="px-3 py-2">{feePhaseLabel(row.applied_phase)}</td>
+                              <td className="px-3 py-2">{feeBasisLabel(row.fee_basis)}</td>
+                              <td className="px-3 py-2">{prorationMethodLabel(row.proration_method)}</td>
+                              <td className="px-3 py-2 text-right">{formatKRW(row.basis_amount)}</td>
+                              <td className="px-3 py-2 text-right">{formatKRW(row.fee_amount)}</td>
+                              <td className="px-3 py-2">{row.status}</td>
+                              <td className="px-3 py-2">{toDate(row.payment_date || row.invoice_date)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="card-base space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">????</h3>
+                    <span className="text-xs text-[#64748b]">????? {fundPerformanceFees.length}?</span>
+                  </div>
+
+                  {latestPerformanceFee ? (
+                    <>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                          ?? ????
+                          <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{scenarioLabel(latestPerformanceFee.scenario)}</p>
+                        </div>
+                        <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                          ??
+                          <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{latestPerformanceFee.status}</p>
+                        </div>
+                        <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                          ? ???
+                          <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatKRW(latestPerformanceFee.total_distributed)}</p>
+                        </div>
+                        <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                          GP ??
+                          <p className="mt-1 text-base font-semibold text-[#0f1f3d]">{formatKRW(latestPerformanceFee.carry_amount)}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded border border-[#d8e5fb] bg-white p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-xs font-semibold text-[#0f1f3d]">??? ??</p>
+                          <span className="text-[11px] text-[#64748b]">??? {toDate(latestPerformanceFee.simulation_date)}</span>
+                        </div>
+                        {fundWaterfall ? (
+                          <WaterfallSummary {...fundWaterfall} />
+                        ) : (
+                          <p className="rounded border border-dashed border-[#d8e5fb] px-3 py-8 text-center text-sm text-[#64748b]">??? ???? ??? ?? ?????? ???? ?????.</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded border border-dashed border-[#d8e5fb] px-3 py-10 text-center text-sm text-[#64748b]">
+                      ???? ????? ??? ????. ?? ? ????? ?????? ???? ? ?? ??? ?????.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
