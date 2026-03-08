@@ -182,6 +182,13 @@ def _normalize_call_type_key(call_type: str | None) -> str:
 
 
 def _capital_call_round(db: Session, call: CapitalCall) -> int:
+    contribution_round = (
+        db.query(func.coalesce(func.max(LPContribution.round_no), 0))
+        .filter(LPContribution.fund_id == call.fund_id)
+        .scalar()
+    )
+    if int(contribution_round or 0) > 0:
+        return int(contribution_round or 0)
     if call.id is None:
         return 1
     return max(
@@ -487,7 +494,12 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
         db.add(call)
         db.flush()
 
-        next_round_map: dict[int, int] = {}
+        next_round = (
+            db.query(func.coalesce(func.max(LPContribution.round_no), 0))
+            .filter(LPContribution.fund_id == data.fund_id)
+            .scalar()
+        )
+        call_round = int(next_round or 0) + 1
         for item_data, amount, lp in item_payloads:
             row = CapitalCallItem(
                 capital_call_id=call.id,
@@ -499,18 +511,6 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
             )
             db.add(row)
 
-            if lp.id not in next_round_map:
-                max_round = (
-                    db.query(func.coalesce(func.max(LPContribution.round_no), 0))
-                    .filter(
-                        LPContribution.fund_id == data.fund_id,
-                        LPContribution.lp_id == lp.id,
-                    )
-                    .scalar()
-                )
-                next_round_map[lp.id] = int(max_round or 0)
-            next_round_map[lp.id] += 1
-
             commitment = float(lp.commitment or 0)
             ratio = round((float(amount) / commitment) * 100, 4) if commitment > 0 else None
             contribution = LPContribution(
@@ -519,7 +519,7 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
                 due_date=data.call_date,
                 amount=float(amount),
                 commitment_ratio=ratio,
-                round_no=next_round_map[lp.id],
+                round_no=call_round,
                 actual_paid_date=item_data.paid_date or (date.today() if item_data.paid else None),
                 memo=item_data.memo,
                 capital_call_id=call.id,

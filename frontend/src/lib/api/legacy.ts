@@ -2510,6 +2510,8 @@ export interface FundMigrationValidateResponse {
   success: boolean
   fund_rows: number
   lp_rows: number
+  contribution_rows: number
+  warnings: MigrationErrorItem[]
   errors: MigrationErrorItem[]
 }
 
@@ -2518,11 +2520,14 @@ export interface FundMigrationImportResponse {
   mode: 'insert' | 'upsert'
   fund_rows: number
   lp_rows: number
+  contribution_rows: number
   created_funds: number
   updated_funds: number
   created_lps: number
   updated_lps: number
+  created_contributions: number
   synced_address_books: number
+  warnings: MigrationErrorItem[]
   errors: MigrationErrorItem[]
   validation: FundMigrationValidateResponse
 }

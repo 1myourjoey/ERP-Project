@@ -1,6 +1,6 @@
 from datetime import date as dt_date
 
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Date, DateTime, Float, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -42,6 +42,7 @@ class Fund(Base):
     performance_fee_rate = Column(Float, nullable=True)
     hurdle_rate = Column(Float, nullable=True)
     account_number = Column(String, nullable=True)
+    initial_import_completed_at = Column(DateTime, nullable=True)
 
     lps = relationship("LP", back_populates="fund", cascade="all, delete-orphan")
     lp_transfers = relationship("LPTransfer", back_populates="fund", cascade="all, delete-orphan")

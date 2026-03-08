@@ -82,6 +82,7 @@ import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import LPContributionPanel from '../components/fund/LPContributionPanel'
+import { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
 import WaterfallSummary from '../components/finance/WaterfallSummary'
 import { generateLPReport, previewLPReportData } from '../lib/api/lpReports'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
@@ -137,15 +138,6 @@ const STANDARD_NOTICE_TYPES = [
   { notice_type: 'dissolution', label: '해산/청산 통지', default_days: 30 },
   { notice_type: 'lp_report', label: '조합원 보고', default_days: 0 },
   { notice_type: 'amendment', label: '규약 변경 통지', default_days: 14 },
-]
-
-const FUND_TYPE_OPTIONS = [
-  '투자조합',
-  '벤처투자조합',
-  '신기술투자조합',
-  '사모투자합자회사(PEF)',
-  '창업투자조합',
-  '기타',
 ]
 
 const FUND_STATUS_OPTIONS = [

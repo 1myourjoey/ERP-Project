@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+﻿from datetime import date, datetime, timedelta
 import logging
 import io
 from urllib.parse import quote
@@ -44,7 +44,7 @@ from schemas.fund import (
 )
 from services.workflow_service import calculate_business_days_before
 from services.workflow_service import instantiate_workflow
-from services.fund_integrity import validate_lp_paid_in_pair
+from services.fund_integrity import recalculate_fund_stats, validate_lp_paid_in_pair
 from services.compliance_engine import ComplianceEngine
 from services.compliance_rule_engine import ComplianceRuleEngine
 
@@ -109,51 +109,51 @@ MIGRATION_FUND_HEADERS = [
 ]
 
 MIGRATION_FUND_HEADER_LABELS = {
-    "fund_key": "조합키",
-    "name": "조합명",
-    "type": "조합유형",
-    "status": "상태",
-    "formation_date": "등록성립일",
-    "registration_number": "등록번호",
-    "registration_date": "등록일",
-    "gp": "GP",
-    "fund_manager": "대표펀드매니저",
-    "co_gp": "공동GP",
-    "trustee": "수탁사",
-    "commitment_total": "약정총액",
-    "gp_commitment": "GP약정액",
-    "contribution_type": "출자방식",
-    "investment_period_end": "투자기간종료일",
-    "maturity_date": "만기일",
-    "dissolution_date": "해산일",
-    "mgmt_fee_rate": "관리보수율(%)",
-    "performance_fee_rate": "성과보수율(%)",
-    "hurdle_rate": "허들레이트(%)",
-    "account_number": "계좌번호",
+    'fund_key': '조합키',
+    'name': '조합명',
+    'type': '조합유형',
+    'status': '상태',
+    'formation_date': '등록성립일',
+    'registration_number': '등록번호',
+    'registration_date': '등록일',
+    'gp': 'GP',
+    'fund_manager': '대표펀드매니저',
+    'co_gp': '공동GP',
+    'trustee': '수탁사',
+    'commitment_total': '약정총액',
+    'gp_commitment': 'GP약정액',
+    'contribution_type': '출자방식',
+    'investment_period_end': '투자기간종료일',
+    'maturity_date': '만기일',
+    'dissolution_date': '해산일',
+    'mgmt_fee_rate': '관리보수율(%)',
+    'performance_fee_rate': '성과보수율(%)',
+    'hurdle_rate': '허들레이트(%)',
+    'account_number': '계좌번호',
 }
 
 MIGRATION_FUND_HEADER_ALIASES = {
-    "fund_key": ["조합키"],
-    "name": ["조합명"],
-    "type": ["조합유형", "fund_type"],
-    "status": ["상태"],
-    "formation_date": ["등록성립일", "formation_dt"],
-    "registration_number": ["등록번호", "사업자번호"],
-    "registration_date": ["등록일"],
-    "gp": ["GP"],
-    "fund_manager": ["대표펀드매니저"],
-    "co_gp": ["공동GP"],
-    "trustee": ["수탁사"],
-    "commitment_total": ["약정총액", "약정금액"],
-    "gp_commitment": ["GP약정액"],
-    "contribution_type": ["출자방식"],
-    "investment_period_end": ["투자기간종료일"],
-    "maturity_date": ["만기일"],
-    "dissolution_date": ["해산일"],
-    "mgmt_fee_rate": ["관리보수율(%)"],
-    "performance_fee_rate": ["성과보수율(%)"],
-    "hurdle_rate": ["허들레이트(%)"],
-    "account_number": ["계좌번호"],
+    'fund_key': ['조합키'],
+    'name': ['조합명'],
+    'type': ['조합유형', 'fund_type'],
+    'status': ['상태'],
+    'formation_date': ['등록성립일', 'formation_dt'],
+    'registration_number': ['등록번호', '사업자번호'],
+    'registration_date': ['등록일'],
+    'gp': ['GP'],
+    'fund_manager': ['대표펀드매니저'],
+    'co_gp': ['공동GP'],
+    'trustee': ['수탁사'],
+    'commitment_total': ['약정총액', '약정금액'],
+    'gp_commitment': ['GP약정액'],
+    'contribution_type': ['출자방식'],
+    'investment_period_end': ['투자기간종료일'],
+    'maturity_date': ['만기일'],
+    'dissolution_date': ['해산일'],
+    'mgmt_fee_rate': ['관리보수율(%)'],
+    'performance_fee_rate': ['성과보수율(%)'],
+    'hurdle_rate': ['허들레이트(%)'],
+    'account_number': ['계좌번호'],
 }
 
 MIGRATION_LP_HEADERS = [
@@ -168,62 +168,95 @@ MIGRATION_LP_HEADERS = [
 ]
 
 MIGRATION_LP_HEADER_LABELS = {
-    "fund_key": "조합키",
-    "name": "LP명",
-    "type": "LP유형",
-    "commitment": "약정금액",
-    "paid_in": "누적납입액",
-    "contact": "연락처",
-    "business_number": "사업자번호",
-    "address": "주소",
+    'fund_key': '조합키',
+    'name': 'LP명',
+    'type': 'LP유형',
+    'commitment': '약정금액',
+    'paid_in': '누적납입액',
+    'contact': '연락처',
+    'business_number': '사업자번호',
+    'address': '주소',
 }
 
 MIGRATION_LP_HEADER_ALIASES = {
-    "fund_key": ["조합키"],
-    "name": ["LP명"],
-    "type": ["LP유형"],
-    "commitment": ["약정금액", "commitment_amount"],
-    "paid_in": ["누적납입액"],
-    "contact": ["연락처"],
-    "business_number": ["사업자번호"],
-    "address": ["주소"],
+    'fund_key': ['조합키'],
+    'name': ['LP명'],
+    'type': ['LP유형'],
+    'commitment': ['약정금액', 'commitment_amount'],
+    'paid_in': ['누적납입액'],
+    'contact': ['연락처'],
+    'business_number': ['사업자번호'],
+    'address': ['주소'],
+}
+
+MIGRATION_CONTRIBUTION_HEADERS = [
+    "fund_key",
+    "lp_name",
+    "lp_business_number",
+    "due_date",
+    "round_no",
+    "commitment_ratio_percent",
+    "actual_paid_date",
+    "memo",
+]
+
+MIGRATION_CONTRIBUTION_HEADER_LABELS = {
+    'fund_key': '조합키',
+    'lp_name': 'LP명',
+    'lp_business_number': 'LP사업자번호',
+    'due_date': '납입기일',
+    'round_no': '회차번호',
+    'commitment_ratio_percent': '회차별납입비율(%)',
+    'actual_paid_date': '실제입금일',
+    'memo': '비고',
+}
+
+MIGRATION_CONTRIBUTION_HEADER_ALIASES = {
+    'fund_key': ['조합키'],
+    'lp_name': ['LP명'],
+    'lp_business_number': ['LP사업자번호', 'business_number'],
+    'due_date': ['납입기일', 'due_date'],
+    'round_no': ['회차번호', 'round_no'],
+    'commitment_ratio_percent': ['회차별납입비율(%)', 'commitment_ratio_percent', '납입비율(%)'],
+    'actual_paid_date': ['실제입금일', 'actual_paid_date'],
+    'memo': ['비고', 'memo'],
 }
 
 MIGRATION_FUND_TYPES = {
-    "투자조합",
-    "벤처투자조합",
-    "신기술투자조합",
-    "사모투자합자회사(PEF)",
-    "창업투자조합",
-    "농림수산식품투자조합",
-    "기타",
+    '투자조합',
+    '벤처투자조합',
+    '신기술투자조합',
+    '사모투자합자회사(PEF)',
+    '창업투자조합',
+    '농림수산식품투자조합',
+    '기타',
 }
 
-MIGRATION_FUND_STATUS = {"forming", "active", "dissolved", "liquidated"}
-MIGRATION_LP_TYPES = {"기관투자자", "개인투자자", "GP"}
+MIGRATION_FUND_STATUS = {'forming', 'active', 'dissolved', 'liquidated'}
+MIGRATION_LP_TYPES = {'기관투자자', '개인투자자', 'GP'}
 
 FORMING_STATUS_KEYS = {
-    "forming",
-    "planned",
-    "결성예정",
-    "결성예정(planned)",
+    'forming',
+    'planned',
+    '결성예정',
+    '결성예정(planned)',
 }
 
 FORMATION_WORKFLOW_NAME_MAP = {
-    "고유번호증발급": "고유번호증 발급",
-    "고유번호증 발급": "고유번호증 발급",
-    "수탁계약체결": "수탁계약 체결",
-    "수탁계약 체결": "수탁계약 체결",
-    "결성총회개최": "결성총회 개최",
-    "결성총회 개최": "결성총회 개최",
-    "벤처투자조합등록": "벤처투자조합 등록",
-    "벤처투자조합 등록": "벤처투자조합 등록",
-    "투자조합등록": "벤처투자조합 등록",
-    "투자조합 등록": "벤처투자조합 등록",
-    "조합등록": "벤처투자조합 등록",
-    "조합 등록": "벤처투자조합 등록",
+    '고유번호증발급': '고유번호증 발급',
+    '고유번호증 발급': '고유번호증 발급',
+    '수탁계약체결': '수탁계약 체결',
+    '수탁계약 체결': '수탁계약 체결',
+    '결성총회개최': '결성총회 개최',
+    '결성총회 개최': '결성총회 개최',
+    '벤처투자조합등록': '벤처투자조합 등록',
+    '벤처투자조합 등록': '벤처투자조합 등록',
+    '투자조합등록': '벤처투자조합 등록',
+    '투자조합 등록': '벤처투자조합 등록',
+    '조합등록': '벤처투자조합 등록',
+    '조합 등록': '벤처투자조합 등록',
 }
-FORMATION_SLOT_MEMO_PREFIX = "formation_slot="
+FORMATION_SLOT_MEMO_PREFIX = 'formation_slot='
 
 
 def _run_compliance_rule_checks(
@@ -295,7 +328,7 @@ def _parse_date_cell(
         FundMigrationErrorItem(
             row=row,
             column=column,
-            reason="날짜 형식이 올바르지 않습니다",
+            reason="?좎쭨 ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎",
         )
     )
     return None
@@ -337,6 +370,159 @@ def _parse_number_cell(
     return parsed
 
 
+def _parse_int_cell(
+    value: object | None,
+    row: int,
+    column: str,
+    errors: list[FundMigrationErrorItem],
+) -> int | None:
+    number = _parse_number_cell(value, row, column, errors)
+    if number is None:
+        return None
+    if int(number) != number:
+        errors.append(
+            FundMigrationErrorItem(
+                row=row,
+                column=column,
+                reason="정수만 입력해야 합니다",
+            )
+        )
+        return None
+    return int(number)
+
+
+def _normalize_lookup_text(value: str | None) -> str:
+    return (value or "").strip().casefold()
+
+
+def _find_existing_lp_by_identifiers(
+    db: Session,
+    fund_id: int,
+    *,
+    name: str,
+    business_number: str | None,
+) -> LP | None:
+    normalized_name = _normalize_lp_text(name)
+    normalized_business_number = _normalize_lp_optional(business_number)
+    if normalized_business_number:
+        existing = (
+            db.query(LP)
+            .filter(
+                LP.fund_id == fund_id,
+                LP.business_number == normalized_business_number,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+    return (
+        db.query(LP)
+        .filter(
+            LP.fund_id == fund_id,
+            LP.name == normalized_name,
+        )
+        .first()
+    )
+
+
+def _is_initial_import_locked(db: Session, fund: Fund) -> bool:
+    if fund.initial_import_completed_at is not None:
+        return True
+    existing_contribution = (
+        db.query(LPContribution.id)
+        .filter(LPContribution.fund_id == fund.id)
+        .first()
+    )
+    return existing_contribution is not None
+
+
+def _find_lp_row_match(
+    lp_rows: list[dict],
+    *,
+    fund_key: str,
+    lp_name: str,
+    lp_business_number: str | None,
+) -> dict | None:
+    normalized_business_number = _normalize_lookup_text(lp_business_number)
+    if normalized_business_number:
+        for row in lp_rows:
+            if row["fund_key"] != fund_key:
+                continue
+            if _normalize_lookup_text(row.get("business_number")) == normalized_business_number:
+                return row
+    normalized_name = _normalize_lookup_text(lp_name)
+    for row in lp_rows:
+        if row["fund_key"] != fund_key:
+            continue
+        if _normalize_lookup_text(row.get("name")) == normalized_name:
+            return row
+    return None
+
+
+def _derive_contribution_round_numbers(
+    contribution_rows: list[dict],
+    errors: list[FundMigrationErrorItem],
+) -> None:
+    grouped: dict[str, dict[date, dict[str, object]]] = {}
+    for row in contribution_rows:
+        fund_key = row["fund_key"]
+        due_date = row["due_date"]
+        if due_date is None:
+            continue
+        by_date = grouped.setdefault(fund_key, {})
+        group = by_date.setdefault(
+            due_date,
+            {"explicit_round": None, "rows": []},
+        )
+        group["rows"].append(row)
+        explicit_round = row.get("round_no")
+        if explicit_round is None:
+            continue
+        if group["explicit_round"] is None:
+            group["explicit_round"] = explicit_round
+        elif group["explicit_round"] != explicit_round:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row["__row"],
+                    column="round_no",
+                    reason="같은 조합/납입기일에는 동일한 회차번호를 사용해야 합니다",
+                )
+            )
+
+    for fund_key, groups in grouped.items():
+        used_rounds: set[int] = set()
+        for due_date, group in groups.items():
+            explicit_round = group["explicit_round"]
+            if explicit_round is None:
+                continue
+            if explicit_round in used_rounds:
+                for row in group["rows"]:
+                    errors.append(
+                        FundMigrationErrorItem(
+                            row=row["__row"],
+                            column="round_no",
+                            reason="같은 조합에서 회차번호가 중복되었습니다",
+                        )
+                    )
+            used_rounds.add(explicit_round)
+
+        next_round = 1
+        for due_date in sorted(groups):
+            group = groups[due_date]
+            assigned_round = group["explicit_round"]
+            if assigned_round is None:
+                while next_round in used_rounds:
+                    next_round += 1
+                assigned_round = next_round
+                used_rounds.add(assigned_round)
+                next_round += 1
+            else:
+                next_round = max(next_round, int(assigned_round) + 1)
+
+            for row in group["rows"]:
+                row["round_no"] = int(assigned_round)
+
+
 def _read_sheet_rows(
     worksheet,
     headers: list[str],
@@ -357,7 +543,7 @@ def _read_sheet_rows(
                 FundMigrationErrorItem(
                     row=1,
                     column=header,
-                    reason=f"{sheet_name} 시트에 필수 컬럼이 없습니다",
+                    reason=f"{sheet_name} ?쒗듃???꾩닔 而щ읆???놁뒿?덈떎",
                 )
             )
             continue
@@ -385,45 +571,52 @@ def _read_sheet_rows(
 def _validate_migration_rows(
     raw_funds: list[dict],
     raw_lps: list[dict],
-) -> tuple[FundMigrationValidateResponse, list[dict], list[dict]]:
+    raw_contributions: list[dict],
+    db: Session,
+) -> tuple[FundMigrationValidateResponse, list[dict], list[dict], list[dict]]:
     errors: list[FundMigrationErrorItem] = []
+    warnings: list[FundMigrationErrorItem] = []
     fund_rows: list[dict] = []
     lp_rows: list[dict] = []
+    contribution_rows: list[dict] = []
     fund_keys: set[str] = set()
+    existing_fund_map: dict[str, Fund | None] = {}
+    lp_business_keys: set[tuple[str, str]] = set()
+    lp_name_keys: set[tuple[str, str]] = set()
 
     if not raw_funds:
         errors.append(
             FundMigrationErrorItem(
                 row=2,
-                column="fund_key",
-                reason="Funds 시트에 데이터가 없습니다",
+                column='fund_key',
+                reason='Funds 시트에 데이터가 없습니다',
             )
         )
 
     for row in raw_funds:
-        row_no = int(row.get("__row", 0))
-        fund_key = _to_str(row.get("fund_key"))
-        name = _to_str(row.get("name"))
-        fund_type = _to_str(row.get("type"))
-        status = _to_str(row.get("status")) or "active"
+        row_no = int(row.get('__row', 0))
+        fund_key = _to_str(row.get('fund_key'))
+        name = _to_str(row.get('name'))
+        fund_type = _to_str(row.get('type'))
+        status = _to_str(row.get('status')) or 'active'
 
         if not fund_key:
-            errors.append(FundMigrationErrorItem(row=row_no, column="fund_key", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='필수값입니다'))
         elif fund_key in fund_keys:
-            errors.append(FundMigrationErrorItem(row=row_no, column="fund_key", reason="중복 fund_key 입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='중복 fund_key 입니다'))
         else:
             fund_keys.add(fund_key)
 
         if not name:
-            errors.append(FundMigrationErrorItem(row=row_no, column="name", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='name', reason='필수값입니다'))
         if not fund_type:
-            errors.append(FundMigrationErrorItem(row=row_no, column="type", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='type', reason='필수값입니다'))
         elif fund_type not in MIGRATION_FUND_TYPES:
             errors.append(
                 FundMigrationErrorItem(
                     row=row_no,
-                    column="type",
-                    reason="지원하지 않는 조합 유형입니다",
+                    column='type',
+                    reason='지원하지 않는 조합 유형입니다',
                 )
             )
 
@@ -431,127 +624,329 @@ def _validate_migration_rows(
             errors.append(
                 FundMigrationErrorItem(
                     row=row_no,
-                    column="status",
-                    reason="status는 forming/active/dissolved/liquidated 중 하나여야 합니다",
+                    column='status',
+                    reason='status는 forming/active/dissolved/liquidated 중 하나여야 합니다',
                 )
             )
 
         parsed = {
-            "__row": row_no,
-            "fund_key": fund_key,
-            "name": name,
-            "type": fund_type,
-            "status": status,
-            "formation_date": _parse_date_cell(row.get("formation_date"), row_no, "formation_date", errors),
-            "registration_number": _to_str(row.get("registration_number")) or None,
-            "registration_date": _parse_date_cell(row.get("registration_date"), row_no, "registration_date", errors),
-            "gp": _to_str(row.get("gp")) or None,
-            "fund_manager": _to_str(row.get("fund_manager")) or None,
-            "co_gp": _to_str(row.get("co_gp")) or None,
-            "trustee": _to_str(row.get("trustee")) or None,
-            "commitment_total": _parse_number_cell(row.get("commitment_total"), row_no, "commitment_total", errors),
-            "gp_commitment": _parse_number_cell(row.get("gp_commitment"), row_no, "gp_commitment", errors),
-            "contribution_type": _to_str(row.get("contribution_type")) or None,
-            "investment_period_end": _parse_date_cell(row.get("investment_period_end"), row_no, "investment_period_end", errors),
-            "maturity_date": _parse_date_cell(row.get("maturity_date"), row_no, "maturity_date", errors),
-            "dissolution_date": _parse_date_cell(row.get("dissolution_date"), row_no, "dissolution_date", errors),
-            "mgmt_fee_rate": _parse_number_cell(row.get("mgmt_fee_rate"), row_no, "mgmt_fee_rate", errors),
-            "performance_fee_rate": _parse_number_cell(row.get("performance_fee_rate"), row_no, "performance_fee_rate", errors),
-            "hurdle_rate": _parse_number_cell(row.get("hurdle_rate"), row_no, "hurdle_rate", errors),
-            "account_number": _to_str(row.get("account_number")) or None,
+            '__row': row_no,
+            'fund_key': fund_key,
+            'name': name,
+            'type': fund_type,
+            'status': status,
+            'formation_date': _parse_date_cell(row.get('formation_date'), row_no, 'formation_date', errors),
+            'registration_number': _to_str(row.get('registration_number')) or None,
+            'registration_date': _parse_date_cell(row.get('registration_date'), row_no, 'registration_date', errors),
+            'gp': _to_str(row.get('gp')) or None,
+            'fund_manager': _to_str(row.get('fund_manager')) or None,
+            'co_gp': _to_str(row.get('co_gp')) or None,
+            'trustee': _to_str(row.get('trustee')) or None,
+            'commitment_total': _parse_number_cell(row.get('commitment_total'), row_no, 'commitment_total', errors),
+            'gp_commitment': _parse_number_cell(row.get('gp_commitment'), row_no, 'gp_commitment', errors),
+            'contribution_type': _to_str(row.get('contribution_type')) or None,
+            'investment_period_end': _parse_date_cell(row.get('investment_period_end'), row_no, 'investment_period_end', errors),
+            'maturity_date': _parse_date_cell(row.get('maturity_date'), row_no, 'maturity_date', errors),
+            'dissolution_date': _parse_date_cell(row.get('dissolution_date'), row_no, 'dissolution_date', errors),
+            'mgmt_fee_rate': _parse_number_cell(row.get('mgmt_fee_rate'), row_no, 'mgmt_fee_rate', errors),
+            'performance_fee_rate': _parse_number_cell(row.get('performance_fee_rate'), row_no, 'performance_fee_rate', errors),
+            'hurdle_rate': _parse_number_cell(row.get('hurdle_rate'), row_no, 'hurdle_rate', errors),
+            'account_number': _to_str(row.get('account_number')) or None,
         }
+        existing_fund = _find_existing_fund(db, parsed)
+        existing_fund_map[fund_key] = existing_fund
+        if existing_fund is not None and _is_initial_import_locked(db, existing_fund):
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row_no,
+                    column='fund_key',
+                    reason='초기 세팅 import가 이미 완료된 조합입니다. 이후 수정은 ERP 화면에서 진행하세요.',
+                )
+            )
         fund_rows.append(parsed)
 
     for row in raw_lps:
-        row_no = int(row.get("__row", 0))
-        fund_key = _to_str(row.get("fund_key"))
-        name = _to_str(row.get("name"))
-        lp_type = _to_str(row.get("type"))
+        row_no = int(row.get('__row', 0))
+        fund_key = _to_str(row.get('fund_key'))
+        name = _to_str(row.get('name'))
+        lp_type = _to_str(row.get('type'))
 
         if not fund_key:
-            errors.append(FundMigrationErrorItem(row=row_no, column="fund_key", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='필수값입니다'))
         elif fund_key not in fund_keys:
-            errors.append(FundMigrationErrorItem(row=row_no, column="fund_key", reason="Funds 시트에 없는 fund_key 입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='Funds 시트에 없는 fund_key 입니다'))
 
         if not name:
-            errors.append(FundMigrationErrorItem(row=row_no, column="name", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='name', reason='필수값입니다'))
         if not lp_type:
-            errors.append(FundMigrationErrorItem(row=row_no, column="type", reason="필수값입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='type', reason='필수값입니다'))
         elif lp_type not in MIGRATION_LP_TYPES:
-            errors.append(FundMigrationErrorItem(row=row_no, column="type", reason="지원하지 않는 LP 유형입니다"))
+            errors.append(FundMigrationErrorItem(row=row_no, column='type', reason='지원하지 않는 LP 유형입니다'))
 
-        lp_rows.append(
+        parsed_lp = {
+            '__row': row_no,
+            'fund_key': fund_key,
+            'name': name,
+            'type': lp_type,
+            'commitment': _parse_number_cell(row.get('commitment'), row_no, 'commitment', errors),
+            'paid_in': _parse_number_cell(row.get('paid_in'), row_no, 'paid_in', errors),
+            'contact': _to_str(row.get('contact')) or None,
+            'business_number': _to_str(row.get('business_number')) or None,
+            'address': _to_str(row.get('address')) or None,
+        }
+
+        business_number = _normalize_lookup_text(parsed_lp['business_number'])
+        if business_number:
+            business_key = (fund_key, business_number)
+            if business_key in lp_business_keys:
+                errors.append(
+                    FundMigrationErrorItem(
+                        row=row_no,
+                        column='business_number',
+                        reason='같은 조합 내 LP 사업자번호가 중복되었습니다',
+                    )
+                )
+            else:
+                lp_business_keys.add(business_key)
+
+        name_key = (fund_key, _normalize_lookup_text(name))
+        if name_key in lp_name_keys:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row_no,
+                    column='name',
+                    reason='같은 조합 내 LP명이 중복되었습니다',
+                )
+            )
+        else:
+            lp_name_keys.add(name_key)
+
+        lp_rows.append(parsed_lp)
+
+    contribution_amounts_by_lp: dict[tuple[str, str], float] = {}
+    contribution_commitment_by_lp: dict[tuple[str, str], float] = {}
+    contribution_seen_keys: set[tuple[str, str, date | None, int | None]] = set()
+
+    for row in raw_contributions:
+        row_no = int(row.get('__row', 0))
+        fund_key = _to_str(row.get('fund_key'))
+        lp_name = _to_str(row.get('lp_name'))
+        lp_business_number = _to_str(row.get('lp_business_number')) or None
+        due_date = _parse_date_cell(row.get('due_date'), row_no, 'due_date', errors)
+        actual_paid_date = _parse_date_cell(row.get('actual_paid_date'), row_no, 'actual_paid_date', errors)
+        ratio = _parse_number_cell(row.get('commitment_ratio_percent'), row_no, 'commitment_ratio_percent', errors)
+        round_no = _parse_int_cell(row.get('round_no'), row_no, 'round_no', errors)
+
+        if not fund_key:
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='필수값입니다'))
+        elif fund_key not in fund_keys:
+            errors.append(FundMigrationErrorItem(row=row_no, column='fund_key', reason='Funds 시트에 없는 fund_key 입니다'))
+
+        if not lp_name:
+            errors.append(FundMigrationErrorItem(row=row_no, column='lp_name', reason='필수값입니다'))
+        if due_date is None:
+            errors.append(FundMigrationErrorItem(row=row_no, column='due_date', reason='필수값입니다'))
+        if ratio is None:
+            errors.append(FundMigrationErrorItem(row=row_no, column='commitment_ratio_percent', reason='필수값입니다'))
+        elif ratio <= 0 or ratio > 100:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row_no,
+                    column='commitment_ratio_percent',
+                    reason='0 초과 100 이하의 비율만 입력할 수 있습니다',
+                )
+            )
+        if round_no is not None and round_no <= 0:
+            errors.append(FundMigrationErrorItem(row=row_no, column='round_no', reason='1 이상의 정수만 입력할 수 있습니다'))
+
+        contribution_rows.append(
             {
-                "__row": row_no,
-                "fund_key": fund_key,
-                "name": name,
-                "type": lp_type,
-                "commitment": _parse_number_cell(row.get("commitment"), row_no, "commitment", errors),
-                "paid_in": _parse_number_cell(row.get("paid_in"), row_no, "paid_in", errors),
-                "contact": _to_str(row.get("contact")) or None,
-                "business_number": _to_str(row.get("business_number")) or None,
-                "address": _to_str(row.get("address")) or None,
+                '__row': row_no,
+                'fund_key': fund_key,
+                'lp_name': lp_name,
+                'lp_business_number': lp_business_number,
+                'due_date': due_date,
+                'round_no': round_no,
+                'commitment_ratio_percent': ratio,
+                'actual_paid_date': actual_paid_date,
+                'memo': _to_str(row.get('memo')) or None,
             }
         )
+
+    _derive_contribution_round_numbers(contribution_rows, errors)
+
+    for row in contribution_rows:
+        fund_key = row['fund_key']
+        existing_fund = existing_fund_map.get(fund_key)
+        matched_lp = _find_lp_row_match(
+            lp_rows,
+            fund_key=fund_key,
+            lp_name=row['lp_name'],
+            lp_business_number=row['lp_business_number'],
+        )
+        if matched_lp is None and existing_fund is not None:
+            matched_lp = _find_existing_lp_by_identifiers(
+                db,
+                existing_fund.id,
+                name=row['lp_name'],
+                business_number=row['lp_business_number'],
+            )
+
+        if matched_lp is None:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row['__row'],
+                    column='lp_name',
+                    reason='매칭되는 LP를 찾을 수 없습니다',
+                )
+            )
+            continue
+
+        commitment = matched_lp['commitment'] if isinstance(matched_lp, dict) else float(matched_lp.commitment or 0)
+        if commitment is None or float(commitment) <= 0:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row['__row'],
+                    column='commitment_ratio_percent',
+                    reason='약정액이 있어야 납입비율을 금액으로 환산할 수 있습니다',
+                )
+            )
+            continue
+
+        lookup_token = _normalize_lookup_text(row['lp_business_number'] or row['lp_name'])
+        duplicate_key = (fund_key, lookup_token, row['due_date'], row['round_no'])
+        if duplicate_key in contribution_seen_keys:
+            errors.append(
+                FundMigrationErrorItem(
+                    row=row['__row'],
+                    column='round_no',
+                    reason='같은 조합/LP/기일/회차 조합이 중복되었습니다',
+                )
+            )
+        else:
+            contribution_seen_keys.add(duplicate_key)
+
+        amount = round(float(commitment) * float(row['commitment_ratio_percent'] or 0) / 100)
+        row['amount'] = amount
+        row['actual_paid_date'] = row['actual_paid_date'] or row['due_date']
+        contribution_key = (fund_key, lookup_token)
+        contribution_amounts_by_lp[contribution_key] = contribution_amounts_by_lp.get(contribution_key, 0.0) + float(amount)
+        contribution_commitment_by_lp[contribution_key] = float(commitment)
+
+    for contribution_key, total_amount in contribution_amounts_by_lp.items():
+        commitment = contribution_commitment_by_lp.get(contribution_key, 0.0)
+        if commitment > 0 and total_amount - commitment > 0.5:
+            fund_key, lookup_token = contribution_key
+            matching_row = next(
+                (
+                    row
+                    for row in contribution_rows
+                    if row['fund_key'] == fund_key
+                    and _normalize_lookup_text(row['lp_business_number'] or row['lp_name']) == lookup_token
+                ),
+                None,
+            )
+            if matching_row is not None:
+                errors.append(
+                    FundMigrationErrorItem(
+                        row=matching_row['__row'],
+                        column='commitment_ratio_percent',
+                        reason='회차별 납입비율 합계가 약정액을 초과합니다',
+                    )
+                )
+
+    for lp_row in lp_rows:
+        contribution_key = (
+            lp_row['fund_key'],
+            _normalize_lookup_text(lp_row['business_number'] or lp_row['name']),
+        )
+        if contribution_key not in contribution_amounts_by_lp:
+            continue
+        if lp_row.get('paid_in') is None:
+            continue
+        contribution_total = contribution_amounts_by_lp[contribution_key]
+        if abs(float(lp_row['paid_in']) - float(contribution_total)) > 0.5:
+            warnings.append(
+                FundMigrationErrorItem(
+                    row=lp_row['__row'],
+                    column='paid_in',
+                    reason='LPContributions 시트가 있으면 누적납입액은 납입이력 합계가 우선 적용됩니다',
+                )
+            )
 
     validation = FundMigrationValidateResponse(
         success=len(errors) == 0,
         fund_rows=len(fund_rows),
         lp_rows=len(lp_rows),
+        contribution_rows=len(contribution_rows),
+        warnings=warnings,
         errors=errors,
     )
-    return validation, fund_rows, lp_rows
+    return validation, fund_rows, lp_rows, contribution_rows
 
 
 def _parse_and_validate_migration(
     file_content: bytes,
-) -> tuple[FundMigrationValidateResponse, list[dict], list[dict]]:
+    db: Session,
+) -> tuple[FundMigrationValidateResponse, list[dict], list[dict], list[dict]]:
     try:
         import openpyxl
     except ImportError as exc:
-        raise HTTPException(status_code=500, detail="openpyxl not installed") from exc
+        raise HTTPException(status_code=500, detail='openpyxl not installed') from exc
 
     try:
         workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="엑셀 파일을 읽을 수 없습니다") from exc
+        raise HTTPException(status_code=400, detail='유효한 엑셀 파일을 읽을 수 없습니다') from exc
 
-    missing_sheets = [name for name in ("Funds", "LPs") if name not in workbook.sheetnames]
+    missing_sheets = [name for name in ('Funds', 'LPs') if name not in workbook.sheetnames]
     if missing_sheets:
         errors = [
-            FundMigrationErrorItem(row=1, column="sheet", reason=f"필수 시트 누락: {name}")
+            FundMigrationErrorItem(row=1, column='sheet', reason=f'필수 시트 누락: {name}')
             for name in missing_sheets
         ]
         return (
-            FundMigrationValidateResponse(success=False, fund_rows=0, lp_rows=0, errors=errors),
+            FundMigrationValidateResponse(success=False, fund_rows=0, lp_rows=0, contribution_rows=0, errors=errors),
+            [],
             [],
             [],
         )
 
-    fund_sheet = workbook["Funds"]
-    lp_sheet = workbook["LPs"]
+    fund_sheet = workbook['Funds']
+    lp_sheet = workbook['LPs']
+    contribution_sheet = workbook['LPContributions'] if 'LPContributions' in workbook.sheetnames else None
     raw_funds, fund_sheet_errors = _read_sheet_rows(
         fund_sheet,
         MIGRATION_FUND_HEADERS,
-        "Funds",
+        'Funds',
         header_aliases=MIGRATION_FUND_HEADER_ALIASES,
     )
     raw_lps, lp_sheet_errors = _read_sheet_rows(
         lp_sheet,
         MIGRATION_LP_HEADERS,
-        "LPs",
+        'LPs',
         header_aliases=MIGRATION_LP_HEADER_ALIASES,
     )
+    raw_contributions: list[dict] = []
+    contribution_sheet_errors: list[FundMigrationErrorItem] = []
+    if contribution_sheet is not None:
+        raw_contributions, contribution_sheet_errors = _read_sheet_rows(
+            contribution_sheet,
+            MIGRATION_CONTRIBUTION_HEADERS,
+            'LPContributions',
+            header_aliases=MIGRATION_CONTRIBUTION_HEADER_ALIASES,
+        )
 
-    if fund_sheet_errors or lp_sheet_errors:
-        errors = [*fund_sheet_errors, *lp_sheet_errors]
+    if fund_sheet_errors or lp_sheet_errors or contribution_sheet_errors:
+        errors = [*fund_sheet_errors, *lp_sheet_errors, *contribution_sheet_errors]
         return (
-            FundMigrationValidateResponse(success=False, fund_rows=0, lp_rows=0, errors=errors),
+            FundMigrationValidateResponse(success=False, fund_rows=0, lp_rows=0, contribution_rows=0, errors=errors),
+            [],
             [],
             [],
         )
 
-    return _validate_migration_rows(raw_funds, raw_lps)
+    return _validate_migration_rows(raw_funds, raw_lps, raw_contributions, db)
 
 
 def calculate_paid_in_as_of(
@@ -639,8 +1034,8 @@ def _normalize_template_identifier(value: str | None) -> str:
 def _template_has_formation_paid_in_step(template: Workflow) -> bool:
     for step in template.steps or []:
         normalized = _normalize_template_identifier(step.name)
-        has_paid_token = any(token in normalized for token in ("출자", "납입", "입금", "납부", "payment"))
-        has_confirm_token = any(token in normalized for token in ("확인", "confirm", "check"))
+        has_paid_token = any(token in normalized for token in ("異쒖옄", "?⑹엯", "?낃툑", "?⑸?", "payment"))
+        has_confirm_token = any(token in normalized for token in ("?뺤씤", "confirm", "check"))
         if has_paid_token and has_confirm_token:
             return True
     return False
@@ -794,16 +1189,16 @@ def format_remaining_period(maturity_date: date | None, ref_date: date) -> str:
     if maturity_date is None:
         return "-"
     if ref_date > maturity_date:
-        return "만기 경과"
+        return "留뚭린 寃쎄낵"
 
     delta = relativedelta(maturity_date, ref_date)
     parts: list[str] = []
     if delta.years:
         parts.append(f"{delta.years}년")
     if delta.months:
-        parts.append(f"{delta.months}개월")
+        parts.append(f"{delta.months}媛쒖썡")
 
-    # For less than 1 month remaining, show days instead of 0년 0개월.
+    # For less than 1 month remaining, show days instead of 0??0媛쒖썡.
     if not parts and delta.days:
         parts.append(f"{delta.days}일")
 
@@ -1061,22 +1456,22 @@ def export_fund_overview(reference_date: date | None = None, db: Session = Depen
     headers = [
         "NO",
         "조합명",
-        "조합 구분",
-        "대표 펀드매니저",
+        "議고빀 援щ텇",
+        "?????쒕ℓ?덉?",
         "등록(성립)일",
         "투자기간 종료일",
         "투자기간 경과율",
-        "청산시기(예정)",
-        "약정총액",
-        "납입총액",
-        "납입비율",
+        "泥?궛?쒓린(?덉젙)",
+        "?쎌젙珥앹븸",
+        "?⑹엯珥앹븸",
+        "?⑹엯鍮꾩쑉",
         "GP출자금",
-        "투자총액",
-        "미투자액",
-        "투자자산",
+        "?ъ옄珥앹븸",
+        "誘명닾?먯븸",
+        "?ъ옄?먯궛",
         "투자업체수",
-        "기준수익률(규약)",
-        "잔존기간",
+        "湲곗??섏씡瑜?洹쒖빟)",
+        "?붿〈湲곌컙",
     ]
 
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -1134,7 +1529,7 @@ def export_fund_overview(reference_date: date | None = None, db: Session = Depen
     totals_row = len(overview_items) + 2
     total_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     ws.merge_cells(start_row=totals_row, start_column=1, end_row=totals_row, end_column=8)
-    ws.cell(row=totals_row, column=1, value="합계")
+    ws.cell(row=totals_row, column=1, value="?⑷퀎")
     ws.cell(row=totals_row, column=9, value=totals.commitment_total)
     ws.cell(row=totals_row, column=10, value=totals.total_paid_in)
     ws.cell(row=totals_row, column=12, value=totals.gp_commitment)
@@ -1189,45 +1584,45 @@ def download_migration_template():
     funds_sheet.append([MIGRATION_FUND_HEADER_LABELS.get(key, key) for key in MIGRATION_FUND_HEADERS])
     funds_sheet.append(
         [
-            "#입력가이드",
-            "조합명 입력",
+            "#?낅젰媛?대뱶",
+            "議고빀紐??낅젰",
             "벤처투자조합/투자조합/신기술투자조합 등",
             "forming/active/dissolved/liquidated",
             "YYYY-MM-DD",
-            "사업자등록번호/고유번호 (선택)",
-            "YYYY-MM-DD (선택)",
-            "GP 명칭",
-            "대표 펀드매니저",
-            "공동 GP (선택)",
+            "?ъ뾽?먮벑濡앸쾲??怨좎쑀踰덊샇 (?좏깮)",
+            "YYYY-MM-DD (?좏깮)",
+            "GP 紐낆묶",
+            "?????쒕ℓ?덉?",
+            "怨듬룞 GP (?좏깮)",
             "수탁사",
-            "숫자만 입력 (원)",
-            "숫자만 입력 (원)",
+            "?レ옄留??낅젰 (??",
+            "?レ옄留??낅젰 (??",
             "분할/일시 등",
-            "YYYY-MM-DD (선택)",
-            "YYYY-MM-DD (선택)",
-            "YYYY-MM-DD (선택)",
-            "숫자(%)",
-            "숫자(%)",
-            "숫자(%)",
-            "계좌번호 (선택)",
+            "YYYY-MM-DD (?좏깮)",
+            "YYYY-MM-DD (?좏깮)",
+            "YYYY-MM-DD (?좏깮)",
+            "?レ옄(%)",
+            "?レ옄(%)",
+            "?レ옄(%)",
+            "怨꾩쥖踰덊샇 (?좏깮)",
         ]
     )
     funds_sheet.append(
         [
             "FUND-001",
-            "예시 조합",
-            "벤처투자조합",
+            "?덉떆 議고빀",
+            "踰ㅼ쿂?ъ옄議고빀",
             "active",
             "2026-01-15",
             "123-45-67890",
             "2026-02-01",
-            "예시 GP",
-            "홍길동",
+            "?덉떆 GP",
+            "펀드매니저",
             "",
             "OO은행",
             10000000000,
             1000000000,
-            "분할",
+            "遺꾪븷",
             "2030-01-15",
             "2034-01-15",
             "",
@@ -1241,19 +1636,19 @@ def download_migration_template():
     lp_sheet = workbook.create_sheet("LPs")
     lp_sheet.append([MIGRATION_LP_HEADER_LABELS.get(key, key) for key in MIGRATION_LP_HEADERS])
     lp_sheet.append([
-        "#입력가이드",
-        "예: 예시 기관 LP",
-        "기관투자자 / 개인투자자 / GP",
-        "숫자만 입력 (원)",
-        "숫자만 입력 (원)",
+        "#?낅젰媛?대뱶",
+        "?? ?덉떆 湲곌? LP",
+        "湲곌??ъ옄??/ 媛쒖씤?ъ옄??/ GP",
+        "?レ옄留??낅젰 (??",
+        "?レ옄留??낅젰 (??",
         "담당자 연락처",
-        "예: 111-22-33333",
-        "도로명 또는 지번 주소",
+        "?? 111-22-33333",
+        "?꾨줈紐??먮뒗 吏踰?二쇱냼",
     ])
     lp_sheet.append(
         [
             "FUND-001",
-            "예시 기관 LP",
+            "?덉떆 湲곌? LP",
             "기관투자자",
             3000000000,
             500000000,
@@ -1265,13 +1660,54 @@ def download_migration_template():
     lp_sheet.append(
         [
             "FUND-001",
-            "예시 GP",
+            "?덉떆 GP",
             "GP",
             1000000000,
             300000000,
             "02-1111-2222",
             "123-45-67890",
             "서울시 서초구",
+        ]
+    )
+
+    contribution_sheet = workbook.create_sheet("LPContributions")
+    contribution_sheet.append(
+        [MIGRATION_CONTRIBUTION_HEADER_LABELS.get(key, key) for key in MIGRATION_CONTRIBUTION_HEADERS]
+    )
+    contribution_sheet.append(
+        [
+            "# 회차별 납입비율(%)을 입력하면 약정액 기준 금액으로 자동 환산됩니다",
+            "LP명 입력",
+            "사업자번호가 있으면 우선 매칭",
+            "YYYY-MM-DD",
+            "비우면 납입기일 기준 자동 부여",
+            "예: 10",
+            "비우면 납입기일과 동일",
+            "선택 입력",
+        ]
+    )
+    contribution_sheet.append(
+        [
+            "FUND-001",
+            "예시 기관 LP",
+            "111-22-33333",
+            "2026-02-10",
+            1,
+            10,
+            "2026-02-10",
+            "최초 출자",
+        ]
+    )
+    contribution_sheet.append(
+        [
+            "FUND-001",
+            "예시 기관 LP",
+            "111-22-33333",
+            "2026-05-10",
+            2,
+            15,
+            "2026-05-12",
+            "추가 출자",
         ]
     )
 
@@ -1290,22 +1726,30 @@ def download_migration_template():
             helper_cell.fill = helper_fill
             helper_cell.font = helper_font
         lp_sheet.freeze_panes = "A3"
+        for column_index in range(1, len(MIGRATION_CONTRIBUTION_HEADERS) + 1):
+            helper_cell = contribution_sheet.cell(row=2, column=column_index)
+            helper_cell.fill = helper_fill
+            helper_cell.font = helper_font
+        contribution_sheet.freeze_panes = "A3"
     except Exception:
         # Formatting failure should not block template download.
         pass
 
     guide_sheet = workbook.create_sheet("Guide")
-    guide_sheet.append(["항목", "설명"])
-    guide_sheet.append(["Sheets", "Funds / LPs / Guide 시트를 유지하세요."])
-    guide_sheet.append(["필수값", "Funds: 조합키,조합명,조합유형 / LPs: 조합키,LP명,LP유형"])
-    guide_sheet.append(["날짜형식", "YYYY-MM-DD"])
-    guide_sheet.append(["숫자형식", "0 이상의 숫자"])
-    guide_sheet.append(["Import", "반드시 validate 후 import를 실행하세요."])
+    guide_sheet.append(["??ぉ", "?ㅻ챸"])
+    guide_sheet.append(["Sheets", "Funds / LPs / LPContributions / Guide 시트를 사용하세요"])
+    guide_sheet.append(["필수값", "Funds: 조합키/조합명/조합유형 / LPs: 조합키/LP명/LP유형"])
+    guide_sheet.append(["조합유형", "투자조합, 벤처투자조합, 신기술투자조합, 사모투자합자회사(PEF), 창업투자조합, 농림수산식품투자조합, 기타"])
+    guide_sheet.append(["?좎쭨?뺤떇", "YYYY-MM-DD"])
+    guide_sheet.append(["?レ옄?뺤떇", "0 ?댁긽???レ옄"])
+    guide_sheet.append(["LPContributions", "회차별 납입비율(%)은 누적이 아니라 해당 회차분 비율입니다"])
+    guide_sheet.append(["초기세팅", "Import 성공 후에는 같은 조합에 대해 다시 import할 수 없습니다"])
+    guide_sheet.append(["Import", "반드시 validate 후 import를 실행하세요"])
 
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
-    filename = "조합_및_LP_일괄등록_양식.xlsx"
+    filename = "議고빀_諛?LP_?쇨큵?깅줉_?묒떇.xlsx"
     encoded_filename = quote(filename)
     return StreamingResponse(
         output,
@@ -1319,10 +1763,13 @@ def download_migration_template():
 
 
 @router.post("/api/funds/migration-validate", response_model=FundMigrationValidateResponse)
-async def validate_migration(payload: bytes = Body(..., media_type="application/octet-stream")):
+async def validate_migration(
+    payload: bytes = Body(..., media_type="application/octet-stream"),
+    db: Session = Depends(get_db),
+):
     if not payload:
-        raise HTTPException(status_code=400, detail="업로드 파일이 비어 있습니다")
-    validation, _, _ = _parse_and_validate_migration(payload)
+        raise HTTPException(status_code=400, detail="?낅줈???뚯씪??鍮꾩뼱 ?덉뒿?덈떎")
+    validation, _, _, _ = _parse_and_validate_migration(payload, db)
     return validation
 
 
@@ -1488,15 +1935,17 @@ async def import_migration(
         raise HTTPException(status_code=400, detail="mode는 insert/upsert 중 하나여야 합니다")
 
     if not payload:
-        raise HTTPException(status_code=400, detail="업로드 파일이 비어 있습니다")
+        raise HTTPException(status_code=400, detail="?낅줈???뚯씪??鍮꾩뼱 ?덉뒿?덈떎")
 
-    validation, fund_rows, lp_rows = _parse_and_validate_migration(payload)
+    validation, fund_rows, lp_rows, contribution_rows = _parse_and_validate_migration(payload, db)
     if validation.errors:
         return FundMigrationImportResponse(
             success=False,
             mode=mode,
             fund_rows=validation.fund_rows,
             lp_rows=validation.lp_rows,
+            contribution_rows=validation.contribution_rows,
+            warnings=validation.warnings,
             errors=validation.errors,
             validation=validation,
         )
@@ -1506,10 +1955,12 @@ async def import_migration(
     updated_funds = 0
     created_lps = 0
     updated_lps = 0
+    created_contributions = 0
     synced_address_books = 0
 
     try:
         fund_map: dict[str, Fund] = {}
+        contribution_fund_ids: set[int] = set()
         for row in fund_rows:
             existing = _find_existing_fund(db, row)
 
@@ -1557,8 +2008,11 @@ async def import_migration(
                     setattr(fund, key, value)
                 updated_funds += 1
 
+            _sync_fee_config_from_fund(db, fund, {"mgmt_fee_rate", "performance_fee_rate", "hurdle_rate"})
+
             fund_map[row["fund_key"]] = fund
 
+        lp_entity_map: dict[tuple[str, str], LP] = {}
         for row in lp_rows:
             fund = fund_map.get(row["fund_key"])
             if fund is None:
@@ -1566,7 +2020,7 @@ async def import_migration(
                     FundMigrationErrorItem(
                         row=row["__row"],
                         column="fund_key",
-                        reason="매핑된 조합을 찾을 수 없습니다",
+                        reason="留ㅽ븨??議고빀??李얠쓣 ???놁뒿?덈떎",
                     )
                 )
                 continue
@@ -1593,15 +2047,67 @@ async def import_migration(
             }
 
             if existing_lp is None:
-                db.add(LP(fund_id=fund.id, **lp_payload))
+                existing_lp = LP(fund_id=fund.id, **lp_payload)
+                db.add(existing_lp)
+                db.flush()
                 created_lps += 1
             else:
                 for key, value in lp_payload.items():
                     setattr(existing_lp, key, value)
                 updated_lps += 1
 
+            if row.get("business_number"):
+                lp_entity_map[(row["fund_key"], _normalize_lookup_text(row["business_number"]))] = existing_lp
+            lp_entity_map[(row["fund_key"], _normalize_lookup_text(row["name"]))] = existing_lp
+
             if sync_address_book:
                 synced_address_books += _upsert_lp_address_book(db, row)
+
+        for row in contribution_rows:
+            fund = fund_map.get(row["fund_key"])
+            if fund is None:
+                import_errors.append(
+                    FundMigrationErrorItem(
+                        row=row["__row"],
+                        column="fund_key",
+                        reason="매칭된 조합을 찾을 수 없습니다",
+                    )
+                )
+                continue
+
+            lookup_token = _normalize_lookup_text(row["lp_business_number"] or row["lp_name"])
+            lp = lp_entity_map.get((row["fund_key"], lookup_token))
+            if lp is None:
+                lp = _find_existing_lp_by_identifiers(
+                    db,
+                    fund.id,
+                    name=row["lp_name"],
+                    business_number=row["lp_business_number"],
+                )
+            if lp is None:
+                import_errors.append(
+                    FundMigrationErrorItem(
+                        row=row["__row"],
+                        column="lp_name",
+                        reason="매칭된 LP를 찾을 수 없습니다",
+                    )
+                )
+                continue
+
+            contribution = LPContribution(
+                fund_id=fund.id,
+                lp_id=lp.id,
+                due_date=row["due_date"],
+                amount=float(row["amount"]),
+                commitment_ratio=float(row["commitment_ratio_percent"]),
+                round_no=row["round_no"],
+                actual_paid_date=row["actual_paid_date"],
+                memo=row["memo"],
+                source="migration",
+            )
+            db.add(contribution)
+            created_contributions += 1
+            contribution_fund_ids.add(fund.id)
 
         if import_errors:
             db.rollback()
@@ -1610,30 +2116,42 @@ async def import_migration(
                 mode=mode,
                 fund_rows=validation.fund_rows,
                 lp_rows=validation.lp_rows,
+                contribution_rows=validation.contribution_rows,
                 created_funds=0,
                 updated_funds=0,
                 created_lps=0,
                 updated_lps=0,
+                created_contributions=0,
                 synced_address_books=0,
+                warnings=validation.warnings,
                 errors=import_errors,
                 validation=validation,
             )
 
+        db.flush()
+        for fund_id in contribution_fund_ids:
+            recalculate_fund_stats(db, fund_id)
+        locked_at = datetime.utcnow()
+        for fund in fund_map.values():
+            fund.initial_import_completed_at = locked_at
         db.commit()
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"마이그레이션 import 중 오류가 발생했습니다: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"留덉씠洹몃젅?댁뀡 import 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎: {exc}") from exc
 
     return FundMigrationImportResponse(
         success=True,
         mode=mode,
         fund_rows=validation.fund_rows,
         lp_rows=validation.lp_rows,
+        contribution_rows=validation.contribution_rows,
         created_funds=created_funds,
         updated_funds=updated_funds,
         created_lps=created_lps,
         updated_lps=updated_lps,
+        created_contributions=created_contributions,
         synced_address_books=synced_address_books,
+        warnings=validation.warnings,
         errors=[],
         validation=validation,
     )
@@ -1642,7 +2160,7 @@ async def import_migration(
 def get_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
     return fund
 
 
@@ -1658,28 +2176,28 @@ def add_formation_workflow(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
     if not _is_forming_status(fund.status):
-        raise HTTPException(status_code=400, detail="결성예정 상태 조합에서만 생성할 수 있습니다")
+        raise HTTPException(status_code=400, detail="寃곗꽦?덉젙 ?곹깭 議고빀?먯꽌留??앹꽦?????덉뒿?덈떎")
 
     formation_slot_name = _resolve_formation_template_name(data.template_category_or_name)
     if not formation_slot_name:
-        raise HTTPException(status_code=400, detail="지원하지 않는 결성 워크플로 슬롯입니다")
+        raise HTTPException(status_code=400, detail="지원하지 않는 결성 워크플로 분류입니다")
 
     template = _find_formation_template_by_id(db, data.template_id)
     if template is None:
         template = _find_formation_template(db, formation_slot_name)
     if not template:
-        raise HTTPException(status_code=404, detail="결성 워크플로 템플릿을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="寃곗꽦 ?뚰겕?뚮줈 ?쒗뵆由우쓣 李얠쓣 ???놁뒿?덈떎")
     if not template.steps:
-        raise HTTPException(status_code=400, detail="단계가 없는 템플릿은 생성할 수 없습니다")
+        raise HTTPException(status_code=400, detail="?④퀎媛 ?녿뒗 ?쒗뵆由우? ?앹꽦?????놁뒿?덈떎")
     if (
-        formation_slot_name == "결성총회 개최"
+        formation_slot_name == "寃곗꽦珥앺쉶 媛쒖턀"
         and not _template_has_formation_paid_in_step(template)
     ):
         raise HTTPException(
             status_code=400,
-            detail="결성총회 템플릿에는 '출자금 납입 확인' 등 납입/출자 확인 단계가 필요합니다",
+            detail="결성총회 템플릿에는 출자금 납입 확인 단계가 필요합니다",
         )
 
     existing_instance = _find_existing_instance_by_formation_slot(
@@ -1748,13 +2266,13 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="조합 생성 중 중복 제약조건 오류가 발생했습니다") from exc
+        raise HTTPException(status_code=409, detail="議고빀 ?앹꽦 以?以묐났 ?쒖빟議곌굔 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎") from exc
     except HTTPException:
         db.rollback()
         raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"조합 생성 중 오류가 발생했습니다: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"議고빀 ?앹꽦 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎: {exc}") from exc
 
     db.refresh(fund)
     _run_compliance_rule_checks(
@@ -1770,7 +2288,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
 def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
 
     update_payload = data.model_dump(exclude_unset=True)
     if update_payload.get("gp_commitment") is None and update_payload.get("gp_commitment_amount") is not None:
@@ -1887,7 +2405,7 @@ def _cleanup_fund_tasks_and_workflows(db: Session, fund_id: int) -> None:
 def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
     try:
         _cleanup_fund_capital_calls(db, fund_id)
         _cleanup_fund_tasks_and_workflows(db, fund_id)
@@ -1903,7 +2421,7 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
 def list_lps(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
     return db.query(LP).filter(LP.fund_id == fund_id).order_by(LP.id.desc()).all()
 
 
@@ -1911,7 +2429,7 @@ def list_lps(fund_id: int, db: Session = Depends(get_db)):
 def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
 
     payload = data.model_dump()
     address_book = _get_lp_address_book(db, payload.get("address_book_id"))
@@ -1977,7 +2495,7 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
 def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP瑜?李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="LP??筌≪뼚??????곷뮸??덈뼄")
 
     payload = data.model_dump(exclude_unset=True)
     if "name" in payload:
@@ -2050,7 +2568,7 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
 def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP瑜?李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="LP??筌≪뼚??????곷뮸??덈뼄")
 
     db.delete(lp)
     db.commit()
@@ -2081,7 +2599,7 @@ def replace_notice_periods(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
 
     fund.notice_periods.clear()
     for item in data:
@@ -2108,7 +2626,7 @@ def replace_key_terms(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
 
     fund.key_terms.clear()
     for item in data:
@@ -2137,7 +2655,7 @@ def get_notice_period(fund_id: int, notice_type: str, db: Session = Depends(get_
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="?듭?湲곌컙??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="???疫꿸퀗而??筌≪뼚??????곷뮸??덈뼄")
     return period
 
 
@@ -2150,7 +2668,7 @@ def calculate_deadline(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
 
     period = (
         db.query(FundNoticePeriod)
@@ -2161,7 +2679,7 @@ def calculate_deadline(
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="?듭?湲곌컙??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="???疫꿸퀗而??筌≪뼚??????곷뮸??덈뼄")
 
     day_basis = (period.day_basis or "business").strip().lower()
     if day_basis == "calendar":
@@ -2177,4 +2695,6 @@ def calculate_deadline(
         "deadline": deadline.isoformat(),
         "label": period.label,
     }
+
+
 

@@ -134,6 +134,8 @@ class FundMigrationValidateResponse(BaseModel):
     success: bool
     fund_rows: int
     lp_rows: int
+    contribution_rows: int = 0
+    warnings: list[FundMigrationErrorItem] = Field(default_factory=list)
     errors: list[FundMigrationErrorItem] = Field(default_factory=list)
 
 
@@ -142,11 +144,14 @@ class FundMigrationImportResponse(BaseModel):
     mode: Literal["insert", "upsert"]
     fund_rows: int
     lp_rows: int
+    contribution_rows: int = 0
     created_funds: int = 0
     updated_funds: int = 0
     created_lps: int = 0
     updated_lps: int = 0
+    created_contributions: int = 0
     synced_address_books: int = 0
+    warnings: list[FundMigrationErrorItem] = Field(default_factory=list)
     errors: list[FundMigrationErrorItem] = Field(default_factory=list)
     validation: FundMigrationValidateResponse
 

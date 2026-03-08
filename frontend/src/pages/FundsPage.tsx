@@ -686,7 +686,10 @@ export default function FundsPage() {
       <div className="card-base mb-4 space-y-3 border-l-4 border-l-indigo-500">
         <div>
           <p className="text-xs font-medium text-indigo-600">조합/LP 마이그레이션</p>
-          <h3 className="text-base font-semibold text-[#0f1f3d]">엑셀 기반 검증 후 Import</h3>
+          <h3 className="text-base font-semibold text-[#0f1f3d]">초기 세팅용 엑셀 Import</h3>
+          <p className="mt-1 text-xs text-[#64748b]">
+            조합, LP, LP 납입이력을 한 번에 초기 세팅합니다. 성공 후에는 ERP 화면에서 계속 관리합니다.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => downloadTemplateMut.mutate()} disabled={downloadTemplateMut.isPending} className="secondary-btn">
@@ -746,8 +749,21 @@ export default function FundsPage() {
               검증 결과: {migrationValidation.errors.length === 0 ? '통과' : `오류 ${migrationValidation.errors.length}건`}
             </p>
             <p className="mt-1 text-xs text-[#64748b]">
-              Funds {migrationValidation.fund_rows}행 / LPs {migrationValidation.lp_rows}행
+              Funds {migrationValidation.fund_rows}행 / LPs {migrationValidation.lp_rows}행 / LPContributions{' '}
+              {migrationValidation.contribution_rows}행
             </p>
+            {migrationValidation.warnings.length > 0 && (
+              <div className="mt-2 rounded border border-[#d4a418] bg-[#fff7d6] px-3 py-2 text-xs text-[#624100]">
+                <p className="font-semibold">확인 필요</p>
+                <ul className="mt-1 space-y-1">
+                  {migrationValidation.warnings.map((warning, index) => (
+                    <li key={`${warning.row}-${warning.column}-${index}`}>
+                      row {warning.row} / {warning.column}: {warning.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {migrationValidation.errors.length > 0 && (
               <div className="mt-2 max-h-48 overflow-auto rounded border border-[#d8e5fb] bg-white">
                 <table className="w-full text-xs">
