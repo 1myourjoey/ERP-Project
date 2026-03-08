@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
-from datetime import date
+from calendar import isleap
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
@@ -25,6 +26,8 @@ from schemas.fee import (
 )
 
 router = APIRouter(tags=["fees"])
+
+PRORATION_METHODS = {"equal_quarter", "actual_365", "actual_366", "actual_actual"}
 
 
 def _ensure_fund(db: Session, fund_id: int) -> Fund:
@@ -63,6 +66,142 @@ def _total_invested(db: Session, fund_id: int) -> float:
     )
 
 
+def _quarter_date_range(year: int, quarter: int) -> tuple[date, date]:
+    month = ((quarter - 1) * 3) + 1
+    start = date(year, month, 1)
+    if quarter == 4:
+        end = date(year, 12, 31)
+    else:
+        end = date(year, month + 3, 1) - timedelta(days=1)
+    return start, end
+
+
+def _quarter_days(year: int, quarter: int) -> int:
+    start, end = _quarter_date_range(year, quarter)
+    return (end - start).days + 1
+
+
+def _normalize_basis(value: str | None, fallback: str = "commitment") -> str:
+    basis = (value or fallback).strip().lower()
+    if basis in {"commitment", "nav", "invested"}:
+        return basis
+    return fallback
+
+
+def _normalize_proration_method(value: str | None) -> str:
+    method = (value or "equal_quarter").strip().lower()
+    if method in PRORATION_METHODS:
+        return method
+    return "equal_quarter"
+
+
+def _resolve_basis_amount(db: Session, fund: Fund, basis_type: str) -> float:
+    if basis_type == "nav":
+        return _latest_nav(db, fund.id)
+    if basis_type == "invested":
+        return _total_invested(db, fund.id)
+    return float(fund.commitment_total or 0)
+
+
+def _resolve_phase(fund: Fund, year: int, quarter: int) -> str:
+    if not fund.investment_period_end:
+        return "investment"
+    quarter_start, quarter_end = _quarter_date_range(year, quarter)
+    if quarter_start > fund.investment_period_end:
+        return "post_investment"
+    if quarter_start <= fund.investment_period_end < quarter_end:
+        return "split"
+    return "investment"
+
+
+def _resolve_fee_terms(db: Session, fund: Fund, config: FeeConfig, phase: str) -> tuple[str, float, float]:
+    if phase == "post_investment":
+        basis_type = _normalize_basis(config.liquidation_fee_basis, _normalize_basis(config.mgmt_fee_basis))
+        fee_rate = float(
+            config.liquidation_fee_rate if config.liquidation_fee_rate is not None else (config.mgmt_fee_rate or 0)
+        )
+    else:
+        basis_type = _normalize_basis(config.mgmt_fee_basis)
+        fee_rate = float(config.mgmt_fee_rate or 0)
+    basis_amount = _resolve_basis_amount(db, fund, basis_type)
+    return basis_type, fee_rate, basis_amount
+
+
+def _resolve_proration(method: str, period_days: int, year: int, quarter_days: int) -> tuple[float, int | None]:
+    normalized = _normalize_proration_method(method)
+    if normalized == "actual_365":
+        return period_days / 365, 365
+    if normalized == "actual_366":
+        return period_days / 366, 366
+    if normalized == "actual_actual":
+        year_days = 366 if isleap(year) else 365
+        return period_days / year_days, year_days
+    return (period_days / quarter_days) * 0.25, None
+
+
+def _build_calculation_result(db: Session, fund: Fund, config: FeeConfig, year: int, quarter: int) -> dict[str, object]:
+    phase = _resolve_phase(fund, year, quarter)
+    proration_method = _normalize_proration_method(config.mgmt_fee_proration_method)
+    quarter_start, quarter_end = _quarter_date_range(year, quarter)
+    quarter_days = _quarter_days(year, quarter)
+
+    if phase != "split":
+        basis_type, fee_rate, basis_amount = _resolve_fee_terms(db, fund, config, phase)
+        period_days = quarter_days
+        proration_factor, year_days = _resolve_proration(proration_method, period_days, year, quarter_days)
+        fee_amount = round(basis_amount * fee_rate * proration_factor, 2)
+        return {
+            "applied_phase": phase,
+            "fee_basis": basis_type,
+            "fee_rate": fee_rate,
+            "basis_amount": basis_amount,
+            "fee_amount": fee_amount,
+            "proration_method": proration_method,
+            "period_days": period_days,
+            "year_days": year_days,
+            "calculation_detail": None,
+        }
+
+    split_date = fund.investment_period_end
+    assert split_date is not None
+    investment_days = (split_date - quarter_start).days + 1
+    post_start = split_date + timedelta(days=1)
+    post_days = (quarter_end - post_start).days + 1
+
+    investment_basis, investment_rate, investment_basis_amount = _resolve_fee_terms(db, fund, config, "investment")
+    post_basis, post_rate, post_basis_amount = _resolve_fee_terms(db, fund, config, "post_investment")
+
+    investment_factor, investment_year_days = _resolve_proration(proration_method, investment_days, year, quarter_days)
+    post_factor, post_year_days = _resolve_proration(proration_method, post_days, year, quarter_days)
+
+    investment_fee = investment_basis_amount * investment_rate * investment_factor
+    post_fee = post_basis_amount * post_rate * post_factor
+    fee_amount = round(investment_fee + post_fee, 2)
+
+    if investment_year_days and post_year_days:
+        detail = (
+            f"투자기간 중 {investment_basis} × {investment_rate:.4f} × {investment_days}/{investment_year_days} + "
+            f"종료 후 {post_basis} × {post_rate:.4f} × {post_days}/{post_year_days}"
+        )
+    else:
+        detail = (
+            f"투자기간 중 {investment_basis} × {investment_rate:.4f} × {investment_days}일 + "
+            f"종료 후 {post_basis} × {post_rate:.4f} × {post_days}일"
+        )
+
+    return {
+        "applied_phase": "split",
+        "fee_basis": "split",
+        "fee_rate": investment_rate,
+        "basis_amount": investment_basis_amount,
+        "fee_amount": fee_amount,
+        "proration_method": proration_method,
+        "period_days": investment_days + post_days,
+        "year_days": investment_year_days if investment_year_days == post_year_days else None,
+        "calculation_detail": detail,
+    }
+
+
 def _serialize_mgmt_fee(db: Session, row: ManagementFee) -> ManagementFeeResponse:
     fund = db.get(Fund, row.fund_id)
     return ManagementFeeResponse(
@@ -74,6 +213,11 @@ def _serialize_mgmt_fee(db: Session, row: ManagementFee) -> ManagementFeeRespons
         fee_rate=_to_float(row.fee_rate),
         basis_amount=_to_float(row.basis_amount),
         fee_amount=_to_float(row.fee_amount),
+        proration_method=row.proration_method or "equal_quarter",
+        period_days=row.period_days,
+        year_days=row.year_days,
+        applied_phase=row.applied_phase or "investment",
+        calculation_detail=row.calculation_detail,
         status=row.status,
         invoice_date=row.invoice_date,
         payment_date=row.payment_date,
@@ -147,17 +291,7 @@ def calculate_management_fee(
     fund = _ensure_fund(db, data.fund_id)
     try:
         config = _get_or_create_config(db, data.fund_id)
-        basis_type = (config.mgmt_fee_basis or "commitment").strip().lower()
-        if basis_type == "nav":
-            basis_amount = _latest_nav(db, data.fund_id)
-        elif basis_type == "invested":
-            basis_amount = _total_invested(db, data.fund_id)
-        else:
-            basis_type = "commitment"
-            basis_amount = float(fund.commitment_total or 0)
-
-        fee_rate = float(config.mgmt_fee_rate or 0)
-        quarterly_fee = basis_amount * fee_rate / 4
+        calculation = _build_calculation_result(db, fund, config, data.year, data.quarter)
 
         row = (
             db.query(ManagementFee)
@@ -176,10 +310,15 @@ def calculate_management_fee(
             )
             db.add(row)
 
-        row.fee_basis = basis_type
-        row.fee_rate = fee_rate
-        row.basis_amount = basis_amount
-        row.fee_amount = quarterly_fee
+        row.fee_basis = str(calculation["fee_basis"])
+        row.fee_rate = float(calculation["fee_rate"])
+        row.basis_amount = float(calculation["basis_amount"])
+        row.fee_amount = float(calculation["fee_amount"])
+        row.proration_method = str(calculation["proration_method"])
+        row.period_days = int(calculation["period_days"]) if calculation["period_days"] is not None else None
+        row.year_days = int(calculation["year_days"]) if calculation["year_days"] is not None else None
+        row.applied_phase = str(calculation["applied_phase"])
+        row.calculation_detail = calculation["calculation_detail"]
         if not row.status:
             row.status = "계산완료"
 

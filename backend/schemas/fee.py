@@ -13,6 +13,11 @@ class ManagementFeeResponse(BaseModel):
     fee_rate: float
     basis_amount: float
     fee_amount: float
+    proration_method: str = "equal_quarter"
+    period_days: Optional[int] = None
+    year_days: Optional[int] = None
+    applied_phase: str = "investment"
+    calculation_detail: Optional[str] = None
     status: str
     invoice_date: Optional[date] = None
     payment_date: Optional[date] = None
@@ -40,6 +45,7 @@ class FeeConfigInput(BaseModel):
     mgmt_fee_rate: float = 0.02
     mgmt_fee_basis: str = "commitment"
     mgmt_fee_period: str = "operating"
+    mgmt_fee_proration_method: str = "equal_quarter"
     liquidation_fee_rate: Optional[float] = None
     liquidation_fee_basis: Optional[str] = None
     hurdle_rate: float = 0.08

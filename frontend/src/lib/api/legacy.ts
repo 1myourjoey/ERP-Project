@@ -4093,6 +4093,11 @@ export interface ManagementFeeResponse {
   fee_rate: number
   basis_amount: number
   fee_amount: number
+  proration_method: string
+  period_days: number | null
+  year_days: number | null
+  applied_phase: string
+  calculation_detail: string | null
   status: string
   invoice_date: string | null
   payment_date: string | null
@@ -4105,6 +4110,7 @@ export interface FeeConfigInput {
   mgmt_fee_rate: number
   mgmt_fee_basis: string
   mgmt_fee_period: string
+  mgmt_fee_proration_method: string
   liquidation_fee_rate?: number | null
   liquidation_fee_basis?: string | null
   hurdle_rate: number

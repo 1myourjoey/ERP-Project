@@ -44,6 +44,13 @@ const BASIS_OPTIONS = [
   { value: 'invested', label: '투자잔액' },
 ]
 
+const PRORATION_OPTIONS = [
+  { value: 'equal_quarter', label: '균등분기(연율/4)' },
+  { value: 'actual_365', label: '일할계산(Actual/365)' },
+  { value: 'actual_366', label: '일할계산(Actual/366)' },
+  { value: 'actual_actual', label: '일할계산(Actual/Actual)' },
+]
+
 const SCENARIO_OPTIONS = [
   { value: 'worst', label: '보수적' },
   { value: 'base', label: '기준' },
@@ -56,11 +63,51 @@ function toDateLabel(value: string | null | undefined) {
 }
 
 function feeBasisLabel(value: string | null | undefined) {
+  if (value === 'split') return '분기 중 기준 전환'
   return BASIS_OPTIONS.find((option) => option.value === value)?.label || value || '-'
+}
+
+function prorationMethodLabel(value: string | null | undefined) {
+  return PRORATION_OPTIONS.find((option) => option.value === value)?.label || value || '-'
 }
 
 function scenarioLabel(value: string) {
   return SCENARIO_OPTIONS.find((option) => option.value === value)?.label || value
+}
+
+function phaseLabel(value: string | null | undefined) {
+  if (value === 'split') return '분기 중 기준 전환'
+  return value === 'post_investment' ? '투자기간 종료 후' : '투자기간 중'
+}
+
+function formatRatePercent(value: number | null | undefined) {
+  return `${((value || 0) * 100).toFixed(2)}%`
+}
+
+function quarterStartDate(year: number, quarter: number) {
+  return new Date(year, (quarter - 1) * 3, 1)
+}
+
+function quarterDayCount(year: number, quarter: number) {
+  return Math.round((new Date(year, quarter * 3, 0).getTime() - quarterStartDate(year, quarter).getTime()) / 86400000) + 1
+}
+
+function quarterEndDate(year: number, quarter: number) {
+  return new Date(year, quarter * 3, 0)
+}
+
+function isLeapYear(year: number) {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+}
+
+function resolvePreviewPhase(fund: Fund | null, year: number, quarter: number) {
+  if (!fund?.investment_period_end) return 'investment'
+  const quarterStart = quarterStartDate(year, quarter)
+  const quarterEnd = quarterEndDate(year, quarter)
+  const investmentEnd = new Date(fund.investment_period_end)
+  if (quarterStart > investmentEnd) return 'post_investment'
+  if (quarterStart <= investmentEnd && investmentEnd < quarterEnd) return 'split'
+  return 'investment'
 }
 
 function statusTone(status: string): 'default' | 'warning' | 'success' {
@@ -203,6 +250,7 @@ export default function FeeManagementPage() {
         mgmt_fee_rate: feeConfig.mgmt_fee_rate,
         mgmt_fee_basis: feeConfig.mgmt_fee_basis,
         mgmt_fee_period: feeConfig.mgmt_fee_period,
+        mgmt_fee_proration_method: feeConfig.mgmt_fee_proration_method,
         liquidation_fee_rate: feeConfig.liquidation_fee_rate,
         liquidation_fee_basis: feeConfig.liquidation_fee_basis,
         hurdle_rate: feeConfig.hurdle_rate,
@@ -216,6 +264,55 @@ export default function FeeManagementPage() {
   const selectedFund = funds.find((fund) => fund.id === selectedFundId) ?? null
   const selectedSummary = selectedFundId ? summaryByFund.get(selectedFundId) : null
   const latestPerformanceRow = performanceRows[0]
+  const managementPreview = useMemo(() => {
+    if (!draftConfig) return null
+    const appliedPhase = resolvePreviewPhase(selectedFund, calcYear, calcQuarter)
+    const quarterDays = quarterDayCount(calcYear, calcQuarter)
+    const baseYearDays =
+      draftConfig.mgmt_fee_proration_method === 'actual_365'
+        ? 365
+        : draftConfig.mgmt_fee_proration_method === 'actual_366'
+          ? 366
+          : draftConfig.mgmt_fee_proration_method === 'actual_actual'
+            ? (isLeapYear(calcYear) ? 366 : 365)
+            : null
+    if (appliedPhase === 'split' && selectedFund?.investment_period_end) {
+      const investmentEnd = new Date(selectedFund.investment_period_end)
+      const investmentDays = Math.round((investmentEnd.getTime() - quarterStartDate(calcYear, calcQuarter).getTime()) / 86400000) + 1
+      const postDays = quarterDays - investmentDays
+      const investmentRate = draftConfig.mgmt_fee_rate
+      const postRate = draftConfig.liquidation_fee_rate ?? draftConfig.mgmt_fee_rate
+      const investmentBasis = draftConfig.mgmt_fee_basis
+      const postBasis = draftConfig.liquidation_fee_basis || draftConfig.mgmt_fee_basis
+      return {
+        appliedPhase,
+        basis: 'split',
+        rate: investmentRate,
+        factorLabel: baseYearDays ? `${investmentDays}/${baseYearDays} + ${postDays}/${baseYearDays}` : `${investmentDays}/${quarterDays}Q + ${postDays}/${quarterDays}Q`,
+        periodDays: quarterDays,
+        yearDays: baseYearDays,
+        detailLabel: `투자기간 중 ${feeBasisLabel(investmentBasis)} × ${formatRatePercent(investmentRate)} + 종료 후 ${feeBasisLabel(postBasis)} × ${formatRatePercent(postRate)}`,
+      }
+    }
+    const basis =
+      appliedPhase === 'post_investment'
+        ? draftConfig.liquidation_fee_basis || draftConfig.mgmt_fee_basis
+        : draftConfig.mgmt_fee_basis
+    const rate =
+      appliedPhase === 'post_investment' && draftConfig.liquidation_fee_rate != null
+        ? draftConfig.liquidation_fee_rate
+        : draftConfig.mgmt_fee_rate
+    const factorLabel = baseYearDays ? `${quarterDays}/${baseYearDays}` : '1/4'
+    return {
+      appliedPhase,
+      basis,
+      rate,
+      factorLabel,
+      periodDays: quarterDays,
+      yearDays: baseYearDays,
+      detailLabel: null,
+    }
+  }, [calcQuarter, calcYear, draftConfig, selectedFund])
 
   return (
     <div className="page-container space-y-4">
@@ -311,29 +408,103 @@ export default function FeeManagementPage() {
       {activeTab === 'management' && (
         <WorkbenchSplit
           primary={
-            <SectionScaffold title="보수 설정 및 분기 계산" description="관리보수 기준과 계산 기준 분기를 같은 패널에서 조정합니다.">
+            <SectionScaffold title="관리보수 설정 및 분기 계산" description="연 관리보수율, 기준금액, 안분방식과 투자기간 종료 후 전환 규칙을 함께 관리합니다.">
               {configLoading || !draftConfig ? (
                 <PageLoading />
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <div>
-                      <label className="form-label">관리보수율</label>
-                      <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                    <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-[#f8fbff] p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-[#0f1f3d]">투자기간 중 기준</p>
+                          <p className="text-[11px] text-[#64748b]">약정총액, 투자잔액, 순자산가치 중 기준금액을 선택합니다.</p>
+                        </div>
+                        <span className="finance-summary-chip">적용: {phaseLabel('investment')}</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="form-label">연 관리보수율</label>
+                          <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                        </div>
+                        <div>
+                          <label className="form-label">기준금액</label>
+                          <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="form-input">
+                            {BASIS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="form-label">안분 방식</label>
+                          <select value={draftConfig.mgmt_fee_proration_method} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_proration_method: e.target.value } : prev)} className="form-input">
+                            {PRORATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="form-label">관리보수 기준</label>
-                      <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="form-input">
-                        {BASIS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
+
+                    <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-[#0f1f3d]">투자기간 종료 후 전환</p>
+                          <p className="text-[11px] text-[#64748b]">미입력 시 투자기간 중 기준과 연율을 그대로 사용합니다.</p>
+                        </div>
+                        <span className="finance-summary-chip">종료일 {selectedFund?.investment_period_end ? toDateLabel(selectedFund.investment_period_end) : '-'}</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="form-label">종료 후 연율</label>
+                          <input type="number" step="0.0001" value={draftConfig.liquidation_fee_rate ?? ''} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, liquidation_fee_rate: e.target.value === '' ? null : Number(e.target.value) } : prev)} className="form-input" placeholder="미입력 시 기존 연율 유지" />
+                        </div>
+                        <div>
+                          <label className="form-label">종료 후 기준금액</label>
+                          <select value={draftConfig.liquidation_fee_basis ?? ''} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, liquidation_fee_basis: e.target.value || null } : prev)} className="form-input">
+                            <option value="">투자기간 중 기준 유지</option>
+                            {BASIS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label">허들율</label>
+                          <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                        </div>
+                        <div>
+                          <label className="form-label">캐리율</label>
+                          <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="form-label">허들율</label>
-                      <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                  </div>
+
+                  <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-[#0f1f3d]">계산식 미리보기</p>
+                        <p className="text-[11px] text-[#64748b]">현재 선택한 분기와 조합 기준으로 어떤 규칙이 적용되는지 보여줍니다.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="finance-summary-chip">적용구간 {phaseLabel(managementPreview?.appliedPhase)}</span>
+                        <span className="finance-summary-chip">기준 {feeBasisLabel(managementPreview?.basis)}</span>
+                        <span className="finance-summary-chip">안분 {prorationMethodLabel(draftConfig.mgmt_fee_proration_method)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="form-label">캐리율</label>
-                      <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] text-[#64748b]">적용 연율</p>
+                        <p className="mt-1 font-data text-sm font-semibold text-[#0f1f3d]">{formatRatePercent(managementPreview?.rate)}</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] text-[#64748b]">안분계수</p>
+                        <p className="mt-1 font-data text-sm font-semibold text-[#0f1f3d]">{managementPreview?.factorLabel || '-'}</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] text-[#64748b]">분기</p>
+                        <p className="mt-1 font-data text-sm font-semibold text-[#0f1f3d]">{calcYear}년 {calcQuarter}분기</p>
+                      </div>
+                      <div className="rounded-lg border border-[#d8e5fb] bg-white px-3 py-2">
+                        <p className="text-[11px] text-[#64748b]">식</p>
+                        <p className="mt-1 text-xs font-semibold text-[#0f1f3d]">
+                          {managementPreview?.detailLabel || `기준금액 × ${formatRatePercent(managementPreview?.rate)} × ${managementPreview?.factorLabel || '-'}`}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end">
@@ -365,7 +536,7 @@ export default function FeeManagementPage() {
             </SectionScaffold>
           }
           secondary={
-            <SectionScaffold title="관리보수 이력" description="청구·수령 상태를 즉시 갱신할 수 있습니다.">
+            <SectionScaffold title="관리보수 이력" description="적용구간, 기준금액, 안분방식을 포함한 계산 결과를 분기별로 추적합니다.">
               {managementLoading ? (
                 <PageLoading />
               ) : !managementFees.length ? (
@@ -377,7 +548,11 @@ export default function FeeManagementPage() {
                       <div className="finance-list-row-main">
                         <div className="min-w-0">
                           <p className="finance-list-row-title">{row.year}년 {row.quarter}분기</p>
-                          <p className="finance-list-row-meta">기준 {feeBasisLabel(row.fee_basis)} · 기준금액 {formatKRW(row.basis_amount)}</p>
+                          <p className="finance-list-row-meta">
+                            {row.applied_phase === 'split' && row.calculation_detail
+                              ? row.calculation_detail
+                              : `${phaseLabel(row.applied_phase)} · 기준 ${feeBasisLabel(row.fee_basis)} · 기준금액 ${formatKRW(row.basis_amount)}`}
+                          </p>
                         </div>
                         <div className="finance-list-row-actions">
                           <StatusPill status={row.status} />
@@ -387,7 +562,10 @@ export default function FeeManagementPage() {
                       </div>
                       <div className="finance-inline-summary">
                         <span className="finance-summary-chip">관리보수 {formatKRW(row.fee_amount)}</span>
-                        <span className="finance-summary-chip">상태 {row.status}</span>
+                        <span className="finance-summary-chip">안분 {prorationMethodLabel(row.proration_method)}</span>
+                        <span className="finance-summary-chip">
+                          계수 {row.year_days ? `${row.period_days || 0}/${row.year_days}` : '1/4'}
+                        </span>
                       </div>
                     </div>
                   ))}
