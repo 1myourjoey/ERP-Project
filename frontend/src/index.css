@@ -194,9 +194,23 @@ input[type="radio"] {
 }
 
 .page-header {
-  @apply mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-5 py-4;
+  @apply mb-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-white px-5 py-4;
   border-color: var(--color-border);
   box-shadow: var(--shadow-sm);
+  min-height: 86px;
+}
+
+.page-header-copy {
+  @apply flex min-w-0 flex-1 flex-col gap-2;
+}
+
+.page-header-meta {
+  @apply flex flex-wrap items-center gap-2 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.page-header-actions {
+  @apply flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto;
 }
 
 .page-title {
@@ -222,6 +236,355 @@ input[type="radio"] {
   @apply rounded-xl border bg-white p-5;
   border-color: var(--color-border);
   box-shadow: var(--shadow-sm);
+}
+
+.page-control-strip {
+  @apply rounded-xl border bg-white px-4 py-3;
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.page-control-strip-compact {
+  @apply px-3 py-2.5;
+}
+
+.page-metric-strip {
+  @apply grid grid-cols-2 gap-2 md:grid-cols-4;
+}
+
+.metric-tile {
+  @apply rounded-xl border bg-white px-3 py-3;
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.metric-tile-info {
+  background: var(--tone-info-bg);
+  border-color: rgba(85, 142, 248, 0.32);
+}
+
+.metric-tile-warning {
+  background: var(--tone-warning-bg);
+  border-color: var(--tone-warning-border);
+}
+
+.metric-tile-danger {
+  background: var(--tone-danger-bg);
+  border-color: var(--tone-danger-border);
+}
+
+.metric-tile-success {
+  background: #eef6f2;
+  border-color: #bed7c9;
+}
+
+.metric-tile-label {
+  @apply text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.metric-tile-value {
+  @apply mt-1 truncate text-base font-semibold leading-tight;
+  color: var(--color-text);
+}
+
+.metric-tile-hint {
+  @apply mt-1 text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.section-scaffold {
+  @apply overflow-hidden rounded-xl border bg-white;
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-scaffold-header {
+  @apply flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3;
+  border-color: var(--color-border);
+}
+
+.section-scaffold-title {
+  @apply text-sm font-semibold;
+  color: var(--color-text);
+}
+
+.section-scaffold-description {
+  @apply mt-0.5 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.section-scaffold-actions {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.section-scaffold-body {
+  @apply p-4;
+}
+
+.workbench-split {
+  @apply grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)];
+}
+
+.workbench-secondary-sticky {
+  @apply xl:sticky xl:top-24 xl:self-start;
+}
+
+.finance-tab-strip {
+  @apply w-full justify-start overflow-x-auto;
+}
+
+.finance-tab-strip .tab-btn {
+  @apply gap-2;
+}
+
+.finance-tab-count {
+  @apply rounded-full px-2 py-0.5 text-[10px];
+  background: rgba(85, 142, 248, 0.12);
+  color: var(--color-accent-strong);
+}
+
+.finance-kpi-inline {
+  @apply grid gap-2 md:grid-cols-3;
+}
+
+.finance-kpi-card {
+  @apply rounded-xl border px-3 py-3;
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+}
+
+.finance-kpi-label {
+  @apply text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-kpi-value {
+  @apply mt-1 text-base font-semibold;
+  color: var(--color-text);
+}
+
+.finance-kpi-hint {
+  @apply mt-1 text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-status-pill {
+  @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold;
+}
+
+.finance-status-default {
+  background: var(--tone-info-bg);
+  border-color: var(--tone-info-border);
+  color: var(--tone-info-text);
+}
+
+.finance-status-success {
+  background: #eef6f2;
+  border-color: #bed7c9;
+  color: #1f5b45;
+}
+
+.finance-status-warning {
+  background: var(--tone-warning-bg);
+  border-color: var(--tone-warning-border);
+  color: var(--tone-warning-text);
+}
+
+.finance-status-danger {
+  background: var(--tone-danger-bg);
+  border-color: var(--tone-danger-border);
+  color: var(--tone-danger-text);
+}
+
+.finance-list {
+  @apply space-y-2;
+}
+
+.finance-list-row {
+  @apply rounded-xl border bg-white px-3 py-3;
+  border-color: var(--color-border);
+  transition: background-color 120ms, box-shadow 120ms;
+}
+
+.finance-list-row:hover {
+  background: var(--color-surface-subtle);
+  box-shadow: var(--shadow-xs);
+}
+
+.finance-list-row-selected {
+  background: var(--tone-info-bg);
+  border-color: rgba(85, 142, 248, 0.36);
+}
+
+.finance-list-row-main {
+  @apply flex flex-wrap items-start justify-between gap-2;
+}
+
+.finance-list-row-title {
+  @apply text-sm font-semibold;
+  color: var(--color-text);
+}
+
+.finance-list-row-meta {
+  @apply mt-0.5 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.finance-list-row-actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.finance-inline-summary {
+  @apply mt-2 flex flex-wrap items-center gap-2 text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-summary-chip {
+  @apply inline-flex items-center rounded-full border px-2 py-1 text-[11px];
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+}
+
+.finance-waterfall-item {
+  @apply flex items-center justify-between rounded-xl border px-3 py-3;
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+}
+
+.finance-waterfall-item-info {
+  background: var(--tone-info-bg);
+  border-color: rgba(85, 142, 248, 0.3);
+}
+
+.finance-waterfall-label {
+  @apply text-xs;
+  color: var(--color-text-secondary);
+}
+
+.finance-waterfall-value {
+  @apply text-sm font-semibold;
+  font-family: "IBM Plex Sans KR", "Pretendard Variable", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.finance-step-rail {
+  @apply grid gap-2 md:grid-cols-2 xl:grid-cols-4;
+}
+
+.finance-step-rail-item {
+  @apply flex items-start gap-3 rounded-xl border px-3 py-3;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.finance-step-rail-info {
+  background: var(--tone-info-bg);
+}
+
+.finance-step-rail-warning {
+  background: var(--tone-warning-bg);
+}
+
+.finance-step-rail-success {
+  background: #eef6f2;
+}
+
+.finance-step-index {
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold;
+  background: rgba(85, 142, 248, 0.16);
+  color: var(--color-accent-strong);
+}
+
+.finance-step-label {
+  @apply text-sm font-semibold;
+  color: var(--color-text);
+}
+
+.finance-step-description {
+  @apply mt-0.5 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.finance-flow-row {
+  @apply grid items-center gap-3 rounded-xl border px-3 py-3 xl:grid-cols-[120px_minmax(0,1fr)_108px];
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.finance-flow-month-label {
+  @apply text-sm font-semibold;
+  color: var(--color-text);
+}
+
+.finance-flow-month-hint {
+  @apply mt-0.5 text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-flow-bars {
+  @apply space-y-2;
+}
+
+.finance-flow-track {
+  @apply space-y-1;
+}
+
+.finance-flow-track-label {
+  @apply text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-flow-bar-shell {
+  @apply h-2 overflow-hidden rounded-full;
+  background: var(--color-border);
+}
+
+.finance-flow-bar {
+  @apply h-2 rounded-full;
+}
+
+.finance-flow-bar-inflow {
+  background: var(--color-accent);
+}
+
+.finance-flow-bar-outflow {
+  background: var(--tone-warning-main-soft);
+}
+
+.finance-flow-net {
+  @apply text-right;
+}
+
+.finance-flow-net-label {
+  @apply text-[11px];
+  color: var(--color-text-secondary);
+}
+
+.finance-flow-net-value {
+  @apply mt-1 text-sm font-semibold;
+  font-family: "IBM Plex Sans KR", "Pretendard Variable", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-empty {
+  @apply py-8 text-center text-sm;
+  color: var(--color-text-secondary);
+}
+
+.segmented-control {
+  @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-1;
+}
+
+.segmented-control .tab-btn {
+  @apply rounded-lg px-3 py-1.5 text-xs;
+  min-height: 30px;
+}
+
+.compact-table-wrap {
+  @apply overflow-auto;
 }
 
 .card-base:has(button:hover):not(.no-hover-lift),
@@ -393,19 +756,19 @@ input[type="radio"] {
 
 /* Tables */
 .table-head-row {
-  @apply text-xs font-semibold uppercase tracking-wider;
+  @apply text-[11px] font-semibold;
   font-family: "IBM Plex Sans KR", "Pretendard Variable", sans-serif;
   color: var(--color-text-secondary);
   background-color: var(--color-surface-subtle);
 }
 
 .table-head-cell {
-  @apply border-b px-3 py-2.5 text-left;
+  @apply border-b px-3 py-2.5 text-left align-middle;
   border-color: var(--color-border);
 }
 
 .table-body-cell {
-  @apply border-b px-3 py-2.5 text-sm;
+  @apply border-b px-3 py-2.5 text-[13px] align-middle;
   font-family: "IBM Plex Sans KR", "Pretendard Variable", sans-serif;
   font-variant-numeric: tabular-nums;
   border-color: var(--color-border);

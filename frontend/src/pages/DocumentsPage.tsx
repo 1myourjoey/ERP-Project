@@ -15,6 +15,10 @@ import {
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 
 function dueBadge(daysRemaining: number | null) {
   if (daysRemaining == null) return null
@@ -28,15 +32,6 @@ function dueBadge(daysRemaining: number | null) {
     return { text: `D-${daysRemaining}`, className: 'tag tag-amber' }
   }
   return { text: `D-${daysRemaining}`, className: 'tag tag-gray' }
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="card-base">
-      <p className="text-xs text-[#64748b]">{label}</p>
-      <p className="mt-1 text-xl font-bold text-[#0f1f3d]">{value}</p>
-    </div>
-  )
 }
 
 function toDateTime(value: string | null | undefined) {
@@ -99,21 +94,22 @@ export default function DocumentsPage() {
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-      <h2 className="page-title">서류 현황</h2>
-          <p className="page-subtitle">서류 수집 상태와 마감 일정을 추적합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="서류 현황"
+        subtitle="서류 수집 상태, 마감 일정, 자동 생성 이력을 같은 작업 문법으로 확인합니다."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <SummaryCard label="전체 서류 수" value={`${summary.total}건`} />
-        <SummaryCard label="미수집 서류 수" value={`${summary.missing}건`} />
-        <SummaryCard label="수집률" value={`${summary.rate}%`} />
-      </div>
+      <PageMetricStrip
+        items={[
+          { label: '전체 서류', value: `${summary.total}건`, hint: '현재 조회 조건 기준', tone: 'info' },
+          { label: '미수집', value: `${summary.missing}건`, hint: '후속 요청 필요', tone: summary.missing > 0 ? 'warning' : 'success' },
+          { label: '수집률', value: `${summary.rate}%`, hint: '수집 완료 기준', tone: summary.rate === 100 ? 'success' : 'default' },
+          { label: '자동 생성 문서', value: `${generatedDocs.length}건`, hint: '최근 생성 이력', tone: 'default' },
+        ]}
+      />
 
-      <div className="card-base">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <PageControlStrip compact>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-[#64748b]">상태</label>
             <select value={status} onChange={e => setStatus(e.target.value)} className="form-input">
@@ -140,40 +136,45 @@ export default function DocumentsPage() {
             </select>
           </div>
         </div>
-      </div>
+      </PageControlStrip>
 
-      <div className="rounded-2xl border border-[#d8e5fb] bg-white overflow-hidden">
+      <SectionScaffold
+        title="서류 수집 상태"
+        description="수집 상태를 바로 갱신하면서 마감일과 지연 여부를 함께 확인합니다."
+        className="overflow-hidden"
+        bodyClassName="p-0"
+      >
         {isLoading ? (
           <PageLoading />
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-[#f5f9ff] text-[#64748b] text-xs">
+          <div className="compact-table-wrap">
+            <table className="w-full text-sm">
+              <thead className="table-head-row">
               <tr>
-                <th className="px-3 py-2 text-left">서류명</th>
-                <th className="px-3 py-2 text-left">투자건(회사명)</th>
-                <th className="px-3 py-2 text-left">조합명</th>
-                <th className="px-3 py-2 text-left">상태</th>
-                <th className="px-3 py-2 text-left">마감일</th>
-                <th className="px-3 py-2 text-left">D-day</th>
-                <th className="px-3 py-2 text-left">비고</th>
+                <th className="table-head-cell">서류명</th>
+                <th className="table-head-cell">투자건(회사명)</th>
+                <th className="table-head-cell">조합명</th>
+                <th className="table-head-cell">상태</th>
+                <th className="table-head-cell">마감일</th>
+                <th className="table-head-cell">D-day</th>
+                <th className="table-head-cell">비고</th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               {docs?.map((doc) => {
                 const badge = dueBadge(doc.days_remaining)
                 const isUpdating = updateStatusMut.isPending && updateStatusMut.variables?.doc.id === doc.id
                 return (
-                  <tr key={doc.id} className="border-t border-[#e6eefc]">
-                    <td className="px-3 py-2">{doc.document_name}</td>
-                    <td className="px-3 py-2">{doc.company_name}</td>
-                    <td className="px-3 py-2">{doc.fund_name}</td>
-                    <td className="px-3 py-2">
-                      <label className="mb-1 block text-[10px] font-medium text-[#64748b]">상태</label>
+                  <tr key={doc.id} className="hover:bg-[#f5f9ff]">
+                    <td className="table-body-cell">{doc.document_name}</td>
+                    <td className="table-body-cell">{doc.company_name}</td>
+                    <td className="table-body-cell">{doc.fund_name}</td>
+                    <td className="table-body-cell">
                       <select
                         value={doc.status}
                         disabled={isUpdating}
                         onChange={e => updateStatusMut.mutate({ doc, nextStatus: e.target.value })}
-                        className="w-full px-2 py-1 text-xs border rounded bg-white"
+                        className="form-input-sm min-w-[120px]"
                       >
                         <option value="pending">미수집</option>
                         <option value="requested">요청중</option>
@@ -181,55 +182,58 @@ export default function DocumentsPage() {
                         <option value="collected">수집완료</option>
                       </select>
                     </td>
-                    <td className="px-3 py-2">{doc.due_date || '-'}</td>
-                    <td className="px-3 py-2">
-                  {badge ? <span className={badge.className}>{badge.text}</span> : '-'}
+                    <td className="table-body-cell">{doc.due_date || '-'}</td>
+                    <td className="table-body-cell">
+                      {badge ? <span className={badge.className}>{badge.text}</span> : '-'}
                     </td>
-                    <td className="px-3 py-2">{doc.note || '-'}</td>
+                    <td className="table-body-cell">{doc.note || '-'}</td>
                   </tr>
                 )
               })}
               {!docs?.length && (
                 <tr>
                   <td className="px-3 py-1" colSpan={7}>
-                    <EmptyState emoji="📄" message="등록된 서류가 없어요" className="py-8" />
+                    <EmptyState message="등록된 서류가 없습니다." className="py-8" />
                   </td>
                 </tr>
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </SectionScaffold>
 
-      <div className="rounded-2xl border border-[#d8e5fb] bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#e6eefc] px-4 py-3">
-          <h3 className="text-sm font-semibold text-[#0f1f3d]">자동 생성 문서 이력</h3>
-          <span className="text-xs text-[#64748b]">{generatedDocs.length}건</span>
-        </div>
+      <SectionScaffold
+        title="자동 생성 문서 이력"
+        description="생성 시점과 템플릿 유형을 빠르게 확인하고 바로 다운로드합니다."
+        actions={<span className="text-xs text-[#64748b]">{generatedDocs.length}건</span>}
+        className="overflow-hidden"
+        bodyClassName="p-0"
+      >
         {generatedLoading ? (
           <PageLoading />
         ) : !generatedDocs.length ? (
-          <EmptyState emoji="🧾" message="자동 생성 문서가 없습니다." className="py-8" />
+          <EmptyState message="자동 생성 문서가 없습니다." className="py-8" />
         ) : (
-          <div className="overflow-auto">
+          <div className="compact-table-wrap">
             <table className="w-full text-sm">
-              <thead className="bg-[#f5f9ff] text-[#64748b] text-xs">
+              <thead className="table-head-row">
                 <tr>
-                  <th className="px-3 py-2 text-left">생성일</th>
-                  <th className="px-3 py-2 text-left">문서명</th>
-                  <th className="px-3 py-2 text-left">유형</th>
-                  <th className="px-3 py-2 text-left">다운로드</th>
+                  <th className="table-head-cell">생성일</th>
+                  <th className="table-head-cell">문서명</th>
+                  <th className="table-head-cell">유형</th>
+                  <th className="table-head-cell">다운로드</th>
                 </tr>
               </thead>
               <tbody>
                 {generatedDocs.map((doc) => (
-                  <tr key={doc.id} className="border-t border-[#e6eefc]">
-                    <td className="px-3 py-2">{toDateTime(doc.created_at)}</td>
-                    <td className="px-3 py-2">{doc.filename}</td>
-                    <td className="px-3 py-2">
+                  <tr key={doc.id} className="hover:bg-[#f5f9ff]">
+                    <td className="table-body-cell">{toDateTime(doc.created_at)}</td>
+                    <td className="table-body-cell">{doc.filename}</td>
+                    <td className="table-body-cell">
                       <span className="tag tag-gray">{doc.builder_label || doc.builder}</span>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="table-body-cell">
                       <button
                         className="secondary-btn btn-sm"
                         onClick={async () => {
@@ -247,7 +251,7 @@ export default function DocumentsPage() {
             </table>
           </div>
         )}
-      </div>
+      </SectionScaffold>
     </div>
   )
 }

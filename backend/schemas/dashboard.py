@@ -213,9 +213,14 @@ class DashboardDeadlinesResponse(BaseModel):
 class DashboardFundSnapshotItem(BaseModel):
     id: int
     name: str
+    status: str = "active"
     nav: float = 0.0
+    commitment_total: float = 0.0
+    paid_in_total: float = 0.0
     lp_count: int = 0
     contribution_rate: Optional[float] = None
+    active_workflow_count: int = 0
+    pending_task_count: int = 0
     compliance_status: Literal["good", "warning", "danger"] = "good"
     compliance_overdue: int = 0
     missing_documents: int = 0
@@ -223,8 +228,14 @@ class DashboardFundSnapshotItem(BaseModel):
 
 class DashboardFundSnapshotTotals(BaseModel):
     total_nav: float = 0.0
+    total_commitment: float = 0.0
+    total_paid_in: float = 0.0
     total_lp_count: int = 0
+    total_active_workflows: int = 0
+    total_pending_tasks: int = 0
     total_missing_documents: int = 0
+    active_fund_count: int = 0
+    attention_fund_count: int = 0
 
 
 class DashboardFundsSnapshotResponse(BaseModel):

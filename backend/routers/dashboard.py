@@ -1246,6 +1246,42 @@ def _build_funds_snapshot_payload(db: Session, today: date) -> dict:
         if fund_id is not None
     }
 
+    active_workflow_rows = (
+        db.query(
+            WorkflowInstance.fund_id,
+            func.count(WorkflowInstance.id),
+        )
+        .filter(
+            WorkflowInstance.status == "active",
+            WorkflowInstance.fund_id.isnot(None),
+        )
+        .group_by(WorkflowInstance.fund_id)
+        .all()
+    )
+    active_workflows_by_fund = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in active_workflow_rows
+        if fund_id is not None
+    }
+
+    pending_task_rows = (
+        db.query(
+            Task.fund_id,
+            func.count(Task.id),
+        )
+        .filter(
+            Task.status.in_(["pending", "in_progress"]),
+            Task.fund_id.isnot(None),
+        )
+        .group_by(Task.fund_id)
+        .all()
+    )
+    pending_tasks_by_fund = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in pending_task_rows
+        if fund_id is not None
+    }
+
     missing_doc_rows = (
         db.query(
             Investment.fund_id,
@@ -1275,6 +1311,8 @@ def _build_funds_snapshot_payload(db: Session, today: date) -> dict:
 
         compliance_overdue = int(compliance_overdue_by_fund.get(fund.id, 0))
         missing_documents = int(missing_doc_by_fund.get(fund.id, 0))
+        active_workflow_count = int(active_workflows_by_fund.get(fund.id, 0))
+        pending_task_count = int(pending_tasks_by_fund.get(fund.id, 0))
 
         if compliance_overdue > 0:
             compliance_status = "danger"
@@ -1287,9 +1325,14 @@ def _build_funds_snapshot_payload(db: Session, today: date) -> dict:
             {
                 "id": fund.id,
                 "name": fund.name,
+                "status": fund.status or "active",
                 "nav": nav,
+                "commitment_total": commitment_total,
+                "paid_in_total": paid_in_total,
                 "lp_count": lp_count,
                 "contribution_rate": contribution_rate,
+                "active_workflow_count": active_workflow_count,
+                "pending_task_count": pending_task_count,
                 "compliance_status": compliance_status,
                 "compliance_overdue": compliance_overdue,
                 "missing_documents": missing_documents,
@@ -1302,8 +1345,18 @@ def _build_funds_snapshot_payload(db: Session, today: date) -> dict:
         "rows": rows,
         "totals": {
             "total_nav": sum(float(row["nav"] or 0) for row in rows),
+            "total_commitment": sum(float(row["commitment_total"] or 0) for row in rows),
+            "total_paid_in": sum(float(row["paid_in_total"] or 0) for row in rows),
             "total_lp_count": sum(int(row["lp_count"] or 0) for row in rows),
+            "total_active_workflows": sum(int(row["active_workflow_count"] or 0) for row in rows),
+            "total_pending_tasks": sum(int(row["pending_task_count"] or 0) for row in rows),
             "total_missing_documents": sum(int(row["missing_documents"] or 0) for row in rows),
+            "active_fund_count": sum(1 for row in rows if str(row.get("status") or "").strip().lower() == "active"),
+            "attention_fund_count": sum(
+                1
+                for row in rows
+                if int(row["compliance_overdue"] or 0) > 0 or int(row["missing_documents"] or 0) > 0
+            ),
         },
     }
 

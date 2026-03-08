@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import {
@@ -51,6 +55,7 @@ const ROUTE_KEYS = [
   '/reports',
   '/fund-operations',
   '/documents',
+  '/data-studio',
   '/templates',
 ]
 
@@ -228,29 +233,41 @@ export default function UsersPage() {
   if (!isMaster) {
     return (
       <div className="page-container">
-        <EmptyState emoji="🔒" message="마스터 관리자만 접근할 수 있습니다." className="py-12" />
+        <EmptyState message="마스터 관리자만 접근할 수 있습니다." className="py-12" />
       </div>
     )
   }
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">사용자 관리</h2>
-          <p className="page-subtitle">가입 승인, 초대, 비밀번호 재설정을 처리합니다.</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => { setForm(EMPTY_USER_FORM); setOpenMode('create') }} className="primary-btn">+ 사용자 추가</button>
-          <button onClick={() => setInviteModalOpen(true)} className="secondary-btn">+ 초대 링크</button>
-        </div>
-      </div>
+      <PageHeader
+        title="사용자 관리"
+        subtitle="가입 승인, 초대, 권한, 비밀번호 재설정을 같은 작업 문법으로 처리합니다."
+        actions={
+          <>
+            <button onClick={() => { setForm(EMPTY_USER_FORM); setOpenMode('create') }} className="primary-btn">+ 사용자 추가</button>
+            <button onClick={() => setInviteModalOpen(true)} className="secondary-btn">+ 초대 링크</button>
+          </>
+        }
+      />
+
+      <PageMetricStrip
+        items={[
+          { label: '활성 사용자', value: `${activeUsers.length}명`, hint: '현재 사용 가능 계정', tone: 'info' },
+          { label: '승인 대기', value: `${pendingUsers.length}명`, hint: '가입 승인 필요', tone: pendingUsers.length > 0 ? 'warning' : 'success' },
+          { label: '초대 링크', value: `${invitations.length}건`, hint: '발급된 초대 이력', tone: 'default' },
+          { label: '비밀번호 요청', value: `${resetRequests.length}건`, hint: '관리자 조치 필요', tone: resetRequests.length > 0 ? 'danger' : 'success' },
+        ]}
+      />
 
       {resetRequests.length > 0 && (
-        <div className="card-base space-y-2">
-          <h3 className="text-sm font-semibold text-amber-800">비밀번호 재설정 요청 ({resetRequests.length}건)</h3>
+        <SectionScaffold
+          title={`비밀번호 재설정 요청 (${resetRequests.length}건)`}
+          description="즉시 초기화하거나 재설정 링크를 발급할 수 있습니다."
+          className="tone-warning"
+        >
           {resetRequests.map((row) => (
-            <div key={row.id} className="flex items-center justify-between gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
+            <div key={row.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#d4a418] bg-[#fff7d6] px-3 py-2 text-xs">
               <p>{row.name} ({row.username}) · {toDateLabel(row.password_reset_requested_at)}</p>
               <div className="flex gap-2">
                 <button
@@ -266,17 +283,24 @@ export default function UsersPage() {
               </div>
             </div>
           ))}
-        </div>
+        </SectionScaffold>
       )}
 
-      <div className="card-base">
-        <div className="mb-3 flex gap-2 text-xs">
-          <button onClick={() => setTab('active')} className={`rounded px-3 py-1.5 ${tab === 'active' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>활성 사용자 ({activeUsers.length})</button>
-          <button onClick={() => setTab('pending')} className={`rounded px-3 py-1.5 ${tab === 'pending' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>승인 대기 ({pendingUsers.length})</button>
-          <button onClick={() => setTab('invites')} className={`rounded px-3 py-1.5 ${tab === 'invites' ? 'primary-btn' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}>초대 관리 ({invitations.length})</button>
-        </div>
+      <SectionScaffold
+        title="계정 운영"
+        description="활성 사용자, 승인 대기, 초대 링크를 같은 목록 규칙으로 관리합니다."
+        actions={
+          <PageControlStrip compact className="!border-0 !bg-transparent !p-0 shadow-none">
+            <div className="segmented-control">
+              <button onClick={() => setTab('active')} className={`tab-btn ${tab === 'active' ? 'active' : ''}`}>활성 사용자 ({activeUsers.length})</button>
+              <button onClick={() => setTab('pending')} className={`tab-btn ${tab === 'pending' ? 'active' : ''}`}>승인 대기 ({pendingUsers.length})</button>
+              <button onClick={() => setTab('invites')} className={`tab-btn ${tab === 'invites' ? 'active' : ''}`}>초대 관리 ({invitations.length})</button>
+            </div>
+          </PageControlStrip>
+        }
+      >
 
-        {tab === 'active' && (usersLoading ? <PageLoading /> : activeUsers.length === 0 ? <EmptyState emoji="👤" message="활성 사용자 없음" className="py-8" /> : (
+        {tab === 'active' && (usersLoading ? <PageLoading /> : activeUsers.length === 0 ? <EmptyState message="활성 사용자가 없습니다." className="py-8" /> : (
           <div className="space-y-2">
             {activeUsers.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
@@ -292,7 +316,7 @@ export default function UsersPage() {
           </div>
         ))}
 
-        {tab === 'pending' && (pendingLoading ? <PageLoading /> : pendingUsers.length === 0 ? <EmptyState emoji="🕒" message="승인 대기 없음" className="py-8" /> : (
+        {tab === 'pending' && (pendingLoading ? <PageLoading /> : pendingUsers.length === 0 ? <EmptyState message="승인 대기 사용자가 없습니다." className="py-8" /> : (
           <div className="space-y-2">
             {pendingUsers.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
@@ -306,7 +330,7 @@ export default function UsersPage() {
           </div>
         ))}
 
-        {tab === 'invites' && (inviteLoading ? <PageLoading /> : invitations.length === 0 ? <EmptyState emoji="🔗" message="초대 없음" className="py-8" /> : (
+        {tab === 'invites' && (inviteLoading ? <PageLoading /> : invitations.length === 0 ? <EmptyState message="초대 이력이 없습니다." className="py-8" /> : (
           <div className="space-y-2">
             {invitations.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#d8e5fb] px-3 py-2 text-sm">
@@ -326,7 +350,7 @@ export default function UsersPage() {
             ))}
           </div>
         ))}
-      </div>
+      </SectionScaffold>
 
       {openMode && (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

@@ -71,6 +71,9 @@ import {
 import { formatKRW, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
@@ -229,15 +232,6 @@ function buildKeyTermDraft(fund: Fund | undefined): EditableKeyTerm[] {
     value: '',
     article_ref: '',
   }]
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-[#d8e5fb] bg-[#f5f9ff] rounded-xl p-3">
-      <p className="text-xs text-[#64748b]">{label}</p>
-      <p className="text-lg font-bold text-[#0f1f3d] mt-1">{value}</p>
-    </div>
-  )
 }
 
 function dueText(doc: DocumentStatusItem): string | null {
@@ -1871,6 +1865,38 @@ export default function FundDetailPage() {
     return <div className="page-container text-sm text-red-600">유효하지 않은 조합 ID입니다.</div>
   }
 
+  const fundDetailMetrics: Array<{
+    label: string
+    value: string
+    hint: string
+    tone?: 'default' | 'info' | 'warning' | 'danger' | 'success'
+  }> = fundDetail
+    ? [
+        {
+          label: '총 약정',
+          value: formatKRW(fundDetail.commitment_total ?? null),
+          hint: `GP ${formatKRW(fundDetail.gp_commitment ?? null)}`,
+        },
+        {
+          label: '투자 건수',
+          value: `${investments?.length ?? 0}건`,
+          hint: `투자 금액 ${formatKRW(totalInvestmentAmount)}`,
+        },
+        {
+          label: '진행 워크플로',
+          value: `${fundWorkflowInstances.filter((row) => row.status === 'active').length}건`,
+          hint: `미완료 업무 ${pendingTasks.length}건`,
+          tone: pendingTasks.length > 0 ? 'info' : 'default',
+        },
+        {
+          label: '미수 서류',
+          value: `${missingDocs?.length ?? 0}건`,
+          hint: `미수령 보수 ${feePendingCount}건`,
+          tone: (missingDocs?.length ?? 0) > 0 ? 'warning' : 'default',
+        },
+      ]
+    : []
+
   return (
     <div className="page-container space-y-4">
       <div className="flex items-center gap-2 text-sm text-[#64748b]">
@@ -1878,12 +1904,20 @@ export default function FundDetailPage() {
         <span>/</span>
         <span className="text-[#0f1f3d]">{fundDetail?.name ?? `조합 #${fundId}`}</span>
       </div>
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">{fundDetail?.name ?? `조합 #${fundId}`}</h2>
-          <p className="page-subtitle">조합 상세 정보와 LP/투자 현황을 관리합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title={fundDetail?.name ?? `조합 #${fundId}`}
+        subtitle="조합 개요, LP, 투자, 재무, 서류를 같은 작업대에서 관리합니다."
+        meta={fundDetail ? (
+          <>
+            <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+              {fundDetail.type || '유형 미지정'}
+            </span>
+            <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+              {labelStatus(fundDetail.status)}
+            </span>
+          </>
+        ) : undefined}
+      />
 
       {isLoading ? (
         <PageLoading />
@@ -1891,24 +1925,22 @@ export default function FundDetailPage() {
         <p className="text-sm text-[#64748b]">조합을 찾을 수 없습니다.</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="총 약정" value={formatKRW(fundDetail.commitment_total ?? null)} />
-            <SummaryCard label="투자 건수" value={`${investments?.length ?? 0}건`} />
-            <SummaryCard label="투자 금액 합계" value={formatKRW(totalInvestmentAmount)} />
-          </div>
-          <div className="sticky top-0 z-10 mt-3 rounded-xl border border-[#d8e5fb] bg-[#f5f9ff]/95 p-2 backdrop-blur">
-            <div className="flex flex-wrap gap-1 rounded-lg bg-white p-1">
+          <PageMetricStrip items={fundDetailMetrics} columns={4} />
+          <div className="sticky top-0 z-10">
+            <PageControlStrip compact className="bg-[#f5f9ff]/95 backdrop-blur">
+              <div className="segmented-control w-full overflow-x-auto">
               {FUND_DETAIL_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs transition ${activeTab === tab.id ? 'bg-[#f5f9ff] font-semibold text-[#0f1f3d] shadow' : 'text-[#64748b] hover:bg-[#f5f9ff] hover:text-[#0f1f3d]'}`}
+                  className={`tab-btn min-w-fit px-4 py-2 text-sm ${activeTab === tab.id ? 'active' : ''}`}
                 >
                   {tab.label}
                 </button>
               ))}
-            </div>
+              </div>
+            </PageControlStrip>
           </div>
 
           {isOverviewTab && (editingFund ? (

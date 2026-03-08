@@ -25,6 +25,8 @@ import { formatKRWFull, labelStatus } from '../lib/labels'
 import { useToast } from '../contexts/ToastContext'
 import { Plus, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import FundCoreFields, { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
@@ -590,12 +592,25 @@ export default function FundsPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header mb-4">
-        <h2 className="page-title">조합 관리</h2>
-        <button onClick={() => setShowCreateFund((v) => !v)} className="primary-btn inline-flex items-center gap-1">
-          <Plus size={14} /> 조합 추가
-        </button>
-      </div>
+      <PageHeader
+        title="조합 관리"
+        subtitle="조합 생성, GP 정보, 마이그레이션, LP 초안을 같은 운영 문법으로 관리합니다."
+        actions={
+          <button onClick={() => setShowCreateFund((v) => !v)} className="primary-btn inline-flex items-center gap-1">
+            <Plus size={14} /> 조합 추가
+          </button>
+        }
+      />
+
+      <PageMetricStrip
+        items={[
+          { label: '전체 조합', value: `${funds?.length ?? 0}개`, hint: '현재 등록 수', tone: 'info' },
+          { label: '운용 중', value: `${funds?.filter((fund) => fund.status === 'active').length ?? 0}개`, hint: '활성 상태', tone: 'default' },
+          { label: '결성 예정', value: `${funds?.filter((fund) => fund.status === 'forming').length ?? 0}개`, hint: '후속 결성 필요', tone: 'warning' },
+          { label: '대표 GP', value: primaryGp?.name || '미등록', hint: primaryGp?.business_number || '고유계정 설정 필요', tone: primaryGp ? 'success' : 'danger' },
+        ]}
+        className="mb-4"
+      />
 
       <div className="card-base mb-4 border-l-4 border-l-blue-500">
         <div className="flex items-center justify-between">

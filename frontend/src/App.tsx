@@ -18,6 +18,7 @@ const BizReportsPage = lazy(() => import('./pages/BizReportsPage'))
 const CompliancePage = lazy(() => import('./pages/CompliancePage'))
 const CashFlowPage = lazy(() => import('./pages/CashFlowPage'))
 const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
+const DataStudioPage = lazy(() => import('./pages/DataStudioPage'))
 const ExitsPage = lazy(() => import('./pages/ExitsPage'))
 const FeeManagementPage = lazy(() => import('./pages/FeeManagementPage'))
 const FundDetailPage = lazy(() => import('./pages/FundDetailPage'))
@@ -81,7 +82,7 @@ export default function App() {
             <Route path="/accounting" element={<RouteGuard routeKey="/accounting"><LazyElement><AccountingPage /></LazyElement></RouteGuard>} />
             <Route path="/provisional-fs" element={<RouteGuard routeKey="/provisional-fs"><LazyElement><ProvisionalFSPage /></LazyElement></RouteGuard>} />
             <Route path="/fee-management" element={<RouteGuard routeKey="/fee-management"><LazyElement><FeeManagementPage /></LazyElement></RouteGuard>} />
-            <Route path="/cashflow" element={<RouteGuard routeKey="/fee-management"><LazyElement><CashFlowPage /></LazyElement></RouteGuard>} />
+            <Route path="/cashflow" element={<RouteGuard routeKey="/cashflow"><LazyElement><CashFlowPage /></LazyElement></RouteGuard>} />
 
             <Route path="/lp-management" element={<RouteGuard routeKey="/lp-management"><LazyElement><LPManagementPage /></LazyElement></RouteGuard>} />
             <Route path="/lp-address-book" element={<Navigate to="/lp-management" replace />} />
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="/fund-operations" element={<RouteGuard routeKey="/fund-operations"><LazyElement><FundOperationsPage /></LazyElement></RouteGuard>} />
             <Route path="/documents" element={<RouteGuard routeKey="/documents"><LazyElement><DocumentsPage /></LazyElement></RouteGuard>} />
             <Route path="/documents/generate" element={<RouteGuard routeKey="/documents"><LazyElement><DocumentsPage /></LazyElement></RouteGuard>} />
+            <Route path="/data-studio" element={<RouteGuard routeKey="/data-studio"><LazyElement><DataStudioPage /></LazyElement></RouteGuard>} />
             <Route path="/templates" element={<RouteGuard routeKey="/templates"><LazyElement><TemplateManagementPage /></LazyElement></RouteGuard>} />
             <Route path="/checklists" element={<Navigate to="/workflows?tab=checklists" replace />} />
           </Route>

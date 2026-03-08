@@ -43,8 +43,22 @@ import MonthlyReport from '../components/compliance/MonthlyReport'
 import RemediationTracker from '../components/compliance/RemediationTracker'
 import RuleSuggestions from '../components/compliance/RuleSuggestions'
 import ViolationPatterns from '../components/compliance/ViolationPatterns'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 
 type TabKey = 'dashboard' | 'obligations' | 'rules' | 'checks' | 'documents' | 'schedule' | 'history'
+
+const COMPLIANCE_TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'dashboard', label: '대시보드' },
+  { key: 'obligations', label: '의무사항' },
+  { key: 'rules', label: '규칙' },
+  { key: 'checks', label: '점검' },
+  { key: 'documents', label: '문서 라이브러리' },
+  { key: 'schedule', label: '스케줄/개정' },
+  { key: 'history', label: '이력/리포트' },
+]
 
 function statusBadge(row: ComplianceObligation): { label: string; className: string } {
   if (row.status === 'completed') return { label: '완료', className: 'tag tag-green' }
@@ -71,23 +85,20 @@ function dDayLabel(dDay: number | null | undefined): string {
   return `D-${dDay}`
 }
 
-function scopeMeta(scope?: string): { icon: string; label: string; className: string } {
+function scopeMeta(scope?: string): { label: string; className: string } {
   if (scope === 'fund_type') {
     return {
-      icon: '📋',
       label: '유형 가이드',
-      className: 'border-sky-200 bg-sky-50 text-sky-700',
+      className: 'border-[#c5d8fb] bg-[#edf3ff] text-[#1a3660]',
     }
   }
   if (scope === 'fund') {
     return {
-      icon: '🏢',
       label: '조합 문서',
-      className: 'border-amber-200 bg-amber-50 text-amber-700',
+      className: 'border-[#d4a418] bg-[#fff7d6] text-[#624100]',
     }
   }
   return {
-    icon: '🌐',
     label: '공통 법령',
     className: 'border-[#d8e5fb] bg-[#f5f9ff] text-[#0f1f3d]',
   }
@@ -382,12 +393,6 @@ export default function CompliancePage() {
     setActiveTab('checks')
   }
 
-  function tabClass(tab: TabKey): string {
-    return `rounded px-3 py-1 text-sm ${
-      activeTab === tab ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'
-    }`
-  }
-
   const usagePct = llmUsage?.usage_pct ?? 0
   const usageProgress = Math.max(0, Math.min(100, usagePct))
   const dashboardSummary = dashboard?.summary
@@ -407,26 +412,56 @@ export default function CompliancePage() {
       ? Number(((summaryPassed / Math.max(summaryPassed + summaryWarnings + summaryViolations, 1)) * 100).toFixed(1))
       : 0)
   const dashboardLlmUsageProgress = Math.max(0, Math.min(100, dashboardLlmUsage?.usage_rate ?? 0))
+  const activeTabLabel = COMPLIANCE_TABS.find((item) => item.key === activeTab)?.label ?? '대시보드'
+  const complianceMetrics = [
+    {
+      label: '총 규칙 수',
+      value: `${summaryRules}`,
+      hint: '활성 기준 컴플라이언스 룰',
+    },
+    {
+      label: '진행 중 위반',
+      value: `${summaryViolations}`,
+      hint: '즉시 조치가 필요한 항목',
+      tone: summaryViolations > 0 ? 'danger' : 'default',
+    },
+    {
+      label: '경고',
+      value: `${summaryWarnings}`,
+      hint: '주의 관찰 대상',
+      tone: summaryWarnings > 0 ? 'warning' : 'default',
+    },
+    {
+      label: '준수율',
+      value: `${summaryRate.toFixed(1)}%`,
+      hint: `적합 ${summaryPassed}건`,
+      tone: summaryRate >= 90 ? 'success' : summaryRate >= 75 ? 'info' : 'warning',
+    },
+  ] as const
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">컴플라이언스</h2>
-          <p className="page-subtitle">의무사항, 규칙, 점검, 법률 해석을 한 곳에서 관리합니다.</p>
-        </div>
-      </div>
-
-      <div className="card-base space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-semibold text-[#0f1f3d]">법률 질의</h3>
-            <p className="mt-1 text-xs text-[#64748b]">L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다.</p>
-          </div>
-          <span className={`tag ${interpretResult?.tier === 'L1' ? 'tag-green' : 'tag-indigo'}`}>
-            {interpretResult?.tier ? `최근 답변: ${interpretResult.tier}` : '아직 답변이 없습니다'}
+      <PageHeader
+        title="컴플라이언스"
+        subtitle="의무사항, 규칙, 점검, 문서 인덱스를 한 화면에서 관리합니다."
+        meta={(
+          <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+            {activeTabLabel}
           </span>
-        </div>
+        )}
+      />
+
+      <PageMetricStrip items={[...complianceMetrics]} columns={4} />
+
+      <SectionScaffold
+        title="법률 질의"
+        description="L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다."
+        actions={(
+          <span className={`tag ${interpretResult?.tier === 'L1' ? 'tag-green' : 'tag-indigo'}`}>
+            {interpretResult?.tier ? `최근 답변: ${interpretResult.tier}` : '답변 대기'}
+          </span>
+        )}
+      >
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input
@@ -455,8 +490,8 @@ export default function CompliancePage() {
           </button>
         </div>
         <p className="text-xs text-[#64748b]">
-          조합을 선택하면 공통 법령(🌐) + 조합유형 가이드(📋) + 해당 조합 문서(🏢)까지 함께 검색합니다. 조합을 선택하지 않으면
-          공통 법령만 검색합니다.
+          조합을 선택하면 공통 법령, 조합 유형 가이드, 해당 조합 문서를 함께 검색합니다. 조합을 선택하지 않으면 공통 법령만
+          검색합니다.
         </p>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -481,7 +516,7 @@ export default function CompliancePage() {
                         >
                           <div className="mb-1 flex flex-wrap items-center gap-1 text-[11px]">
                             <span className={`inline-flex items-center rounded border px-1.5 py-0.5 ${scope.className}`}>
-                              {scope.icon} {scope.label}
+                              {scope.label}
                             </span>
                             <span className="inline-flex items-center rounded border border-[#d8e5fb] bg-white px-1.5 py-0.5 text-[#64748b]">
                               [{source.collection}]
@@ -532,7 +567,7 @@ export default function CompliancePage() {
                     <div className="h-2 overflow-hidden rounded-full bg-[#f5f9ff]">
                       <div
                         className={`h-full rounded-full ${
-                          usageProgress >= 90 ? 'bg-red-500' : usageProgress >= 70 ? 'bg-amber-500' : 'bg-[#558ef8]'
+                          usageProgress >= 90 ? 'bg-[#6d3e44]' : usageProgress >= 70 ? 'bg-[#b68a00]' : 'bg-[#558ef8]'
                         }`}
                         style={{ width: `${usageProgress}%` }}
                       />
@@ -545,59 +580,24 @@ export default function CompliancePage() {
             )}
           </div>
         </div>
-      </div>
+      </SectionScaffold>
 
-      <div className="card-base">
-        <div className="flex flex-wrap gap-2">
-          <button className={tabClass('dashboard')} onClick={() => setActiveTab('dashboard')}>
-            대시보드
-          </button>
-          <button className={tabClass('obligations')} onClick={() => setActiveTab('obligations')}>
-            의무사항
-          </button>
-          <button className={tabClass('rules')} onClick={() => setActiveTab('rules')}>
-            규칙
-          </button>
-          <button className={tabClass('checks')} onClick={() => setActiveTab('checks')}>
-            점검
-          </button>
-          <button className={tabClass('documents')} onClick={() => setActiveTab('documents')}>
-            문서 라이브러리
-          </button>
-          <button className={tabClass('schedule')} onClick={() => setActiveTab('schedule')}>
-            스케줄/개정
-          </button>
-          <button className={tabClass('history')} onClick={() => setActiveTab('history')}>
-            이력/리포트
-          </button>
+      <PageControlStrip compact>
+        <div className="segmented-control w-full overflow-x-auto">
+          {COMPLIANCE_TABS.map((item) => (
+            <button
+              key={item.key}
+              className={`tab-btn min-w-fit px-4 py-2 text-sm ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-      </div>
+      </PageControlStrip>
 
       {activeTab === 'dashboard' && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <div className="card-base">
-              <p className="text-xs text-[#64748b]">총 규칙 수</p>
-              <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{summaryRules}</p>
-            </div>
-            <div className="card-base">
-              <p className="text-xs text-[#64748b]">진행 중 위반</p>
-              <p className="mt-1 text-xl font-semibold text-red-600">{summaryViolations}</p>
-            </div>
-            <div className="card-base">
-              <p className="text-xs text-[#64748b]">경고</p>
-              <p className="mt-1 text-xl font-semibold text-amber-600">{summaryWarnings}</p>
-            </div>
-            <div className="card-base">
-              <p className="text-xs text-[#64748b]">적합</p>
-              <p className="mt-1 text-xl font-semibold text-green-700">{summaryPassed}</p>
-            </div>
-            <div className="card-base">
-              <p className="text-xs text-[#64748b]">준수율</p>
-              <p className="mt-1 text-xl font-semibold text-[#0f1f3d]">{summaryRate.toFixed(1)}%</p>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             <FundComplianceGrid
               rows={dashboardFundStatus}
@@ -658,9 +658,9 @@ export default function CompliancePage() {
                   <div
                     className={`h-full rounded-full ${
                       dashboardLlmUsageProgress >= 90
-                        ? 'bg-red-500'
+                        ? 'bg-[#6d3e44]'
                         : dashboardLlmUsageProgress >= 70
-                          ? 'bg-amber-500'
+                          ? 'bg-[#b68a00]'
                           : 'bg-[#558ef8]'
                     }`}
                     style={{ width: `${dashboardLlmUsageProgress}%` }}

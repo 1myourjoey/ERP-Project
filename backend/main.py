@@ -21,6 +21,7 @@ from middleware.audit_log import AuditLogMiddleware
 from models import *  # noqa: F401,F403 - import all models for metadata
 from routers import (
     accounting,
+    analytics,
     admin,
     assemblies,
     attachments,
@@ -201,6 +202,7 @@ include_protected_router(document_generation.router)
 include_protected_router(lp_contributions.router)
 include_protected_router(template_registration.router)
 include_protected_router(legal_documents.router)
+include_protected_router(analytics.router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -29,10 +29,10 @@ const ICON_MAP: Record<StatusBadgeProps['status'], LucideIcon> = {
 export function StatusBadge({ status, label, size = 'sm', showIcon = true }: StatusBadgeProps) {
   const Icon = ICON_MAP[status]
   const colorClass = STATUS_COLORS[status].bg
-  const sizeClass = size === 'md' ? 'px-2.5 py-1 text-[13px]' : ''
+  const sizeClass = size === 'md' ? 'px-2.5 py-1 text-[13px]' : 'px-2 py-0.5 text-[11px]'
 
   return (
-    <span className={`tag ${colorClass} ${sizeClass} inline-flex items-center gap-1`}>
+    <span className={`tag ${colorClass} ${sizeClass} inline-flex items-center gap-1 border border-transparent`}>
       {showIcon && <Icon size={size === 'md' ? 13 : 12} />}
       <span>{label}</span>
     </span>

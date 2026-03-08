@@ -6,7 +6,11 @@ import DocumentEditorModal, {
   type TemplateCustomData,
   type TemplateKind,
 } from '../components/DocumentEditorModal'
+import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import WorkbenchSplit from '../components/common/page/WorkbenchSplit'
 import { useToast } from '../contexts/ToastContext'
 import {
   downloadTemplateGeneratedDocument,
@@ -421,28 +425,64 @@ export default function TemplateManagementPage() {
   }, [selectedTemplateId, wizardFundId, wizardMode])
 
   const canRunWizard = selectedTemplate && wizardFundId !== '' && (wizardMode === 'bulk' || wizardLpId !== '')
+  const templateMetrics = [
+    {
+      label: '등록 템플릿',
+      value: `${templates.length}개`,
+      hint: '공문/결의/보고 템플릿',
+    },
+    {
+      label: '선택 템플릿',
+      value: selectedTemplate?.name ?? '선택 대기',
+      hint: selectedTemplate?.category ?? '목록에서 템플릿을 선택하세요.',
+      tone: selectedTemplate ? 'info' : 'default',
+    },
+    {
+      label: '마커 수',
+      value: `${displayedMarkerKeys.length}개`,
+      hint: selectedTemplate ? '치환 가능한 변수 키' : '템플릿 선택 후 확인',
+    },
+    {
+      label: '생성 모드',
+      value: wizardMode === 'bulk' ? '일괄 생성' : '단일 LP',
+      hint: canRunWizard ? '생성 조건 충족' : '조합/LP 선택 필요',
+      tone: canRunWizard ? 'success' : 'default',
+    },
+  ] as const
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-      <h2 className="page-title">템플릿 관리</h2>
-          <p className="page-subtitle">공문/결의서 템플릿을 수정하고 생성 전 미리보기를 확인하세요.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="템플릿 관리"
+        subtitle="공문, 결의서, LP 발송 문서를 같은 작업대에서 수정하고 생성 전 미리보기를 검증합니다."
+        meta={selectedTemplate ? (
+          <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+            {selectedTemplate.category}
+          </span>
+        ) : undefined}
+      />
+
+      <PageMetricStrip items={[...templateMetrics]} columns={4} />
 
       <RegistrationWizard onRegistered={handleTemplateRegistered} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="card-base space-y-2">
+      <WorkbenchSplit
+        className="xl:grid-cols-[340px_minmax(0,1fr)]"
+        primary={(
+          <div className="card-base space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#0f1f3d]">템플릿 목록</p>
-            <span className="text-xs text-[#64748b]">{templates.length}</span>
+            <div>
+              <p className="text-sm font-semibold text-[#0f1f3d]">템플릿 인덱스</p>
+              <p className="mt-0.5 text-xs text-[#64748b]">최근 수정 순으로 선택하고 우측에서 상세를 확인합니다.</p>
+            </div>
+            <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2 py-0.5 text-xs font-semibold text-[#1a3660]">
+              {templates.length}개
+            </span>
           </div>
           {isLoading ? (
             <PageLoading />
           ) : templates.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#64748b]">등록된 템플릿이 없습니다.</p>
+            <EmptyState message="등록된 템플릿이 없습니다." className="py-8" />
           ) : (
             <div className="space-y-2">
               {templates.map((template) => {
@@ -465,98 +505,99 @@ export default function TemplateManagementPage() {
               })}
             </div>
           )}
-        </div>
-
-        <div className="card-base space-y-3 xl:col-span-2">
-          {!selectedTemplate ? (
-            isLoading ? (
-              <PageLoading />
+          </div>
+        )}
+        secondary={(
+          <div className="card-base space-y-3">
+            {!selectedTemplate ? (
+              isLoading ? (
+                <PageLoading />
+              ) : (
+                <EmptyState message="템플릿을 선택하면 상세 작업대가 표시됩니다." className="py-14" />
+              )
             ) : (
-              <p className="py-8 text-center text-sm text-[#64748b]">템플릿을 선택하면 상세 화면이 표시됩니다.</p>
-            )
-          ) : (
-            <>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-xl font-bold text-[#0f1f3d]">{selectedTemplate.name}</p>
-                  <p className="text-sm text-[#64748b]">
-                    {selectedTemplate.description?.trim() || '설명 없음'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleResetToDefault}
-                    className="secondary-btn"
-                    disabled={!templateKind}
-                  >
-                    Reset Default
-                  </button>
-                  <button
-                    onClick={handlePreview}
-                    className="secondary-btn"
-                    disabled={previewMutation.isPending}
-                  >
-                    {previewMutation.isPending ? '미리보기 생성 중...' : 'DOCX 미리보기'}
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    className="primary-btn"
-                    disabled={saveMutation.isPending}
-                  >
-                    {saveMutation.isPending ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={() => setEditorOpen(true)} className="primary-btn">
-                    편집기 열기
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
-                  <p className="text-xs font-semibold uppercase text-[#64748b]">Metadata</p>
-                  <dl className="mt-2 space-y-1 text-sm text-[#0f1f3d]">
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[#64748b]">Category</dt>
-                      <dd className="text-right">{selectedTemplate.category}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[#64748b]">Builder</dt>
-                      <dd className="text-right">{selectedTemplate.builder_name ?? '-'}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[#64748b]">Updated</dt>
-                      <dd className="text-right">
-                        {formatTemplateDate(selectedTemplate.updated_at ?? selectedTemplate.created_at)}
-                      </dd>
-                    </div>
-                  </dl>
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xl font-bold text-[#0f1f3d]">{selectedTemplate.name}</p>
+                    <p className="text-sm text-[#64748b]">
+                      {selectedTemplate.description?.trim() || '설명 없음'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleResetToDefault}
+                      className="secondary-btn"
+                      disabled={!templateKind}
+                    >
+                      기본값 복원
+                    </button>
+                    <button
+                      onClick={handlePreview}
+                      className="secondary-btn"
+                      disabled={previewMutation.isPending}
+                    >
+                      {previewMutation.isPending ? '미리보기 생성 중...' : 'DOCX 미리보기'}
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      className="primary-btn"
+                      disabled={saveMutation.isPending}
+                    >
+                      {saveMutation.isPending ? '저장 중...' : '저장'}
+                    </button>
+                    <button onClick={() => setEditorOpen(true)} className="primary-btn">
+                      편집기 열기
+                    </button>
+                  </div>
                 </div>
 
-                <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
-                  <label htmlFor="preview-fund" className="text-xs font-semibold uppercase text-[#64748b]">
-                    미리보기 기준 조합
-                  </label>
-                  <select
-                    id="preview-fund"
-                    value={previewFundId}
-                    onChange={(event) => setPreviewFundId(event.target.value ? Number(event.target.value) : '')}
-                    className="mt-2 w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
-                  >
-                    <option value="">조합 컨텍스트 없음</option>
-                    {funds.map((fund) => (
-                      <option key={fund.id} value={fund.id}>
-                        {fund.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-2 text-xs text-[#64748b]">
-                    미리보기 시 조합 데이터가 변수 치환에 사용됩니다.
-                  </p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+                    <p className="text-xs font-semibold uppercase text-[#64748b]">메타데이터</p>
+                    <dl className="mt-2 space-y-1 text-sm text-[#0f1f3d]">
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[#64748b]">카테고리</dt>
+                        <dd className="text-right">{selectedTemplate.category}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[#64748b]">빌더</dt>
+                        <dd className="text-right">{selectedTemplate.builder_name ?? '-'}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[#64748b]">수정일</dt>
+                        <dd className="text-right">
+                          {formatTemplateDate(selectedTemplate.updated_at ?? selectedTemplate.created_at)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="rounded-xl border border-[#d8e5fb] bg-[#f5f9ff] p-3">
+                    <label htmlFor="preview-fund" className="text-xs font-semibold uppercase text-[#64748b]">
+                      미리보기 기준 조합
+                    </label>
+                    <select
+                      id="preview-fund"
+                      value={previewFundId}
+                      onChange={(event) => setPreviewFundId(event.target.value ? Number(event.target.value) : '')}
+                      className="mt-2 w-full rounded-lg border border-[#d8e5fb] px-2 py-1.5 text-sm"
+                    >
+                      <option value="">조합 컨텍스트 없음</option>
+                      {funds.map((fund) => (
+                        <option key={fund.id} value={fund.id}>
+                          {fund.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs text-[#64748b]">
+                      미리보기 시 조합 데이터가 변수 치환에 사용됩니다.
+                    </p>
+                  </div>
                 </div>
-              </div>
 
               <div className="rounded-xl border border-[#d8e5fb] bg-white p-3">
-                <p className="text-xs font-semibold uppercase text-[#64748b]">Variables</p>
+                <p className="text-xs font-semibold uppercase text-[#64748b]">변수</p>
                 {variables.length === 0 ? (
                   <p className="mt-2 text-sm text-[#64748b]">등록된 변수 메타데이터가 없습니다.</p>
                 ) : (
@@ -761,10 +802,11 @@ export default function TemplateManagementPage() {
                   )}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </div>
+              </>
+            )}
+          </div>
+        )}
+      />
 
       {selectedTemplate && templateKind && (
         <DocumentEditorModal

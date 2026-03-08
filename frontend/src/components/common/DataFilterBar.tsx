@@ -5,6 +5,9 @@ interface DataFilterBarProps {
   description?: string
   actions?: ReactNode
   className?: string
+  variant?: 'default' | 'compact'
+  layout?: 'grid' | 'inline'
+  summarySlot?: ReactNode
   children: ReactNode
 }
 
@@ -13,10 +16,13 @@ export default function DataFilterBar({
   description,
   actions,
   className = '',
+  variant = 'default',
+  layout = 'grid',
+  summarySlot,
   children,
 }: DataFilterBarProps) {
   return (
-    <section className={`card-base space-y-4 ${className}`}>
+    <section className={`page-control-strip ${variant === 'compact' ? 'page-control-strip-compact' : ''} ${className}`.trim()}>
       {(title || description || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -26,7 +32,10 @@ export default function DataFilterBar({
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">{children}</div>
+      {summarySlot ? <div>{summarySlot}</div> : null}
+      <div className={layout === 'inline' ? 'flex flex-wrap items-end gap-2.5' : 'grid grid-cols-1 gap-3 md:grid-cols-3'}>
+        {children}
+      </div>
     </section>
   )
 }

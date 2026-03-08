@@ -12,6 +12,7 @@ import TaskAlertPopup from '../components/taskboard/TaskAlertPopup'
 import TaskSidePanel from '../components/taskboard/TaskSidePanel'
 import TaskTopControlStrip from '../components/taskboard/TaskTopControlStrip'
 import TaskAttachmentSection from '../components/common/TaskAttachmentSection'
+import PageHeader from '../components/common/page/PageHeader'
 import TimeSelect from '../components/TimeSelect'
 import { HOUR_OPTIONS } from '../components/timeOptions'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
@@ -432,6 +433,9 @@ const TaskItem = memo(function TaskItem({
     task.is_notice || task.is_report ? { label: '통지/보고', className: 'tag tag-blue' } : null,
     staleLabel ? { label: staleLabel, className: staleClass } : null,
   ].filter(Boolean)[0] as { label: string; className: string } | undefined
+  const blinkingClass = isBlinking
+    ? 'border-[#558ef8] bg-[#f8fbff] shadow-[inset_0_0_0_1px_rgba(85,142,248,0.38),0_10px_22px_rgba(15,31,61,0.08)] animate-[pulse_1.8s_ease-in-out_2]'
+    : ''
 
   return (
     <div
@@ -444,7 +448,7 @@ const TaskItem = memo(function TaskItem({
       }}
       onDragEnd={() => setIsDragging(false)}
       className={`group relative overflow-visible rounded-xl border px-2.5 py-2 transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_10px_22px_rgba(15,31,61,0.08)] ${taskSurfaceToneClass} ${
-        isBlinking ? 'animate-pulse ring-2 ring-[#558ef8]' : ''
+        blinkingClass
       } ${isDragging ? 'opacity-70' : ''}`}
     >
       <div className="min-w-0 cursor-pointer" onClick={() => onOpenDetail(task)}>
@@ -552,6 +556,7 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
   const priorityGrade = resolveTaskPriorityGrade(priorityScore)
   const laneMeta = buildWorkflowLaneMeta(group)
   const ringColor = laneMeta.isBlocked ? '#6d3e44' : '#0f1f3d'
+  const [isDragging, setIsDragging] = useState(false)
   const [animatedPercent, setAnimatedPercent] = useState(laneMeta.progressPercent)
   const animatedPercentRef = useRef(laneMeta.progressPercent)
   const animationFrameRef = useRef<number | null>(null)
@@ -611,8 +616,20 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
 
   return (
     <div
+      draggable={Boolean(currentStep)}
       role="button"
       tabIndex={0}
+      onDragStart={(event) => {
+        if (!currentStep) {
+          event.preventDefault()
+          return
+        }
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('taskId', String(currentStep.id))
+        event.dataTransfer.setData('fromQuadrant', currentStep.quadrant)
+        setIsDragging(true)
+      }}
+      onDragEnd={() => setIsDragging(false)}
       onClick={() => onOpenWorkflow(group.workflowInstanceId)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -622,7 +639,7 @@ const WorkflowCompactCard = memo(function WorkflowCompactCard({
       }}
       className={`group relative rounded-xl border px-2 py-2 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#558ef8]/45 ${
         laneMeta.isBlocked ? 'border-[#bfa5a7] bg-[#f1e8e9]' : 'border-[#c5d8fb] bg-[#f5f9ff]'
-      }`}
+      } ${currentStep ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-70'} ${isDragging ? 'opacity-70' : ''}`}
     >
       <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-2">
         <div className="relative h-14 w-14">
@@ -2492,7 +2509,11 @@ export default function TaskBoardPage() {
                       event.dataTransfer.setData('fromQuadrant', task.quadrant)
                     }}
                     onClick={() => openBoardSidePanel(task, 'detail')}
-                    className={`w-full cursor-grab rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-[#f5f9ff] active:cursor-grabbing ${blinkingId === task.id ? 'border-[#558ef8] ring-2 ring-[#558ef8]/35' : 'border-[#d8e5fb]'}`}
+                    className={`w-full cursor-grab rounded-md border px-2 py-1.5 text-left transition-colors hover:bg-[#f5f9ff] active:cursor-grabbing ${
+                      blinkingId === task.id
+                        ? "border-[#558ef8] bg-[#f8fbff] shadow-[inset_0_0_0_1px_rgba(85,142,248,0.38)]"
+                        : 'border-[#d8e5fb]'
+                    }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${urgency.topBarClass}`} />
@@ -2590,43 +2611,47 @@ export default function TaskBoardPage() {
   if (isLoading) return <PageLoading />
 
   return (
-    <div className="page-container">
-      <div className="page-header mb-2 items-center !px-4 !py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="page-title">업무 보드</h2>
-          {overdueCount > 0 && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-              지연 {overdueCount}건
-            </span>
-          )}
-          <Link
-            to="/dashboard"
-            className="rounded-md border border-[#c5d8fb] bg-[#f5f9ff] px-2 py-1 text-xs font-medium text-[#1a3660] hover:bg-[#e6efff]"
-          >
-            오늘의 현황
-          </Link>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={toggleSelectionMode}
-            className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] ${
-              selectionMode
-                ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
-                : 'border-[#d8e5fb] bg-white text-[#0f1f3d] hover:bg-[#f5f9ff]'
-            }`}
-          >
-            {selectionMode ? '선택 모드 ON' : '선택 모드'}
-          </button>
-          <button
-            onClick={() => setShowCategoryManager(true)}
-            className="inline-flex items-center gap-1 rounded border border-[#d8e5fb] bg-white px-2 py-1 text-[11px] text-[#0f1f3d] hover:bg-[#f5f9ff]"
-          >
-            <Tag size={12} />
-            카테고리 관리
-          </button>
-        </div>
-      </div>
+    <div className="page-container space-y-3">
+      <PageHeader
+        className="!mb-0 !min-h-[74px] !gap-3 !px-4 !py-3"
+        title="업무 보드"
+        subtitle="보드, 캘린더, 파이프라인을 같은 작업선에서 전환합니다."
+        meta={(
+          <>
+            {overdueCount > 0 && (
+              <span className="tag tag-red">지연 {overdueCount}건</span>
+            )}
+            <Link
+              to="/dashboard"
+              className="inline-flex h-7 items-center rounded-md border border-[#d8e5fb] bg-white px-2.5 text-[11px] font-medium text-[#64748b] hover:border-[#c5d8fb] hover:bg-[#f5f9ff] hover:text-[#1a3660]"
+            >
+              오늘 현황
+            </Link>
+          </>
+        )}
+        actions={(
+          <>
+            <button
+              type="button"
+              onClick={toggleSelectionMode}
+              className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-[11px] font-semibold ${
+                selectionMode
+                  ? 'border-[#c5d8fb] bg-[#f5f9ff] text-[#1a3660]'
+                  : 'border-[#d8e5fb] bg-white text-[#64748b] hover:border-[#c5d8fb] hover:bg-[#f5f9ff] hover:text-[#1a3660]'
+              }`}
+            >
+              {selectionMode ? '선택 ON' : '선택'}
+            </button>
+            <button
+              onClick={() => setShowCategoryManager(true)}
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-[#d8e5fb] bg-white px-2.5 text-[11px] font-semibold text-[#64748b] hover:border-[#c5d8fb] hover:bg-[#f5f9ff] hover:text-[#1a3660]"
+            >
+              <Tag size={11} />
+              카테고리
+            </button>
+          </>
+        )}
+      />
 
       <TaskTopControlStrip
         boardView={boardView}

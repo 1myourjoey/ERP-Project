@@ -19,16 +19,58 @@ import {
   type PerformanceFeeSimulationResponse,
   type WaterfallResponse,
 } from '../lib/api'
-import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
+import WorkbenchSplit from '../components/common/page/WorkbenchSplit'
+import FinanceTabStrip from '../components/finance/FinanceTabStrip'
+import WaterfallSummary from '../components/finance/WaterfallSummary'
 import { useToast } from '../contexts/ToastContext'
 import { formatKRW } from '../lib/labels'
 
 type TabKey = 'overview' | 'management' | 'performance'
 
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'overview', label: '보수 현황' },
+  { key: 'management', label: '관리보수' },
+  { key: 'performance', label: '성과보수' },
+]
+
+const BASIS_OPTIONS = [
+  { value: 'commitment', label: '약정총액' },
+  { value: 'nav', label: '순자산가치' },
+  { value: 'invested', label: '투자잔액' },
+]
+
+const SCENARIO_OPTIONS = [
+  { value: 'worst', label: '보수적' },
+  { value: 'base', label: '기준' },
+  { value: 'best', label: '낙관' },
+] as const
+
 function toDateLabel(value: string | null | undefined) {
   if (!value) return '-'
   return new Date(value).toLocaleDateString('ko-KR')
+}
+
+function feeBasisLabel(value: string | null | undefined) {
+  return BASIS_OPTIONS.find((option) => option.value === value)?.label || value || '-'
+}
+
+function scenarioLabel(value: string) {
+  return SCENARIO_OPTIONS.find((option) => option.value === value)?.label || value
+}
+
+function statusTone(status: string): 'default' | 'warning' | 'success' {
+  if (status === '수령' || status === '지급' || status === '확정') return 'success'
+  if (status === '청구') return 'warning'
+  return 'default'
+}
+
+function StatusPill({ status }: { status: string }) {
+  return <span className={`finance-status-pill finance-status-${statusTone(status)}`}>{status}</span>
 }
 
 export default function FeeManagementPage() {
@@ -139,6 +181,21 @@ export default function FeeManagementPage() {
     return map
   }, [allManagementFees])
 
+  const latestManagementByFund = useMemo(() => {
+    const map = new Map<number, ManagementFeeResponse>()
+    for (const row of allManagementFees) {
+      const current = map.get(row.fund_id)
+      if (!current) {
+        map.set(row.fund_id, row)
+        continue
+      }
+      const currentKey = `${current.year}-${String(current.quarter).padStart(2, '0')}`
+      const nextKey = `${row.year}-${String(row.quarter).padStart(2, '0')}`
+      if (nextKey > currentKey) map.set(row.fund_id, row)
+    }
+    return map
+  }, [allManagementFees])
+
   const [draftConfig, setDraftConfig] = useState<FeeConfigInput | null>(null)
   useEffect(() => {
     if (feeConfig) {
@@ -156,19 +213,30 @@ export default function FeeManagementPage() {
     }
   }, [feeConfig])
 
+  const selectedFund = funds.find((fund) => fund.id === selectedFundId) ?? null
+  const selectedSummary = selectedFundId ? summaryByFund.get(selectedFundId) : null
+  const latestPerformanceRow = performanceRows[0]
+
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">보수 관리</h2>
-          <p className="page-subtitle">관리보수 계산, 성과보수 시뮬레이션, 워터폴 분배를 운영합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="수수료"
+        subtitle="관리보수 계산, 성과보수 시뮬레이션, 워터폴 분배를 같은 재무 작업대에서 운영합니다."
+      />
 
-      <div className="card-base">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+      <PageMetricStrip
+        items={[
+          { label: '선택 조합', value: selectedFund?.name || '-', hint: '현재 작업 기준', tone: 'info' },
+          { label: '누적 관리보수', value: formatKRW(selectedSummary?.totalFee || 0), hint: '선택 조합 기준', tone: 'default' },
+          { label: '미수령 건수', value: `${selectedSummary?.unpaidCount || 0}건`, hint: '수금 필요 건수', tone: (selectedSummary?.unpaidCount || 0) > 0 ? 'warning' : 'success' },
+          { label: '성과 시뮬레이션', value: `${performanceRows.length}건`, hint: latestPerformanceRow ? `${scenarioLabel(latestPerformanceRow.scenario)} 시나리오 최근 실행` : '이력 없음', tone: 'default' },
+        ]}
+      />
+
+      <PageControlStrip compact>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] lg:items-end">
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
+            <label className="form-label">조합</label>
             <select
               value={selectedFundId || ''}
               onChange={(e) => setSelectedFundId(e.target.value ? Number(e.target.value) : null)}
@@ -180,42 +248,56 @@ export default function FeeManagementPage() {
               ))}
             </select>
           </div>
-          <div className="md:col-span-3 flex flex-wrap items-end gap-2">
-            <button onClick={() => setActiveTab('overview')} className={`rounded px-3 py-1.5 text-sm ${activeTab === 'overview' ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'}`}>보수 현황</button>
-            <button onClick={() => setActiveTab('management')} className={`rounded px-3 py-1.5 text-sm ${activeTab === 'management' ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'}`}>관리보수</button>
-            <button onClick={() => setActiveTab('performance')} className={`rounded px-3 py-1.5 text-sm ${activeTab === 'performance' ? 'primary-btn' : 'secondary-btn text-[#0f1f3d]'}`}>성과보수</button>
-          </div>
+          <FinanceTabStrip
+            tabs={TABS.map((tab) => ({
+              ...tab,
+              countLabel:
+                tab.key === 'overview'
+                  ? `${funds.length}조합`
+                  : tab.key === 'management'
+                    ? `${managementFees.length}건`
+                    : `${performanceRows.length}건`,
+            }))}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+          />
         </div>
-      </div>
+      </PageControlStrip>
 
       {activeTab === 'overview' && (
-        <div className="card-base">
-          <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">조합별 보수 현황</h3>
+        <SectionScaffold
+          title="조합별 보수 현황"
+          description="조합별 관리보수 누계와 미수령 상태를 빠르게 비교합니다."
+        >
           {overviewLoading ? (
             <PageLoading />
           ) : !funds.length ? (
-            <EmptyState emoji="💼" message="조합 데이터가 없습니다." className="py-8" />
+            <div className="finance-empty">조합 데이터가 없습니다.</div>
           ) : (
-            <div className="overflow-auto">
+            <div className="compact-table-wrap">
               <table className="min-w-[760px] w-full text-sm">
-                <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
+                <thead className="table-head-row">
                   <tr>
-                    <th className="px-3 py-2 text-left">조합</th>
-                    <th className="px-3 py-2 text-right">누적 관리보수</th>
-                    <th className="px-3 py-2 text-right">미수령 건수</th>
-                    <th className="px-3 py-2 text-left">성과보수 최근상태</th>
+                    <th className="table-head-cell">조합</th>
+                    <th className="table-head-cell text-right">누적 관리보수</th>
+                    <th className="table-head-cell text-right">미수령</th>
+                    <th className="table-head-cell">최근 상태</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody>
                   {funds.map((fund) => {
                     const summary = summaryByFund.get(fund.id) || { totalFee: 0, unpaidCount: 0 }
-                    const latestPerf = performanceRows.find((row) => row.fund_id === fund.id)
+                    const latestManagement = latestManagementByFund.get(fund.id)
                     return (
-                      <tr key={fund.id}>
-                        <td className="px-3 py-2">{fund.name}</td>
-                        <td className="px-3 py-2 text-right">{formatKRW(summary.totalFee)}</td>
-                        <td className="px-3 py-2 text-right">{summary.unpaidCount}</td>
-                        <td className="px-3 py-2">{latestPerf?.status || '-'}</td>
+                      <tr key={fund.id} className={`hover:bg-[#f5f9ff] ${selectedFundId === fund.id ? 'bg-[#f5f9ff]' : ''}`}>
+                        <td className="table-body-cell">
+                          <button type="button" className="text-left text-[#0f1f3d] hover:text-[#1a3660]" onClick={() => setSelectedFundId(fund.id)}>
+                            {fund.name}
+                          </button>
+                        </td>
+                        <td className="table-body-cell text-right">{formatKRW(summary.totalFee)}</td>
+                        <td className="table-body-cell text-right">{summary.unpaidCount}건</td>
+                        <td className="table-body-cell">{latestManagement ? <StatusPill status={latestManagement.status} /> : '-'}</td>
                       </tr>
                     )
                   })}
@@ -223,140 +305,157 @@ export default function FeeManagementPage() {
               </table>
             </div>
           )}
-        </div>
+        </SectionScaffold>
       )}
 
       {activeTab === 'management' && (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">보수 설정</h3>
-            {configLoading || !draftConfig ? (
-              <PageLoading />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">관리보수율</label>
-                    <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+        <WorkbenchSplit
+          primary={
+            <SectionScaffold title="보수 설정 및 분기 계산" description="관리보수 기준과 계산 기준 분기를 같은 패널에서 조정합니다.">
+              {configLoading || !draftConfig ? (
+                <PageLoading />
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div>
+                      <label className="form-label">관리보수율</label>
+                      <input type="number" step="0.0001" value={draftConfig.mgmt_fee_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">관리보수 기준</label>
+                      <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="form-input">
+                        {BASIS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">허들율</label>
+                      <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">캐리율</label>
+                      <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">관리보수 기준</label>
-                    <select value={draftConfig.mgmt_fee_basis} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, mgmt_fee_basis: e.target.value } : prev)} className="form-input">
-                      <option value="commitment">commitment</option>
-                      <option value="nav">nav</option>
-                      <option value="invested">invested</option>
-                    </select>
+                  <div className="flex justify-end">
+                    <button onClick={() => updateConfigMut.mutate(draftConfig)} className="primary-btn" disabled={updateConfigMut.isPending}>설정 저장</button>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">허들율</label>
-                    <input type="number" step="0.0001" value={draftConfig.hurdle_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, hurdle_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">캐리율</label>
-                    <input type="number" step="0.0001" value={draftConfig.carry_rate} onChange={(e) => setDraftConfig((prev) => prev ? { ...prev, carry_rate: Number(e.target.value || 0) } : prev)} className="form-input" />
-                  </div>
-                </div>
-                <button onClick={() => updateConfigMut.mutate(draftConfig)} className="primary-btn mt-3">설정 저장</button>
-              </>
-            )}
-          </div>
 
-          <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">분기 관리보수 계산</h3>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              <input type="number" value={calcYear} onChange={(e) => setCalcYear(Number(e.target.value || new Date().getFullYear()))} className="rounded border px-2 py-1 text-sm" placeholder="연도" />
-              <select value={calcQuarter} onChange={(e) => setCalcQuarter(Number(e.target.value || 1))} className="rounded border px-2 py-1 text-sm">
-                <option value={1}>1Q</option>
-                <option value={2}>2Q</option>
-                <option value={3}>3Q</option>
-                <option value={4}>4Q</option>
-              </select>
-              <button onClick={() => calculateMut.mutate()} className="primary-btn" disabled={!selectedFundId || calculateMut.isPending}>계산 실행</button>
-            </div>
-
-            {managementLoading ? (
-              <PageLoading />
-            ) : !managementFees.length ? (
-              <EmptyState emoji="🧮" message="관리보수 이력이 없습니다." className="py-6" />
-            ) : (
-              <div className="mt-3 space-y-2">
-                {managementFees.map((row) => (
-                  <div key={row.id} className="rounded border border-[#d8e5fb] p-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-[#0f1f3d]">{row.year} Q{row.quarter} · {formatKRW(row.fee_amount)} · {row.fee_basis}</p>
-                      <div className="flex gap-1">
-                        <button onClick={() => updateManagementMut.mutate({ id: row.id, status: '청구' })} className="secondary-btn">청구</button>
-                        <button onClick={() => updateManagementMut.mutate({ id: row.id, status: '수령' })} className="primary-btn">수령</button>
+                  <div className="border-t border-[#d8e5fb] pt-4">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      <div>
+                        <label className="form-label">연도</label>
+                        <input type="number" value={calcYear} onChange={(e) => setCalcYear(Number(e.target.value || new Date().getFullYear()))} className="form-input" placeholder="연도" />
+                      </div>
+                      <div>
+                        <label className="form-label">분기</label>
+                        <select value={calcQuarter} onChange={(e) => setCalcQuarter(Number(e.target.value || 1))} className="form-input">
+                          <option value={1}>1분기</option>
+                          <option value={2}>2분기</option>
+                          <option value={3}>3분기</option>
+                          <option value={4}>4분기</option>
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <button onClick={() => calculateMut.mutate()} className="primary-btn w-full" disabled={!selectedFundId || calculateMut.isPending}>계산 실행</button>
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-[#64748b]">기준금액 {formatKRW(row.basis_amount)} · 상태 {row.status}</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                </div>
+              )}
+            </SectionScaffold>
+          }
+          secondary={
+            <SectionScaffold title="관리보수 이력" description="청구·수령 상태를 즉시 갱신할 수 있습니다.">
+              {managementLoading ? (
+                <PageLoading />
+              ) : !managementFees.length ? (
+                <div className="finance-empty">관리보수 이력이 없습니다.</div>
+              ) : (
+                <div className="finance-list">
+                  {managementFees.map((row) => (
+                    <div key={row.id} className="finance-list-row">
+                      <div className="finance-list-row-main">
+                        <div className="min-w-0">
+                          <p className="finance-list-row-title">{row.year}년 {row.quarter}분기</p>
+                          <p className="finance-list-row-meta">기준 {feeBasisLabel(row.fee_basis)} · 기준금액 {formatKRW(row.basis_amount)}</p>
+                        </div>
+                        <div className="finance-list-row-actions">
+                          <StatusPill status={row.status} />
+                          <button onClick={() => updateManagementMut.mutate({ id: row.id, status: '청구' })} className="secondary-btn btn-xs">청구</button>
+                          <button onClick={() => updateManagementMut.mutate({ id: row.id, status: '수령' })} className="primary-btn btn-xs">수령</button>
+                        </div>
+                      </div>
+                      <div className="finance-inline-summary">
+                        <span className="finance-summary-chip">관리보수 {formatKRW(row.fee_amount)}</span>
+                        <span className="finance-summary-chip">상태 {row.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionScaffold>
+          }
+        />
       )}
 
       {activeTab === 'performance' && (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">성과보수 시뮬레이션</h3>
-            <div className="flex flex-wrap gap-2">
-              <select value={scenario} onChange={(e) => setScenario(e.target.value as 'worst' | 'base' | 'best')} className="rounded border px-2 py-1 text-sm">
-                <option value="worst">worst</option>
-                <option value="base">base</option>
-                <option value="best">best</option>
-              </select>
-              <button onClick={() => simulateMut.mutate()} disabled={!selectedFundId || simulateMut.isPending} className="primary-btn">시뮬레이션 실행</button>
-            </div>
+        <WorkbenchSplit
+          primary={
+            <SectionScaffold title="성과보수 시뮬레이션" description="시나리오별 성과보수 추정과 지급 상태를 관리합니다.">
+              <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-[180px_minmax(0,1fr)] md:items-end">
+                <div>
+                  <label className="form-label">시나리오</label>
+                  <select value={scenario} onChange={(e) => setScenario(e.target.value as 'worst' | 'base' | 'best')} className="form-input">
+                    {SCENARIO_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={() => simulateMut.mutate()} disabled={!selectedFundId || simulateMut.isPending} className="primary-btn">시뮬레이션 실행</button>
+                </div>
+              </div>
 
-            {performanceLoading ? (
-              <PageLoading />
-            ) : !performanceRows.length ? (
-              <EmptyState emoji="📈" message="성과보수 시뮬레이션 이력이 없습니다." className="py-6" />
-            ) : (
-              <div className="mt-3 space-y-2">
-                {performanceRows.map((row) => (
-                  <div key={row.id} className="rounded border border-[#d8e5fb] p-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-[#0f1f3d]">{toDateLabel(row.simulation_date)} · {row.scenario}</p>
-                      <div className="flex gap-1">
-                        <button onClick={() => updatePerformanceMut.mutate({ id: row.id, status: '확정' })} className="secondary-btn">확정</button>
-                        <button onClick={() => updatePerformanceMut.mutate({ id: row.id, status: '지급' })} className="primary-btn">지급</button>
+              {performanceLoading ? (
+                <PageLoading />
+              ) : !performanceRows.length ? (
+                <div className="finance-empty">성과보수 시뮬레이션 이력이 없습니다.</div>
+              ) : (
+                <div className="finance-list">
+                  {performanceRows.map((row) => (
+                    <div key={row.id} className="finance-list-row">
+                      <div className="finance-list-row-main">
+                        <div className="min-w-0">
+                          <p className="finance-list-row-title">{toDateLabel(row.simulation_date)} · {scenarioLabel(row.scenario)}</p>
+                          <p className="finance-list-row-meta">분배총액 {formatKRW(row.total_distributed || 0)} · LP 순수익 {formatKRW(row.lp_net_return || 0)}</p>
+                        </div>
+                        <div className="finance-list-row-actions">
+                          <StatusPill status={row.status} />
+                          <button onClick={() => updatePerformanceMut.mutate({ id: row.id, status: '확정' })} className="secondary-btn btn-xs">확정</button>
+                          <button onClick={() => updatePerformanceMut.mutate({ id: row.id, status: '지급' })} className="primary-btn btn-xs">지급</button>
+                        </div>
+                      </div>
+                      <div className="finance-inline-summary">
+                        <span className="finance-summary-chip">Carry {formatKRW(row.carry_amount || 0)}</span>
+                        <span className="finance-summary-chip">LP 순수익 {formatKRW(row.lp_net_return || 0)}</span>
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-[#64748b]">
-                      분배총액 {formatKRW(row.total_distributed || 0)} · Carry {formatKRW(row.carry_amount || 0)} · LP 순수익 {formatKRW(row.lp_net_return || 0)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="card-base">
-            <h3 className="mb-2 text-sm font-semibold text-[#0f1f3d]">워터폴</h3>
-            {waterfallLoading ? (
-              <PageLoading />
-            ) : !waterfall ? (
-              <EmptyState emoji="🌊" message="표시할 워터폴 데이터가 없습니다." className="py-8" />
-            ) : (
-              <div className="space-y-2 text-sm">
-                <div className="rounded bg-[#f5f9ff] p-2">총 분배액: {formatKRW(waterfall.total_distributed)}</div>
-                <div className="rounded bg-[#f5f9ff] p-2">LP 원금 반환: {formatKRW(waterfall.lp_return_of_capital)}</div>
-                <div className="rounded bg-[#f5f9ff] p-2">LP 허들 수익: {formatKRW(waterfall.lp_hurdle_return)}</div>
-                <div className="rounded bg-emerald-50 p-2">GP Catch-up: {formatKRW(waterfall.gp_catch_up)}</div>
-                <div className="rounded bg-emerald-50 p-2">GP Carry: {formatKRW(waterfall.gp_carry)}</div>
-                <div className="rounded bg-[#f5f9ff] p-2">LP 잔여: {formatKRW(waterfall.lp_residual)}</div>
-              </div>
-            )}
-          </div>
-        </div>
+                  ))}
+                </div>
+              )}
+            </SectionScaffold>
+          }
+          secondary={
+            <SectionScaffold title="워터폴" description="현재 선택 조합의 분배 구조를 단계별로 확인합니다.">
+              {waterfallLoading ? (
+                <PageLoading />
+              ) : !waterfall ? (
+                <div className="finance-empty">표시할 워터폴 데이터가 없습니다.</div>
+              ) : (
+                <WaterfallSummary {...waterfall} />
+              )}
+            </SectionScaffold>
+          }
+        />
       )}
     </div>
   )
 }
-
-
-

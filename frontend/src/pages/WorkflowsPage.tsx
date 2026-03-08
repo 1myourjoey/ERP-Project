@@ -63,6 +63,9 @@ import { useToast } from '../contexts/ToastContext'
 import { Check, ChevronRight, Play, Plus, Printer, RefreshCcw, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import DrawerOverlay from '../components/common/DrawerOverlay'
 import FileAttachmentPanel from '../components/common/FileAttachmentPanel'
 import { invalidateFundRelated, invalidateWorkflowRelated } from '../lib/queryInvalidation'
@@ -3492,6 +3495,10 @@ export default function WorkflowsPage() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
   const { data: templates, isLoading } = useQuery({ queryKey: ['workflows'], queryFn: fetchWorkflows })
+  const { data: periodicSchedules = [] } = useQuery<PeriodicSchedule[]>({
+    queryKey: ['periodic-schedules'],
+    queryFn: () => fetchPeriodicSchedules(false),
+  })
   const { data: selected } = useQuery({ queryKey: ['workflow', selectedId], queryFn: () => fetchWorkflow(selectedId as number), enabled: !!selectedId })
 
   const groupedTemplates = useMemo(() => {
@@ -3616,31 +3623,68 @@ export default function WorkflowsPage() {
 
   const headerMeta = WORKFLOW_TAB_META[tab]
   const selectedTemplateMeta = templates?.find((template) => template.id === selectedId) ?? null
-
-  return (
-    <div className="page-container space-y-6">
-      <div className="page-header">
-        <div className="min-w-0 flex-1 lg:max-w-[860px]">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="page-title">워크플로우</h2>
-            <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
-              {headerMeta.title}
-            </span>
-          </div>
-          <p className="page-subtitle min-h-[40px]">{headerMeta.subtitle}</p>
-        </div>
-        <div className="flex min-h-[40px] flex-wrap items-start justify-end gap-2 self-start">
+  const activePeriodicCount = periodicSchedules.filter((schedule) => schedule.is_active).length
+  const workflowMetrics = [
+    {
+      label: '현재 보기',
+      value: headerMeta.title,
+      hint: headerMeta.subtitle,
+      tone: tab === 'completed' ? 'success' : tab === 'periodic' ? 'info' : 'default',
+    },
+    {
+      label: '워크플로 템플릿',
+      value: `${templates?.length ?? 0}개`,
+      hint: `카테고리 ${groupedTemplates.size}개`,
+    },
+    {
+      label: '정기 업무',
+      value: `${periodicSchedules.length}개`,
+      hint: `활성 ${activePeriodicCount}개`,
+      tone: activePeriodicCount > 0 ? 'info' : 'default',
+    },
+    {
+      label: '선택 항목',
+      value: selectedTemplateMeta?.name ?? '선택 대기',
+      hint: selectedTemplateMeta ? `${selectedTemplateMeta.step_count}단계 템플릿` : '목록에서 선택 후 상세 확인',
+    },
+  ] as const
+  const headerActions =
+    tab === 'templates'
+      ? (
+        <>
+          <button onClick={() => setMode('create')} className="primary-btn inline-flex items-center gap-2">
+            <Plus size={16} /> 템플릿 생성
+          </button>
+        </>
+      )
+      : (
+        <>
           <button onClick={() => changeTab('templates')} className="secondary-btn">
             템플릿 관리
           </button>
           <button onClick={() => { changeTab('templates'); setMode('create') }} className="primary-btn inline-flex items-center gap-2">
             <Plus size={16} /> 템플릿 생성
           </button>
-        </div>
-      </div>
+        </>
+      )
 
-      <div className="rounded-2xl border border-[#d8e5fb] bg-white px-3 py-2 shadow-sm">
-        <div className="flex gap-1 overflow-x-auto">
+  return (
+    <div className="page-container space-y-4">
+      <PageHeader
+        title="워크플로우"
+        subtitle={headerMeta.subtitle}
+        meta={(
+          <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
+            {headerMeta.title}
+          </span>
+        )}
+        actions={headerActions}
+      />
+
+      <PageMetricStrip items={[...workflowMetrics]} columns={4} />
+
+      <PageControlStrip compact>
+        <div className="segmented-control w-full overflow-x-auto">
           {[
             { key: 'active' as const, label: '미완료' },
             { key: 'completed' as const, label: '완료' },
@@ -3651,38 +3695,37 @@ export default function WorkflowsPage() {
             <button
               key={t.key}
               onClick={() => changeTab(t.key)}
-              className={`tab-btn border-b-2 border-x-0 border-t-0 rounded-none px-4 pb-2.5 pt-1 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? 'active border-[#558ef8] bg-transparent text-[#1a3660]'
-                  : 'border-transparent text-[#0f1f3d] hover:border-[#bfcff0] hover:bg-transparent hover:text-[#0f1f3d]'
-              }`}
+              className={`tab-btn min-w-fit px-4 py-2 text-sm ${tab === t.key ? 'active' : ''}`}
             >
               {t.label}
             </button>
           ))}
         </div>
-      </div>
+      </PageControlStrip>
 
       {tab === 'templates' && (
-        <div className="space-y-2.5">
-          <div className="rounded-xl border border-[#d8e5fb] bg-white px-3 py-3 shadow-sm">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-xs font-semibold text-[#1a3660]">
-                    템플릿 {templates?.length ?? 0}개
-                  </span>
-                  <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
-                    카테고리 {groupedTemplates.size}개
-                  </span>
-                  <span className="rounded-full border border-[#d8e5fb] bg-white px-2.5 py-1 text-xs font-semibold text-[#64748b]">
-                    {selectedTemplateMeta ? `선택 ${selectedTemplateMeta.name}` : '템플릿 선택 대기'}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-[#64748b]">카테고리 인덱스와 상세 패널을 같은 기준선에서 탐색하고, 선택한 템플릿의 단계 구조를 바로 확인합니다.</p>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-3">
+          <PageMetricStrip
+            columns={3}
+            items={[
+              {
+                label: '템플릿',
+                value: `${templates?.length ?? 0}개`,
+                hint: '카테고리별 워크플로 템플릿',
+              },
+              {
+                label: '카테고리',
+                value: `${groupedTemplates.size}개`,
+                hint: '좌측 인덱스 그룹 수',
+              },
+              {
+                label: '선택 템플릿',
+                value: selectedTemplateMeta?.name ?? '선택 대기',
+                hint: selectedTemplateMeta ? `${selectedTemplateMeta.step_count}단계` : '선택 후 상세 패널 표시',
+                tone: selectedTemplateMeta ? 'info' : 'default',
+              },
+            ]}
+          />
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] xl:items-start">
             <div className="card-base space-y-3 xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100vh-8rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden">

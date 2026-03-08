@@ -29,6 +29,7 @@ interface DataTableProps<T> {
   selectedKeys?: Set<string | number>
   onSelectionChange?: (keys: Set<string | number>) => void
   stickyHeader?: boolean
+  density?: 'default' | 'compact'
 }
 
 function priorityClass(priority: 1 | 2 | 3) {
@@ -59,11 +60,14 @@ export function DataTable<T>({
   selectedKeys = new Set(),
   onSelectionChange,
   stickyHeader = false,
+  density = 'default',
 }: DataTableProps<T>) {
   const allSelected = useMemo(
     () => data.length > 0 && data.every((row) => selectedKeys.has(keyExtractor(row))),
     [data, keyExtractor, selectedKeys],
   )
+  const headCellClass = density === 'compact' ? 'px-3 py-2 text-[11px]' : 'px-3 py-2.5 text-[11px]'
+  const bodyCellClass = density === 'compact' ? 'px-3 py-2 text-[13px]' : 'px-3 py-2.5 text-[13px]'
 
   const toggleRow = (key: string | number, checked: boolean) => {
     const next = new Set(selectedKeys)
@@ -114,19 +118,19 @@ export function DataTable<T>({
   return (
     <>
       {mobileCardRender && <div className="space-y-2 md:hidden">{data.map((row) => <div key={keyExtractor(row)}>{mobileCardRender(row)}</div>)}</div>}
-      <div className="hidden overflow-x-auto md:block">
+      <div className="compact-table-wrap hidden md:block">
         <table className="min-w-full">
           <thead className={stickyHeader ? 'sticky top-0 z-10 bg-[#f5f9ff]' : ''}>
             <tr className="table-head-row">
               {selectable && (
-                <th className="table-head-cell w-10 text-center">
+                <th className={`table-head-cell w-10 text-center ${headCellClass}`}>
                   <input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} />
                 </th>
               )}
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`table-head-cell ${priorityClass(column.priority)} ${alignClass(column.align)} ${column.width || ''}`}
+                  className={`table-head-cell ${headCellClass} ${priorityClass(column.priority)} ${alignClass(column.align)} ${column.width || ''}`}
                 >
                   <button
                     type="button"
@@ -150,7 +154,7 @@ export function DataTable<T>({
                   onClick={() => onRowClick?.(row)}
                 >
                   {selectable && (
-                    <td className="table-body-cell text-center" onClick={(event) => event.stopPropagation()}>
+                    <td className={`table-body-cell text-center ${bodyCellClass}`} onClick={(event) => event.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedKeys.has(key)}
@@ -161,7 +165,7 @@ export function DataTable<T>({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={`table-body-cell ${priorityClass(column.priority)} ${alignClass(column.align)}`}
+                      className={`table-body-cell ${bodyCellClass} ${priorityClass(column.priority)} ${alignClass(column.align)}`}
                     >
                       {column.render ? column.render(row, rowIndex) : (row as any)[column.key]}
                     </td>
@@ -177,4 +181,3 @@ export function DataTable<T>({
 }
 
 export default DataTable
-

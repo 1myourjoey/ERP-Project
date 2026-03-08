@@ -102,6 +102,7 @@ const DROPDOWN_GROUPS: DropdownGroup[] = [
     items: [
       { to: '/lp-management', label: 'LP 관리', icon: Users },
       { to: '/documents', label: '문서', icon: Files },
+      { to: '/data-studio', label: '데이터 스튜디오', icon: BarChart3 },
       { to: '/users', label: '사용자', icon: UserCog },
     ],
   },

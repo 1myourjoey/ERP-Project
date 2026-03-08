@@ -97,9 +97,14 @@ export interface DashboardDeadlinesResponse {
 export interface DashboardFundSnapshotItem {
   id: number
   name: string
+  status: string
   nav: number
+  commitment_total: number
+  paid_in_total: number
   lp_count: number
   contribution_rate: number | null
+  active_workflow_count: number
+  pending_task_count: number
   compliance_status: 'good' | 'warning' | 'danger'
   compliance_overdue: number
   missing_documents: number
@@ -109,8 +114,14 @@ export interface DashboardFundsSnapshotResponse {
   rows: DashboardFundSnapshotItem[]
   totals: {
     total_nav: number
+    total_commitment: number
+    total_paid_in: number
     total_lp_count: number
+    total_active_workflows: number
+    total_pending_tasks: number
     total_missing_documents: number
+    active_fund_count: number
+    attention_fund_count: number
   }
 }
 

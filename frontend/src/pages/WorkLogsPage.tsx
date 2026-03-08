@@ -16,6 +16,10 @@ import { useToast } from '../contexts/ToastContext'
 import { Plus, Trash2, Clock, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 import { invalidateTaskRelated } from '../lib/queryInvalidation'
 
 function DynamicList({
@@ -469,10 +473,11 @@ export default function WorkLogsPage() {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h2 className="page-title">업무일지</h2>
-        {activeTab === 'logs' && (
+    <div className="page-container space-y-4">
+      <PageHeader
+        title="업무일지"
+        subtitle="업무 기록과 교훈, 후속 조치를 같은 작업 문법으로 정리하고 인사이트까지 이어서 봅니다."
+        actions={activeTab === 'logs' ? (
           <button
             onClick={() => {
               setShowAdd((prev) => !prev)
@@ -482,30 +487,41 @@ export default function WorkLogsPage() {
           >
             <Plus size={16} /> 기록 추가
           </button>
-        )}
-      </div>
+        ) : null}
+      />
 
-      <div className="mb-4 flex gap-1 rounded-lg bg-[#f5f9ff] p-0.5">
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'logs' ? 'bg-white font-medium text-[#0f1f3d] shadow' : 'text-[#64748b]'}`}
-        >
-          기록
-        </button>
-        <button
-          onClick={() => setActiveTab('insights')}
-          className={`rounded-md px-3 py-1.5 text-xs ${activeTab === 'insights' ? 'bg-white font-medium text-[#0f1f3d] shadow' : 'text-[#64748b]'}`}
-        >
-          인사이트
-        </button>
-      </div>
+      <PageMetricStrip
+        items={[
+          { label: '총 기록', value: `${logs?.length ?? 0}건`, hint: '현재 필터 기준', tone: 'info' },
+          { label: '카테고리', value: `${categories?.length ?? 0}개`, hint: '기록 탭 기준', tone: 'default' },
+          { label: '탭', value: activeTab === 'logs' ? '기록' : '인사이트', hint: '현재 보기', tone: activeTab === 'insights' ? 'warning' : 'default' },
+          { label: '인사이트 기간', value: insightPeriod, hint: '인사이트 탭 기준', tone: 'default' },
+        ]}
+      />
+
+      <PageControlStrip compact>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="segmented-control">
+            <button onClick={() => setActiveTab('logs')} className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}>기록</button>
+            <button onClick={() => setActiveTab('insights')} className={`tab-btn ${activeTab === 'insights' ? 'active' : ''}`}>인사이트</button>
+          </div>
+          {activeTab === 'insights' ? (
+            <div className="segmented-control">
+              <button onClick={() => setInsightPeriod('week')} className={`tab-btn ${insightPeriod === 'week' ? 'active' : ''}`}>주간</button>
+              <button onClick={() => setInsightPeriod('month')} className={`tab-btn ${insightPeriod === 'month' ? 'active' : ''}`}>월간</button>
+              <button onClick={() => setInsightPeriod('quarter')} className={`tab-btn ${insightPeriod === 'quarter' ? 'active' : ''}`}>분기</button>
+            </div>
+          ) : null}
+        </div>
+      </PageControlStrip>
 
       {activeTab === 'logs' && (
         <>
-          <div className="mb-4 flex flex-wrap gap-1">
+          <PageControlStrip compact className="mb-0">
+          <div className="flex flex-wrap gap-1">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${!categoryFilter ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#64748b] hover:bg-[#d8e5fb]'}`}
+              className={`tab-btn ${!categoryFilter ? 'active' : ''}`}
             >
               전체
             </button>
@@ -513,26 +529,27 @@ export default function WorkLogsPage() {
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category)}
-                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${categoryFilter === category ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#64748b] hover:bg-[#d8e5fb]'}`}
+                className={`tab-btn ${categoryFilter === category ? 'active' : ''}`}
               >
                 {category}
               </button>
             ))}
           </div>
+          </PageControlStrip>
 
           {showAdd && categories && (
-            <div className="mb-4">
+            <SectionScaffold title="업무 기록 추가" description="업무 내용, 교훈, 후속 조치를 함께 기록합니다.">
               <WorkLogForm
                 categories={categories}
                 title="업무 기록 추가"
                 onSave={(data) => createMut.mutate(data)}
                 onClose={() => setShowAdd(false)}
               />
-            </div>
+            </SectionScaffold>
           )}
 
           {editingLog && categories && (
-            <div className="mb-4">
+            <SectionScaffold title="업무 기록 수정" description="기존 기록을 수정하고 후속 조치를 갱신합니다.">
               <WorkLogForm
                 categories={categories}
                 initial={editingLog}
@@ -540,13 +557,13 @@ export default function WorkLogsPage() {
                 onSave={(data) => updateMut.mutate({ id: editingLog.id, data })}
                 onClose={() => setEditingLog(null)}
               />
-            </div>
+            </SectionScaffold>
           )}
 
           {isLogsLoading ? (
             <PageLoading />
           ) : Object.keys(grouped).length === 0 ? (
-            <EmptyState emoji="📝" message="작성된 업무일지가 없어요" className="py-12" />
+            <EmptyState message="작성된 업무일지가 없습니다." className="py-12" />
           ) : (
             <div className="space-y-6">
               {Object.entries(grouped).map(([dateKey, items]) => (

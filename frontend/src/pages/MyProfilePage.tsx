@@ -2,6 +2,9 @@
 import { useNavigate } from 'react-router-dom'
 
 import GoogleLoginButton from '../components/GoogleLoginButton'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function MyProfilePage() {
@@ -98,15 +101,22 @@ export default function MyProfilePage() {
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">내 프로필</h2>
-          <p className="page-subtitle">내 정보, 비밀번호, Google 연동, 세션을 관리합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="내 프로필"
+        subtitle="개인 정보, 비밀번호, 외부 연동, 세션을 한 화면 문법으로 관리합니다."
+      />
 
-      <form onSubmit={onSubmitProfile} className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-[#0f1f3d]">기본 정보</h3>
+      <PageMetricStrip
+        items={[
+          { label: '계정', value: user?.username || '-', hint: user?.department || '부서 미지정', tone: 'info' },
+          { label: '이메일', value: user?.email || '-', hint: '연락 정보', tone: 'default' },
+          { label: 'Google 연동', value: user?.google_id ? '연결됨' : '미연결', hint: user?.google_id ? 'SSO 사용 가능' : '수동 로그인', tone: user?.google_id ? 'success' : 'warning' },
+          { label: '세션', value: '활성', hint: '모든 기기 로그아웃 가능', tone: 'default' },
+        ]}
+      />
+
+      <SectionScaffold title="기본 정보" description="사용자 기본 정보를 수정하고 즉시 저장합니다.">
+      <form onSubmit={onSubmitProfile} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="form-label text-xs">아이디</label>
@@ -137,9 +147,10 @@ export default function MyProfilePage() {
           </button>
         </div>
       </form>
+      </SectionScaffold>
 
-      <form onSubmit={onSubmitPassword} className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-[#0f1f3d]">비밀번호 변경</h3>
+      <SectionScaffold title="비밀번호 변경" description="현재 비밀번호 확인 후 새 비밀번호로 갱신합니다.">
+      <form onSubmit={onSubmitPassword} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className="form-label text-xs">현재 비밀번호</label>
@@ -177,9 +188,9 @@ export default function MyProfilePage() {
           </button>
         </div>
       </form>
+      </SectionScaffold>
 
-      <div className="card-base space-y-3">
-        <h3 className="text-sm font-semibold text-[#0f1f3d]">Google 계정 연동</h3>
+      <SectionScaffold title="Google 계정 연동" description="연동 여부를 확인하고 연결 또는 해제를 관리합니다.">
         {user?.google_id ? (
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-[#64748b]">Google 계정이 연동되어 있습니다.</p>
@@ -206,21 +217,21 @@ export default function MyProfilePage() {
             />
           </div>
         )}
-      </div>
+      </SectionScaffold>
 
-      <div className="card-base flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-[#0f1f3d]">세션 관리</h3>
-          <p className="text-xs text-[#64748b]">현재 계정의 모든 기기 세션을 즉시 종료합니다.</p>
-        </div>
-        <button
-          onClick={onLogoutAll}
-          disabled={sessionBusy}
-          className="danger-btn"
-        >
-          {sessionBusy ? '처리 중...' : '모든 기기에서 로그아웃'}
-        </button>
-      </div>
+      <SectionScaffold
+        title="세션 관리"
+        description="현재 계정의 모든 기기 세션을 즉시 종료합니다."
+        actions={
+          <button
+            onClick={onLogoutAll}
+            disabled={sessionBusy}
+            className="danger-btn"
+          >
+            {sessionBusy ? '처리 중...' : '모든 기기에서 로그아웃'}
+          </button>
+        }
+      />
     </div>
   )
 }

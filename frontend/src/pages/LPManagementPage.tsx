@@ -10,6 +10,9 @@ import {
   type LPAddressBook,
   type LPAddressBookInput,
 } from '../lib/api'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import { useToast } from '../contexts/ToastContext'
 
 const LP_TYPE_OPTIONS = ['institutional', 'individual', 'GP'] as const
@@ -173,12 +176,19 @@ export default function LPManagementPage() {
 
   return (
     <div className="page-container space-y-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">LP 관리</h2>
-          <p className="page-subtitle">LP별 참여 조합과 기본 정보를 함께 관리합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="LP 관리"
+        subtitle="LP별 참여 조합과 기본 정보를 한 화면 문법으로 함께 관리합니다."
+      />
+
+      <PageMetricStrip
+        items={[
+          { label: '전체 LP', value: `${books.length}건`, hint: '원본 데이터', tone: 'info' },
+          { label: '현재 결과', value: `${groupedLPs.length}건`, hint: '검색/유형/활성 필터 반영', tone: 'default' },
+          { label: '유형 필터', value: typeFilter || '전체', hint: '현재 조회 범위', tone: typeFilter ? 'warning' : 'default' },
+          { label: '편집 상태', value: editing ? '수정 중' : '신규 등록', hint: editing ? editing.name : '새 LP 입력', tone: editing ? 'warning' : 'success' },
+        ]}
+      />
 
       <div className="card-base space-y-3">
         <div className="flex items-center justify-between">
@@ -300,7 +310,7 @@ export default function LPManagementPage() {
         {isLoading ? (
           <p className="text-sm text-[#64748b]">불러오는 중...</p>
         ) : groupedLPs.length === 0 ? (
-          <p className="text-sm text-[#64748b]">표시할 LP가 없습니다.</p>
+          <EmptyState message="표시할 LP가 없습니다." className="py-10" />
         ) : (
           <div className="overflow-auto rounded-lg border border-[#d8e5fb]">
             <table className="min-w-[1100px] w-full table-fixed">

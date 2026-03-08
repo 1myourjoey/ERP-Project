@@ -23,6 +23,8 @@ import PageLoading from '../components/PageLoading'
 import ExcelImportWizard from '../components/ExcelImportWizard'
 import DrawerOverlay from '../components/common/DrawerOverlay'
 import DataFilterBar from '../components/common/DataFilterBar'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import DataTable, { type Column } from '../components/ui/DataTable'
 import StatusBadge from '../components/ui/StatusBadge'
 import { exportInvestmentsExcel } from '../lib/api/excel'
@@ -398,22 +400,32 @@ export default function InvestmentsPage() {
 
   return (
     <div className="page-container flex h-full min-h-0 flex-col gap-4">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">투자 포트폴리오</h2>
-          <p className="page-subtitle">목록 모니터링은 이 화면에서, 상세 업무는 투자 통제실에서 처리합니다.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button className="secondary-btn" onClick={handleExportExcel}>엑셀 다운로드</button>
-          <button className="secondary-btn" onClick={() => setExcelImportOpen(true)}>엑셀 가져오기</button>
-          <button className="secondary-btn" onClick={() => setCompanyDrawerOpen(true)}>회사 관리</button>
-          <button className="primary-btn" onClick={() => setShowInvestmentForm(true)}>+ 투자 등록</button>
-        </div>
-      </div>
+      <PageHeader
+        title="투자 포트폴리오"
+        subtitle="목록 모니터링은 이 화면에서, 상세 업무는 투자 통제실에서 처리합니다."
+        actions={
+          <>
+            <button className="secondary-btn" onClick={handleExportExcel}>엑셀 다운로드</button>
+            <button className="secondary-btn" onClick={() => setExcelImportOpen(true)}>엑셀 가져오기</button>
+            <button className="secondary-btn" onClick={() => setCompanyDrawerOpen(true)}>회사 관리</button>
+            <button className="primary-btn" onClick={() => setShowInvestmentForm(true)}>+ 투자 등록</button>
+          </>
+        }
+      />
+
+      <PageMetricStrip
+        items={[
+          { label: '전체 투자건', value: `${investments?.length ?? 0}건`, hint: '원본 포트폴리오', tone: 'info' },
+          { label: '현재 결과', value: `${filteredInvestments.length}건`, hint: '필터 반영 결과', tone: 'default' },
+          { label: '조합 필터', value: fundFilter === '' ? '전체' : (funds?.find((fund) => fund.id === fundFilter)?.name || '-'), hint: '현재 조합 범위', tone: 'default' },
+          { label: '상태 필터', value: statusFilter || '전체', hint: searchKeyword.trim() ? `검색: ${searchKeyword.trim()}` : '검색어 없음', tone: statusFilter ? 'warning' : 'default' },
+        ]}
+      />
 
       <DataFilterBar
         title="투자 필터"
         description="조합/상태/검색어로 포트폴리오를 빠르게 필터링합니다."
+        variant="compact"
       >
         <div>
           <label className="form-label">조합</label>
@@ -465,6 +477,7 @@ export default function InvestmentsPage() {
               data={filteredInvestments}
               keyExtractor={(row) => row.id}
               stickyHeader
+              density="compact"
               onRowClick={(row) => navigate(`/investments/${row.id}`)}
               mobileCardRender={(row) => {
                 const meta = investmentStatusMeta(row.status)

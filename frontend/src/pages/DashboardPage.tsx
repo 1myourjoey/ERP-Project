@@ -106,8 +106,14 @@ export default function DashboardPage() {
     rows: [],
     totals: {
       total_nav: 0,
+      total_commitment: 0,
+      total_paid_in: 0,
       total_lp_count: 0,
+      total_active_workflows: 0,
+      total_pending_tasks: 0,
       total_missing_documents: 0,
+      active_fund_count: 0,
+      attention_fund_count: 0,
     },
   }
   const workflowsData = workflowsQuery.data ?? { active_workflows: [] }

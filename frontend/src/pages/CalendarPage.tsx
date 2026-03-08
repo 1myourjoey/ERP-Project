@@ -15,6 +15,10 @@ import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
+import PageControlStrip from '../components/common/page/PageControlStrip'
+import PageHeader from '../components/common/page/PageHeader'
+import PageMetricStrip from '../components/common/page/PageMetricStrip'
+import SectionScaffold from '../components/common/page/SectionScaffold'
 import { resolveDateTone } from '../lib/taskUrgency'
 
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
@@ -177,49 +181,47 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-      <h2 className="page-title">캘린더</h2>
-          <p className="page-subtitle">일정과 업무 마감 일정을 한 화면에서 확인합니다.</p>
-        </div>
-        <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>
-      </div>
+    <div className="page-container space-y-4">
+      <PageHeader
+        title="캘린더"
+        subtitle="일정과 업무 마감 일정을 한 화면에서 확인하고 날짜별 후속 작업까지 바로 이어집니다."
+        actions={<button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>+ 일정</button>}
+      />
 
-      <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div>
-            <label className="mb-1 block text-[10px] font-medium text-[#64748b]">상태</label>
-            <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1 text-sm border rounded">
-              <option value="">전체 상태</option>
-              <option value="pending">{labelStatus('pending')}</option>
-              <option value="completed">{labelStatus('completed')}</option>
-            </select>
+      <PageMetricStrip
+        items={[
+          { label: '선택 날짜', value: selectedDate, hint: '현재 포커스 날짜', tone: 'info' },
+          { label: '선택일 일정', value: `${selectedDateEvents.length}건`, hint: '현재 선택 기준', tone: 'default' },
+          { label: '월간 일정', value: `${sortedEvents.length}건`, hint: monthLabel, tone: 'default' },
+          { label: '완료 일정', value: `${sortedEvents.filter((event) => event.status === 'completed').length}건`, hint: '현재 월 기준', tone: 'success' },
+        ]}
+      />
+
+      <PageControlStrip compact>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-medium text-[#64748b]">상태</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="form-input-sm min-w-[132px]">
+                <option value="">전체 상태</option>
+                <option value="pending">{labelStatus('pending')}</option>
+                <option value="completed">{labelStatus('completed')}</option>
+              </select>
+            </div>
+            <div className="segmented-control">
+              <button className={`tab-btn ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>월별</button>
+              <button className={`tab-btn ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>리스트</button>
+            </div>
           </div>
-          <button
-            className={`text-xs px-3 py-1 rounded ${view === 'calendar' ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
-            onClick={() => setView('calendar')}
-          >
-            월별
-          </button>
-          <button
-            className={`text-xs px-3 py-1 rounded ${view === 'list' ? 'bg-[#0f1f3d] text-white' : 'bg-[#f5f9ff] text-[#0f1f3d]'}`}
-            onClick={() => setView('list')}
-          >
-            리스트
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b]">
+            <span className="tag tag-blue">업무 일반</span>
+            <span className="tag tag-amber">오늘/이번주</span>
+            <span className="tag tag-red">지연</span>
+            <span className="tag tag-indigo">일반 일정</span>
+            <span className="tag tag-green">완료</span>
+          </div>
         </div>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-[#64748b]">
-        <span className="inline-flex items-center gap-1 rounded bg-[#e6efff] px-2 py-1 text-[#1a3660]">업무(일반)</span>
-        <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">업무(오늘)</span>
-        <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-1 text-amber-700">업무(이번주)</span>
-        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">업무(지연)</span>
-        <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-1 text-orange-700">투심위 일정</span>
-        <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-1 text-indigo-700">일반 일정</span>
-        <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-green-700">완료 일정</span>
-      </div>
+      </PageControlStrip>
 
       {showCreate && (
         <EventForm
@@ -230,36 +232,38 @@ export default function CalendarPage() {
       )}
 
       {view === 'calendar' ? (
-        <div className="space-y-4">
-          <div className="card-base flex items-center justify-between">
+        <SectionScaffold
+          title={monthLabel}
+          description="월 단위 일정과 업무 마감을 날짜별로 읽고, 선택한 날짜의 상세 일정까지 이어서 확인합니다."
+          actions={
             <div className="flex items-center gap-2">
               <button
-                className="px-2 py-1 text-sm bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
+                className="secondary-btn btn-sm"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
               >
-                &lt;
+                이전
               </button>
-              <h3 className="text-sm font-semibold text-[#0f1f3d]">{monthLabel}</h3>
               <button
-                className="px-2 py-1 text-sm bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
+                className="secondary-btn btn-sm"
                 onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
               >
-                &gt;
+                다음
+              </button>
+              <button
+                className="ghost-btn btn-sm"
+                onClick={() => {
+                  const now = new Date()
+                  setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                  setSelectedDate(formatDate(now))
+                }}
+              >
+                오늘
               </button>
             </div>
-            <button
-              className="text-xs px-2 py-1 bg-[#f5f9ff] rounded hover:bg-[#d8e5fb]"
-              onClick={() => {
-                const now = new Date()
-                setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
-                setSelectedDate(formatDate(now))
-              }}
-            >
-              오늘
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-px bg-[#d8e5fb] border border-[#d8e5fb] rounded-xl overflow-hidden">
+          }
+          bodyClassName="space-y-4"
+        >
+          <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-[#d8e5fb] bg-[#d8e5fb]">
             {WEEKDAY_LABELS.map(label => (
               <div key={label} className="bg-[#f5f9ff] px-2 py-2 text-center text-xs font-medium text-[#64748b]">
                 {label}
@@ -291,16 +295,16 @@ export default function CalendarPage() {
                         setEditingId(null)
                       }
                     }}
-                    className={`bg-white p-2 min-h-[110px] text-left align-top transition-colors ${
-                      inCurrentMonth ? '' : 'text-[#94a3b8] bg-[#f5f9ff]'
-                    } ${isSelected ? 'ring-2 ring-inset ring-[#558ef8]' : 'hover:bg-[#f5f9ff]'} cursor-pointer`}
+                    className={`min-h-[110px] cursor-pointer bg-white p-2 text-left align-top transition-colors ${
+                      inCurrentMonth ? '' : 'bg-[#f5f9ff] text-[#94a3b8]'
+                    } ${isSelected ? 'ring-2 ring-inset ring-[#558ef8]' : 'hover:bg-[#f5f9ff]'}`}
                   >
-                    <div className={`text-sm ${isToday ? 'bg-[#f5f9ff] font-bold text-[#1a3660] inline-block px-1.5 rounded' : ''}`}>
+                    <div className={`text-sm ${isToday ? 'inline-block rounded bg-[#f5f9ff] px-1.5 font-bold text-[#1a3660]' : ''}`}>
                       {date.getDate()}
                     </div>
                     <div className="mt-1 space-y-1">
                       {dayEvents.slice(0, 2).map(event => {
-                        const className = `text-[11px] px-1.5 py-0.5 rounded truncate ${eventTone(event)} ${
+                        const className = `truncate rounded px-1.5 py-0.5 text-[11px] ${eventTone(event)} ${
                           event.status === 'completed' ? 'line-through opacity-60' : ''
                         }`
                         if (event.task_id) {
@@ -333,22 +337,17 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="card-base">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-[#0f1f3d]">
-                {parseDate(selectedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
-              </h4>
-              <button className="primary-btn" onClick={() => openCreateForDate(selectedDate)}>
-                + 이 날짜에 추가
-              </button>
-            </div>
-
+          <SectionScaffold
+            title={parseDate(selectedDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+            description="선택한 날짜의 일정과 업무를 확인하고 바로 수정하거나 완료 처리합니다."
+            actions={<button className="primary-btn btn-sm" onClick={() => openCreateForDate(selectedDate)}>+ 이 날짜에 추가</button>}
+          >
             {!selectedDateEvents.length ? (
-              <EmptyState emoji="🗓️" message="등록된 일정이 없어요" className="py-8" />
+              <EmptyState message="선택한 날짜에 등록된 일정이 없습니다." className="py-8" />
             ) : (
               <div className="space-y-2">
                 {selectedDateEvents.map(event => (
-                  <div key={event.id} className="border border-[#d8e5fb] rounded-lg p-3">
+                  <div key={event.id} className="rounded-lg border border-[#d8e5fb] p-3">
                     {editingId === event.id ? (
                       <EventForm
                         initial={event}
@@ -360,36 +359,32 @@ export default function CalendarPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            {event.task_id && (
-                              <span className="tag tag-indigo">
-                                {event.quadrant || 'TASK'}
-                              </span>
-                            )}
+                            {event.task_id && <span className="tag tag-indigo">{event.quadrant || 'TASK'}</span>}
                             <p className={`text-sm font-medium text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
                           </div>
-                          <p className="text-xs text-[#64748b] mt-0.5">
+                          <p className="mt-0.5 text-xs text-[#64748b]">
                             {event.time || '-'} | {event.duration != null ? `${event.duration}분` : '-'} | {event.description || '-'}
                           </p>
-                          <span className={`inline-block mt-1 ${eventTone(event)}`}>
+                          <span className={`mt-1 inline-block ${eventTone(event)}`}>
                             {labelStatus(event.status)}
                           </span>
                         </div>
-                        <div className="flex gap-1 shrink-0">
+                        <div className="flex shrink-0 gap-1">
                           {event.task_id ? (
                             <button
                               onClick={() => openTaskDetailModal(event.task_id!)}
-                              className="secondary-btn"
+                              className="secondary-btn btn-sm"
                               disabled={taskModalLoading}
                             >
                               {taskModalLoading ? '로딩 중...' : event.status === 'completed' ? '완료 정보' : '상세 보기'}
                             </button>
                           ) : (
                             <>
-                              <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
+                              <button className="secondary-btn btn-sm" onClick={() => setEditingId(event.id)}>수정</button>
                               {event.status !== 'completed' && (
-                                <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                                <button className="secondary-btn btn-sm text-[#1f5b45]" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
                               )}
-                              <button className="danger-btn" onClick={() => setDeletingEventId(event.id)}>삭제</button>
+                              <button className="danger-btn btn-sm" onClick={() => setDeletingEventId(event.id)}>삭제</button>
                             </>
                           )}
                         </div>
@@ -399,86 +394,89 @@ export default function CalendarPage() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
+          </SectionScaffold>
+        </SectionScaffold>
       ) : (
-        <div className="rounded-2xl border border-[#d8e5fb] bg-white overflow-hidden">
-          {isLoading ? (
-            <PageLoading />
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-[#f5f9ff] text-[#64748b] text-xs">
-                <tr>
-                  <th className="px-3 py-2 text-left">날짜</th>
-                  <th className="px-3 py-2 text-left">제목</th>
-                  <th className="px-3 py-2 text-left">시간</th>
-                  <th className="px-3 py-2 text-left">소요시간</th>
-                  <th className="px-3 py-2 text-left">상태</th>
-                  <th className="px-3 py-2 text-left">작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedEvents.map(event => (
-                  <tr key={event.id} className="border-t border-[#e6eefc] align-top">
-                    <td className="px-3 py-2">{event.date}</td>
-                    <td className="px-3 py-2">
-                      {editingId === event.id ? (
-                        <EventForm initial={event} onSubmit={data => updateMut.mutate({ id: event.id, data })} onCancel={() => setEditingId(null)} compact />
-                      ) : (
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            {event.task_id && (
-                              <span className="tag tag-indigo">
-                                {event.quadrant || 'TASK'}
-                              </span>
-                            )}
-                            <p className={`font-medium text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
-                          </div>
-                          <p className="text-xs text-[#64748b]">{event.description || '-'}</p>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">{event.time || '-'}</td>
-                    <td className="px-3 py-2">{event.duration != null ? `${event.duration}분` : '-'}</td>
-                    <td className="px-3 py-2">
-                      <span className={eventTone(event)}>{labelStatus(event.status)}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {editingId !== event.id && (
-                        <div className="flex gap-1">
-                          {event.task_id ? (
-                            <button
-                              className="secondary-btn"
-                              onClick={() => openTaskDetailModal(event.task_id!)}
-                              disabled={taskModalLoading}
-                            >
-                              {taskModalLoading ? '로딩 중...' : event.status === 'completed' ? '완료 정보' : '상세 보기'}
-                            </button>
-                          ) : (
-                            <>
-                              <button className="secondary-btn" onClick={() => setEditingId(event.id)}>수정</button>
-                              {event.status !== 'completed' && (
-                                <button className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
-                              )}
-                              <button className="danger-btn" onClick={() => setDeletingEventId(event.id)}>삭제</button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {!sortedEvents.length && (
+        <SectionScaffold
+          title="일정 목록"
+          description="모든 일정과 업무를 날짜순으로 정렬해 확인합니다."
+          className="overflow-hidden"
+          bodyClassName="p-0"
+        >
+          <div className="compact-table-wrap">
+            {isLoading ? (
+              <PageLoading />
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="table-head-row">
                   <tr>
-                    <td className="px-3 py-1" colSpan={6}>
-                      <EmptyState emoji="🗓️" message="등록된 일정이 없어요" className="py-8" />
-                    </td>
+                    <th className="table-head-cell">날짜</th>
+                    <th className="table-head-cell">제목</th>
+                    <th className="table-head-cell">시간</th>
+                    <th className="table-head-cell">소요시간</th>
+                    <th className="table-head-cell">상태</th>
+                    <th className="table-head-cell">작업</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {sortedEvents.map(event => (
+                    <tr key={event.id} className="align-top hover:bg-[#f5f9ff]">
+                      <td className="table-body-cell">{event.date}</td>
+                      <td className="table-body-cell">
+                        {editingId === event.id ? (
+                          <EventForm initial={event} onSubmit={data => updateMut.mutate({ id: event.id, data })} onCancel={() => setEditingId(null)} compact />
+                        ) : (
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              {event.task_id && <span className="tag tag-indigo">{event.quadrant || 'TASK'}</span>}
+                              <p className={`font-medium text-[#0f1f3d] ${event.status === 'completed' ? 'line-through opacity-60' : ''}`}>{event.title}</p>
+                            </div>
+                            <p className="text-xs text-[#64748b]">{event.description || '-'}</p>
+                          </div>
+                        )}
+                      </td>
+                      <td className="table-body-cell">{event.time || '-'}</td>
+                      <td className="table-body-cell">{event.duration != null ? `${event.duration}분` : '-'}</td>
+                      <td className="table-body-cell">
+                        <span className={eventTone(event)}>{labelStatus(event.status)}</span>
+                      </td>
+                      <td className="table-body-cell">
+                        {editingId !== event.id && (
+                          <div className="flex gap-1">
+                            {event.task_id ? (
+                              <button
+                                className="secondary-btn btn-sm"
+                                onClick={() => openTaskDetailModal(event.task_id!)}
+                                disabled={taskModalLoading}
+                              >
+                                {taskModalLoading ? '로딩 중...' : event.status === 'completed' ? '완료 정보' : '상세 보기'}
+                              </button>
+                            ) : (
+                              <>
+                                <button className="secondary-btn btn-sm" onClick={() => setEditingId(event.id)}>수정</button>
+                                {event.status !== 'completed' && (
+                                  <button className="secondary-btn btn-sm text-[#1f5b45]" onClick={() => updateMut.mutate({ id: event.id, data: { status: 'completed' } })}>완료</button>
+                                )}
+                                <button className="danger-btn btn-sm" onClick={() => setDeletingEventId(event.id)}>삭제</button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!sortedEvents.length && (
+                    <tr>
+                      <td className="px-3 py-1" colSpan={6}>
+                        <EmptyState message="등록된 일정이 없습니다." className="py-8" />
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </SectionScaffold>
       )}
 
       {taskDetail && <CalendarTaskDetailModal task={taskDetail} onClose={() => setTaskDetail(null)} />}
