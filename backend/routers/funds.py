@@ -47,6 +47,7 @@ from services.workflow_service import instantiate_workflow
 from services.fund_integrity import recalculate_fund_stats, validate_lp_paid_in_pair
 from services.compliance_engine import ComplianceEngine
 from services.compliance_rule_engine import ComplianceRuleEngine
+from services.proposal_data import sync_fund_history
 
 router = APIRouter(tags=["funds"])
 logger = logging.getLogger(__name__)
@@ -1121,12 +1122,37 @@ def _to_lp_commitment_amount(value: float | None) -> int | None:
     return int(round(parsed))
 
 
+def _resolve_gp_entity(
+    db: Session,
+    *,
+    gp_entity_id: int | None,
+    gp_name: str | None,
+) -> GPEntity | None:
+    if gp_entity_id is not None:
+        entity = db.get(GPEntity, gp_entity_id)
+        if entity is None:
+            raise HTTPException(status_code=400, detail="선택한 GP 법인을 찾을 수 없습니다")
+        return entity
+
+    normalized_name = (gp_name or "").strip()
+    if not normalized_name:
+        return None
+
+    return (
+        db.query(GPEntity)
+        .filter(func.lower(GPEntity.name) == normalized_name.lower())
+        .order_by(GPEntity.is_primary.desc(), GPEntity.id.asc())
+        .first()
+    )
+
+
 def _ensure_gp_lp_record(
     db: Session,
     *,
     fund: Fund,
     gp_name: str | None,
     gp_commitment: float | None,
+    gp_entity: GPEntity | None = None,
 ) -> None:
     normalized_name = (gp_name or "").strip()
     if not normalized_name:
@@ -1144,25 +1170,18 @@ def _ensure_gp_lp_record(
         .order_by(LP.id.asc())
         .first()
     )
-    matched_gp_entity = (
-        db.query(GPEntity)
-        .filter(GPEntity.name == normalized_name)
-        .order_by(GPEntity.is_primary.desc(), GPEntity.id.asc())
-        .first()
-    )
+    matched_gp_entity = gp_entity or _resolve_gp_entity(db, gp_entity_id=None, gp_name=normalized_name)
 
     commitment_amount = _to_lp_commitment_amount(gp_commitment)
     if existing_lp:
+        existing_lp.name = normalized_name
         existing_lp.type = "GP"
         if commitment_amount is not None:
             existing_lp.commitment = commitment_amount
         if matched_gp_entity:
-            if not existing_lp.business_number and matched_gp_entity.business_number:
-                existing_lp.business_number = matched_gp_entity.business_number
-            if not existing_lp.contact and matched_gp_entity.representative:
-                existing_lp.contact = matched_gp_entity.representative
-            if not existing_lp.address and matched_gp_entity.address:
-                existing_lp.address = matched_gp_entity.address
+            existing_lp.business_number = matched_gp_entity.business_number
+            existing_lp.contact = matched_gp_entity.representative
+            existing_lp.address = matched_gp_entity.address
         return
 
     db.add(
@@ -1415,7 +1434,10 @@ def list_funds(db: Session = Depends(get_db)):
             id=f.id,
             name=f.name,
             type=f.type,
+            business_number=f.business_number,
             status=f.status,
+            gp_entity_id=f.gp_entity_id,
+            gp=f.gp,
             formation_date=f.formation_date,
             registration_number=f.registration_number,
             registration_date=f.registration_date,
@@ -1575,54 +1597,78 @@ def export_fund_overview(reference_date: date | None = None, db: Session = Depen
 def download_migration_template():
     try:
         import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
     except ImportError as exc:
         raise HTTPException(status_code=500, detail="openpyxl not installed") from exc
 
     workbook = openpyxl.Workbook()
+    header_fill = PatternFill(start_color="DCEBFF", end_color="DCEBFF", fill_type="solid")
+    helper_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+    guide_fill = PatternFill(start_color="EEF6FF", end_color="EEF6FF", fill_type="solid")
+    header_font = Font(bold=True, color="1F2937")
+    helper_font = Font(color="6B7280", italic=True, size=10)
+
+    def style_sheet(sheet, header_count: int) -> None:
+        for column_index in range(1, header_count + 1):
+            header_cell = sheet.cell(row=1, column=column_index)
+            header_cell.fill = header_fill
+            header_cell.font = header_font
+            helper_cell = sheet.cell(row=2, column=column_index)
+            helper_cell.fill = helper_fill
+            helper_cell.font = helper_font
+            helper_cell.alignment = Alignment(vertical="top", wrap_text=True)
+        sheet.freeze_panes = "A3"
+
+    def autofit_sheet(sheet) -> None:
+        for column_cells in sheet.columns:
+            values = [str(cell.value) for cell in column_cells if cell.value is not None]
+            width = max((len(value) for value in values), default=10)
+            sheet.column_dimensions[column_cells[0].column_letter].width = min(max(width + 4, 14), 44)
+
     funds_sheet = workbook.active
     funds_sheet.title = "Funds"
     funds_sheet.append([MIGRATION_FUND_HEADER_LABELS.get(key, key) for key in MIGRATION_FUND_HEADERS])
     funds_sheet.append(
         [
-            "#?낅젰媛?대뱶",
-            "議고빀紐??낅젰",
-            "벤처투자조합/투자조합/신기술투자조합 등",
-            "forming/active/dissolved/liquidated",
-            "YYYY-MM-DD",
-            "?ъ뾽?먮벑濡앸쾲??怨좎쑀踰덊샇 (?좏깮)",
-            "YYYY-MM-DD (?좏깮)",
-            "GP 紐낆묶",
-            "?????쒕ℓ?덉?",
-            "怨듬룞 GP (?좏깮)",
-            "수탁사",
-            "?レ옄留??낅젰 (??",
-            "?レ옄留??낅젰 (??",
-            "분할/일시 등",
-            "YYYY-MM-DD (?좏깮)",
-            "YYYY-MM-DD (?좏깮)",
-            "YYYY-MM-DD (?좏깮)",
-            "?レ옄(%)",
-            "?レ옄(%)",
-            "?レ옄(%)",
-            "怨꾩쥖踰덊샇 (?좏깮)",
+            "고유 식별키. Funds/LPs/LPContributions에서 반드시 같은 값을 반복 사용",
+            "조합의 공식 명칭 입력",
+            "벤처투자조합 / 투자조합 / 신기술투자조합 등",
+            "forming / active / dissolved / liquidated",
+            "조합 결성일, YYYY-MM-DD",
+            "실제 등록번호 또는 사업자번호. 조합키와 다름",
+            "등록일, 없으면 비움",
+            "대표 GP명",
+            "대표 운용역 또는 총괄 담당자",
+            "공동 GP가 있으면 입력",
+            "수탁사명",
+            "숫자만 입력, 콤마 없이",
+            "숫자만 입력, 콤마 없이",
+            "분할 / 일시 / 기타",
+            "투자기간 종료일, YYYY-MM-DD",
+            "만기일, YYYY-MM-DD",
+            "청산 종료 예정일이 있으면 입력",
+            "관리보수율(%) 숫자",
+            "성과보수율(%) 숫자",
+            "허들레이트(%) 숫자",
+            "실제 계좌번호가 있으면 입력",
         ]
     )
     funds_sheet.append(
         [
             "FUND-001",
-            "?덉떆 議고빀",
-            "踰ㅼ쿂?ъ옄議고빀",
+            "예시 벤처성장조합 1호",
+            "벤처투자조합",
             "active",
             "2026-01-15",
             "123-45-67890",
             "2026-02-01",
-            "?덉떆 GP",
-            "펀드매니저",
+            "예시 GP",
+            "김펀드매니저",
             "",
             "OO은행",
             10000000000,
             1000000000,
-            "遺꾪븷",
+            "분할",
             "2030-01-15",
             "2034-01-15",
             "",
@@ -1632,23 +1678,26 @@ def download_migration_template():
             "110-123-456789",
         ]
     )
+    style_sheet(funds_sheet, len(MIGRATION_FUND_HEADERS))
 
     lp_sheet = workbook.create_sheet("LPs")
     lp_sheet.append([MIGRATION_LP_HEADER_LABELS.get(key, key) for key in MIGRATION_LP_HEADERS])
-    lp_sheet.append([
-        "#?낅젰媛?대뱶",
-        "?? ?덉떆 湲곌? LP",
-        "湲곌??ъ옄??/ 媛쒖씤?ъ옄??/ GP",
-        "?レ옄留??낅젰 (??",
-        "?レ옄留??낅젰 (??",
-        "담당자 연락처",
-        "?? 111-22-33333",
-        "?꾨줈紐??먮뒗 吏踰?二쇱냼",
-    ])
+    lp_sheet.append(
+        [
+            "Funds 시트의 조합키와 동일하게 입력",
+            "LP의 공식 명칭 입력",
+            "기관투자자 / 개인투자자 / GP",
+            "약정총액 숫자만 입력",
+            "현재까지 납입한 금액 숫자만 입력",
+            "담당자 연락처",
+            "사업자번호가 있으면 입력, LPContributions 매칭에 우선 사용",
+            "우편주소 또는 소재지",
+        ]
+    )
     lp_sheet.append(
         [
             "FUND-001",
-            "?덉떆 湲곌? LP",
+            "예시 기관 LP",
             "기관투자자",
             3000000000,
             500000000,
@@ -1660,7 +1709,7 @@ def download_migration_template():
     lp_sheet.append(
         [
             "FUND-001",
-            "?덉떆 GP",
+            "예시 GP",
             "GP",
             1000000000,
             300000000,
@@ -1669,6 +1718,7 @@ def download_migration_template():
             "서울시 서초구",
         ]
     )
+    style_sheet(lp_sheet, len(MIGRATION_LP_HEADERS))
 
     contribution_sheet = workbook.create_sheet("LPContributions")
     contribution_sheet.append(
@@ -1676,14 +1726,14 @@ def download_migration_template():
     )
     contribution_sheet.append(
         [
-            "# 회차별 납입비율(%)을 입력하면 약정액 기준 금액으로 자동 환산됩니다",
-            "LP명 입력",
-            "사업자번호가 있으면 우선 매칭",
-            "YYYY-MM-DD",
-            "비우면 납입기일 기준 자동 부여",
-            "예: 10",
-            "비우면 납입기일과 동일",
-            "선택 입력",
+            "Funds 시트의 조합키와 동일하게 입력",
+            "LPs 시트의 LP명과 동일하게 입력",
+            "사업자번호가 있으면 우선 매칭, 없으면 LP명으로 매칭",
+            "납입기일, YYYY-MM-DD",
+            "회차번호. 같은 조합 안에서 1부터 순서대로 증가",
+            "해당 회차에 실제 납입한 비율(%). 누적 비율 아님",
+            "실납입일, 비우면 납입기일과 동일하게 처리",
+            "비고 또는 메모",
         ]
     )
     contribution_sheet.append(
@@ -1710,46 +1760,71 @@ def download_migration_template():
             "추가 출자",
         ]
     )
-
-    try:
-        from openpyxl.styles import Font, PatternFill
-
-        helper_fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
-        helper_font = Font(color="6B7280", italic=True, size=10)
-        for column_index in range(1, len(MIGRATION_FUND_HEADERS) + 1):
-            helper_cell = funds_sheet.cell(row=2, column=column_index)
-            helper_cell.fill = helper_fill
-            helper_cell.font = helper_font
-        funds_sheet.freeze_panes = "A3"
-        for column_index in range(1, len(MIGRATION_LP_HEADERS) + 1):
-            helper_cell = lp_sheet.cell(row=2, column=column_index)
-            helper_cell.fill = helper_fill
-            helper_cell.font = helper_font
-        lp_sheet.freeze_panes = "A3"
-        for column_index in range(1, len(MIGRATION_CONTRIBUTION_HEADERS) + 1):
-            helper_cell = contribution_sheet.cell(row=2, column=column_index)
-            helper_cell.fill = helper_fill
-            helper_cell.font = helper_font
-        contribution_sheet.freeze_panes = "A3"
-    except Exception:
-        # Formatting failure should not block template download.
-        pass
+    style_sheet(contribution_sheet, len(MIGRATION_CONTRIBUTION_HEADERS))
 
     guide_sheet = workbook.create_sheet("Guide")
-    guide_sheet.append(["??ぉ", "?ㅻ챸"])
-    guide_sheet.append(["Sheets", "Funds / LPs / LPContributions / Guide 시트를 사용하세요"])
-    guide_sheet.append(["필수값", "Funds: 조합키/조합명/조합유형 / LPs: 조합키/LP명/LP유형"])
-    guide_sheet.append(["조합유형", "투자조합, 벤처투자조합, 신기술투자조합, 사모투자합자회사(PEF), 창업투자조합, 농림수산식품투자조합, 기타"])
-    guide_sheet.append(["?좎쭨?뺤떇", "YYYY-MM-DD"])
-    guide_sheet.append(["?レ옄?뺤떇", "0 ?댁긽???レ옄"])
-    guide_sheet.append(["LPContributions", "회차별 납입비율(%)은 누적이 아니라 해당 회차분 비율입니다"])
-    guide_sheet.append(["초기세팅", "Import 성공 후에는 같은 조합에 대해 다시 import할 수 없습니다"])
-    guide_sheet.append(["Import", "반드시 validate 후 import를 실행하세요"])
+    guide_sheet.append(["항목", "설명"])
+    guide_sheet.append(["사용 순서", "1) Funds 입력 -> 2) LPs 입력 -> 3) LPContributions 입력 -> 4) Validate -> 5) Import"])
+    guide_sheet.append(["조합키", "내부 연결용 키입니다. 실제 등록번호가 아니며, 세 시트에서 같은 조합은 동일한 조합키를 사용해야 합니다."])
+    guide_sheet.append(["등록번호", "실제 등록번호/사업자번호입니다. 조합키와 별개이며 조합 식별 보조값으로 사용됩니다."])
+    guide_sheet.append(["회차번호", "같은 조합 내 납입 순번입니다. 1부터 시작해 회차별로 증가시켜 입력하세요."])
+    guide_sheet.append(["회차별납입비율(%)", "누적 비율이 아니라 해당 회차에 실제 납입한 비율입니다. 총합이 100%를 넘지 않도록 입력하세요."])
+    guide_sheet.append(["날짜 형식", "모든 날짜는 YYYY-MM-DD 형식으로 입력하세요."])
+    guide_sheet.append(["숫자 형식", "금액/비율은 숫자만 입력하세요. 콤마, 원, %, 공백은 넣지 않습니다."])
+    guide_sheet.append(["필수값", "Funds: 조합키/조합명/조합유형, LPs: 조합키/LP명/LP유형, LPContributions: 조합키/LP명/납입기일/회차번호/회차별납입비율(%)"])
+    guide_sheet.append(["주의사항", "Import 성공 후 같은 조합은 재등록이 제한될 수 있으니, 먼저 Validate로 오류를 확인한 뒤 Import하세요."])
+    for column_index in range(1, 3):
+        cell = guide_sheet.cell(row=1, column=column_index)
+        cell.fill = guide_fill
+        cell.font = header_font
+    guide_sheet.freeze_panes = "A2"
+
+    column_guide_sheet = workbook.create_sheet("ColumnGuide")
+    column_guide_sheet.append(["시트", "컬럼", "필수", "입력 가이드", "예시"])
+    column_guide_rows = [
+        ("Funds", "조합키", "Y", "세 시트 연결용 내부 식별값. 조합당 하나의 고정값을 사용", "FUND-001"),
+        ("Funds", "조합명", "Y", "조합의 공식 명칭", "예시 벤처성장조합 1호"),
+        ("Funds", "조합유형", "Y", "사전에 정의된 조합 유형 사용", "벤처투자조합"),
+        ("Funds", "상태", "Y", "forming / active / dissolved / liquidated 중 하나", "active"),
+        ("Funds", "결성일", "Y", "조합 결성일", "2026-01-15"),
+        ("Funds", "등록번호", "N", "실제 등록번호 또는 사업자번호. 조합키와 다름", "123-45-67890"),
+        ("Funds", "약정총액", "N", "총 약정금액 숫자만 입력", "10000000000"),
+        ("Funds", "GP출자금", "N", "GP 납입 또는 약정 금액 숫자만 입력", "1000000000"),
+        ("Funds", "관리보수율(%)", "N", "백분율 숫자만 입력", "2.0"),
+        ("Funds", "성과보수율(%)", "N", "백분율 숫자만 입력", "20.0"),
+        ("Funds", "허들레이트(%)", "N", "백분율 숫자만 입력", "6.0"),
+        ("LPs", "조합키", "Y", "Funds 시트와 동일한 조합키 입력", "FUND-001"),
+        ("LPs", "LP명", "Y", "LP의 공식 명칭 입력", "예시 기관 LP"),
+        ("LPs", "LP유형", "Y", "기관투자자 / 개인투자자 / GP", "기관투자자"),
+        ("LPs", "약정총액", "N", "약정금액 숫자만 입력", "3000000000"),
+        ("LPs", "납입총액", "N", "현재까지 실제 납입한 금액", "500000000"),
+        ("LPs", "사업자번호", "N", "LPContributions 매칭 정확도를 높이기 위해 권장", "111-22-33333"),
+        ("LPContributions", "조합키", "Y", "Funds 시트와 동일한 조합키 입력", "FUND-001"),
+        ("LPContributions", "LP명", "Y", "LPs 시트의 LP명과 동일하게 입력", "예시 기관 LP"),
+        ("LPContributions", "LP사업자번호", "N", "있으면 우선 매칭, 없으면 LP명으로 매칭", "111-22-33333"),
+        ("LPContributions", "납입기일", "Y", "회차별 예정 또는 기준 납입일", "2026-02-10"),
+        ("LPContributions", "회차번호", "Y", "같은 조합 내에서 1, 2, 3 순서로 증가", "1"),
+        ("LPContributions", "회차별납입비율(%)", "Y", "해당 회차분만 입력. 누적값 금지", "10"),
+        ("LPContributions", "실납입일", "N", "실제 납입일. 비우면 납입기일과 동일하게 처리", "2026-02-10"),
+    ]
+    for row in column_guide_rows:
+        column_guide_sheet.append(list(row))
+    for column_index in range(1, 6):
+        cell = column_guide_sheet.cell(row=1, column=column_index)
+        cell.fill = guide_fill
+        cell.font = header_font
+    column_guide_sheet.freeze_panes = "A2"
+
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(vertical="center", wrap_text=True)
+        autofit_sheet(sheet)
 
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
-    filename = "議고빀_諛?LP_?쇨큵?깅줉_?묒떇.xlsx"
+    filename = "조합_LP_일괄등록_템플릿.xlsx"
     encoded_filename = quote(filename)
     return StreamingResponse(
         output,
@@ -2248,11 +2323,23 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
     if payload.get("gp_commitment") is None and payload.get("gp_commitment_amount") is not None:
         payload["gp_commitment"] = payload.get("gp_commitment_amount")
     payload.pop("gp_commitment_amount", None)
+    gp_entity = _resolve_gp_entity(
+        db,
+        gp_entity_id=payload.get("gp_entity_id"),
+        gp_name=payload.get("gp"),
+    )
+    if gp_entity is not None:
+        payload["gp_entity_id"] = gp_entity.id
+        payload["gp"] = gp_entity.name
+    else:
+        payload["gp_entity_id"] = None
+        payload["gp"] = (payload.get("gp") or "").strip() or None
     fund = Fund(**payload)
 
     try:
         db.add(fund)
         db.flush()
+        sync_fund_history(db, fund)
         _cleanup_fund_capital_calls(db, fund.id)
         _sync_fee_config_from_fund(db, fund)
 
@@ -2261,6 +2348,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
             fund=fund,
             gp_name=fund.gp,
             gp_commitment=fund.gp_commitment,
+            gp_entity=gp_entity,
         )
 
         db.commit()
@@ -2294,11 +2382,39 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     if update_payload.get("gp_commitment") is None and update_payload.get("gp_commitment_amount") is not None:
         update_payload["gp_commitment"] = update_payload.get("gp_commitment_amount")
     update_payload.pop("gp_commitment_amount", None)
+    gp_entity = None
+    if "gp_entity_id" in update_payload or "gp" in update_payload:
+        next_gp_entity_id = update_payload.get("gp_entity_id", fund.gp_entity_id)
+        next_gp_name = update_payload.get("gp", fund.gp)
+        if "gp_entity_id" in update_payload and update_payload["gp_entity_id"] is None and "gp" not in update_payload:
+            next_gp_name = None
+        gp_entity = _resolve_gp_entity(
+            db,
+            gp_entity_id=next_gp_entity_id,
+            gp_name=next_gp_name,
+        )
+        if gp_entity is not None:
+            update_payload["gp_entity_id"] = gp_entity.id
+            update_payload["gp"] = gp_entity.name
+        elif "gp_entity_id" in update_payload:
+            update_payload["gp_entity_id"] = None
+            update_payload["gp"] = (update_payload.get("gp") or "").strip() or None
+        elif "gp" in update_payload:
+            update_payload["gp_entity_id"] = None
+            update_payload["gp"] = (update_payload.get("gp") or "").strip() or None
 
     for key, val in update_payload.items():
         setattr(fund, key, val)
 
+    sync_fund_history(db, fund)
     _sync_fee_config_from_fund(db, fund, set(update_payload.keys()))
+    _ensure_gp_lp_record(
+        db,
+        fund=fund,
+        gp_name=fund.gp,
+        gp_commitment=fund.gp_commitment,
+        gp_entity=gp_entity,
+    )
     db.commit()
     db.refresh(fund)
     _run_compliance_rule_checks(

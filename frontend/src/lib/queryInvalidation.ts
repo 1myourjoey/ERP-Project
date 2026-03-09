@@ -13,6 +13,8 @@ export function invalidateTaskRelated(queryClient: QueryClient) {
     queryKeys.tasks.all,
     queryKeys.tasks.board(),
     queryKeys.tasks.categories,
+    queryKeys.workflows.all,
+    queryKeys.documents.generated,
     queryKeys.dashboard.base,
     queryKeys.dashboard.health,
     queryKeys.dashboard.deadlines,
@@ -22,9 +24,12 @@ export function invalidateTaskRelated(queryClient: QueryClient) {
     queryKeys.dashboard.sidebar,
     queryKeys.dashboard.completed,
     queryKeys.worklogs.all,
+    ['dashboard-base'],
+    ['documentStatus'],
     ['taskBoard'],
     ['workflowInstances'],
     ['workflow-instances'],
+    ['workflow-instance'],
     ['calendarEvents'],
   ])
 }
@@ -54,9 +59,15 @@ export function invalidateFundRelated(queryClient: QueryClient, fundId?: number 
     queryKeys.funds.overview,
     queryKeys.capitalCalls.all,
     queryKeys.investments.all,
+    queryKeys.investmentReviews.all,
+    queryKeys.investmentReviews.weeklySummary,
     queryKeys.performance.all,
+    queryKeys.documents.generated,
     ['fund'],
     ['capitalCallSummary'],
+    ['investmentReviews'],
+    ['investmentReview'],
+    ['investmentReviewWeeklySummary'],
     ['lpAddressBooks'],
     ['transactions'],
     ['valuations'],
@@ -119,6 +130,22 @@ export function invalidateBizReportRelated(queryClient: QueryClient) {
     queryKeys.dashboard.base,
     queryKeys.dashboard.health,
     queryKeys.dashboard.deadlines,
+  ])
+}
+
+export function invalidateDocumentRelated(queryClient: QueryClient) {
+  invalidateMany(queryClient, [
+    queryKeys.documents.generated,
+    ['document-status'],
+    ['documentStatus'],
+    ['dashboard'],
+    ['dashboard-base'],
+    queryKeys.dashboard.base,
+    queryKeys.dashboard.health,
+    queryKeys.dashboard.deadlines,
+    queryKeys.dashboard.fundsSnapshot,
+    queryKeys.dashboard.sidebar,
+    queryKeys.dashboard.completed,
   ])
 }
 

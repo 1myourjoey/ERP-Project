@@ -1373,7 +1373,7 @@ def _build_pipeline_payload(db: Session) -> dict:
         stage = (row.status or row.stage or "기타").strip() or "기타"
         stage_counts[stage] = stage_counts.get(stage, 0) + 1
 
-    stage_order = ["소싱", "검토중", "실사중", "투자심의", "의결", "협상", "실행"]
+    stage_order = ["소싱", "검토중", "실사중", "상정", "의결", "집행"]
     ordered_stages: list[dict] = []
     for stage in stage_order:
         if stage in stage_counts:

@@ -47,6 +47,7 @@ import PageControlStrip from '../components/common/page/PageControlStrip'
 import PageHeader from '../components/common/page/PageHeader'
 import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import SectionScaffold from '../components/common/page/SectionScaffold'
+import { queryKeys } from '../lib/queryKeys'
 
 type TabKey = 'dashboard' | 'obligations' | 'rules' | 'checks' | 'documents' | 'schedule' | 'history'
 
@@ -240,7 +241,7 @@ export default function CompliancePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complianceDashboard'] })
       queryClient.invalidateQueries({ queryKey: ['complianceObligations'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-base'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.base })
       setTargetRow(null)
       setCompletedBy('')
       setEvidenceNote('')
@@ -393,6 +394,11 @@ export default function CompliancePage() {
     setActiveTab('checks')
   }
 
+  function jumpToCheckResult(result: 'fail' | 'warning') {
+    setCheckResultFilter(result)
+    setActiveTab('checks')
+  }
+
   const usagePct = llmUsage?.usage_pct ?? 0
   const usageProgress = Math.max(0, Math.min(100, usagePct))
   const dashboardSummary = dashboard?.summary
@@ -424,12 +430,18 @@ export default function CompliancePage() {
       value: `${summaryViolations}`,
       hint: '즉시 조치가 필요한 항목',
       tone: summaryViolations > 0 ? 'danger' : 'default',
+      interactive: true,
+      onClick: () => jumpToCheckResult('fail'),
+      ariaLabel: '진행 중 위반 점검 결과로 이동',
     },
     {
       label: '경고',
       value: `${summaryWarnings}`,
       hint: '주의 관찰 대상',
       tone: summaryWarnings > 0 ? 'warning' : 'default',
+      interactive: true,
+      onClick: () => jumpToCheckResult('warning'),
+      ariaLabel: '경고 점검 결과로 이동',
     },
     {
       label: '준수율',
@@ -462,6 +474,26 @@ export default function CompliancePage() {
           </span>
         )}
       >
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#d8e5fb] bg-[#f8fbff] p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">1. L1 규칙 엔진</p>
+            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+              등록된 컴플라이언스 규칙과 체크 결과를 먼저 조회합니다. 명확한 규칙 답변이 가능하면 여기서 바로 종료합니다.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[#d8e5fb] bg-white p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">2. L2 문서 검색</p>
+            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+              L1만으로 부족하면 공통 법령, 조합 유형 가이드, 해당 조합 문서를 RAG로 검색해 근거 문서를 우선 추립니다.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[#d8e5fb] bg-white p-3">
+            <p className="text-xs font-semibold text-[#1a3660]">3. GPT 해석</p>
+            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+              검색된 근거를 바탕으로 최종 해석을 생성합니다. 답변 아래에서 어떤 문서가 근거인지 바로 확인할 수 있습니다.
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input

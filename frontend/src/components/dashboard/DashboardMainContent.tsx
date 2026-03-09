@@ -12,6 +12,7 @@ import TodayPriorities from './TodayPriorities'
 interface DashboardMainContentProps {
   todayPriorities: DashboardDeadlineItem[]
   weekDeadlines: DashboardDeadlineItem[]
+  documentCollectionCount: number
   prioritizedTasks: DashboardPrioritizedTask[]
   pipelineTodayTasks: Task[]
   pipelineTomorrowTasks: Task[]
@@ -24,11 +25,13 @@ interface DashboardMainContentProps {
   onNavigate: (path: string) => void
   onOpenTask: (taskId: number) => void
   onOpenFund: (fundId: number) => void
+  onOpenDocuments: () => void
 }
 
 export default function DashboardMainContent({
   todayPriorities,
   weekDeadlines,
+  documentCollectionCount,
   prioritizedTasks,
   pipelineTodayTasks,
   pipelineTomorrowTasks,
@@ -41,6 +44,7 @@ export default function DashboardMainContent({
   onNavigate,
   onOpenTask,
   onOpenFund,
+  onOpenDocuments,
 }: DashboardMainContentProps) {
   return (
     <section className="grid grid-cols-1 gap-3 xl:grid-cols-3">
@@ -48,6 +52,7 @@ export default function DashboardMainContent({
         <TodayPriorities
           todayPriorities={todayPriorities}
           weekDeadlines={weekDeadlines}
+          documentCollectionCount={documentCollectionCount}
           prioritizedTasks={prioritizedTasks}
           pipelineTodayTasks={pipelineTodayTasks}
           pipelineTomorrowTasks={pipelineTomorrowTasks}
@@ -57,6 +62,7 @@ export default function DashboardMainContent({
           pipelineActiveWorkflows={pipelineActiveWorkflows}
           onNavigate={onNavigate}
           onOpenTask={onOpenTask}
+          onOpenDocuments={onOpenDocuments}
         />
       </div>
       <div className="xl:col-span-1">

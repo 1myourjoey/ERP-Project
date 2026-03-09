@@ -147,6 +147,58 @@ function combineDeadline(date: string, hour: string): string | null {
   return hour ? `${date}T${hour}` : date
 }
 
+function sortBoardTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY
+    const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY
+    if (aDeadline !== bDeadline) return aDeadline - bDeadline
+    const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
+    const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
+    if (aUpdated !== bUpdated) return aUpdated - bUpdated
+    return a.id - b.id
+  })
+}
+
+function upsertTaskIntoBoard(board: TaskBoard | undefined, task: Task): TaskBoard | undefined {
+  if (!board) return board
+  const next: TaskBoard = {
+    ...board,
+    Q1: board.Q1.filter((row) => row.id !== task.id),
+    Q2: board.Q2.filter((row) => row.id !== task.id),
+    Q3: board.Q3.filter((row) => row.id !== task.id),
+    Q4: board.Q4.filter((row) => row.id !== task.id),
+  }
+  if (task.status !== 'completed' && task.quadrant in next) {
+    const quadrant = task.quadrant as QuadrantKey
+    next[quadrant] = sortBoardTasks([...next[quadrant], task])
+  }
+  return next
+}
+
+function removeTaskFromBoard(board: TaskBoard | undefined, taskId: number): TaskBoard | undefined {
+  if (!board) return board
+  return {
+    ...board,
+    Q1: board.Q1.filter((row) => row.id !== taskId),
+    Q2: board.Q2.filter((row) => row.id !== taskId),
+    Q3: board.Q3.filter((row) => row.id !== taskId),
+    Q4: board.Q4.filter((row) => row.id !== taskId),
+  }
+}
+
+function upsertTaskInList(tasks: Task[] | undefined, task: Task, includeCompleted = true): Task[] | undefined {
+  if (!tasks) return tasks
+  const withoutCurrent = tasks.filter((row) => row.id !== task.id)
+  if (!includeCompleted && task.status === 'completed') {
+    return sortBoardTasks(withoutCurrent)
+  }
+  return sortBoardTasks([...withoutCurrent, task])
+}
+
+function removeTaskFromList(tasks: Task[] | undefined, taskId: number): Task[] | undefined {
+  return tasks?.filter((row) => row.id !== taskId)
+}
+
 function isOverdueTask(task: Task, now = new Date()): boolean {
   if (task.status === 'completed') return false
   return resolveDeadlineTone(task.deadline, now) === 'overdue'
@@ -978,7 +1030,7 @@ function AddTaskForm({
         invalidateFundRelated(queryClient, selectedFundId)
         addToast('success', '워크플로 인스턴스를 생성했습니다.')
       } else {
-        await createTaskMut.mutateAsync({
+        const createdTask = await createTaskMut.mutateAsync({
           title: title.trim(),
           quadrant,
           deadline: combineDeadline(deadlineDate, deadlineHour),
@@ -987,6 +1039,8 @@ function AddTaskForm({
           fund_id: selectedFundId || null,
           gp_entity_id: selectedGpEntityId || null,
         })
+        queryClient.setQueryData<TaskBoard>(['taskBoard', 'pending'], (current) => upsertTaskIntoBoard(current, createdTask))
+        queryClient.setQueryData<Task[]>(['tasks', { status: 'all' }], (current) => upsertTaskInList(current, createdTask))
         addToast('success', '작업이 추가되었습니다.')
       }
 
@@ -1080,6 +1134,7 @@ function AddTaskForm({
           </select>
         </div>
         <div>
+          <label className="form-label text-[10px]">카테고리</label>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -1928,7 +1983,12 @@ export default function TaskBoardPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TaskCreate> }) => updateTask(id, data),
-    onSuccess: () => {
+    onSuccess: (updatedTask) => {
+      queryClient.setQueryData<TaskBoard>(['taskBoard', 'pending'], (current) => upsertTaskIntoBoard(current, updatedTask))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'all' }], (current) => upsertTaskInList(current, updatedTask))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'completed-inline' }], (current) =>
+        updatedTask.status === 'completed' ? upsertTaskInList(current, updatedTask) : removeTaskFromList(current, updatedTask.id),
+      )
       invalidateTaskRelated(queryClient)
       setEditingTask(null)
       setBoardPanelTask(null)
@@ -1949,14 +2009,27 @@ export default function TaskBoardPage() {
       autoWorklog: boolean
       memo?: string
     }) => completeTask(id, actualTime, autoWorklog, memo),
-    onSuccess: () => {
+    onSuccess: (updatedTask) => {
+      queryClient.setQueryData<TaskBoard>(['taskBoard', 'pending'], (current) => removeTaskFromBoard(current, updatedTask.id))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'all' }], (current) => upsertTaskInList(current, updatedTask))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'completed-inline' }], (current) => upsertTaskInList(current, updatedTask))
+      if (boardPanelTask?.id === updatedTask.id) {
+        setBoardPanelTask(null)
+        setBoardPanelMode('detail')
+        if (updatedTask.workflow_instance_id) {
+          setWorkflowPanelInstanceId(updatedTask.workflow_instance_id)
+        }
+      }
       invalidateTaskRelated(queryClient)
     },
   })
 
   const undoCompleteMutation = useMutation({
     mutationFn: (taskId: number) => undoCompleteTask(taskId),
-    onSuccess: () => {
+    onSuccess: (updatedTask) => {
+      queryClient.setQueryData<TaskBoard>(['taskBoard', 'pending'], (current) => upsertTaskIntoBoard(current, updatedTask))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'all' }], (current) => upsertTaskInList(current, updatedTask))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'completed-inline' }], (current) => removeTaskFromList(current, updatedTask.id))
       invalidateTaskRelated(queryClient)
       addToast('success', '완료 상태를 되돌렸습니다.')
     },
@@ -1982,7 +2055,10 @@ export default function TaskBoardPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteTask,
-    onSuccess: () => {
+    onSuccess: (_, deletedTaskId) => {
+      queryClient.setQueryData<TaskBoard>(['taskBoard', 'pending'], (current) => removeTaskFromBoard(current, deletedTaskId))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'all' }], (current) => removeTaskFromList(current, deletedTaskId))
+      queryClient.setQueryData<Task[]>(['tasks', { status: 'completed-inline' }], (current) => removeTaskFromList(current, deletedTaskId))
       invalidateTaskRelated(queryClient)
       setBoardPanelTask(null)
       setBoardPanelMode('detail')

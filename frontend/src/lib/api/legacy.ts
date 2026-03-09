@@ -765,8 +765,11 @@ export const updateInvestmentReview = (id: number, data: Partial<InvestmentRevie
 export const deleteInvestmentReview = (id: number) => api.delete(`/investment-reviews/${id}`)
 export const updateInvestmentReviewStatus = (id: number, status: string): Promise<InvestmentReview> =>
   api.patch(`/investment-reviews/${id}/status`, { status }).then(r => r.data)
-export const convertInvestmentReview = (id: number): Promise<InvestmentReviewConvertResult> =>
-  api.post(`/investment-reviews/${id}/convert`).then(r => r.data)
+export const convertInvestmentReview = (
+  id: number,
+  data: InvestmentReviewConvertInput,
+): Promise<InvestmentReviewConvertResult> =>
+  api.post(`/investment-reviews/${id}/convert`, data).then(r => r.data)
 export const fetchReviewComments = (reviewId: number): Promise<ReviewComment[]> =>
   api.get(`/investment-reviews/${reviewId}/comments`).then(r => r.data)
 export const createReviewComment = (reviewId: number, data: ReviewCommentInput): Promise<ReviewComment> =>
@@ -1144,6 +1147,9 @@ export const deleteChecklistItem = (checklistId: number, itemId: number) => api.
 
 // -- Document Status --
 export const fetchDocumentStatus = (params?: { status?: string; fund_id?: number; company_id?: number }): Promise<DocumentStatusItem[]> => api.get('/document-status', { params }).then(r => r.data)
+export const bulkUpdateDocumentStatus = (
+  data: DocumentStatusBulkUpdateInput,
+): Promise<DocumentStatusBulkUpdateResult> => api.patch('/document-status/bulk', data).then(r => r.data)
 
 // -- Calendar --
 export const fetchCalendarEvents = (
@@ -2360,6 +2366,7 @@ export interface Fund {
   registration_number: string | null
   registration_date: string | null
   status: string
+  gp_entity_id: number | null
   gp: string | null
   fund_manager: string | null
   co_gp: string | null
@@ -2390,6 +2397,7 @@ export interface FundInput {
   registration_number?: string | null
   registration_date?: string | null
   status?: string
+  gp_entity_id?: number | null
   gp?: string | null
   fund_manager?: string | null
   co_gp?: string | null
@@ -2837,6 +2845,23 @@ export interface InvestmentReviewConvertResult {
   investment_id: number
   company_id: number
   status: string
+}
+
+export interface InvestmentReviewConvertInput {
+  fund_id: number
+  investment_date: string | null
+  amount?: number | null
+  instrument?: string | null
+  shares?: number | null
+  share_price?: number | null
+  valuation?: number | null
+  round?: string | null
+  valuation_pre?: number | null
+  valuation_post?: number | null
+  ownership_pct?: number | null
+  board_seat?: string | null
+  contribution_rate?: string | null
+  status?: string | null
 }
 
 export interface InvestmentReviewWeeklyActivity {
@@ -3590,6 +3615,16 @@ export interface DocumentStatusItem {
   company_name: string
   company_id: number
   fund_name: string
+}
+
+export interface DocumentStatusBulkUpdateInput {
+  document_ids: number[]
+  status: string
+}
+
+export interface DocumentStatusBulkUpdateResult {
+  updated_ids: number[]
+  updated_count: number
 }
 
 export interface GeneratedDocumentGenerateResponse {

@@ -20,9 +20,9 @@ interface ConfirmDialogProps {
 }
 
 function variantIcon(variant: ConfirmDialogProps['variant']) {
-  if (variant === 'danger') return <AlertTriangle size={16} className="text-red-600" />
-  if (variant === 'warning') return <AlertTriangle size={16} className="text-amber-600" />
-  return <Info size={16} className="text-[#558ef8]" />
+  if (variant === 'danger') return <AlertTriangle size={18} className="text-red-600" />
+  if (variant === 'warning') return <AlertTriangle size={18} className="text-amber-600" />
+  return <Info size={18} className="text-[#558ef8]" />
 }
 
 export function ConfirmDialog({
@@ -97,45 +97,55 @@ export function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="modal-overlay fixed inset-0 bg-black/40" onClick={() => !loading && onCancel()} />
+      <div className="fixed inset-0 bg-[#0f172a]/45 backdrop-blur-[2px]" onClick={() => !loading && onCancel()} />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="modal-content w-full max-w-md" onClick={(event) => event.stopPropagation()}>
-          <div className="mb-3 flex items-center gap-2">
-            {variantIcon(variant)}
-            <h3 className="text-base font-semibold">{title}</h3>
+        <div
+          className="w-full max-w-lg rounded-[28px] border border-[#d8e5fb] bg-white p-6 shadow-[0_24px_80px_rgba(15,31,61,0.22)]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#d8e5fb] bg-[#f5f9ff]">
+              {variantIcon(variant)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-semibold text-[#0f1f3d]">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#64748b]">{message}</p>
+            </div>
           </div>
 
-          <p className="text-sm text-[#64748b]">{message}</p>
           {detail && (
-            <div className="warning-banner mt-3">
-              <div className="info-banner-icon">
-                <AlertTriangle size={14} />
-              </div>
-              <div className="info-banner-text text-xs">{detail}</div>
+            <div className="mt-4 rounded-2xl border border-[#f1d0d4] bg-[#fdf4f5] px-4 py-3 text-xs leading-5 text-[#7a2d36]">
+              {detail}
             </div>
           )}
 
           {promptMode && (
-            <div className="mt-3">
+            <div className="mt-4 rounded-2xl border border-[#d8e5fb] bg-[#fbfdff] p-4">
               {promptLabel && <label className="form-label">{promptLabel}</label>}
               <input
                 ref={inputRef}
                 type={promptType}
                 value={promptValue}
                 onChange={(event) => setPromptValue(event.target.value)}
-                className="form-input"
+                className="form-input mt-2"
               />
             </div>
           )}
 
-          <div className="mt-5 flex justify-end gap-2">
-            <button ref={cancelRef} type="button" className="secondary-btn" onClick={onCancel} disabled={loading}>
+          <div className="mt-5 flex flex-col-reverse gap-2 border-t border-[#eef3fb] pt-4 sm:flex-row sm:justify-end">
+            <button
+              ref={cancelRef}
+              type="button"
+              className="secondary-btn justify-center sm:min-w-[96px]"
+              onClick={onCancel}
+              disabled={loading}
+            >
               {cancelLabel}
             </button>
             <button
               ref={confirmRef}
               type="button"
-              className={confirmButtonClass}
+              className={`${confirmButtonClass} justify-center sm:min-w-[112px]`}
               onClick={() => {
                 if (promptMode && onPromptConfirm) {
                   onPromptConfirm(promptValue)

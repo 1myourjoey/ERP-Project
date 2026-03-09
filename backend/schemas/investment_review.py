@@ -118,6 +118,23 @@ class InvestmentReviewConvertResponse(BaseModel):
     status: str
 
 
+class InvestmentReviewConvertRequest(BaseModel):
+    fund_id: int
+    investment_date: Optional[date] = None
+    amount: Optional[float] = None
+    instrument: Optional[str] = None
+    shares: Optional[float] = None
+    share_price: Optional[float] = None
+    valuation: Optional[float] = None
+    round: Optional[str] = None
+    valuation_pre: Optional[float] = None
+    valuation_post: Optional[float] = None
+    ownership_pct: Optional[float] = None
+    board_seat: Optional[str] = None
+    contribution_rate: Optional[str] = None
+    status: Optional[str] = "active"
+
+
 class WeeklyActivityItem(BaseModel):
     review_id: int
     company_name: str

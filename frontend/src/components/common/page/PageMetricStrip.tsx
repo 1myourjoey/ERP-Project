@@ -3,6 +3,9 @@ interface MetricItem {
   value: string
   hint?: string
   tone?: 'default' | 'info' | 'warning' | 'danger' | 'success'
+  onClick?: () => void
+  interactive?: boolean
+  ariaLabel?: string
 }
 
 interface PageMetricStripProps {
@@ -27,11 +30,24 @@ export default function PageMetricStrip({
   return (
     <section className={`page-metric-strip ${COLUMN_CLASS[columns]} ${className}`.trim()}>
       {items.map((item) => (
-        <div key={`${item.label}-${item.value}`} className={`metric-tile ${item.tone ? `metric-tile-${item.tone}` : ''}`.trim()}>
+        <button
+          key={`${item.label}-${item.value}`}
+          type="button"
+          onClick={item.onClick}
+          aria-label={item.ariaLabel || item.label}
+          disabled={!item.onClick}
+          className={`metric-tile text-left transition duration-200 ${
+            item.tone ? `metric-tile-${item.tone}` : ''
+          } ${
+            item.onClick || item.interactive
+              ? 'cursor-pointer hover:-translate-y-[2px] hover:border-[#aac6fa] hover:shadow-[0_14px_32px_rgba(15,31,61,0.08)]'
+              : 'cursor-default'
+          }`.trim()}
+        >
           <p className="metric-tile-label">{item.label}</p>
           <p className="metric-tile-value font-data">{item.value}</p>
           {item.hint ? <p className="metric-tile-hint">{item.hint}</p> : null}
-        </div>
+        </button>
       ))}
     </section>
   )

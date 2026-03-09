@@ -1,19 +1,23 @@
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import PageLoading from '../components/PageLoading'
 import DashboardAlertBar from '../components/dashboard/DashboardAlertBar'
 import DashboardBottomRow from '../components/dashboard/DashboardBottomRow'
+import DocumentCollectionModal from '../components/dashboard/DocumentCollectionModal'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
 import DashboardHealthCards from '../components/dashboard/DashboardHealthCards'
 import DashboardMainContent from '../components/dashboard/DashboardMainContent'
 import {
+  fetchDocumentStatus,
   fetchDashboardBase,
   fetchDashboardDeadlines,
   fetchDashboardFundsSnapshot,
   fetchDashboardHealth,
   fetchDashboardPipeline,
   fetchDashboardWorkflows,
+  type DocumentStatusItem,
   type DashboardBaseResponse,
   type DashboardDeadlinesResponse,
   type DashboardFundsSnapshotResponse,
@@ -47,6 +51,8 @@ function emptyDomain(label: string): DashboardHealthDomain {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const [documentModalOpen, setDocumentModalOpen] = useState(false)
+  const documentQueryKey = useMemo(() => queryKeys.documents.status({ view: 'dashboard-collection' }), [])
 
   const baseQuery = useQuery<DashboardBaseResponse>({
     queryKey: queryKeys.dashboard.base,
@@ -76,6 +82,11 @@ export default function DashboardPage() {
   const pipelineQuery = useQuery<DashboardPipelineResponse>({
     queryKey: queryKeys.dashboard.pipeline,
     queryFn: fetchDashboardPipeline,
+    staleTime: STALE_TIMES.DASHBOARD,
+  })
+  const documentCollectionQuery = useQuery<DocumentStatusItem[]>({
+    queryKey: documentQueryKey,
+    queryFn: () => fetchDocumentStatus(),
     staleTime: STALE_TIMES.DASHBOARD,
   })
 
@@ -118,6 +129,7 @@ export default function DashboardPage() {
   }
   const workflowsData = workflowsQuery.data ?? { active_workflows: [] }
   const pipelineData = pipelineQuery.data ?? { total_count: 0, stages: [] }
+  const documentCollectionRows = (documentCollectionQuery.data ?? []).filter((row) => row.status !== 'collected')
   const pipelineTodayTasks = Array.isArray(baseData.today?.tasks) ? baseData.today.tasks : []
   const pipelineTomorrowTasks = Array.isArray(baseData.tomorrow?.tasks) ? baseData.tomorrow.tasks : []
   const pipelineThisWeekTasks = Array.isArray(baseData.this_week) ? baseData.this_week : []
@@ -143,6 +155,7 @@ export default function DashboardPage() {
       <DashboardMainContent
         todayPriorities={deadlinesData.today_priorities}
         weekDeadlines={deadlinesData.this_week_deadlines}
+        documentCollectionCount={documentCollectionRows.length}
         prioritizedTasks={baseData.prioritized_tasks}
         pipelineTodayTasks={pipelineTodayTasks}
         pipelineTomorrowTasks={pipelineTomorrowTasks}
@@ -155,6 +168,7 @@ export default function DashboardPage() {
         onNavigate={(path) => navigate(path)}
         onOpenTask={(taskId) => navigate('/tasks', { state: { highlightTaskId: taskId } })}
         onOpenFund={(fundId) => navigate(`/funds/${fundId}`)}
+        onOpenDocuments={() => setDocumentModalOpen(true)}
       />
 
       <DashboardBottomRow
@@ -163,6 +177,12 @@ export default function DashboardPage() {
         weekDeadlines={deadlinesData.this_week_deadlines}
         onNavigate={(path) => navigate(path)}
         onOpenWorkflow={(workflow) => navigate('/workflows', { state: { expandInstanceId: workflow.id } })}
+      />
+
+      <DocumentCollectionModal
+        open={documentModalOpen}
+        documents={documentCollectionRows}
+        onClose={() => setDocumentModalOpen(false)}
       />
     </div>
   )

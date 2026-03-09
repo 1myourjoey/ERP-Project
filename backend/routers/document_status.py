@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
 
 from database import get_db
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany, InvestmentDocument
-from schemas.document_status import DocumentStatusItem
+from schemas.document_status import (
+    DocumentStatusBulkUpdateRequest,
+    DocumentStatusBulkUpdateResponse,
+    DocumentStatusItem,
+)
 
 router = APIRouter(tags=["document-status"])
 
@@ -53,3 +57,24 @@ def list_document_status(
         ))
 
     return result
+
+
+@router.patch("/api/document-status/bulk", response_model=DocumentStatusBulkUpdateResponse)
+def bulk_update_document_status(
+    data: DocumentStatusBulkUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    document_ids = list(dict.fromkeys(data.document_ids))
+    if not document_ids:
+        raise HTTPException(status_code=400, detail="업데이트할 서류를 선택해주세요")
+
+    docs = db.query(InvestmentDocument).filter(InvestmentDocument.id.in_(document_ids)).all()
+    if not docs:
+        raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
+
+    for doc in docs:
+        doc.status = data.status
+
+    db.commit()
+    updated_ids = [doc.id for doc in docs]
+    return DocumentStatusBulkUpdateResponse(updated_ids=updated_ids, updated_count=len(updated_ids))

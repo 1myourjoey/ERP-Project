@@ -9,6 +9,7 @@ from models.fund import Fund
 from models.investment import Investment, PortfolioCompany
 from models.investment_review import InvestmentReview, ReviewComment
 from schemas.investment_review import (
+    InvestmentReviewConvertRequest,
     InvestmentReviewConvertResponse,
     InvestmentReviewCreate,
     InvestmentReviewDetail,
@@ -263,15 +264,20 @@ def update_investment_review_status(
     "/api/investment-reviews/{review_id}/convert",
     response_model=InvestmentReviewConvertResponse,
 )
-def convert_investment_review(review_id: int, db: Session = Depends(get_db)):
+def convert_investment_review(
+    review_id: int,
+    data: InvestmentReviewConvertRequest,
+    db: Session = Depends(get_db),
+):
     row = db.get(InvestmentReview, review_id)
     if not row:
         raise HTTPException(status_code=404, detail="Investment review not found")
     if (row.decision_result or "").strip() != "승인":
         raise HTTPException(status_code=409, detail="Only approved reviews can be converted")
-    if row.fund_id is None:
+    fund_id = data.fund_id or row.fund_id
+    if fund_id is None:
         raise HTTPException(status_code=400, detail="Fund is required for conversion")
-    if not db.get(Fund, row.fund_id):
+    if not db.get(Fund, fund_id):
         raise HTTPException(status_code=404, detail="Fund not found")
 
     if row.investment_id is not None:
@@ -295,17 +301,32 @@ def convert_investment_review(review_id: int, db: Session = Depends(get_db)):
         db.add(company)
         db.flush()
 
+    investment_date = data.investment_date or row.execution_date or row.decision_date
+    if investment_date is None:
+        raise HTTPException(status_code=400, detail="Investment date is required for conversion")
+
     investment = Investment(
-        fund_id=row.fund_id,
+        fund_id=fund_id,
         company_id=company.id,
-        investment_date=row.execution_date or row.decision_date,
-        amount=float(row.target_amount) if row.target_amount is not None else None,
-        instrument=row.instrument,
-        status="active",
+        investment_date=investment_date,
+        amount=data.amount if data.amount is not None else float(row.target_amount) if row.target_amount is not None else None,
+        instrument=(data.instrument or row.instrument or None),
+        status=data.status or "active",
+        shares=data.shares,
+        share_price=data.share_price,
+        valuation=data.valuation,
+        contribution_rate=data.contribution_rate,
+        round=data.round,
+        valuation_pre=data.valuation_pre,
+        valuation_post=data.valuation_post,
+        ownership_pct=data.ownership_pct,
+        board_seat=data.board_seat,
     )
     db.add(investment)
     db.flush()
 
+    row.fund_id = fund_id
+    row.execution_date = row.execution_date or investment_date
     row.investment_id = investment.id
     if row.status not in (STOP_STATUS, "완료"):
         row.status = "집행" if row.execution_date else "의결"

@@ -59,7 +59,7 @@ export default function DashboardHealthCards({ domains, onNavigate }: DashboardH
             key={key}
             type="button"
             onClick={() => onNavigate(path)}
-            className="card-base h-[100px] p-3 text-left hover:bg-[#f5f9ff]"
+            className="card-base h-[100px] p-3 text-left transition duration-200 hover:-translate-y-[2px] hover:border-[#aac6fa] hover:bg-[#f5f9ff] hover:shadow-[0_14px_32px_rgba(15,31,61,0.08)]"
           >
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-[#0f1f3d]">{label}</p>
