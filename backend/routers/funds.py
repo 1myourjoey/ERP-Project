@@ -52,6 +52,14 @@ from services.proposal_data import sync_fund_history
 router = APIRouter(tags=["funds"])
 logger = logging.getLogger(__name__)
 OVERVIEW_UNIT = 1_000_000
+LEGACY_PAID_STEP_TOKENS = (
+    "\u7570\uc496\uc604",
+    "\u2479\uc5ef",
+    "\ub083\ud211",
+)
+LEGACY_CONFIRM_STEP_TOKENS = (
+    "\ubea4\uc524",
+)
 
 
 def _percent_to_decimal(value: float | None) -> float | None:
@@ -329,7 +337,7 @@ def _parse_date_cell(
         FundMigrationErrorItem(
             row=row,
             column=column,
-            reason="?좎쭨 ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎",
+            reason="날짜 형식이 올바르지 않습니다",
         )
     )
     return None
@@ -544,7 +552,7 @@ def _read_sheet_rows(
                 FundMigrationErrorItem(
                     row=1,
                     column=header,
-                    reason=f"{sheet_name} ?쒗듃???꾩닔 而щ읆???놁뒿?덈떎",
+                    reason=f"{sheet_name} 시트에 필수 컬럼이 없습니다",
                 )
             )
             continue
@@ -1046,9 +1054,7 @@ def _template_has_formation_paid_in_step(template: Workflow) -> bool:
                 "입금",
                 "납부",
                 "payment",
-                "異쒖옄",
-                "⑹엯",
-                "낃툑",
+                *LEGACY_PAID_STEP_TOKENS,
             )
         )
         has_confirm_token = any(
@@ -1057,7 +1063,7 @@ def _template_has_formation_paid_in_step(template: Workflow) -> bool:
                 "확인",
                 "confirm",
                 "check",
-                "뺤씤",
+                *LEGACY_CONFIRM_STEP_TOKENS,
             )
         )
         if has_paid_token and has_confirm_token:
@@ -1231,16 +1237,16 @@ def format_remaining_period(maturity_date: date | None, ref_date: date) -> str:
     if maturity_date is None:
         return "-"
     if ref_date > maturity_date:
-        return "留뚭린 寃쎄낵"
+        return "만기 경과"
 
     delta = relativedelta(maturity_date, ref_date)
     parts: list[str] = []
     if delta.years:
         parts.append(f"{delta.years}년")
     if delta.months:
-        parts.append(f"{delta.months}媛쒖썡")
+        parts.append(f"{delta.months}개월")
 
-    # For less than 1 month remaining, show days instead of 0??0媛쒖썡.
+    # For less than 1 month remaining, show days instead of 0개월.
     if not parts and delta.days:
         parts.append(f"{delta.days}일")
 
@@ -1501,22 +1507,22 @@ def export_fund_overview(reference_date: date | None = None, db: Session = Depen
     headers = [
         "NO",
         "조합명",
-        "議고빀 援щ텇",
-        "?????쒕ℓ?덉?",
+        "조합 구분",
+        "대표 펀드매니저",
         "등록(성립)일",
         "투자기간 종료일",
         "투자기간 경과율",
-        "泥?궛?쒓린(?덉젙)",
-        "?쎌젙珥앹븸",
-        "?⑹엯珥앹븸",
-        "?⑹엯鍮꾩쑉",
+        "청산시기(예정)",
+        "약정총액",
+        "납입총액",
+        "납입비율",
         "GP출자금",
-        "?ъ옄珥앹븸",
-        "誘명닾?먯븸",
-        "?ъ옄?먯궛",
+        "투자총액",
+        "미투자액",
+        "투자자산",
         "투자업체수",
-        "湲곗??섏씡瑜?洹쒖빟)",
-        "?붿〈湲곌컙",
+        "기준수익률(규약)",
+        "잔존기간",
     ]
 
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -1574,7 +1580,7 @@ def export_fund_overview(reference_date: date | None = None, db: Session = Depen
     totals_row = len(overview_items) + 2
     total_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     ws.merge_cells(start_row=totals_row, start_column=1, end_row=totals_row, end_column=8)
-    ws.cell(row=totals_row, column=1, value="?⑷퀎")
+    ws.cell(row=totals_row, column=1, value="합계")
     ws.cell(row=totals_row, column=9, value=totals.commitment_total)
     ws.cell(row=totals_row, column=10, value=totals.total_paid_in)
     ws.cell(row=totals_row, column=12, value=totals.gp_commitment)
@@ -1866,7 +1872,7 @@ async def validate_migration(
     db: Session = Depends(get_db),
 ):
     if not payload:
-        raise HTTPException(status_code=400, detail="?낅줈???뚯씪??鍮꾩뼱 ?덉뒿?덈떎")
+        raise HTTPException(status_code=400, detail="업로드 파일이 비어 있습니다")
     validation, _, _, _ = _parse_and_validate_migration(payload, db)
     return validation
 
@@ -2033,7 +2039,7 @@ async def import_migration(
         raise HTTPException(status_code=400, detail="mode는 insert/upsert 중 하나여야 합니다")
 
     if not payload:
-        raise HTTPException(status_code=400, detail="?낅줈???뚯씪??鍮꾩뼱 ?덉뒿?덈떎")
+        raise HTTPException(status_code=400, detail="업로드 파일이 비어 있습니다")
 
     validation, fund_rows, lp_rows, contribution_rows = _parse_and_validate_migration(payload, db)
     if validation.errors:
@@ -2118,7 +2124,7 @@ async def import_migration(
                     FundMigrationErrorItem(
                         row=row["__row"],
                         column="fund_key",
-                        reason="留ㅽ븨??議고빀??李얠쓣 ???놁뒿?덈떎",
+                        reason="매칭된 조합을 찾을 수 없습니다",
                     )
                 )
                 continue
@@ -2235,7 +2241,7 @@ async def import_migration(
         db.commit()
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"留덉씠洹몃젅?댁뀡 import 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"마이그레이션 import 중 오류가 발생했습니다: {exc}") from exc
 
     return FundMigrationImportResponse(
         success=True,
@@ -2258,7 +2264,7 @@ async def import_migration(
 def get_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     return fund
 
 
@@ -2274,9 +2280,9 @@ def add_formation_workflow(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="議고빀??李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     if not _is_forming_status(fund.status):
-        raise HTTPException(status_code=400, detail="寃곗꽦?덉젙 ?곹깭 議고빀?먯꽌留??앹꽦?????덉뒿?덈떎")
+        raise HTTPException(status_code=400, detail="결성예정 상태 조합에서만 생성할 수 있습니다")
 
     formation_slot_name = _resolve_formation_template_name(data.template_category_or_name)
     if not formation_slot_name:
@@ -2286,9 +2292,9 @@ def add_formation_workflow(
     if template is None:
         template = _find_formation_template(db, formation_slot_name)
     if not template:
-        raise HTTPException(status_code=404, detail="寃곗꽦 ?뚰겕?뚮줈 ?쒗뵆由우쓣 李얠쓣 ???놁뒿?덈떎")
+        raise HTTPException(status_code=404, detail="결성 워크플로 템플릿을 찾을 수 없습니다")
     if not template.steps:
-        raise HTTPException(status_code=400, detail="?④퀎媛 ?녿뒗 ?쒗뵆由우? ?앹꽦?????놁뒿?덈떎")
+        raise HTTPException(status_code=400, detail="단계가 없는 템플릿은 생성할 수 없습니다")
     if (
         _normalize_template_identifier(formation_slot_name)
         == _normalize_template_identifier("결성총회 개최")
@@ -2378,13 +2384,13 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="議고빀 ?앹꽦 以?以묐났 ?쒖빟議곌굔 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎") from exc
+        raise HTTPException(status_code=409, detail="조합 생성 중 중복 제약조건 오류가 발생했습니다") from exc
     except HTTPException:
         db.rollback()
         raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"議고빀 ?앹꽦 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"조합 생성 중 오류가 발생했습니다: {exc}") from exc
 
     db.refresh(fund)
     _run_compliance_rule_checks(
@@ -2400,7 +2406,7 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
 def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     update_payload = data.model_dump(exclude_unset=True)
     if update_payload.get("gp_commitment") is None and update_payload.get("gp_commitment_amount") is not None:
@@ -2545,7 +2551,7 @@ def _cleanup_fund_tasks_and_workflows(db: Session, fund_id: int) -> None:
 def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     try:
         _cleanup_fund_capital_calls(db, fund_id)
         _cleanup_fund_tasks_and_workflows(db, fund_id)
@@ -2561,7 +2567,7 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
 def list_lps(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
     return db.query(LP).filter(LP.fund_id == fund_id).order_by(LP.id.desc()).all()
 
 
@@ -2569,7 +2575,7 @@ def list_lps(fund_id: int, db: Session = Depends(get_db)):
 def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     payload = data.model_dump()
     address_book = _get_lp_address_book(db, payload.get("address_book_id"))
@@ -2635,7 +2641,7 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
 def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
     payload = data.model_dump(exclude_unset=True)
     if "name" in payload:
@@ -2708,7 +2714,7 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
 def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
     lp = db.get(LP, lp_id)
     if not lp or lp.fund_id != fund_id:
-        raise HTTPException(status_code=404, detail="LP??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
     db.delete(lp)
     db.commit()
@@ -2739,7 +2745,7 @@ def replace_notice_periods(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     fund.notice_periods.clear()
     for item in data:
@@ -2766,7 +2772,7 @@ def replace_key_terms(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     fund.key_terms.clear()
     for item in data:
@@ -2795,7 +2801,7 @@ def get_notice_period(fund_id: int, notice_type: str, db: Session = Depends(get_
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="???疫꿸퀗而??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="통지기간을 찾을 수 없습니다")
     return period
 
 
@@ -2808,7 +2814,7 @@ def calculate_deadline(
 ):
     fund = db.get(Fund, fund_id)
     if not fund:
-        raise HTTPException(status_code=404, detail="鈺곌퀬鍮??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
     period = (
         db.query(FundNoticePeriod)
@@ -2819,7 +2825,7 @@ def calculate_deadline(
         .first()
     )
     if not period:
-        raise HTTPException(status_code=404, detail="???疫꿸퀗而??筌≪뼚??????곷뮸??덈뼄")
+        raise HTTPException(status_code=404, detail="통지기간을 찾을 수 없습니다")
 
     day_basis = (period.day_basis or "business").strip().lower()
     if day_basis == "calendar":

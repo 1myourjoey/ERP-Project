@@ -39,8 +39,8 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 MONTHLY_REMINDER_TITLES = (
-    "?띻툑???붾낫怨?({year_month})",
-    "踰ㅼ쿂?묓쉶 VICS ?붾낫怨?({year_month})",
+    "농금원 월보고 ({year_month})",
+    "벤처협회 VICS 월보고 ({year_month})",
 )
 DOC_STATUS_COLUMNS = [
     "doc_financial_statement",

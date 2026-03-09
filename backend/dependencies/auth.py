@@ -122,11 +122,11 @@ def hash_password(password: str) -> str:
 
 def validate_password(password: str) -> str | None:
     if len(password) < 8:
-        return "鍮꾨?踰덊샇??理쒖냼 8???댁긽?댁뼱???⑸땲??"
+        return "비밀번호는 최소 8자 이상이어야 합니다."
     if _PASSWORD_ALPHA.search(password) is None:
-        return "鍮꾨?踰덊샇???곷Ц?먭? ?ы븿?섏뼱???⑸땲??"
+        return "비밀번호에는 영문자가 포함되어야 합니다."
     if _PASSWORD_DIGIT.search(password) is None:
-        return "鍮꾨?踰덊샇???レ옄媛 ?ы븿?섏뼱???⑸땲??"
+        return "비밀번호에는 숫자가 포함되어야 합니다."
     return None
 
 
@@ -162,18 +162,18 @@ def decode_token(token: str, expected_type: str) -> dict:
     try:
         payload = _jwt_decode(token)
     except Exception as exc:
-        raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??") from exc
+        raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.") from exc
 
     try:
         exp = int(payload.get("exp"))
     except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??") from exc
+        raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.") from exc
     if _utc_now().timestamp() >= exp:
-        raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??")
+        raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.")
 
     token_type = payload.get("type")
     if token_type != expected_type:
-        raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??")
+        raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.")
     return payload
 
 
@@ -223,22 +223,22 @@ def get_user_from_access_token(token: str, db: Session) -> User:
     try:
         user_id = int(payload.get("sub"))
     except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??") from exc
+        raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.") from exc
 
     user = db.get(User, user_id)
     if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="鍮꾪솢?깊솕?섏뿀嫄곕굹 議댁옱?섏? ?딅뒗 ?ъ슜?먯엯?덈떎.")
+        raise HTTPException(status_code=401, detail="비활성화되었거나 존재하지 않는 사용자입니다.")
 
     if user.token_invalidated_at is not None:
         token_iat_raw = payload.get("iat")
         if token_iat_raw is None:
-            raise HTTPException(status_code=401, detail="?몄뀡??留뚮즺?섏뿀?듬땲?? ?ㅼ떆 濡쒓렇?명빐 二쇱꽭??")
+            raise HTTPException(status_code=401, detail="세션이 만료되었습니다. 다시 로그인해 주세요.")
         try:
             token_iat = datetime.fromtimestamp(float(token_iat_raw), tz=timezone.utc)
         except (TypeError, ValueError):
-            raise HTTPException(status_code=401, detail="?좏슚?섏? ?딆? ?좏겙?낅땲??")
+            raise HTTPException(status_code=401, detail="유효하지 않은 인증 토큰입니다.")
         if token_iat < _as_utc(user.token_invalidated_at):
-            raise HTTPException(status_code=401, detail="?몄뀡??留뚮즺?섏뿀?듬땲?? ?ㅼ떆 濡쒓렇?명빐 二쇱꽭??")
+            raise HTTPException(status_code=401, detail="세션이 만료되었습니다. 다시 로그인해 주세요.")
 
     return user
 
@@ -271,7 +271,7 @@ def get_current_user(
     if _auth_disabled():
         return _ensure_dev_auth_user(db)
     if not credentials:
-        raise HTTPException(status_code=401, detail="?몄쬆???꾩슂?⑸땲??")
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
     return get_user_from_access_token(credentials.credentials, db)
 
 
@@ -279,5 +279,5 @@ def require_master(user: User = Depends(get_current_user)) -> User:
     if _auth_disabled():
         return user
     if user.role != "master":
-        raise HTTPException(status_code=403, detail="留덉뒪??愿由ъ옄留??묎렐?????덉뒿?덈떎.")
+        raise HTTPException(status_code=403, detail="마스터 관리자만 접근할 수 있습니다.")
     return user
