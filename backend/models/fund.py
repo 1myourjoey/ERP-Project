@@ -1,6 +1,6 @@
 from datetime import date as dt_date
 
-from sqlalchemy import Column, Integer, String, Date, DateTime, Float, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, String, Date, DateTime, Float, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -23,13 +23,18 @@ class Fund(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
+    business_number = Column(String, nullable=True)
     formation_date = Column(Date, nullable=True)
     registration_number = Column(String, nullable=True)
     registration_date = Column(Date, nullable=True)
     status = Column(String, nullable=False, default="active")
+    regulation_type = Column(String, nullable=True)
+    setup_type = Column(String, nullable=True)
+    gp_entity_id = Column(Integer, ForeignKey("gp_entities.id"), nullable=True)
     gp = Column(String, nullable=True)
     fund_manager = Column(String, nullable=True)
     co_gp = Column(String, nullable=True)
+    has_co_gp = Column(Boolean, nullable=False, default=False)
     trustee = Column(String, nullable=True)
     commitment_total = Column(Float, nullable=True)
     gp_commitment = Column(Float, nullable=True)
@@ -44,6 +49,7 @@ class Fund(Base):
     account_number = Column(String, nullable=True)
     initial_import_completed_at = Column(DateTime, nullable=True)
 
+    gp_entity = relationship("GPEntity")
     lps = relationship("LP", back_populates="fund", cascade="all, delete-orphan")
     lp_transfers = relationship("LPTransfer", back_populates="fund", cascade="all, delete-orphan")
     notice_periods = relationship("FundNoticePeriod", back_populates="fund", cascade="all, delete-orphan")

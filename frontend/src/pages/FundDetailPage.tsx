@@ -26,6 +26,7 @@ import {
   fetchFeeConfig,
   fetchFeeWaterfall,
   fetchFund,
+  fetchGPEntities,
   fetchInvestments,
   fetchTasks,
   fetchManagementFeesByFund,
@@ -63,6 +64,7 @@ import {
   type LPInput,
   type LPTransfer,
   type LPTransferInput,
+  type GPEntity,
   type ManagementFeeResponse,
   type NoticeDeadlineResult,
   type PerformanceFeeSimulationResponse,
@@ -82,7 +84,7 @@ import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
 import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import LPContributionPanel from '../components/fund/LPContributionPanel'
-import { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
+import FundCoreFields from '../components/funds/FundCoreFields'
 import WaterfallSummary from '../components/finance/WaterfallSummary'
 import { generateLPReport, previewLPReportData } from '../lib/api/lpReports'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
@@ -138,13 +140,6 @@ const STANDARD_NOTICE_TYPES = [
   { notice_type: 'dissolution', label: '해산/청산 통지', default_days: 30 },
   { notice_type: 'lp_report', label: '조합원 보고', default_days: 0 },
   { notice_type: 'amendment', label: '규약 변경 통지', default_days: 14 },
-]
-
-const FUND_STATUS_OPTIONS = [
-  { value: 'forming', label: '결성예정' },
-  { value: 'active', label: '운용 중' },
-  { value: 'dissolved', label: '해산' },
-  { value: 'liquidated', label: '청산 완료' },
 ]
 
 const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
@@ -571,11 +566,13 @@ function LPTransferModal({
 
 function FundForm({
   initial,
+  gpEntities,
   loading,
   onSubmit,
   onCancel,
 }: {
   initial: FundInput
+  gpEntities: GPEntity[]
   loading: boolean
   onSubmit: (data: FundInput) => void
   onCancel: () => void
@@ -589,107 +586,7 @@ function FundForm({
         <button onClick={onCancel} className="text-[#64748b] hover:text-[#64748b]"><X size={18} /></button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합명</label>
-          <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="조합명" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">조합 유형</label>
-          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
-            {FUND_TYPE_OPTIONS.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">상태</label>
-          <select value={form.status || 'active'} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg">
-            {FUND_STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>{status.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">결성일</label>
-          <input type="date" value={form.formation_date || ''} onChange={e => setForm(prev => ({ ...prev, formation_date: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        {form.status !== 'forming' && (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[#64748b]">만기일</label>
-            <input type="date" value={form.maturity_date || ''} onChange={e => setForm(prev => ({ ...prev, maturity_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
-          </div>
-        )}
-        {(form.status === 'dissolved' || form.status === 'liquidated') && (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[#64748b]">해산일</label>
-            <input type="date" value={form.dissolution_date || ''} onChange={e => setForm(prev => ({ ...prev, dissolution_date: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
-          </div>
-        )}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">GP</label>
-          <input value={form.gp || ''} onChange={e => setForm(prev => ({ ...prev, gp: e.target.value }))} placeholder="GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">대표 펀드매니저</label>
-          <input value={form.fund_manager || ''} onChange={e => setForm(prev => ({ ...prev, fund_manager: e.target.value }))} placeholder="대표 펀드매니저" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">Co-GP</label>
-          <input value={form.co_gp || ''} onChange={e => setForm(prev => ({ ...prev, co_gp: e.target.value }))} placeholder="Co-GP" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">신탁사</label>
-          <input value={form.trustee || ''} onChange={e => setForm(prev => ({ ...prev, trustee: e.target.value }))} placeholder="신탁사" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">총 약정액</label>
-          <KrwAmountInput
-            value={form.commitment_total ?? null}
-            onChange={(next) => setForm((prev) => ({ ...prev, commitment_total: next }))}
-            placeholder="총 약정액"
-            className="w-full px-3 py-2 text-sm border rounded-lg"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">GP 출자금</label>
-          <KrwAmountInput
-            value={form.gp_commitment ?? null}
-            onChange={(next) => setForm((prev) => ({ ...prev, gp_commitment: next }))}
-            placeholder="GP 출자금"
-            className="w-full px-3 py-2 text-sm border rounded-lg"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">출자방식</label>
-          <select value={form.contribution_type || ''} onChange={e => setForm(prev => ({ ...prev, contribution_type: e.target.value || null }))} className="w-full px-3 py-2 text-sm border rounded-lg">
-            <option value="">출자방식 선택</option>
-            <option value="일시">일시</option>
-            <option value="분할">분할</option>
-            <option value="수시">수시</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">투자기간 종료일</label>
-          <input type="date" value={form.investment_period_end || ''} onChange={e => setForm(prev => ({ ...prev, investment_period_end: e.target.value }))} className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">관리보수율(%)</label>
-          <input type="number" step="0.01" value={form.mgmt_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, mgmt_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="관리보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">성과보수율(%)</label>
-          <input type="number" step="0.01" value={form.performance_fee_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, performance_fee_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="성과보수율(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">허들레이트(%)</label>
-          <input type="number" step="0.01" value={form.hurdle_rate ?? ''} onChange={e => setForm(prev => ({ ...prev, hurdle_rate: e.target.value ? Number(e.target.value) : null }))} placeholder="허들레이트(%)" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[#64748b]">운용계좌번호</label>
-          <input value={form.account_number || ''} onChange={e => setForm(prev => ({ ...prev, account_number: e.target.value }))} placeholder="운용계좌번호" className="w-full px-3 py-2 text-sm border rounded-lg" />
-        </div>
-      </div>
+      <FundCoreFields form={form} onChange={setForm} gpEntities={gpEntities} />
 
       <div className="flex gap-2">
         <button
@@ -699,6 +596,9 @@ function FundForm({
             type: form.type.trim(),
             status: form.status || 'active',
             formation_date: form.formation_date || null,
+            registration_number: form.registration_number?.trim() || null,
+            registration_date: form.registration_date || null,
+            gp_entity_id: form.gp_entity_id ?? null,
             investment_period_end: form.investment_period_end || null,
             maturity_date: form.maturity_date || null,
             dissolution_date: form.dissolution_date || null,
@@ -1185,9 +1085,17 @@ export default function FundDetailPage() {
     queryFn: () => fetchFund(fundId),
     enabled: Number.isFinite(fundId) && fundId > 0,
   })
+  const { data: gpEntities = [] } = useQuery<GPEntity[]>({
+    queryKey: ['gpEntities'],
+    queryFn: fetchGPEntities,
+  })
   const isFormingFund = useMemo(
     () => isFormingStatus(fundDetail?.status),
     [fundDetail?.status],
+  )
+  const linkedGpEntity = useMemo(
+    () => gpEntities.find((entity) => entity.id === (fundDetail?.gp_entity_id ?? null)) ?? null,
+    [fundDetail?.gp_entity_id, gpEntities],
   )
 
   const { data: fundWorkflowInstances = [] } = useQuery<WorkflowInstance[]>({
@@ -2002,6 +1910,7 @@ export default function FundDetailPage() {
           {isOverviewTab && (editingFund ? (
             <FundForm
               initial={{ ...fundDetail, formation_date: fundDetail.formation_date || '' }}
+              gpEntities={gpEntities}
               loading={updateFundMut.isPending}
               onSubmit={data => updateFundMut.mutate({ id: fundId, data })}
               onCancel={() => setEditingFund(false)}
@@ -2023,6 +1932,10 @@ export default function FundDetailPage() {
                 <div className="p-2 bg-[#f5f9ff] rounded">결성일: {fundDetail.formation_date || '-'}</div>
                 <div className="p-2 bg-[#f5f9ff] rounded">투자기간 종료일: {fundDetail.investment_period_end || '-'}</div>
                 <div className="p-2 bg-[#f5f9ff] rounded">만기일: {fundDetail.maturity_date || '-'}</div>
+                <div className="p-2 bg-[#f5f9ff] rounded">
+                  GP 법인: {linkedGpEntity?.name || '-'}
+                  {linkedGpEntity?.business_number ? ` (${linkedGpEntity.business_number})` : ''}
+                </div>
                 <div className="p-2 bg-[#f5f9ff] rounded">GP: {fundDetail.gp || '-'}</div>
                 <div className="p-2 bg-[#f5f9ff] rounded">대표 펀드매니저: {fundDetail.fund_manager || '-'}</div>
                 <div className="p-2 bg-[#f5f9ff] rounded">Co-GP: {fundDetail.co_gp || '-'}</div>

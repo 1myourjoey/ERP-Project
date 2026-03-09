@@ -47,6 +47,7 @@ const ROUTE_KEYS = [
   '/provisional-fs',
   '/fee-management',
   '/lp-management',
+  '/proposal-data',
   '/users',
   '/compliance',
   '/biz-reports',

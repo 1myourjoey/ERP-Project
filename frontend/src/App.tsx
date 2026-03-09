@@ -33,6 +33,7 @@ const LPManagementPage = lazy(() => import('./pages/LPManagementPage'))
 const MyProfilePage = lazy(() => import('./pages/MyProfilePage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 const ProvisionalFSPage = lazy(() => import('./pages/ProvisionalFSPage'))
+const ProposalDataPage = lazy(() => import('./pages/ProposalDataPage'))
 const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
 const TemplateManagementPage = lazy(() => import('./pages/TemplateManagementPage'))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'))
@@ -86,6 +87,7 @@ export default function App() {
 
             <Route path="/lp-management" element={<RouteGuard routeKey="/lp-management"><LazyElement><LPManagementPage /></LazyElement></RouteGuard>} />
             <Route path="/lp-address-book" element={<Navigate to="/lp-management" replace />} />
+            <Route path="/proposal-data" element={<RouteGuard routeKey="/proposal-data"><LazyElement><ProposalDataPage /></LazyElement></RouteGuard>} />
             <Route path="/users" element={<RouteGuard routeKey="/users"><LazyElement><UsersPage /></LazyElement></RouteGuard>} />
             <Route path="/compliance" element={<RouteGuard routeKey="/compliance"><LazyElement><CompliancePage /></LazyElement></RouteGuard>} />
             <Route path="/biz-reports" element={<RouteGuard routeKey="/biz-reports"><LazyElement><BizReportsPage /></LazyElement></RouteGuard>} />

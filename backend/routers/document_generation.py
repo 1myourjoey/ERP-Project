@@ -189,6 +189,10 @@ def _derive_fund_series(fund_name: str) -> str:
 
 
 def _resolve_gp_entity(db: Session, fund: Fund) -> GPEntity | None:
+    if getattr(fund, "gp_entity_id", None):
+        linked = db.get(GPEntity, fund.gp_entity_id)
+        if linked:
+            return linked
     gp_name = (fund.gp or "").strip()
     if gp_name:
         exact = db.query(GPEntity).filter(GPEntity.name == gp_name).first()

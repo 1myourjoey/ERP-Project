@@ -59,11 +59,9 @@ class VariableResolver:
         )
 
         gp_profile = db.query(GPProfile).order_by(GPProfile.id.desc()).first()
-        gp_entity = (
-            db.query(GPEntity).filter(GPEntity.name == (fund.gp or "")).first()
-            if fund.gp
-            else None
-        )
+        gp_entity = db.get(GPEntity, fund.gp_entity_id) if getattr(fund, "gp_entity_id", None) else None
+        if gp_entity is None and fund.gp:
+            gp_entity = db.query(GPEntity).filter(GPEntity.name == (fund.gp or "")).first()
         variables.update(
             {
                 "GP_법인명": (

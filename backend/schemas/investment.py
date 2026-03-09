@@ -9,6 +9,7 @@ class PortfolioCompanyCreate(BaseModel):
     ceo: Optional[str] = None
     address: Optional[str] = None
     industry: Optional[str] = None
+    industry_code: Optional[str] = None
     vics_registered: bool = False
     corp_number: Optional[str] = None
     founded_date: Optional[date] = None
@@ -25,6 +26,7 @@ class PortfolioCompanyUpdate(BaseModel):
     ceo: Optional[str] = None
     address: Optional[str] = None
     industry: Optional[str] = None
+    industry_code: Optional[str] = None
     vics_registered: Optional[bool] = None
     corp_number: Optional[str] = None
     founded_date: Optional[date] = None
@@ -42,6 +44,7 @@ class PortfolioCompanyResponse(BaseModel):
     ceo: Optional[str] = None
     address: Optional[str] = None
     industry: Optional[str] = None
+    industry_code: Optional[str] = None
     vics_registered: bool
     corp_number: Optional[str] = None
     founded_date: Optional[date] = None
@@ -93,6 +96,9 @@ class InvestmentCreate(BaseModel):
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
     status: Literal["active", "exited", "written_off", "planned"] = "active"
+    is_recovered: bool = False
+    impairment_amount: Optional[float] = Field(default=None, ge=0)
+    impairment_date: Optional[date] = None
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)
@@ -111,6 +117,9 @@ class InvestmentUpdate(BaseModel):
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
     status: Optional[Literal["active", "exited", "written_off", "planned"]] = None
+    is_recovered: Optional[bool] = None
+    impairment_amount: Optional[float] = Field(default=None, ge=0)
+    impairment_date: Optional[date] = None
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)
@@ -144,6 +153,9 @@ class InvestmentResponse(BaseModel):
     contribution_rate: Optional[str] = None
     instrument: Optional[str] = None
     status: Literal["active", "exited", "written_off", "planned"]
+    is_recovered: bool = False
+    impairment_amount: Optional[float] = Field(default=None, ge=0)
+    impairment_date: Optional[date] = None
     round: Optional[str] = None
     valuation_pre: Optional[float] = Field(default=None, ge=0)
     valuation_post: Optional[float] = Field(default=None, ge=0)

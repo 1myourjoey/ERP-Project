@@ -63,6 +63,27 @@ from .template_variable import TemplateVariable
 from .llm_usage import LLMUsage
 from .notification import Notification
 from .analytics_view import AnalyticsView
+from .proposal_data import (
+    FundHistory,
+    ProposalApplication,
+    ProposalApplicationFund,
+    ProposalFieldOverride,
+    ProposalRowOverride,
+    ProposalSnapshot,
+    FundManager,
+    FundManagerHistory,
+    FundManagerProfileHistory,
+    FundSubscription,
+    GPEntityHistory,
+    GPFinancial,
+    GPShareholder,
+    ManagerAward,
+    ManagerCareer,
+    ManagerEducation,
+    ManagerInvestment,
+    PortfolioCompanyHistory,
+    ProposalVersion,
+)
 
 __all__ = [
     "Task",
@@ -108,4 +129,23 @@ __all__ = [
     "LLMUsage",
     "Notification",
     "AnalyticsView",
+    "GPEntityHistory",
+    "FundHistory",
+    "ProposalApplication",
+    "ProposalApplicationFund",
+    "ProposalFieldOverride",
+    "ProposalRowOverride",
+    "ProposalSnapshot",
+    "PortfolioCompanyHistory",
+    "GPFinancial",
+    "GPShareholder",
+    "FundManager",
+    "FundManagerProfileHistory",
+    "ManagerCareer",
+    "ManagerEducation",
+    "ManagerInvestment",
+    "FundManagerHistory",
+    "FundSubscription",
+    "ManagerAward",
+    "ProposalVersion",
 ]

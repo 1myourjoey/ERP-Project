@@ -1,5 +1,5 @@
 ﻿import { useRef } from 'react'
-import type { FundInput } from '../../lib/api'
+import type { FundInput, GPEntity } from '../../lib/api'
 import KrwAmountInput from '../common/KrwAmountInput'
 
 export const FUND_TYPE_OPTIONS = [
@@ -21,25 +21,21 @@ export const FUND_STATUS_OPTIONS = [
 
 const CONTRIBUTION_TYPE_OPTIONS = ['일시', '분할', '수시']
 
-type GPOption = {
-  value: string
-  label: string
-}
-
 type FundCoreFieldsProps = {
   form: FundInput
   onChange: (next: FundInput) => void
-  gpOptions?: GPOption[]
+  gpEntities?: GPEntity[]
 }
 
-export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundCoreFieldsProps) {
+export default function FundCoreFields({ form, onChange, gpEntities = [] }: FundCoreFieldsProps) {
   const update = <K extends keyof FundInput>(key: K, value: FundInput[K]) => {
     onChange({ ...form, [key]: value })
   }
   const lastAutoGpCommitmentRef = useRef<number | null>(form.gp_commitment ?? null)
   const gpCommitmentOverriddenRef = useRef(false)
 
-  const hasGpOptions = gpOptions.length > 0
+  const hasGpEntities = gpEntities.length > 0
+  const linkedGpEntity = gpEntities.find((entity) => entity.id === (form.gp_entity_id ?? null)) ?? null
 
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -130,27 +126,49 @@ export default function FundCoreFields({ form, onChange, gpOptions = [] }: FundC
         </div>
       )}
       <div>
-        <label className="mb-1 block text-xs font-medium text-[#64748b]">GP</label>
-        {hasGpOptions ? (
+        <label className="mb-1 block text-xs font-medium text-[#64748b]">GP 법인</label>
+        {hasGpEntities ? (
           <select
-            value={form.gp || ''}
-            onChange={(e) => update('gp', e.target.value || null)}
+            value={form.gp_entity_id ?? ''}
+            onChange={(e) => {
+              const nextId = Number(e.target.value || 0) || null
+              const nextEntity = gpEntities.find((entity) => entity.id === nextId) ?? null
+              onChange({
+                ...form,
+                gp_entity_id: nextId,
+                gp: nextEntity?.name ?? form.gp ?? null,
+              })
+            }}
             className="form-input"
           >
-            <option value="">고유계정 선택</option>
-            {gpOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            <option value="">고유계정 미연결</option>
+            {gpEntities.map((entity) => (
+              <option key={entity.id} value={entity.id}>
+                {entity.name}
+                {entity.business_number ? ` (${entity.business_number})` : ''}
               </option>
             ))}
           </select>
         ) : (
           <input
-            value={form.gp || ''}
-            onChange={(e) => update('gp', e.target.value)}
-            placeholder="GP"
+            value=""
+            readOnly
+            placeholder="등록된 GP 법인이 없습니다"
             className="form-input"
           />
+        )}
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-[#64748b]">GP</label>
+        <input
+          value={linkedGpEntity?.name || form.gp || ''}
+          onChange={(e) => update('gp', e.target.value)}
+          placeholder="GP"
+          disabled={linkedGpEntity !== null}
+          className={`form-input ${linkedGpEntity ? 'bg-[#f8fafc] text-[#475569]' : ''}`}
+        />
+        {linkedGpEntity && (
+          <p className="mt-1 text-[11px] text-[#64748b]">고유계정과 연결되어 자동 동기화됩니다.</p>
         )}
       </div>
       <div>

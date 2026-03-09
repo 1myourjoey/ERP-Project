@@ -20,6 +20,7 @@ from schemas.investment import (
 )
 from services.compliance_engine import ComplianceEngine
 from services.compliance_rule_engine import ComplianceRuleEngine
+from services.proposal_data import sync_company_history
 
 router = APIRouter(tags=["investments"])
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ def list_companies(db: Session = Depends(get_db)):
 def create_company(data: PortfolioCompanyCreate, db: Session = Depends(get_db)):
     company = PortfolioCompany(**data.model_dump())
     db.add(company)
+    db.flush()
+    sync_company_history(db, company)
     db.commit()
     db.refresh(company)
     return company
@@ -49,6 +52,7 @@ def update_company(company_id: int, data: PortfolioCompanyUpdate, db: Session = 
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(company, key, val)
 
+    sync_company_history(db, company)
     db.commit()
     db.refresh(company)
     return company

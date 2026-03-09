@@ -159,13 +159,18 @@ class FundMigrationImportResponse(BaseModel):
 class FundCreate(BaseModel):
     name: str
     type: str
+    business_number: Optional[str] = None
     formation_date: Optional[date] = None
     registration_number: Optional[str] = None
     registration_date: Optional[date] = None
     status: str = "active"
+    regulation_type: Optional[str] = None
+    setup_type: Optional[str] = None
+    gp_entity_id: Optional[int] = None
     gp: Optional[str] = None
     fund_manager: Optional[str] = None
     co_gp: Optional[str] = None
+    has_co_gp: Optional[bool] = False
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
@@ -198,13 +203,18 @@ class FundCreate(BaseModel):
 class FundUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
+    business_number: Optional[str] = None
     formation_date: Optional[date] = None
     registration_number: Optional[str] = None
     registration_date: Optional[date] = None
     status: Optional[str] = None
+    regulation_type: Optional[str] = None
+    setup_type: Optional[str] = None
+    gp_entity_id: Optional[int] = None
     gp: Optional[str] = None
     fund_manager: Optional[str] = None
     co_gp: Optional[str] = None
+    has_co_gp: Optional[bool] = None
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)
@@ -240,7 +250,10 @@ class FundListItem(BaseModel):
     id: int
     name: str
     type: str
+    business_number: Optional[str] = None
     status: str
+    gp_entity_id: Optional[int] = None
+    gp: Optional[str] = None
     formation_date: Optional[date] = None
     registration_number: Optional[str] = None
     registration_date: Optional[date] = None
@@ -302,13 +315,18 @@ class FundResponse(BaseModel):
     id: int
     name: str
     type: str
+    business_number: Optional[str] = None
     formation_date: Optional[date] = None
     registration_number: Optional[str] = None
     registration_date: Optional[date] = None
     status: str
+    regulation_type: Optional[str] = None
+    setup_type: Optional[str] = None
+    gp_entity_id: Optional[int] = None
     gp: Optional[str] = None
     fund_manager: Optional[str] = None
     co_gp: Optional[str] = None
+    has_co_gp: Optional[bool] = None
     trustee: Optional[str] = None
     commitment_total: Optional[float] = Field(default=None, ge=0)
     gp_commitment: Optional[float] = Field(default=None, ge=0)

@@ -16,6 +16,9 @@ class GPEntityCreate(BaseModel):
     founding_date: Optional[date] = None
     license_date: Optional[date] = None
     capital: Optional[float] = None
+    total_employees: Optional[int] = None
+    fund_manager_count: Optional[int] = None
+    paid_in_capital: Optional[float] = None
     notes: Optional[str] = None
     is_primary: int = 1
 
@@ -32,6 +35,9 @@ class GPEntityUpdate(BaseModel):
     founding_date: Optional[date] = None
     license_date: Optional[date] = None
     capital: Optional[float] = None
+    total_employees: Optional[int] = None
+    fund_manager_count: Optional[int] = None
+    paid_in_capital: Optional[float] = None
     notes: Optional[str] = None
     is_primary: Optional[int] = None
 
@@ -49,6 +55,9 @@ class GPEntityResponse(BaseModel):
     founding_date: Optional[date] = None
     license_date: Optional[date] = None
     capital: Optional[float] = None
+    total_employees: Optional[int] = None
+    fund_manager_count: Optional[int] = None
+    paid_in_capital: Optional[float] = None
     notes: Optional[str] = None
     is_primary: int
 

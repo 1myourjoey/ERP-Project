@@ -54,6 +54,7 @@ const EMPTY_FUND: FundInput = {
   registration_number: '',
   registration_date: '',
   status: 'active',
+  gp_entity_id: null,
   gp: '',
   fund_manager: '',
   co_gp: '',
@@ -109,6 +110,7 @@ function normalizeFundPayload(form: FundInput): FundInput {
     formation_date: form.formation_date || null,
     registration_number: form.registration_number?.trim() || null,
     registration_date: form.registration_date || null,
+    gp_entity_id: form.gp_entity_id ?? null,
     investment_period_end: form.investment_period_end || null,
     maturity_date: form.maturity_date || null,
     dissolution_date: form.dissolution_date || null,
@@ -274,18 +276,16 @@ function FundForm({
   const [form, setForm] = useState<FundInput>(initial)
   const [lps, setLps] = useState<LPDraft[]>([])
 
-  const gpOptions = useMemo(
-    () => gpEntities.map((entity) => ({ value: entity.name, label: entity.name })),
-    [gpEntities],
-  )
-
   const updateLp = (draftId: string, key: keyof LPDraft, value: string | number | null) => {
     setLps((prev) => prev.map((lp) => (lp._id === draftId ? { ...lp, [key]: value } : lp)))
   }
 
   const handleLpTypeChange = (draftId: string, nextType: string) => {
     const selectedGpName = (form.gp || '').trim()
-    const matchedGp = gpEntities.find((entity) => entity.name === selectedGpName) || null
+    const matchedGp =
+      gpEntities.find((entity) => entity.id === (form.gp_entity_id ?? null)) ||
+      gpEntities.find((entity) => entity.name === selectedGpName) ||
+      null
 
     setLps((prev) =>
       prev.map((lp) => {
@@ -340,7 +340,7 @@ function FundForm({
         </button>
       </div>
 
-      <FundCoreFields form={form} onChange={setForm} gpOptions={gpOptions} />
+      <FundCoreFields form={form} onChange={setForm} gpEntities={gpEntities} />
 
       <div className="border-t pt-3">
         <div className="mb-2 flex items-center justify-between">
@@ -504,6 +504,14 @@ export default function FundsPage() {
   )
 
   const primaryGp = gpEntities.find((entity) => entity.is_primary === 1) || gpEntities[0] || null
+  const createFundInitial = useMemo(
+    () => ({
+      ...EMPTY_FUND,
+      gp_entity_id: primaryGp?.id ?? null,
+      gp: primaryGp?.name ?? '',
+    }),
+    [primaryGp],
+  )
 
   const createFundMut = useMutation({
     mutationFn: async ({ fund, lps }: { fund: FundInput; lps: LPInput[] }) => {
@@ -673,7 +681,7 @@ export default function FundsPage() {
         <div className="mb-4">
           <FundForm
             title="조합 생성"
-            initial={EMPTY_FUND}
+            initial={createFundInitial}
             gpEntities={gpEntities}
             addressBooks={lpAddressBooks}
             loading={createFundMut.isPending}

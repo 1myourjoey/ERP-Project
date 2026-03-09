@@ -20,5 +20,8 @@ class GPEntity(Base):
     founding_date = Column(Date, nullable=True)
     license_date = Column(Date, nullable=True)
     capital = Column(Float, nullable=True)
+    total_employees = Column(Integer, nullable=True)
+    fund_manager_count = Column(Integer, nullable=True)
+    paid_in_capital = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
     is_primary = Column(Integer, nullable=False, default=1)
