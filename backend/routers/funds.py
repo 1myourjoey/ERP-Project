@@ -996,22 +996,25 @@ def calculate_paid_in_as_of(
 
 
 def calculate_lp_paid_in_from_calls(db: Session, fund_id: int, lp_id: int) -> tuple[bool, int]:
-    contribution_count = (
-        db.query(func.count(LPContribution.id))
+    item_count = (
+        db.query(func.count(CapitalCallItem.id))
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
         .filter(
-            LPContribution.fund_id == fund_id,
-            LPContribution.lp_id == lp_id,
+            CapitalCall.fund_id == fund_id,
+            CapitalCallItem.lp_id == lp_id,
         )
         .scalar()
     )
-    if int(contribution_count or 0) <= 0:
+    if int(item_count or 0) <= 0:
         return False, 0
 
     paid_in_total = (
-        db.query(func.coalesce(func.sum(LPContribution.amount), 0))
+        db.query(func.coalesce(func.sum(CapitalCallItem.amount), 0))
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
         .filter(
-            LPContribution.fund_id == fund_id,
-            LPContribution.lp_id == lp_id,
+            CapitalCall.fund_id == fund_id,
+            CapitalCallItem.lp_id == lp_id,
+            CapitalCallItem.paid == 1,
         )
         .scalar()
     )
@@ -1029,14 +1032,34 @@ def _is_forming_status(status: str | None) -> bool:
 
 
 def _normalize_template_identifier(value: str | None) -> str:
-    return "".join((value or "").split()).lower()
+    return "".join((value or "").split()).replace("?", "").lower()
 
 
 def _template_has_formation_paid_in_step(template: Workflow) -> bool:
     for step in template.steps or []:
         normalized = _normalize_template_identifier(step.name)
-        has_paid_token = any(token in normalized for token in ("異쒖옄", "?⑹엯", "?낃툑", "?⑸?", "payment"))
-        has_confirm_token = any(token in normalized for token in ("?뺤씤", "confirm", "check"))
+        has_paid_token = any(
+            token in normalized
+            for token in (
+                "출자",
+                "납입",
+                "입금",
+                "납부",
+                "payment",
+                "異쒖옄",
+                "⑹엯",
+                "낃툑",
+            )
+        )
+        has_confirm_token = any(
+            token in normalized
+            for token in (
+                "확인",
+                "confirm",
+                "check",
+                "뺤씤",
+            )
+        )
         if has_paid_token and has_confirm_token:
             return True
     return False
@@ -2267,7 +2290,8 @@ def add_formation_workflow(
     if not template.steps:
         raise HTTPException(status_code=400, detail="?④퀎媛 ?녿뒗 ?쒗뵆由우? ?앹꽦?????놁뒿?덈떎")
     if (
-        formation_slot_name == "寃곗꽦珥앺쉶 媛쒖턀"
+        _normalize_template_identifier(formation_slot_name)
+        == _normalize_template_identifier("결성총회 개최")
         and not _template_has_formation_paid_in_step(template)
     ):
         raise HTTPException(

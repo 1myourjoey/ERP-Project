@@ -29,6 +29,7 @@ backend/.venv312/
 # OS
 .DS_Store
 Thumbs.db
+Microsoft/
 
 # Node / Frontend
 node_modules/

@@ -11,11 +11,15 @@ from sqlalchemy.orm import Session
 from models.attachment import Attachment
 from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
-from services.docx_replacement_engine import DocxReplacementEngine
+from services.document_service import (
+    extract_template_markers,
+    generate_document_for_template,
+    template_output_extension,
+    template_output_media_type,
+)
 from services.document_numbering import DocumentNumberingService
 from services.variable_resolver import VariableResolver
 
-DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads" / "generated_templates"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -33,12 +37,11 @@ class GeneratedTemplateDocument:
 
 
 class BulkDocumentGenerator:
-    """Generates one or many LP-targeted documents from a DOCX template."""
+    """Generates one or many LP-targeted documents from a template file."""
 
     ENTITY_PREFIX = "generated_template_document"
 
     def __init__(self) -> None:
-        self.engine = DocxReplacementEngine()
         self.resolver = VariableResolver()
         self.numbering = DocumentNumberingService()
 
@@ -66,8 +69,6 @@ class BulkDocumentGenerator:
             if not lp or lp.fund_id != fund_id:
                 raise LookupError("LP not found for the selected fund")
 
-        template_bytes = self._load_template_bytes(template)
-
         variables = self.resolver.resolve_all(
             db=db,
             fund_id=fund_id,
@@ -80,11 +81,14 @@ class BulkDocumentGenerator:
         variables.setdefault("문서번호", document_number)
         variables.setdefault("document_number", document_number)
 
-        replaced = self.engine.replace(template_bytes, variables)
+        rendered = generate_document_for_template(template, variables)
+        replaced = rendered.getvalue()
+        file_ext = template_output_extension(template)
+        mime_type = template_output_media_type(template)
 
         lp_name = variables.get("LP_명칭") or variables.get("lp_name") or "single"
-        visible_name = self._safe_filename(f"{document_number}_{lp_name}.docx")
-        stored_name = f"{uuid4().hex}.docx"
+        visible_name = self._safe_filename(f"{document_number}_{lp_name}{file_ext}")
+        stored_name = f"{uuid4().hex}{file_ext}"
         stored_path = UPLOAD_DIR / stored_name
         stored_path.write_bytes(replaced)
 
@@ -93,7 +97,7 @@ class BulkDocumentGenerator:
             original_filename=visible_name,
             file_path=str(stored_path),
             file_size=len(replaced),
-            mime_type=DOCX_MIME,
+            mime_type=mime_type,
             entity_type=self._build_entity_type(
                 fund_id=fund_id,
                 template_id=template_id,
@@ -140,7 +144,6 @@ class BulkDocumentGenerator:
             if not lp or lp.fund_id != fund_id:
                 raise LookupError("LP not found for the selected fund")
 
-        template_bytes = self._load_template_bytes(template)
         variables = self.resolver.resolve_all(
             db=db,
             fund_id=fund_id,
@@ -151,7 +154,7 @@ class BulkDocumentGenerator:
         preview_number = variables.get("문서번호") or variables.get("document_number") or "PREVIEW"
         variables.setdefault("문서번호", preview_number)
         variables.setdefault("document_number", preview_number)
-        return self.engine.replace(template_bytes, variables)
+        return generate_document_for_template(template, variables).getvalue()
 
     def generate_for_all_lps(
         self,
@@ -223,16 +226,7 @@ class BulkDocumentGenerator:
         template = db.get(DocumentTemplate, template_id)
         if not template:
             raise LookupError("Template not found")
-        template_bytes = self._load_template_bytes(template)
-        return self.engine.extract_markers(template_bytes)
-
-    def _load_template_bytes(self, template: DocumentTemplate) -> bytes:
-        template_path = Path(template.file_path or "")
-        if not template_path.is_absolute():
-            template_path = Path(__file__).resolve().parents[2] / template_path
-        if not template.file_path or not template_path.exists() or not template_path.is_file():
-            raise FileNotFoundError(f"Template file not found: {template.file_path}")
-        return template_path.read_bytes()
+        return extract_template_markers(template)
 
     @staticmethod
     def _safe_filename(value: str) -> str:

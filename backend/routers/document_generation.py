@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 from dependencies.auth import get_current_user
 from models.document_generation import DocumentGeneration, DocumentVariable
+from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
 from models.gp_entity import GPEntity
 from models.user import User
@@ -38,6 +39,7 @@ from schemas.document_generation import (
 )
 from services.document_generator import generate_documents
 from services.bulk_document_generator import BulkDocumentGenerator
+from services.document_service import template_output_extension, template_output_media_type
 from services.template_manager import (
     get_marker_infos,
     get_marker_keys,
@@ -756,6 +758,10 @@ def preview_generated_document(
     body: TemplateSingleGenerateRequest,
     db: Session = Depends(get_db),
 ):
+    template = db.get(DocumentTemplate, body.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
     generator = BulkDocumentGenerator()
     try:
         preview_bytes = generator.preview_one(
@@ -775,10 +781,11 @@ def preview_generated_document(
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    output_ext = template_output_extension(template)
     return StreamingResponse(
         iter([preview_bytes]),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": "attachment; filename=preview.docx"},
+        media_type=template_output_media_type(template),
+        headers={"Content-Disposition": f"attachment; filename=preview{output_ext}"},
     )
 
 

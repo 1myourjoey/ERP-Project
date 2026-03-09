@@ -184,7 +184,7 @@ def _normalize_call_type_key(call_type: str | None) -> str:
 def _capital_call_round(db: Session, call: CapitalCall) -> int:
     contribution_round = (
         db.query(func.coalesce(func.max(LPContribution.round_no), 0))
-        .filter(LPContribution.fund_id == call.fund_id)
+        .filter(LPContribution.capital_call_id == call.id)
         .scalar()
     )
     if int(contribution_round or 0) > 0:
@@ -208,6 +208,97 @@ def _capital_call_round(db: Session, call: CapitalCall) -> int:
             .count()
         ),
     )
+
+
+def _sync_lp_contributions_for_call(db: Session, call: CapitalCall) -> None:
+    (
+        db.query(LPContribution)
+        .filter(
+            LPContribution.capital_call_id == call.id,
+            LPContribution.source == "capital_call",
+        )
+        .delete(synchronize_session=False)
+    )
+
+    items = (
+        db.query(CapitalCallItem)
+        .filter(CapitalCallItem.capital_call_id == call.id)
+        .order_by(CapitalCallItem.id.asc())
+        .all()
+    )
+    if not items:
+        return
+
+    lp_ids = sorted({int(item.lp_id) for item in items})
+    lp_rows = (
+        db.query(LP)
+        .filter(
+            LP.fund_id == call.fund_id,
+            LP.id.in_(lp_ids),
+        )
+        .all()
+    )
+    lp_by_id = {lp.id: lp for lp in lp_rows}
+    call_round = _capital_call_round(db, call)
+
+    for item in items:
+        lp = lp_by_id.get(item.lp_id)
+        commitment = float(lp.commitment or 0) if lp else 0.0
+        amount = float(item.amount or 0)
+        ratio = round((amount / commitment) * 100, 4) if commitment > 0 else None
+        db.add(
+            LPContribution(
+                fund_id=call.fund_id,
+                lp_id=item.lp_id,
+                due_date=call.call_date,
+                amount=amount,
+                commitment_ratio=ratio,
+                round_no=call_round,
+                actual_paid_date=item.paid_date if bool(item.paid) else None,
+                memo=item.memo,
+                capital_call_id=call.id,
+                source="capital_call",
+            )
+        )
+
+
+def _delete_lp_contributions_for_call(db: Session, capital_call_id: int) -> None:
+    (
+        db.query(LPContribution)
+        .filter(
+            LPContribution.capital_call_id == capital_call_id,
+            LPContribution.source == "capital_call",
+        )
+        .delete(synchronize_session=False)
+    )
+
+
+def _reset_lp_paid_in_if_unbacked(db: Session, fund_id: int, lp_id: int) -> None:
+    has_call_items = (
+        db.query(func.count(CapitalCallItem.id))
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        .filter(
+            CapitalCall.fund_id == fund_id,
+            CapitalCallItem.lp_id == lp_id,
+        )
+        .scalar()
+    )
+    has_manual_contributions = (
+        db.query(func.count(LPContribution.id))
+        .filter(
+            LPContribution.fund_id == fund_id,
+            LPContribution.lp_id == lp_id,
+            LPContribution.actual_paid_date.isnot(None),
+            LPContribution.capital_call_id.is_(None),
+        )
+        .scalar()
+    )
+    if int(has_call_items or 0) > 0 or int(has_manual_contributions or 0) > 0:
+        return
+
+    lp = db.get(LP, lp_id)
+    if lp and lp.fund_id == fund_id:
+        lp.paid_in = 0
 
 
 def _build_linked_workflow_name(db: Session, call: CapitalCall, fund: Fund) -> str:
@@ -494,12 +585,6 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
         db.add(call)
         db.flush()
 
-        next_round = (
-            db.query(func.coalesce(func.max(LPContribution.round_no), 0))
-            .filter(LPContribution.fund_id == data.fund_id)
-            .scalar()
-        )
-        call_round = int(next_round or 0) + 1
         for item_data, amount, lp in item_payloads:
             row = CapitalCallItem(
                 capital_call_id=call.id,
@@ -511,26 +596,11 @@ def create_capital_call_batch(data: CapitalCallBatchCreate, db: Session = Depend
             )
             db.add(row)
 
-            commitment = float(lp.commitment or 0)
-            ratio = round((float(amount) / commitment) * 100, 4) if commitment > 0 else None
-            contribution = LPContribution(
-                fund_id=data.fund_id,
-                lp_id=lp.id,
-                due_date=data.call_date,
-                amount=float(amount),
-                commitment_ratio=ratio,
-                round_no=call_round,
-                actual_paid_date=item_data.paid_date or (date.today() if item_data.paid else None),
-                memo=item_data.memo,
-                capital_call_id=call.id,
-                source="capital_call",
-            )
-            db.add(contribution)
-
         if data.create_workflow:
             _create_linked_workflow_instance(db, call, fund, data.memo)
 
         db.flush()
+        _sync_lp_contributions_for_call(db, call)
         recalculate_fund_stats(db, data.fund_id)
         db.commit()
         db.refresh(call)
@@ -573,6 +643,9 @@ def update_capital_call(capital_call_id: int, data: CapitalCallUpdate, db: Sessi
     for key, value in payload.items():
         setattr(row, key, value)
     try:
+        db.flush()
+        _sync_lp_contributions_for_call(db, row)
+        recalculate_fund_stats(db, row.fund_id)
         db.commit()
     except Exception:
         db.rollback()
@@ -588,9 +661,13 @@ def delete_capital_call(capital_call_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Capital call not found")
     _assert_capital_call_deletable(db, row)
     fund_id = row.fund_id
+    affected_lp_ids = [int(item.lp_id) for item in row.items]
+    _delete_lp_contributions_for_call(db, capital_call_id)
     db.delete(row)
     db.flush()
     recalculate_fund_stats(db, fund_id)
+    for lp_id in affected_lp_ids:
+        _reset_lp_paid_in_if_unbacked(db, fund_id, lp_id)
     try:
         db.commit()
     except Exception:
@@ -660,6 +737,7 @@ def create_capital_call_item(capital_call_id: int, data: CapitalCallItemCreate, 
         )
         db.add(row)
         db.flush()
+        _sync_lp_contributions_for_call(db, call)
         recalculate_fund_stats(db, call.fund_id)
         db.commit()
         db.refresh(row)
@@ -759,6 +837,7 @@ def update_capital_call_item(
                             "sync_workflow requested but no pending payment step was found",
                         )
 
+        _sync_lp_contributions_for_call(db, call)
         recalculate_fund_stats(db, call.fund_id)
         db.commit()
         db.refresh(row)
@@ -784,10 +863,13 @@ def delete_capital_call_item(capital_call_id: int, item_id: int, db: Session = D
     call = db.get(CapitalCall, capital_call_id)
     if not call:
         raise HTTPException(status_code=404, detail="Capital call not found")
+    target_lp_id = int(row.lp_id)
     try:
         db.delete(row)
         db.flush()
+        _sync_lp_contributions_for_call(db, call)
         recalculate_fund_stats(db, call.fund_id)
+        _reset_lp_paid_in_if_unbacked(db, call.fund_id, target_lp_id)
         db.commit()
     except Exception:
         db.rollback()

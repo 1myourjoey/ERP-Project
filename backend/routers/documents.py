@@ -15,7 +15,12 @@ from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
 from schemas.document_template import DocumentTemplateResponse
 from services.bulk_document_generator import BulkDocumentGenerator
-from services.document_service import build_variables_for_fund, generate_document_for_template
+from services.document_service import (
+    build_variables_for_fund,
+    generate_document_for_template,
+    template_output_extension,
+    template_output_media_type,
+)
 from services.generated_document_service import (
     BUILDER_LABELS,
     generate_and_store_document,
@@ -228,11 +233,12 @@ def preview_template(
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    filename = f"미리보기_{template.name}.docx"
+    output_ext = template_output_extension(template)
+    filename = f"미리보기_{template.name}{output_ext}"
     quoted_filename = quote(filename)
     return StreamingResponse(
         buffer,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type=template_output_media_type(template),
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quoted_filename}"},
     )
 
@@ -280,11 +286,12 @@ def generate_from_template(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     today = datetime.now().strftime("%Y-%m-%d")
-    filename = f"[{fund.name}]_{template.name}_{today}.docx"
+    output_ext = template_output_extension(template)
+    filename = f"[{fund.name}]_{template.name}_{today}{output_ext}"
     quoted_filename = quote(filename)
 
     return StreamingResponse(
         buffer,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type=template_output_media_type(template),
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quoted_filename}"},
     )

@@ -1,12 +1,34 @@
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from models.fund import Fund, LP
 from models.lp_contribution import LPContribution
 from models.phase3 import CapitalCall, CapitalCallItem
 
-PAID_IN_EXCEEDS_COMMITMENT_ERROR = "납입 총액이 약정 총액을 초과할 수 없습니다."
+PAID_IN_EXCEEDS_COMMITMENT_ERROR = "Paid-in total cannot exceed committed capital."
+
+
+def _manual_paid_in_by_lp(
+    db: Session,
+    fund_id: int,
+    lp_ids: list[int] | None = None,
+) -> dict[int, int]:
+    query = (
+        db.query(
+            LPContribution.lp_id.label("lp_id"),
+            func.coalesce(func.sum(LPContribution.amount), 0).label("paid_total"),
+        )
+        .filter(
+            LPContribution.fund_id == fund_id,
+            LPContribution.actual_paid_date.isnot(None),
+            LPContribution.capital_call_id.is_(None),
+        )
+    )
+    if lp_ids is not None:
+        query = query.filter(LPContribution.lp_id.in_(lp_ids))
+    rows = query.group_by(LPContribution.lp_id).all()
+    return {int(row.lp_id): int(row.paid_total or 0) for row in rows}
 
 
 def _paid_in_by_lp(
@@ -28,11 +50,17 @@ def _paid_in_by_lp(
     if lp_ids is not None:
         query = query.filter(CapitalCallItem.lp_id.in_(lp_ids))
     rows = query.group_by(CapitalCallItem.lp_id).all()
-    return {int(row.lp_id): int(row.paid_total or 0) for row in rows}
+    capital_call_paid = {int(row.lp_id): int(row.paid_total or 0) for row in rows}
+    manual_paid = _manual_paid_in_by_lp(db, fund_id, lp_ids=lp_ids)
+
+    combined = dict(manual_paid)
+    for lp_id, paid_total in capital_call_paid.items():
+        combined[lp_id] = int(combined.get(lp_id, 0)) + int(paid_total)
+    return combined
 
 
 def _fund_paid_total(db: Session, fund_id: int) -> int:
-    total = (
+    call_total = (
         db.query(func.coalesce(func.sum(CapitalCallItem.amount), 0))
         .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
         .filter(
@@ -41,7 +69,16 @@ def _fund_paid_total(db: Session, fund_id: int) -> int:
         )
         .scalar()
     )
-    return int(total or 0)
+    manual_total = (
+        db.query(func.coalesce(func.sum(LPContribution.amount), 0))
+        .filter(
+            LPContribution.fund_id == fund_id,
+            LPContribution.actual_paid_date.isnot(None),
+            LPContribution.capital_call_id.is_(None),
+        )
+        .scalar()
+    )
+    return int(call_total or 0) + int(manual_total or 0)
 
 
 def validate_lp_paid_in_pair(
@@ -110,20 +147,45 @@ def validate_paid_in_deltas(
 
 
 def recalculate_fund_stats(db: Session, fund_id: int) -> dict[str, int]:
-    """Rebuild LP paid-in values.
-
-    Priority:
-    1) LPContribution 이력이 1건 이상인 LP는 contribution 합계로 동기화
-    2) 이력이 없는 LP는 기존 paid_in 값을 유지(레거시 데이터 보호)
-    """
+    """Rebuild LP paid-in values without double-counting capital-call history."""
     lps = db.query(LP).filter(LP.fund_id == fund_id).all()
+    capital_call_rows = (
+        db.query(
+            CapitalCallItem.lp_id.label("lp_id"),
+            func.count(CapitalCallItem.id).label("row_count"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (CapitalCallItem.paid == 1, CapitalCallItem.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("paid_total"),
+        )
+        .join(CapitalCall, CapitalCall.id == CapitalCallItem.capital_call_id)
+        .filter(CapitalCall.fund_id == fund_id)
+        .group_by(CapitalCallItem.lp_id)
+        .all()
+    )
+    capital_call_map = {
+        int(row.lp_id): {
+            "row_count": int(row.row_count or 0),
+            "paid_total": int(row.paid_total or 0),
+        }
+        for row in capital_call_rows
+    }
     contribution_rows = (
         db.query(
             LPContribution.lp_id.label("lp_id"),
             func.count(LPContribution.id).label("row_count"),
             func.coalesce(func.sum(LPContribution.amount), 0).label("paid_total"),
         )
-        .filter(LPContribution.fund_id == fund_id)
+        .filter(
+            LPContribution.fund_id == fund_id,
+            LPContribution.actual_paid_date.isnot(None),
+            LPContribution.capital_call_id.is_(None),
+        )
         .group_by(LPContribution.lp_id)
         .all()
     )
@@ -136,6 +198,11 @@ def recalculate_fund_stats(db: Session, fund_id: int) -> dict[str, int]:
     }
 
     for lp in lps:
+        capital_call_info = capital_call_map.get(lp.id)
+        if capital_call_info and capital_call_info["row_count"] > 0:
+            lp.paid_in = capital_call_info["paid_total"]
+            continue
+
         contribution_info = contribution_map.get(lp.id)
         if contribution_info and contribution_info["row_count"] > 0:
             lp.paid_in = contribution_info["paid_total"]
