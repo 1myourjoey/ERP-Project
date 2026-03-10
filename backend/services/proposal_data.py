@@ -421,8 +421,11 @@ def _build_fund_snapshot(db: Session, fund: Fund, as_of_date: date) -> dict[str,
         "status": fund_snapshot.get("status", fund.status),
         "gp_entity_id": fund_snapshot.get("gp_entity_id", fund.gp_entity_id),
         "gp": fund_snapshot.get("gp", fund.gp),
+        "co_gp": fund_snapshot.get("co_gp", fund.co_gp),
+        "has_co_gp": bool(fund_snapshot.get("has_co_gp", fund.has_co_gp or bool(fund.co_gp))),
         "fund_manager": fund_snapshot.get("fund_manager", fund.fund_manager),
         "formation_date": _safe_date(fund_snapshot.get("formation_date")) or fund.formation_date,
+        "registration_date": _safe_date(fund_snapshot.get("registration_date")) or fund.registration_date,
         "investment_period_end": _safe_date(fund_snapshot.get("investment_period_end")) or fund.investment_period_end,
         "maturity_date": _safe_date(fund_snapshot.get("maturity_date")) or fund.maturity_date,
         "commitment_total": fund_snapshot.get("commitment_total", fund.commitment_total),
@@ -555,7 +558,7 @@ def resolve_proposal_workspace(
         managers = db.query(FundManager).filter(FundManager.gp_entity_id == selected_gp.id).order_by(FundManager.is_representative.desc(), FundManager.is_core.desc(), FundManager.name.asc()).all()
 
     manager_ids = [manager.id for manager in managers]
-    manager_careers = db.query(ManagerCareer).filter(ManagerCareer.fund_manager_id.in_(manager_ids)).filter(or_(ManagerCareer.start_date.is_(None), ManagerCareer.start_date <= as_of_date), or_(ManagerCareer.end_date.is_(None), ManagerCareer.end_date >= as_of_date)).order_by(ManagerCareer.start_date.desc().nullslast(), ManagerCareer.id.desc()).all() if manager_ids else []
+    manager_careers = db.query(ManagerCareer).filter(ManagerCareer.fund_manager_id.in_(manager_ids)).filter(or_(ManagerCareer.start_date.is_(None), ManagerCareer.start_date <= as_of_date)).order_by(ManagerCareer.start_date.desc().nullslast(), ManagerCareer.id.desc()).all() if manager_ids else []
     manager_educations = db.query(ManagerEducation).filter(ManagerEducation.fund_manager_id.in_(manager_ids)).order_by(ManagerEducation.graduation_date.desc().nullslast(), ManagerEducation.id.desc()).all() if manager_ids else []
     manager_awards = db.query(ManagerAward).filter(ManagerAward.fund_manager_id.in_(manager_ids)).filter(or_(ManagerAward.award_date.is_(None), ManagerAward.award_date <= as_of_date)).order_by(ManagerAward.award_date.desc().nullslast(), ManagerAward.id.desc()).all() if manager_ids else []
     manager_investments = db.query(ManagerInvestment).filter(ManagerInvestment.fund_manager_id.in_(manager_ids)).filter(or_(ManagerInvestment.investment_date.is_(None), ManagerInvestment.investment_date <= as_of_date)).order_by(ManagerInvestment.investment_date.desc().nullslast(), ManagerInvestment.id.desc()).all() if manager_ids else []
@@ -684,7 +687,7 @@ def _write_sheet(ws: Any, headers: list[str], rows: list[list[Any]]) -> None:
     _auto_fit(ws)
 
 
-def _growth_finance_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+def _legacy_growth_finance_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
     gp = workspace.get("selected_gp_entity") or {}
     funds = workspace.get("funds", [])
     gp_financials: list[GPFinancial] = workspace.get("gp_financials", [])
@@ -772,7 +775,7 @@ def _growth_finance_sheets(workspace: dict[str, Any], db: Session) -> list[tuple
     ]
 
 
-def _motae5_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
+def _legacy_motae5_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
     funds = workspace.get("funds", [])
     shareholders: list[GPShareholder] = workspace.get("gp_shareholders", [])
     subscriptions: list[FundSubscription] = workspace.get("fund_subscriptions", [])
@@ -797,7 +800,7 @@ def _motae5_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list
     ]
 
 
-def _motae6_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
+def _legacy_motae6_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
     managers: list[FundManager] = workspace.get("fund_managers", [])
     investments: list[ManagerInvestment] = workspace.get("manager_investments", [])
     core_ids = {row.id for row in managers if row.is_core or row.is_representative}
@@ -815,7 +818,7 @@ def _motae6_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list
     ]
 
 
-def _motae7_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
+def _legacy_motae7_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
     managers: list[FundManager] = workspace.get("fund_managers", [])
     careers: list[ManagerCareer] = workspace.get("manager_careers", [])
     educations: list[ManagerEducation] = workspace.get("manager_educations", [])
@@ -856,7 +859,7 @@ def _motae7_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list
     ]
 
 
-def _nong_motae_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
+def _legacy_nong_motae_sheets(workspace: dict[str, Any]) -> list[tuple[str, list[str], list[list[Any]]]]:
     gp = workspace.get("selected_gp_entity") or {}
     funds = workspace.get("funds", [])
     gp_financials: list[GPFinancial] = workspace.get("gp_financials", [])
@@ -888,16 +891,16 @@ def build_proposal_workbook(workspace: dict[str, Any], db: Session) -> tuple[byt
         sheet_defs = _growth_finance_sheets(workspace, db)
         filename = f"growth_finance_{workspace['as_of_date'].isoformat()}.xlsx"
     elif template_type == "motae-5":
-        sheet_defs = _motae5_sheets(workspace)
+        sheet_defs = _motae5_sheets(workspace, db)
         filename = f"motae5_{workspace['as_of_date'].isoformat()}.xlsx"
     elif template_type == "motae-6":
-        sheet_defs = _motae6_sheets(workspace)
+        sheet_defs = _motae6_sheets(workspace, db)
         filename = f"motae6_{workspace['as_of_date'].isoformat()}.xlsx"
     elif template_type == "motae-7":
-        sheet_defs = _motae7_sheets(workspace)
+        sheet_defs = _motae7_sheets(workspace, db)
         filename = f"motae7_{workspace['as_of_date'].isoformat()}.xlsx"
     else:
-        sheet_defs = _nong_motae_sheets(workspace)
+        sheet_defs = _nong_motae_sheets(workspace, db)
         filename = f"nong_motae_{workspace['as_of_date'].isoformat()}.xlsx"
 
     for title, headers, rows in sheet_defs:
@@ -928,53 +931,604 @@ _WORKBENCH_SHEET_CATALOG: dict[str, list[dict[str, Any]]] = {
 }
 
 _WORKBENCH_SHEET_CATALOG["growth-finance"] = [
-    {"code": "guide", "title": "작성안내", "kind": "info", "description": "작성 기준일과 안내 문구를 확인하는 시트입니다.", "columns": [("item", "항목"), ("value", "값")]},
-    {"code": "proposal-fund", "title": "1.1 운용펀드", "kind": "table", "description": "제안 대상 조합의 기본 정보를 복사하거나 내려받습니다.", "columns": [("fund_name", "펀드명"), ("formation_date", "결성일"), ("maturity_date", "만기일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("fund_type", "펀드유형"), ("fund_status", "펀드상태")]},
-    {"code": "investment-history", "title": "1.2 투자연혁내역", "kind": "table", "description": "출자자 및 약정 정보를 정리한 시트입니다.", "columns": [("lp_type", "출자자유형"), ("lp_name", "출자자명"), ("commitment", "출자금액")]},
-    {"code": "gp-overview", "title": "2.1 운용사 개요", "kind": "scalar", "description": "GP 기본 정보를 초안용 최종값으로 정리합니다.", "columns": [("gp_name", "운용사명"), ("corp_number", "법인등록번호"), ("business_number", "사업자등록번호"), ("ceo", "대표자명"), ("founded_date", "설립일"), ("address", "주소"), ("total_employees", "임직원수"), ("fund_manager_count", "운용인력수"), ("paid_in_capital", "납입자본금")]},
-    {"code": "gp-financials", "title": "2.2 운용사 재무현황", "kind": "table", "description": "기준일 이하 최신 재무 데이터를 확인합니다.", "columns": [("fiscal_year_end", "결산기준일"), ("total_assets", "총자산"), ("current_assets", "유동자산"), ("total_liabilities", "총부채"), ("current_liabilities", "유동부채"), ("total_equity", "자본총계"), ("revenue", "매출액"), ("operating_income", "영업이익"), ("net_income", "당기순이익")]},
-    {"code": "gp-funds", "title": "2.3 운용사 펀드현황", "kind": "table", "description": "GP가 운용한 조합 현황을 정리합니다.", "columns": [("fund_name", "펀드명"), ("fund_status", "펀드상태"), ("fund_type", "펀드유형"), ("formation_date", "결성일"), ("maturity_date", "만기일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액")]},
-    {"code": "gp-investments", "title": "2.4 운용사 투자현황", "kind": "table", "description": "현 회사 기준 투자 이력을 정리합니다.", "columns": [("fund_name", "펀드명"), ("company_name", "투자기업명"), ("investment_date", "투자일"), ("instrument", "투자유형")]},
-    {"code": "manager-overview", "title": "3.1 운용인력 개요", "kind": "table", "description": "제안서에 포함될 운용인력 기본 정보를 검토합니다.", "columns": [("manager_id", "운용인력ID"), ("manager_name", "성명"), ("birth_date", "생년월일"), ("nationality", "국적"), ("department", "부서"), ("position", "직위"), ("join_date", "입사일"), ("is_core", "핵심운용인력")]},
-    {"code": "manager-careers-core", "title": "3.2.1 핵심운용인력 근무현황", "kind": "table", "description": "핵심운용인력 근무 이력을 정리합니다.", "columns": [("company_name", "근무회사"), ("company_type", "회사유형"), ("department", "부서명"), ("position", "직위"), ("start_date", "근무시작일"), ("end_date", "근무종료일"), ("main_task", "주요업무"), ("is_investment_exp", "투자경력")]},
-    {"code": "manager-careers-general", "title": "3.2.2 일반운용인력 근무현황", "kind": "table", "description": "일반운용인력 근무 이력을 정리합니다.", "columns": [("company_name", "근무회사"), ("company_type", "회사유형"), ("department", "부서명"), ("position", "직위"), ("start_date", "근무시작일"), ("end_date", "근무종료일"), ("main_task", "주요업무"), ("is_investment_exp", "투자경력")]},
-    {"code": "manager-educations", "title": "3.3 운용인력 학력", "kind": "table", "description": "운용인력 학력 이력을 정리합니다.", "columns": [("graduation_date", "졸업일"), ("school_name", "학교명"), ("major", "전공"), ("degree", "학위"), ("country", "국가")]},
-    {"code": "manager-investments-core", "title": "3.4.1 핵심운용인력 경력", "kind": "table", "description": "핵심운용인력 투자 경력을 정리합니다.", "columns": [("company_name", "회사명"), ("fund_name", "참여펀드"), ("portfolio_name", "투자기업"), ("investment_date", "투자일"), ("contrib_rate", "기여율")]},
-    {"code": "manager-investments-general", "title": "3.4.2 일반운용인력 경력", "kind": "table", "description": "일반운용인력 투자 경력을 정리합니다.", "columns": [("company_name", "회사명"), ("fund_name", "참여펀드"), ("portfolio_name", "투자기업"), ("investment_date", "투자일"), ("contrib_rate", "기여율")]},
-    {"code": "fund-performance", "title": "4.1 펀드 실적", "kind": "table", "description": "거래 내역을 기준일 기준으로 정리합니다.", "columns": [("fund_name", "펀드명"), ("transaction_type", "거래유형"), ("amount", "거래금액"), ("transaction_date", "거래일")]},
-    {"code": "fund-manager-changes", "title": "4.2 펀드 인력별 이력", "kind": "table", "description": "펀드별 인력 선임 및 퇴임 이력을 관리합니다.", "columns": [("fund_name", "펀드명"), ("change_type", "변경구분"), ("manager_name", "인력명"), ("change_date", "변경일"), ("role", "역할")]},
+    {"code": "guide", "title": "작성요령", "kind": "info", "description": "작성 기준일과 안내 문구를 확인하는 시트입니다.", "columns": [("item", "항목"), ("value", "값")]},
+    {"code": "proposal-fund", "title": "1.1.제안펀드", "kind": "table", "description": "제안 대상 조합의 기본 정보를 복사하거나 내려받습니다.", "columns": [("fund_name", "펀드명"), ("formation_date", "결성일"), ("maturity_date", "만기일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("fund_type", "투자기구"), ("fund_status", "펀드상태")]},
+    {"code": "investment-history", "title": "1.2.출자예상내역", "kind": "table", "description": "출자자 및 약정 정보를 정리한 시트입니다.", "columns": [("lp_type", "출자자유형"), ("lp_name", "출자자명"), ("commitment", "출자약정예상액")]},
+    {"code": "gp-overview", "title": "2.1.제안사 개요", "kind": "scalar", "description": "GP 기본 정보를 초안용 최종값으로 정리합니다.", "columns": [("gp_name", "제안사명"), ("corp_number", "법인등록번호"), ("business_number", "사업자등록번호"), ("ceo", "대표자명"), ("founded_date", "설립일"), ("address", "주소"), ("total_employees", "전체 인원수"), ("fund_manager_count", "전문인력수"), ("paid_in_capital", "납입자본금")]},
+    {"code": "gp-financials", "title": "2.2.제안사 재무현황", "kind": "table", "description": "기준일 이하 최신 재무 데이터를 확인합니다.", "columns": [("fiscal_year_end", "(가)결산일자"), ("total_assets", "총자산"), ("current_assets", "유동자산"), ("total_liabilities", "총부채"), ("current_liabilities", "유동부채"), ("total_equity", "자기자본(자본총계)"), ("revenue", "영업수익"), ("operating_income", "영업이익"), ("net_income", "당기순이익")]},
+    {"code": "gp-funds", "title": "2.3.제안사 펀드현황", "kind": "table", "description": "GP가 운용한 조합 현황을 정리합니다.", "columns": [("fund_name", "펀드명"), ("fund_status", "펀드 상태"), ("fund_type", "펀드법적유형"), ("formation_date", "결성일"), ("maturity_date", "만기일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액")]},
+    {"code": "gp-investments", "title": "2.4.제안사 투자현황", "kind": "table", "description": "현 회사 기준 투자 이력을 정리합니다.", "columns": [("fund_name", "펀드명"), ("company_name", "피투자기업명"), ("investment_date", "투자일"), ("instrument", "투자형태")]},
+    {"code": "manager-overview", "title": "3.1.참여인력 개요", "kind": "table", "description": "제안서에 포함될 운용인력 기본 정보를 검토합니다.", "columns": [("manager_id", "운용인력ID"), ("manager_name", "성명"), ("birth_date", "생년월일"), ("nationality", "국적"), ("department", "부서"), ("position", "직위"), ("join_date", "입사일"), ("is_core", "핵심운용인력 여부")]},
+    {"code": "manager-careers-core", "title": "3.4.1.핵심운용인력 경력", "kind": "table", "description": "핵심운용인력 근무 이력을 정리합니다.", "columns": [("company_name", "회사명"), ("company_type", "회사유형"), ("department", "부서명"), ("position", "직위"), ("start_date", "시작일"), ("end_date", "종료일"), ("main_task", "담당업무"), ("is_investment_exp", "투자관련 경력여부")]},
+    {"code": "manager-careers-general", "title": "3.4.2.일반운용인력 경력", "kind": "table", "description": "일반운용인력 근무 이력을 정리합니다.", "columns": [("company_name", "회사명"), ("company_type", "회사유형"), ("department", "부서명"), ("position", "직위"), ("start_date", "시작일"), ("end_date", "종료일"), ("main_task", "담당업무"), ("is_investment_exp", "투자관련 경력여부")]},
+    {"code": "manager-educations", "title": "3.3.참여인력 학력", "kind": "table", "description": "운용인력 학력 이력을 정리합니다.", "columns": [("graduation_date", "졸업일/수료일"), ("school_name", "졸업/수료 학교명"), ("major", "학과(전공)명"), ("degree", "학위명"), ("country", "취득국명")]},
+    {"code": "manager-investments-core", "title": "3.2.1.핵심운용인력 투자현황", "kind": "table", "description": "핵심운용인력 투자 경력을 정리합니다.", "columns": [("company_name", "재직회사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자일"), ("contrib_rate", "기여율")]},
+    {"code": "manager-investments-general", "title": "3.2.2.일반운용인력 투자현황", "kind": "table", "description": "일반운용인력 투자 경력을 정리합니다.", "columns": [("company_name", "재직회사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자일"), ("contrib_rate", "기여율")]},
+    {"code": "fund-performance", "title": "4.1.펀드 거래", "kind": "table", "description": "거래 내역을 기준일 기준으로 정리합니다.", "columns": [("fund_name", "펀드명"), ("transaction_type", "거래구분"), ("amount", "거래금액 (원)"), ("transaction_date", "거래일")]},
+    {"code": "fund-manager-changes", "title": "4.2.펀드 인력변경 이력", "kind": "table", "description": "펀드별 인력 선임 및 퇴임 이력을 관리합니다.", "columns": [("fund_name", "펀드명"), ("change_type", "기재대상핵심인력 변경구분"), ("manager_name", "이름"), ("change_date", "변경일자"), ("role", "역할")]},
 ]
 
 _WORKBENCH_SHEET_CATALOG["motae-5"] = [
-    {"code": "subscription-summary", "title": "청약이력 관련 총괄(전체)", "kind": "table", "description": "과거 청약이력과 조합 기본 정보를 정리합니다.", "columns": [("fund_name", "조합명"), ("formation_date", "결성일"), ("subscription_date", "청약일"), ("fund_count", "운용펀드수"), ("has_co_gp", "Co-GP여부")]},
-    {"code": "fund-summary", "title": "운용펀드 관련 총괄", "kind": "table", "description": "운용 조합의 잔액 및 실적을 정리합니다.", "columns": [("fund_name", "조합명"), ("investment_period_end", "운용(투자)기간"), ("maturity_date", "해산 예정일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자금액"), ("nav_total", "잔여자산")]},
-    {"code": "shareholder-summary", "title": "대표 및 운용인력 개요", "kind": "table", "description": "주요 주주 정보를 정리합니다.", "columns": [("name", "주주명"), ("shares", "주식수"), ("acquisition_amount", "취득가액"), ("ownership_pct", "지분율"), ("memo", "비고")]},
+    {"code": "subscription-summary", "title": "청약이력 관련 총괄(전체)", "kind": "table", "description": "과거 청약이력과 조합 기본 정보를 정리합니다.", "columns": [("fund_name", "조합명"), ("formation_date", "결성일"), ("subscription_date", "청약일"), ("fund_count", "운용펀드 수"), ("has_co_gp", "공동 운용사(Co-GP) 여부")]},
+    {"code": "fund-summary", "title": "2. 운용중인 조합 총괄", "kind": "table", "description": "운용 조합의 잔액 및 실적을 정리합니다.", "columns": [("fund_name", "조합명"), ("investment_period_end", "운용(투자)기간"), ("maturity_date", "해산 예정일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자금액"), ("nav_total", "잔여자산")]},
+    {"code": "shareholder-summary", "title": "3. 주주 및 출자자 명부", "kind": "table", "description": "주요 주주 정보를 정리합니다.", "columns": [("name", "주주명"), ("shares", "주식수"), ("acquisition_amount", "납입액"), ("ownership_pct", "지분율"), ("memo", "비고")]},
 ]
 
 _WORKBENCH_SHEET_CATALOG["motae-6"] = [
-    {"code": "representative-recovery", "title": "대표펀드매니저별 투자회수실적", "kind": "table", "description": "대표펀드매니저 기준 투자회수실적을 정리합니다.", "columns": [("manager_name", "대표펀드매니저"), ("company_name", "근무회사명"), ("fund_name", "펀드명"), ("fund_type", "펀드 투자유형"), ("is_current_company", "운용펀드여부"), ("portfolio_name", "투자기업명"), ("instrument", "증권종류"), ("discovery_contrib", "발굴기여율"), ("review_contrib", "심사기여율"), ("investment_date", "투자실행일")]},
-    {"code": "manager-recovery", "title": "운용인력별 투자회수실적", "kind": "table", "description": "핵심운용인력 기준 투자회수실적을 정리합니다.", "columns": [("manager_name", "운용인력"), ("company_name", "근무회사명"), ("fund_name", "펀드명"), ("fund_type", "펀드 투자유형"), ("is_current_company", "운용펀드여부"), ("portfolio_name", "투자기업명"), ("instrument", "증권종류"), ("discovery_contrib", "발굴기여율"), ("review_contrib", "심사기여율"), ("investment_date", "투자실행일")]},
-    {"code": "recent-personal-recovery", "title": "최근 개인의 투자회수 현황", "kind": "table", "description": "개인 기준 최근 투자회수 내역을 정리합니다.", "columns": [("portfolio_name", "투자기업명"), ("instrument", "증권종류"), ("investment_date", "투자실행일"), ("exit_date", "회수일"), ("amount", "투자금액"), ("exit_amount", "회수금액"), ("remaining_amount", "잔여금액")]},
-    {"code": "recent-fund-recovery", "title": "최근 펀드의 투자회수 현황", "kind": "table", "description": "펀드 기준 최근 투자회수 내역을 정리합니다.", "columns": [("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자실행일"), ("exit_date", "회수일"), ("amount", "투자금액"), ("exit_amount", "회수금액")]},
+    {"code": "representative-recovery", "title": "1. 대표펀드매니저 투자회수실적", "kind": "table", "description": "대표펀드매니저 기준 투자회수실적을 정리합니다.", "columns": [("manager_name", "대표펀드매니저"), ("company_name", "재직회사명"), ("fund_name", "펀드명"), ("fund_type", "펀드 법적형태"), ("is_current_company", "현재 회사 여부"), ("portfolio_name", "투자기업명"), ("instrument", "투자형태"), ("discovery_contrib", "발굴 기여율(%)"), ("review_contrib", "심사 기여율(%)"), ("investment_date", "투자일")]},
+    {"code": "manager-recovery", "title": "2. 참여인력 투자회수실적", "kind": "table", "description": "핵심운용인력 기준 투자회수실적을 정리합니다.", "columns": [("manager_name", "참여인력"), ("company_name", "재직회사명"), ("fund_name", "펀드명"), ("fund_type", "펀드 법적형태"), ("is_current_company", "현재 회사 여부"), ("portfolio_name", "투자기업명"), ("instrument", "투자형태"), ("discovery_contrib", "발굴 기여율(%)"), ("review_contrib", "심사 기여율(%)"), ("investment_date", "투자일")]},
+    {"code": "recent-personal-recovery", "title": "3. 최근 개인 투자회수 현황", "kind": "table", "description": "개인 기준 최근 투자회수 내역을 정리합니다.", "columns": [("portfolio_name", "투자기업명"), ("instrument", "투자형태"), ("investment_date", "투자일"), ("exit_date", "회수일"), ("amount", "투자금액"), ("exit_amount", "회수금액"), ("remaining_amount", "잔여금액")]},
+    {"code": "recent-fund-recovery", "title": "4. 최근 펀드 투자회수 현황", "kind": "table", "description": "펀드 기준 최근 투자회수 내역을 정리합니다.", "columns": [("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자일"), ("exit_date", "회수일"), ("amount", "투자금액"), ("exit_amount", "회수금액")]},
 ]
 
 _WORKBENCH_SHEET_CATALOG["motae-7"] = [
-    {"code": "representative-profile", "title": "운용인력(대표자) 이력", "kind": "table", "description": "대표자 이력을 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("birth_date", "생년월일"), ("phone", "전화"), ("fax", "팩스"), ("email", "E-Mail"), ("award_name", "수상내역"), ("education_period", "학력기간"), ("school_name", "학교명"), ("major", "학과"), ("degree", "학위"), ("career_period", "경력기간"), ("company_name", "회사명"), ("company_type", "회사유형"), ("department", "부서명"), ("career_position", "직위"), ("main_task", "업무"), ("employment_type", "경력구분")]},
-    {"code": "core-profile", "title": "운용인력(핵심) 이력", "kind": "table", "description": "핵심운용인력 이력을 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("birth_date", "생년월일"), ("phone", "전화"), ("fax", "팩스"), ("email", "E-Mail"), ("award_name", "수상내역"), ("education_period", "학력기간"), ("school_name", "학교명"), ("major", "학과"), ("degree", "학위"), ("career_period", "경력기간"), ("company_name", "회사명"), ("company_type", "회사유형"), ("department", "부서명"), ("career_position", "직위"), ("main_task", "업무"), ("employment_type", "경력구분")]},
-    {"code": "core-fund-participation", "title": "핵심운용인력 참여펀드 현황", "kind": "table", "description": "핵심운용인력의 참여펀드 현황을 정리합니다.", "columns": [("manager_name", "이름"), ("fund_name", "펀드명"), ("role", "펀드역할"), ("amount", "투자금액"), ("remaining_amount", "잔여금액")]},
-    {"code": "core-job-change", "title": "핵심운용인력 이직내역", "kind": "table", "description": "핵심운용인력의 과거 소속 및 이직 이력을 정리합니다.", "columns": [("manager_name", "이름"), ("previous_company", "이전회사"), ("fund_name", "이전펀드명"), ("role", "역할"), ("change_date", "이직일")]},
+    {"code": "representative-profile", "title": "2. 참여인력(대표) 이력", "kind": "table", "description": "대표자 이력을 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("birth_date", "생년월일"), ("phone", "전화"), ("fax", "팩스"), ("email", "E-Mail"), ("award_name", "수상내역"), ("education_period", "학력기간"), ("school_name", "학교명"), ("major", "학과(전공)명"), ("degree", "학위명"), ("career_period", "경력기간"), ("company_name", "직장명(운용사 구분)"), ("company_type", "회사유형"), ("department", "부서명"), ("career_position", "직위"), ("main_task", "담당업무"), ("employment_type", "경력구분")]},
+    {"code": "core-profile", "title": "2. 참여인력(핵심) 이력", "kind": "table", "description": "핵심운용인력 이력을 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("birth_date", "생년월일"), ("phone", "전화"), ("fax", "팩스"), ("email", "E-Mail"), ("award_name", "수상내역"), ("education_period", "학력기간"), ("school_name", "학교명"), ("major", "학과(전공)명"), ("degree", "학위명"), ("career_period", "경력기간"), ("company_name", "직장명(운용사 구분)"), ("company_type", "회사유형"), ("department", "부서명"), ("career_position", "직위"), ("main_task", "담당업무"), ("employment_type", "경력구분")]},
+    {"code": "core-fund-participation", "title": "3. 핵심운용인력 참여펀드 현황", "kind": "table", "description": "핵심운용인력의 참여펀드 현황을 정리합니다.", "columns": [("manager_name", "성명"), ("fund_name", "참여펀드명"), ("role", "참여펀드 역할"), ("amount", "투자금액"), ("remaining_amount", "잔여금액")]},
+    {"code": "core-job-change", "title": "4. 핵심운용인력 이직내역", "kind": "table", "description": "핵심운용인력의 과거 소속 및 이직 이력을 정리합니다.", "columns": [("manager_name", "성명"), ("previous_company", "이전 회사"), ("fund_name", "이전 펀드명"), ("role", "역할"), ("change_date", "이직일")]},
 ]
 
 _WORKBENCH_SHEET_CATALOG["nong-motae"] = [
-    {"code": "application-form", "title": "(별첨1) 투자신청서", "kind": "scalar", "description": "농모태 투자신청서 기본 항목을 정리합니다.", "columns": [("gp_name", "회사명"), ("founded_date", "설립일자"), ("address", "주소"), ("fund_manager_count", "운용인력수"), ("paid_in_capital", "납입자본금"), ("total_assets", "자산총계"), ("total_equity", "자본총계"), ("representative", "담당자"), ("fund_name", "조합명(예정)"), ("commitment_total", "약정금액"), ("manager_name", "대표펀드매니저")]},
-    {"code": "fund-overview", "title": "(별첨6-1) 운용펀드 현황 총괄", "kind": "table", "description": "운용중 펀드의 투자 현황을 정리합니다.", "columns": [("gp_name", "운용사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자일"), ("instrument", "투자유형")]},
-    {"code": "fund-investments", "title": "(별첨6-2) 펀드별 투자 현황", "kind": "table", "description": "펀드별 약정 및 투자 집행 현황을 정리합니다.", "columns": [("fund_name", "조합명"), ("fund_type", "조합유형"), ("fund_manager", "대표펀드매니저"), ("formation_date", "결성일"), ("maturity_date", "만기일"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자금액"), ("nav_total", "잔여가치")]},
-    {"code": "subscription-history", "title": "(별첨6-3) 청약이력 투자 현황", "kind": "table", "description": "청약이력 및 목표수익률을 정리합니다.", "columns": [("fund_name", "조합명"), ("subscription_date", "청약시기"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자금액"), ("target_irr", "목표수익률")]},
-    {"code": "representative-overview", "title": "(별첨7-1) 대표자원 개요", "kind": "table", "description": "대표 및 핵심 인력 개요를 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("company_name", "소속"), ("join_date", "입사일"), ("is_core", "핵심여부")]},
-    {"code": "manager-major-careers", "title": "(별첨7-2) 운용인력 주요회사경력", "kind": "table", "description": "운용인력 주요 회사 경력과 투자회수 실적을 정리합니다.", "columns": [("manager_name", "운용인력"), ("company_name", "근무회사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("instrument", "증권종류"), ("investment_date", "투자실행일"), ("exit_date", "회수일"), ("amount", "투자금액"), ("exit_amount", "회수금액")]},
-    {"code": "manager-subscription-history", "title": "(별첨7-3) 운용인력 청약참여내역", "kind": "table", "description": "운용인력의 조합 참여이력을 정리합니다.", "columns": [("manager_name", "운용인력"), ("company_name", "근무회사명"), ("fund_name", "조합명"), ("commitment_total", "약정총액"), ("amount", "투자금액"), ("role", "매니저구분")]},
-    {"code": "key-shareholders", "title": "(별첨8) 운용사 주요매체 및 주요 출자자명단", "kind": "table", "description": "주요 주주 정보를 정리합니다.", "columns": [("name", "주주명"), ("shares", "주식수"), ("acquisition_amount", "취득가액"), ("ownership_pct", "지분율"), ("memo", "비고")]},
+    {"code": "application-form", "title": "(별첨1) 투자신청서", "kind": "scalar", "description": "농모태 투자신청서 기본 항목을 정리합니다.", "columns": [("gp_name", "회사명"), ("founded_date", "설립연월일"), ("address", "주소"), ("fund_manager_count", "운용인력수"), ("paid_in_capital", "납입자본금"), ("total_assets", "자산총계"), ("total_equity", "자본총계"), ("representative", "담당자"), ("fund_name", "조합명(예정)"), ("commitment_total", "약정금액"), ("manager_name", "대표펀드매니저")]},
+    {"code": "fund-overview", "title": "(별첨6-1) 운용펀드 현황 총괄", "kind": "table", "description": "운용중 펀드의 투자 현황을 정리합니다.", "columns": [("gp_name", "운용사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("investment_date", "투자일"), ("instrument", "투자방식")]},
+    {"code": "fund-investments", "title": "(별첨6-2) 펀드별 투자 현황", "kind": "table", "description": "펀드별 약정 및 투자 집행 현황을 정리합니다.", "columns": [("fund_name", "조합명"), ("fund_type", "조합 구분"), ("fund_manager", "대표/펀드매니저"), ("formation_date", "등록(성립)일"), ("maturity_date", "청산시기(예정)"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자총액"), ("nav_total", "조합가치")]},
+    {"code": "subscription-history", "title": "(별첨6-3) 청약이력 투자 현황", "kind": "table", "description": "청약이력 및 목표수익률을 정리합니다.", "columns": [("fund_name", "조합명"), ("subscription_date", "청약시기"), ("commitment_total", "약정총액"), ("paid_in_total", "납입총액"), ("invested_total", "투자총액"), ("target_irr", "목표수익률")]},
+    {"code": "representative-overview", "title": "(별첨7-1) 인적자원 관련", "kind": "table", "description": "대표 및 핵심 인력 개요를 정리합니다.", "columns": [("name", "성명"), ("position", "직위"), ("company_name", "소속"), ("join_date", "입사일"), ("is_core", "핵심여부")]},
+    {"code": "manager-major-careers", "title": "(별첨7-2) 참여인력 투자회수실적", "kind": "table", "description": "운용인력 주요 회사 경력과 투자회수 실적을 정리합니다.", "columns": [("manager_name", "참여인력"), ("company_name", "재직회사명"), ("fund_name", "펀드명"), ("portfolio_name", "투자기업명"), ("instrument", "투자형태"), ("investment_date", "투자시작일"), ("exit_date", "회수종료일"), ("amount", "투자금액"), ("exit_amount", "회수금액")]},
+    {"code": "manager-subscription-history", "title": "(별첨7-3) 참여인력 조합청산실적", "kind": "table", "description": "운용인력의 조합 참여이력을 정리합니다.", "columns": [("manager_name", "참여인력"), ("company_name", "재직회사명"), ("fund_name", "조합명"), ("commitment_total", "약정총액"), ("amount", "투자금액"), ("role", "매니저구분")]},
+    {"code": "key-shareholders", "title": "(별첨8) 제안사 주주명부 및 조합 출자자명부", "kind": "table", "description": "주요 주주 정보를 정리합니다.", "columns": [("name", "주주명"), ("shares", "주식수"), ("acquisition_amount", "납입액"), ("ownership_pct", "지분율"), ("memo", "비고")]},
 ]
+
+
+def _first_row_by_manager(rows: list[Any]) -> dict[int, Any]:
+    result: dict[int, Any] = {}
+    for row in rows:
+        manager_id = getattr(row, "fund_manager_id", None)
+        if manager_id is None or manager_id in result:
+            continue
+        result[manager_id] = row
+    return result
+
+
+def _format_period(start_value: Any, end_value: Any) -> str | None:
+    start_text = _stringify_cell(start_value)
+    end_text = _stringify_cell(end_value)
+    if not start_text and not end_text:
+        return None
+    if start_text and end_text:
+        return f"{start_text} ~ {end_text}"
+    return start_text or end_text
+
+
+def _select_representative_manager(managers: list[FundManager]) -> FundManager | None:
+    for manager in managers:
+        if manager.is_representative:
+            return manager
+    for manager in managers:
+        if manager.is_core:
+            return manager
+    return None
+
+
+def _proposal_views(workspace: dict[str, Any], db: Session) -> dict[str, Any]:
+    cached = workspace.get("_proposal_views")
+    if cached is not None:
+        return cached
+
+    as_of_date: date = workspace["as_of_date"]
+    selected_funds: list[dict[str, Any]] = list(workspace.get("funds", []))
+    gp_financials: list[GPFinancial] = workspace.get("gp_financials", [])
+    shareholders: list[GPShareholder] = workspace.get("gp_shareholders", [])
+    managers: list[FundManager] = workspace.get("fund_managers", [])
+    careers: list[ManagerCareer] = workspace.get("manager_careers", [])
+    educations: list[ManagerEducation] = workspace.get("manager_educations", [])
+    awards: list[ManagerAward] = workspace.get("manager_awards", [])
+    investments: list[ManagerInvestment] = workspace.get("manager_investments", [])
+    manager_histories: list[FundManagerHistory] = workspace.get("fund_manager_histories", [])
+    subscriptions: list[FundSubscription] = workspace.get("fund_subscriptions", [])
+
+    selected_funds_by_id = {
+        int(fund["id"]): fund
+        for fund in selected_funds
+        if fund.get("id") is not None
+    }
+    related_fund_ids = {
+        row.fund_id
+        for row in investments
+        if row.fund_id is not None
+    }
+    related_fund_ids.update(row.fund_id for row in manager_histories if row.fund_id is not None)
+    related_fund_ids.update(row.fund_id for row in subscriptions if row.fund_id is not None)
+
+    all_funds_by_id = dict(selected_funds_by_id)
+    missing_fund_ids = [fund_id for fund_id in related_fund_ids if fund_id not in all_funds_by_id]
+    if missing_fund_ids:
+        extra_funds = (
+            db.query(Fund)
+            .filter(Fund.id.in_(missing_fund_ids))
+            .order_by(Fund.id.asc())
+            .all()
+        )
+        for fund in extra_funds:
+            all_funds_by_id[fund.id] = _build_fund_snapshot(db, fund, as_of_date)
+
+    managers_by_id = {manager.id: manager for manager in managers}
+    representative_ids = {manager.id for manager in managers if manager.is_representative}
+    core_ids = {manager.id for manager in managers if manager.is_core}
+    key_manager_ids = {manager.id for manager in managers if manager.is_core or manager.is_representative}
+
+    latest_education_by_manager = _first_row_by_manager(educations)
+    latest_career_by_manager = _first_row_by_manager(careers)
+    latest_award_by_manager = _first_row_by_manager(awards)
+
+    proposal_managers: list[dict[str, Any]] = []
+    for manager in managers:
+        proposal_managers.append(
+            {
+                "id": manager.id,
+                "name": manager.name,
+                "birth_date": manager.birth_date,
+                "nationality": manager.nationality,
+                "phone": manager.phone,
+                "fax": manager.fax,
+                "email": manager.email,
+                "department": manager.department,
+                "position": manager.position,
+                "join_date": manager.join_date,
+                "is_core": bool(manager.is_core),
+                "is_representative": bool(manager.is_representative),
+                "is_key_person": bool(manager.is_core or manager.is_representative),
+            }
+        )
+
+    proposal_manager_careers: list[dict[str, Any]] = []
+    for row in careers:
+        manager = managers_by_id.get(row.fund_manager_id)
+        proposal_manager_careers.append(
+            {
+                "fund_manager_id": row.fund_manager_id,
+                "manager_name": manager.name if manager else row.fund_manager_id,
+                "company_name": row.company_name,
+                "company_type": row.company_type,
+                "department": row.department,
+                "position": row.position,
+                "start_date": row.start_date,
+                "end_date": row.end_date,
+                "main_task": row.main_task,
+                "is_investment_exp": row.is_investment_exp,
+                "employment_type": row.employment_type,
+                "is_core": bool(manager.is_core) if manager else False,
+                "is_representative": bool(manager.is_representative) if manager else False,
+                "is_key_person": bool(manager and (manager.is_core or manager.is_representative)),
+            }
+        )
+
+    proposal_manager_educations: list[dict[str, Any]] = []
+    for row in educations:
+        manager = managers_by_id.get(row.fund_manager_id)
+        proposal_manager_educations.append(
+            {
+                "fund_manager_id": row.fund_manager_id,
+                "manager_name": manager.name if manager else row.fund_manager_id,
+                "school_name": row.school_name,
+                "major": row.major,
+                "degree": row.degree,
+                "admission_date": row.admission_date,
+                "graduation_date": row.graduation_date,
+                "country": row.country,
+            }
+        )
+
+    proposal_manager_investments: list[dict[str, Any]] = []
+    for row in investments:
+        manager = managers_by_id.get(row.fund_manager_id)
+        fund = all_funds_by_id.get(row.fund_id) if row.fund_id is not None else None
+        proposal_manager_investments.append(
+            {
+                "id": row.id,
+                "fund_manager_id": row.fund_manager_id,
+                "manager_name": manager.name if manager else row.fund_manager_id,
+                "is_core": bool(manager.is_core) if manager else False,
+                "is_representative": bool(manager.is_representative) if manager else False,
+                "is_key_person": bool(manager and (manager.is_core or manager.is_representative)),
+                "fund_id": row.fund_id,
+                "fund_name": row.fund_name or (fund.get("name") if fund else None),
+                "fund_type": fund.get("type") if fund else None,
+                "fund_status": fund.get("status") if fund else None,
+                "commitment_total": fund.get("commitment_total") if fund else None,
+                "source_company_name": row.source_company_name,
+                "company_name": row.company_name,
+                "investment_date": row.investment_date,
+                "instrument": row.instrument,
+                "amount": row.amount,
+                "exit_date": row.exit_date,
+                "exit_amount": row.exit_amount,
+                "remaining_amount": max(_to_float(row.amount) - _to_float(row.exit_amount), 0),
+                "role": row.role,
+                "discovery_contrib": row.discovery_contrib,
+                "review_contrib": row.review_contrib,
+                "contrib_rate": row.contrib_rate,
+                "is_current_company": bool(row.is_current_company),
+                "has_exit": bool(row.exit_date or row.exit_amount),
+            }
+        )
+
+    proposal_manager_changes: list[dict[str, Any]] = []
+    for row in manager_histories:
+        manager = managers_by_id.get(row.fund_manager_id)
+        fund = all_funds_by_id.get(row.fund_id)
+        proposal_manager_changes.append(
+            {
+                "fund_id": row.fund_id,
+                "fund_name": fund.get("name") if fund else row.fund_id,
+                "fund_manager_id": row.fund_manager_id,
+                "manager_name": manager.name if manager else row.fund_manager_id,
+                "change_date": row.change_date,
+                "change_type": row.change_type,
+                "role": row.role_after or row.role_before,
+            }
+        )
+
+    latest_shareholder_snapshot_date = shareholders[0].snapshot_date if shareholders else None
+    proposal_shareholders = [
+        row
+        for row in shareholders
+        if latest_shareholder_snapshot_date is not None and row.snapshot_date == latest_shareholder_snapshot_date
+    ]
+
+    proposal_subscriptions: list[dict[str, Any]] = []
+    latest_subscription_by_fund: dict[int, dict[str, Any]] = {}
+    for row in subscriptions:
+        fund = all_funds_by_id.get(row.fund_id)
+        subscription_row = {
+            "fund_id": row.fund_id,
+            "fund_name": fund.get("name") if fund else row.fund_id,
+            "subscription_date": row.subscription_date,
+            "target_irr": row.target_irr,
+            "target_commitment": row.target_commitment,
+            "actual_commitment": row.actual_commitment,
+            "commitment_total": fund.get("commitment_total") if fund else None,
+            "paid_in_total": fund.get("paid_in_total") if fund else None,
+            "invested_total": fund.get("invested_total") if fund else None,
+        }
+        proposal_subscriptions.append(subscription_row)
+        latest_subscription_by_fund.setdefault(row.fund_id, subscription_row)
+
+    proposal_manager_profiles: list[dict[str, Any]] = []
+    for manager in managers:
+        education = latest_education_by_manager.get(manager.id)
+        career = latest_career_by_manager.get(manager.id)
+        award = latest_award_by_manager.get(manager.id)
+        proposal_manager_profiles.append(
+            {
+                "manager_id": manager.id,
+                "name": manager.name,
+                "position": manager.position,
+                "birth_date": manager.birth_date,
+                "phone": manager.phone,
+                "fax": manager.fax,
+                "email": manager.email,
+                "award_name": award.award_name if award else None,
+                "education_period": _format_period(
+                    education.admission_date if education else None,
+                    education.graduation_date if education else None,
+                ),
+                "school_name": education.school_name if education else None,
+                "major": education.major if education else None,
+                "degree": education.degree if education else None,
+                "career_period": _format_period(
+                    career.start_date if career else None,
+                    career.end_date if career else None,
+                ),
+                "company_name": career.company_name if career else None,
+                "company_type": career.company_type if career else None,
+                "department": career.department if career else None,
+                "career_position": career.position if career else None,
+                "main_task": career.main_task if career else None,
+                "employment_type": career.employment_type if career else None,
+                "is_core": bool(manager.is_core),
+                "is_representative": bool(manager.is_representative),
+            }
+        )
+
+    representative_manager = _select_representative_manager(managers)
+    representative_manager_view = None
+    if representative_manager is not None:
+        representative_manager_view = next(
+            (row for row in proposal_managers if row["id"] == representative_manager.id),
+            None,
+        )
+
+    views = {
+        "proposal_funds": selected_funds,
+        "all_funds_by_id": all_funds_by_id,
+        "proposal_managers": proposal_managers,
+        "proposal_manager_careers": proposal_manager_careers,
+        "proposal_manager_educations": proposal_manager_educations,
+        "proposal_manager_investments": proposal_manager_investments,
+        "proposal_manager_changes": proposal_manager_changes,
+        "proposal_manager_profiles": proposal_manager_profiles,
+        "proposal_subscriptions": proposal_subscriptions,
+        "latest_subscription_by_fund": latest_subscription_by_fund,
+        "proposal_shareholders": proposal_shareholders,
+        "representative_manager_ids": representative_ids,
+        "core_manager_ids": core_ids,
+        "key_manager_ids": key_manager_ids,
+        "single_selected_fund": selected_funds[0] if len(selected_funds) == 1 else None,
+        "representative_manager": representative_manager_view,
+        "latest_financial": gp_financials[0] if gp_financials else None,
+    }
+    workspace["_proposal_views"] = views
+    return views
+
+
+def _growth_finance_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+    gp = workspace.get("selected_gp_entity") or {}
+    gp_financials: list[GPFinancial] = workspace.get("gp_financials", [])
+    as_of_date: date = workspace["as_of_date"]
+    views = _proposal_views(workspace, db)
+    funds = views["proposal_funds"]
+    managers = views["proposal_managers"]
+    careers = views["proposal_manager_careers"]
+    educations = views["proposal_manager_educations"]
+    investments = views["proposal_manager_investments"]
+    manager_changes = views["proposal_manager_changes"]
+
+    fund_ids = [fund["id"] for fund in funds]
+    lps = (
+        db.query(LP)
+        .filter(LP.fund_id.in_(fund_ids))
+        .order_by(LP.fund_id.asc(), LP.id.asc())
+        .all()
+        if fund_ids else []
+    )
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.fund_id.in_(fund_ids), Transaction.transaction_date <= as_of_date)
+        .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
+        .all()
+        if fund_ids else []
+    )
+    growth_core_manager_ids = {row["id"] for row in managers if row["is_core"]}
+    growth_general_manager_ids = {row["id"] for row in managers if row["id"] not in growth_core_manager_ids}
+    selected_funds_by_id = {fund["id"]: fund for fund in funds}
+
+    return [
+        ("작성요령", ["항목", "값"], [["기준일", as_of_date.isoformat()], ["안내", "기준일 기준으로 ERP 데이터에서 자동 구성한 제안서 데이터입니다."]]),
+        ("1.1.제안펀드", ["펀드명", "결성일", "만기일", "약정총액", "납입총액", "투자기구", "펀드상태"], [
+            [fund["name"], _json_default(fund.get("formation_date")), _json_default(fund.get("maturity_date")), fund.get("commitment_total"), fund.get("paid_in_total"), fund.get("type"), fund.get("status")]
+            for fund in funds
+        ]),
+        ("1.2.출자예상내역", ["출자자유형", "출자자명", "출자약정예상액"], [
+            [lp.type, lp.name, lp.commitment] for lp in lps
+        ]),
+        ("2.1.제안사 개요", ["제안사명", "법인등록번호", "사업자등록번호", "대표자명", "설립일", "주소", "전체 인원수", "전문인력수", "납입자본금"], [[
+            gp.get("name"),
+            gp.get("registration_number"),
+            gp.get("business_number"),
+            gp.get("representative"),
+            _json_default(gp.get("founding_date")),
+            gp.get("address"),
+            gp.get("total_employees"),
+            gp.get("fund_manager_count"),
+            gp.get("paid_in_capital"),
+        ]]),
+        ("2.2.제안사 재무현황", ["(가)결산일자", "총자산", "유동자산", "총부채", "유동부채", "자기자본(자본총계)", "영업수익", "영업이익", "당기순이익"], [
+            [_json_default(row.fiscal_year_end), row.total_assets, row.current_assets, row.total_liabilities, row.current_liabilities, row.total_equity, row.revenue, row.operating_income, row.net_income]
+            for row in gp_financials
+        ]),
+        ("2.3.제안사 펀드현황", ["펀드명", "펀드 상태", "펀드법적유형", "결성일", "만기일", "약정총액", "납입총액"], [
+            [fund["name"], fund.get("status"), fund.get("type"), _json_default(fund.get("formation_date")), _json_default(fund.get("maturity_date")), fund.get("commitment_total"), fund.get("paid_in_total")]
+            for fund in funds
+        ]),
+        ("2.4.제안사 투자현황", ["펀드명", "피투자기업명", "투자일", "투자형태"], [
+            [row["fund_name"], row["company_name"], _json_default(row["investment_date"]), row["instrument"]]
+            for row in investments if row["is_current_company"]
+        ]),
+        ("3.1.참여인력 개요", ["운용인력ID", "성명", "생년월일", "국적", "부서", "직위", "입사일", "핵심운용인력 여부"], [
+            [row["id"], row["name"], _json_default(row["birth_date"]), row["nationality"], row["department"], row["position"], _json_default(row["join_date"]), row["is_core"]]
+            for row in managers
+        ]),
+        ("3.4.1.핵심운용인력 경력", ["회사명", "회사유형", "부서명", "직위", "시작일", "종료일", "담당업무", "투자관련 경력여부"], [
+            [row["company_name"], row["company_type"], row["department"], row["position"], _json_default(row["start_date"]), _json_default(row["end_date"]), row["main_task"], row["is_investment_exp"]]
+            for row in careers if row["fund_manager_id"] in growth_core_manager_ids
+        ]),
+        ("3.4.2.일반운용인력 경력", ["회사명", "회사유형", "부서명", "직위", "시작일", "종료일", "담당업무", "투자관련 경력여부"], [
+            [row["company_name"], row["company_type"], row["department"], row["position"], _json_default(row["start_date"]), _json_default(row["end_date"]), row["main_task"], row["is_investment_exp"]]
+            for row in careers if row["fund_manager_id"] in growth_general_manager_ids
+        ]),
+        ("3.3.참여인력 학력", ["졸업일/수료일", "졸업/수료 학교명", "학과(전공)명", "학위명", "취득국명"], [
+            [_json_default(row["graduation_date"]), row["school_name"], row["major"], row["degree"], row["country"]]
+            for row in educations
+        ]),
+        ("3.2.1.핵심운용인력 투자현황", ["재직회사명", "펀드명", "투자기업명", "투자일", "기여율"], [
+            [row["source_company_name"], row["fund_name"], row["company_name"], _json_default(row["investment_date"]), row["contrib_rate"]]
+            for row in investments if row["fund_manager_id"] in growth_core_manager_ids
+        ]),
+        ("3.2.2.일반운용인력 투자현황", ["재직회사명", "펀드명", "투자기업명", "투자일", "기여율"], [
+            [row["source_company_name"], row["fund_name"], row["company_name"], _json_default(row["investment_date"]), row["contrib_rate"]]
+            for row in investments if row["fund_manager_id"] in growth_general_manager_ids
+        ]),
+        ("4.1.펀드 거래", ["펀드명", "거래구분", "거래금액 (원)", "거래일"], [
+            [selected_funds_by_id.get(row.fund_id, {}).get("name", row.fund_id), row.type, row.amount, _json_default(row.transaction_date)]
+            for row in transactions
+        ]),
+        ("4.2.펀드 인력변경 이력", ["펀드명", "기재대상핵심인력 변경구분", "이름", "변경일자", "역할"], [
+            [row["fund_name"], row["change_type"], row["manager_name"], _json_default(row["change_date"]), row["role"]]
+            for row in manager_changes
+        ]),
+    ]
+
+
+def _motae5_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+    views = _proposal_views(workspace, db)
+    funds = views["proposal_funds"]
+    shareholders: list[GPShareholder] = views["proposal_shareholders"]
+    latest_subscription_by_fund: dict[int, dict[str, Any]] = views["latest_subscription_by_fund"]
+
+    return [
+        ("청약이력 관련 총괄(전체)", ["조합명", "결성일", "청약일", "운용펀드 수", "공동 운용사(Co-GP) 여부"], [
+            [fund["name"], _json_default(fund.get("formation_date")), _json_default(latest_subscription_by_fund.get(fund["id"], {}).get("subscription_date")), len(funds), bool(fund.get("has_co_gp"))]
+            for fund in funds
+        ]),
+        ("2. 운용중인 조합 총괄", ["조합명", "운용(투자)기간", "해산 예정일", "약정총액", "납입총액", "투자금액", "잔여자산"], [
+            [fund["name"], _json_default(fund.get("investment_period_end")), _json_default(fund.get("maturity_date")), fund.get("commitment_total"), fund.get("paid_in_total"), fund.get("invested_total"), fund.get("nav_total")]
+            for fund in funds
+        ]),
+        ("3. 주주 및 출자자 명부", ["주주명", "주식수", "납입액", "지분율", "비고"], [
+            [row.name, row.shares, row.acquisition_amount, row.ownership_pct, row.memo]
+            for row in shareholders
+        ]),
+    ]
+
+
+def _motae6_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+    views = _proposal_views(workspace, db)
+    investments = views["proposal_manager_investments"]
+    representative_ids: set[int] = views["representative_manager_ids"]
+    representative_rows = [row for row in investments if row["fund_manager_id"] in representative_ids]
+    participant_rows = [row for row in investments if row["fund_manager_id"] not in representative_ids]
+    exit_rows = [row for row in investments if row["has_exit"]]
+
+    def _recovery_row(row: dict[str, Any]) -> list[Any]:
+        return [
+            row["manager_name"],
+            row["source_company_name"],
+            row["fund_name"],
+            row["fund_type"],
+            row["is_current_company"],
+            row["company_name"],
+            row["instrument"],
+            row["discovery_contrib"],
+            row["review_contrib"],
+            _json_default(row["investment_date"]),
+        ]
+
+    return [
+        ("1. 대표펀드매니저 투자회수실적", ["대표펀드매니저", "재직회사명", "펀드명", "펀드 법적형태", "현재 회사 여부", "투자기업명", "투자형태", "발굴 기여율(%)", "심사 기여율(%)", "투자일"], [
+            _recovery_row(row) for row in representative_rows
+        ]),
+        ("2. 참여인력 투자회수실적", ["참여인력", "재직회사명", "펀드명", "펀드 법적형태", "현재 회사 여부", "투자기업명", "투자형태", "발굴 기여율(%)", "심사 기여율(%)", "투자일"], [
+            _recovery_row(row) for row in participant_rows
+        ]),
+        ("3. 최근 개인 투자회수 현황", ["투자기업명", "투자형태", "투자일", "회수일", "투자금액", "회수금액", "잔여금액"], [
+            [row["company_name"], row["instrument"], _json_default(row["investment_date"]), _json_default(row["exit_date"]), row["amount"], row["exit_amount"], row["remaining_amount"]]
+            for row in exit_rows
+        ]),
+        ("4. 최근 펀드 투자회수 현황", ["펀드명", "투자기업명", "투자일", "회수일", "투자금액", "회수금액"], [
+            [row["fund_name"], row["company_name"], _json_default(row["investment_date"]), _json_default(row["exit_date"]), row["amount"], row["exit_amount"]]
+            for row in exit_rows
+        ]),
+    ]
+
+
+def _motae7_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+    views = _proposal_views(workspace, db)
+    profiles = views["proposal_manager_profiles"]
+    representative_ids: set[int] = views["representative_manager_ids"]
+    key_manager_ids: set[int] = views["key_manager_ids"]
+    core_profile_ids = {
+        row["id"]
+        for row in views["proposal_managers"]
+        if row["is_core"] and row["id"] not in representative_ids
+    }
+    investments = views["proposal_manager_investments"]
+
+    def _profile_row(row: dict[str, Any]) -> list[Any]:
+        return [
+            row["name"],
+            row["position"],
+            _json_default(row["birth_date"]),
+            row["phone"],
+            row["fax"],
+            row["email"],
+            row["award_name"],
+            row["education_period"],
+            row["school_name"],
+            row["major"],
+            row["degree"],
+            row["career_period"],
+            row["company_name"],
+            row["company_type"],
+            row["department"],
+            row["career_position"],
+            row["main_task"],
+            row["employment_type"],
+        ]
+
+    return [
+        ("2. 참여인력(대표) 이력", ["성명", "직위", "생년월일", "전화", "팩스", "E-Mail", "수상내역", "학력기간", "학교명", "학과(전공)명", "학위명", "경력기간", "직장명(운용사 구분)", "회사유형", "부서명", "직위", "담당업무", "경력구분"], [
+            _profile_row(row) for row in profiles if row["manager_id"] in representative_ids
+        ]),
+        ("2. 참여인력(핵심) 이력", ["성명", "직위", "생년월일", "전화", "팩스", "E-Mail", "수상내역", "학력기간", "학교명", "학과(전공)명", "학위명", "경력기간", "직장명(운용사 구분)", "회사유형", "부서명", "직위", "담당업무", "경력구분"], [
+            _profile_row(row) for row in profiles if row["manager_id"] in core_profile_ids
+        ]),
+        ("3. 핵심운용인력 참여펀드 현황", ["성명", "참여펀드명", "참여펀드 역할", "투자금액", "잔여금액"], [
+            [row["manager_name"], row["fund_name"], row["role"], row["amount"], row["remaining_amount"]]
+            for row in investments if row["fund_manager_id"] in key_manager_ids
+        ]),
+        ("4. 핵심운용인력 이직내역", ["성명", "이전 회사", "이전 펀드명", "역할", "이직일"], [
+            [row["manager_name"], row["source_company_name"], row["fund_name"], row["role"], _json_default(row["exit_date"])]
+            for row in investments if row["fund_manager_id"] in key_manager_ids and not row["is_current_company"]
+        ]),
+    ]
+
+
+def _nong_motae_sheets(workspace: dict[str, Any], db: Session) -> list[tuple[str, list[str], list[list[Any]]]]:
+    gp = workspace.get("selected_gp_entity") or {}
+    views = _proposal_views(workspace, db)
+    latest_financial: GPFinancial | None = views["latest_financial"]
+    funds = views["proposal_funds"]
+    managers = views["proposal_managers"]
+    investments = views["proposal_manager_investments"]
+    subscriptions = views["proposal_subscriptions"]
+    shareholders: list[GPShareholder] = views["proposal_shareholders"]
+    single_selected_fund = views["single_selected_fund"]
+    representative_manager = views["representative_manager"]
+
+    return [
+        ("(별첨1) 투자신청서", ["회사명", "설립연월일", "주소", "운용인력수", "납입자본금", "자산총계", "자본총계", "담당자", "조합명(예정)", "약정금액", "대표펀드매니저"], [[
+            gp.get("name"),
+            _json_default(gp.get("founding_date")),
+            gp.get("address"),
+            gp.get("fund_manager_count"),
+            latest_financial.paid_in_capital if latest_financial else gp.get("paid_in_capital"),
+            latest_financial.total_assets if latest_financial else None,
+            latest_financial.total_equity if latest_financial else None,
+            gp.get("representative"),
+            single_selected_fund.get("name") if single_selected_fund else None,
+            single_selected_fund.get("commitment_total") if single_selected_fund else None,
+            representative_manager.get("name") if representative_manager else None,
+        ]]),
+        ("(별첨6-1) 운용펀드 현황 총괄", ["운용사명", "펀드명", "투자기업명", "투자일", "투자방식"], [
+            [gp.get("name"), row["fund_name"], row["company_name"], _json_default(row["investment_date"]), row["instrument"]]
+            for row in investments if row["is_current_company"]
+        ]),
+        ("(별첨6-2) 펀드별 투자 현황", ["조합명", "조합 구분", "대표/펀드매니저", "등록(성립)일", "청산시기(예정)", "약정총액", "납입총액", "투자총액", "조합가치"], [
+            [fund["name"], fund.get("type"), fund.get("fund_manager"), _json_default(fund.get("registration_date") or fund.get("formation_date")), _json_default(fund.get("maturity_date")), fund.get("commitment_total"), fund.get("paid_in_total"), fund.get("invested_total"), fund.get("nav_total")]
+            for fund in funds
+        ]),
+        ("(별첨6-3) 청약이력 투자 현황", ["조합명", "청약시기", "약정총액", "납입총액", "투자총액", "목표수익률"], [
+            [row["fund_name"], _json_default(row["subscription_date"]), row["commitment_total"], row["paid_in_total"], row["invested_total"], row["target_irr"]]
+            for row in subscriptions
+        ]),
+        ("(별첨7-1) 인적자원 관련", ["성명", "직위", "소속", "입사일", "핵심여부"], [
+            [row["name"], row["position"], gp.get("name"), _json_default(row["join_date"]), row["is_core"]]
+            for row in managers
+        ]),
+        ("(별첨7-2) 참여인력 투자회수실적", ["참여인력", "재직회사명", "펀드명", "투자기업명", "투자형태", "투자시작일", "회수종료일", "투자금액", "회수금액"], [
+            [row["manager_name"], row["source_company_name"], row["fund_name"], row["company_name"], row["instrument"], _json_default(row["investment_date"]), _json_default(row["exit_date"]), row["amount"], row["exit_amount"]]
+            for row in investments if row["has_exit"]
+        ]),
+        ("(별첨7-3) 참여인력 조합청산실적", ["참여인력", "재직회사명", "조합명", "약정총액", "투자금액", "매니저구분"], [
+            [row["manager_name"], row["source_company_name"], row["fund_name"], row["commitment_total"], row["amount"], row["role"]]
+            for row in investments
+        ]),
+        ("(별첨8) 제안사 주주명부 및 조합 출자자명부", ["주주명", "주식수", "납입액", "지분율", "비고"], [
+            [row.name, row.shares, row.acquisition_amount, row.ownership_pct, row.memo]
+            for row in shareholders
+        ]),
+    ]
 
 
 def _template_label(template_type: str) -> str:
@@ -1023,13 +1577,13 @@ def _base_sheet_defs_for_workbench(workspace: dict[str, Any], db: Session) -> li
     if template_type == "growth-finance":
         raw_defs = _growth_finance_sheets(workspace, db)
     elif template_type == "motae-5":
-        raw_defs = _motae5_sheets(workspace)
+        raw_defs = _motae5_sheets(workspace, db)
     elif template_type == "motae-6":
-        raw_defs = _motae6_sheets(workspace)
+        raw_defs = _motae6_sheets(workspace, db)
     elif template_type == "motae-7":
-        raw_defs = _motae7_sheets(workspace)
+        raw_defs = _motae7_sheets(workspace, db)
     else:
-        raw_defs = _nong_motae_sheets(workspace)
+        raw_defs = _nong_motae_sheets(workspace, db)
 
     catalog = _catalog_for_template(template_type)
     sheet_defs: list[dict[str, Any]] = []
