@@ -8,6 +8,7 @@ from database import get_db
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany
 from models.investment_review import InvestmentReview, ReviewComment
+from services.erp_backbone import backbone_enabled, mark_subject_deleted, maybe_emit_mutation, record_snapshot, sync_company_graph, sync_investment_graph, sync_investment_review_graph
 from schemas.investment_review import (
     InvestmentReviewConvertRequest,
     InvestmentReviewConvertResponse,
@@ -186,6 +187,17 @@ def create_investment_review(data: InvestmentReviewCreate, db: Session = Depends
     row = InvestmentReview(**data.model_dump())
     db.add(row)
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_investment_review_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="investment_review.created",
+                after=record_snapshot(row),
+                origin_model="investment_review",
+                origin_id=row.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -204,6 +216,7 @@ def update_investment_review(
     if not row:
         raise HTTPException(status_code=404, detail="Investment review not found")
 
+    before = record_snapshot(row)
     payload = data.model_dump(exclude_unset=True)
     next_fund_id = payload.get("fund_id", row.fund_id)
     if next_fund_id is not None and not db.get(Fund, next_fund_id):
@@ -212,6 +225,17 @@ def update_investment_review(
     for key, value in payload.items():
         setattr(row, key, value)
     try:
+        if backbone_enabled():
+            subject = sync_investment_review_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="investment_review.updated",
+                before=before,
+                after=record_snapshot(row),
+                origin_model="investment_review",
+                origin_id=row.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -225,6 +249,17 @@ def delete_investment_review(review_id: int, db: Session = Depends(get_db)):
     row = db.get(InvestmentReview, review_id)
     if not row:
         raise HTTPException(status_code=404, detail="Investment review not found")
+    before = record_snapshot(row)
+    if backbone_enabled():
+        subject = mark_subject_deleted(db, subject_type="investment_review", native_id=row.id, payload=before)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment_review.deleted",
+            before=before,
+            origin_model="investment_review",
+            origin_id=row.id,
+        )
     db.delete(row)
     try:
         db.commit()
@@ -250,8 +285,20 @@ def update_investment_review_status(
             status_code=409,
             detail=f"Invalid status transition: {row.status} -> {next_status}",
         )
+    before = record_snapshot(row)
     row.status = next_status
     try:
+        if backbone_enabled():
+            subject = sync_investment_review_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="investment_review.status_updated",
+                before=before,
+                after=record_snapshot(row),
+                origin_model="investment_review",
+                origin_id=row.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -296,15 +343,18 @@ def convert_investment_review(
         .filter(func.lower(PortfolioCompany.name) == company_name.lower())
         .first()
     )
+    created_company = False
     if company is None:
         company = PortfolioCompany(name=company_name, industry=row.sector)
         db.add(company)
         db.flush()
+        created_company = True
 
     investment_date = data.investment_date or row.execution_date or row.decision_date
     if investment_date is None:
         raise HTTPException(status_code=400, detail="Investment date is required for conversion")
 
+    before_review = record_snapshot(row)
     investment = Investment(
         fund_id=fund_id,
         company_id=company.id,
@@ -331,6 +381,37 @@ def convert_investment_review(
     if row.status not in (STOP_STATUS, "완료"):
         row.status = "집행" if row.execution_date else "의결"
     try:
+        if backbone_enabled():
+            if created_company:
+                company_subject = sync_company_graph(db, company)
+                maybe_emit_mutation(
+                    db,
+                    subject=company_subject,
+                    event_type="company.created",
+                    after=record_snapshot(company),
+                    origin_model="portfolio_company",
+                    origin_id=company.id,
+                )
+            investment_subject = sync_investment_graph(db, investment)
+            maybe_emit_mutation(
+                db,
+                subject=investment_subject,
+                event_type="investment.created",
+                after=record_snapshot(investment),
+                origin_model="investment",
+                origin_id=investment.id,
+            )
+            review_subject = sync_investment_review_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=review_subject,
+                event_type="investment_review.converted",
+                before=before_review,
+                after=record_snapshot(row),
+                payload={"investment_id": investment.id, "company_id": company.id},
+                origin_model="investment_review",
+                origin_id=row.id,
+            )
         db.commit()
     except Exception:
         db.rollback()

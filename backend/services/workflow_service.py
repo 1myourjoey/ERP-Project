@@ -8,6 +8,7 @@ from models.investment import InvestmentDocument
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance, WorkflowStepInstance, WorkflowStepInstanceDocument
+from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_investment_document_registry, sync_task_graph, sync_workflow_instance_graph, sync_workflow_step_document_registry, sync_workflow_step_graph
 from utils.business_days import is_business_day, shift_to_business_day
 
 
@@ -196,6 +197,7 @@ def instantiate_workflow(
                 )
             )
 
+    db.flush()
     first_step = (
         db.query(WorkflowStepInstance)
         .filter(WorkflowStepInstance.instance_id == instance.id)
@@ -209,6 +211,38 @@ def instantiate_workflow(
             task = db.get(Task, first_step.task_id)
             if task:
                 task.status = "in_progress"
+
+    if backbone_enabled():
+        instance_subject = sync_workflow_instance_graph(db, instance)
+        maybe_emit_mutation(
+            db,
+            subject=instance_subject,
+            event_type="workflow_instance.created",
+            after=record_snapshot(instance),
+            actor_user_id=created_by,
+            origin_model="workflow_instance",
+            origin_id=instance.id,
+        )
+        for step_instance in instance.step_instances:
+            step_subject = sync_workflow_step_graph(db, step_instance)
+            maybe_emit_mutation(
+                db,
+                subject=step_subject,
+                event_type="workflow_step_instance.created",
+                after=record_snapshot(step_instance),
+                actor_user_id=created_by,
+                origin_model="workflow_step_instance",
+                origin_id=step_instance.id,
+            )
+            if step_instance.task_id:
+                task = db.get(Task, step_instance.task_id)
+                if task is not None:
+                    sync_task_graph(db, task)
+            for document in step_instance.step_documents:
+                sync_workflow_step_document_registry(db, document)
+        if investment_id:
+            for document in db.query(InvestmentDocument).filter(InvestmentDocument.investment_id == investment_id).all():
+                sync_investment_document_registry(db, document)
 
     if auto_commit:
         try:

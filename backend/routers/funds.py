@@ -47,6 +47,15 @@ from services.workflow_service import instantiate_workflow
 from services.fund_integrity import recalculate_fund_stats, validate_lp_paid_in_pair
 from services.compliance_engine import ComplianceEngine
 from services.compliance_rule_engine import ComplianceRuleEngine
+from services.erp_backbone import (
+    backbone_enabled,
+    mark_subject_deleted,
+    maybe_emit_mutation,
+    record_snapshot,
+    sync_fund_graph,
+    sync_gp_entity_graph,
+    sync_lp_graph,
+)
 from services.proposal_data import sync_fund_history
 
 router = APIRouter(tags=["funds"])
@@ -2380,6 +2389,18 @@ def create_fund(data: FundCreate, db: Session = Depends(get_db)):
             gp_commitment=fund.gp_commitment,
             gp_entity=gp_entity,
         )
+        if backbone_enabled():
+            subject = sync_fund_graph(db, fund)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="fund.created",
+                after=record_snapshot(fund),
+                origin_model="fund",
+                origin_id=fund.id,
+            )
+            if gp_entity is not None:
+                sync_gp_entity_graph(db, gp_entity)
 
         db.commit()
     except IntegrityError as exc:
@@ -2408,6 +2429,7 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
     if not fund:
         raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
+    before = record_snapshot(fund)
     update_payload = data.model_dump(exclude_unset=True)
     if update_payload.get("gp_commitment") is None and update_payload.get("gp_commitment_amount") is not None:
         update_payload["gp_commitment"] = update_payload.get("gp_commitment_amount")
@@ -2445,6 +2467,20 @@ def update_fund(fund_id: int, data: FundUpdate, db: Session = Depends(get_db)):
         gp_commitment=fund.gp_commitment,
         gp_entity=gp_entity,
     )
+    if backbone_enabled():
+        db.flush()
+        subject = sync_fund_graph(db, fund)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="fund.updated",
+            before=before,
+            after=record_snapshot(fund),
+            origin_model="fund",
+            origin_id=fund.id,
+        )
+        if gp_entity is not None:
+            sync_gp_entity_graph(db, gp_entity)
     db.commit()
     db.refresh(fund)
     _run_compliance_rule_checks(
@@ -2552,10 +2588,26 @@ def delete_fund(fund_id: int, db: Session = Depends(get_db)):
     fund = db.get(Fund, fund_id)
     if not fund:
         raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
+    before = record_snapshot(fund)
     try:
         _cleanup_fund_capital_calls(db, fund_id)
         _cleanup_fund_tasks_and_workflows(db, fund_id)
         db.flush()
+        if backbone_enabled():
+            subject = mark_subject_deleted(
+                db,
+                subject_type="fund",
+                native_id=fund.id,
+                payload=before,
+            )
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="fund.deleted",
+                before=before,
+                origin_model="fund",
+                origin_id=fund.id,
+            )
         db.delete(fund)
         db.commit()
     except Exception:
@@ -2612,6 +2664,17 @@ def create_lp(fund_id: int, data: LPCreate, db: Session = Depends(get_db)):
     lp = LP(fund_id=fund_id, **payload)
     db.add(lp)
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_lp_graph(db, lp)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="lp.created",
+                after=record_snapshot(lp),
+                origin_model="lp",
+                origin_id=lp.id,
+            )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -2643,6 +2706,7 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
     if not lp or lp.fund_id != fund_id:
         raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
+    before = record_snapshot(lp)
     payload = data.model_dump(exclude_unset=True)
     if "name" in payload:
         payload["name"] = _normalize_lp_text(payload.get("name"))
@@ -2696,6 +2760,18 @@ def update_lp(fund_id: int, lp_id: int, data: LPUpdate, db: Session = Depends(ge
         setattr(lp, key, val)
 
     try:
+        if backbone_enabled():
+            db.flush()
+            subject = sync_lp_graph(db, lp)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="lp.updated",
+                before=before,
+                after=record_snapshot(lp),
+                origin_model="lp",
+                origin_id=lp.id,
+            )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -2716,6 +2792,22 @@ def delete_lp(fund_id: int, lp_id: int, db: Session = Depends(get_db)):
     if not lp or lp.fund_id != fund_id:
         raise HTTPException(status_code=404, detail="LP를 찾을 수 없습니다")
 
+    before = record_snapshot(lp)
+    if backbone_enabled():
+        subject = mark_subject_deleted(
+            db,
+            subject_type="lp",
+            native_id=lp.id,
+            payload=before,
+        )
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="lp.deleted",
+            before=before,
+            origin_model="lp",
+            origin_id=lp.id,
+        )
     db.delete(lp)
     db.commit()
 
@@ -2747,6 +2839,7 @@ def replace_notice_periods(
     if not fund:
         raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
+    before = [{"id": row.id, "notice_type": row.notice_type, "label": row.label, "business_days": row.business_days, "day_basis": row.day_basis, "memo": row.memo} for row in fund.notice_periods]
     fund.notice_periods.clear()
     for item in data:
         fund.notice_periods.append(
@@ -2759,6 +2852,18 @@ def replace_notice_periods(
             )
         )
 
+    if backbone_enabled():
+        db.flush()
+        subject = sync_fund_graph(db, fund)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="fund.notice_periods.updated",
+            before={"notice_periods": before},
+            after={"notice_periods": [{"notice_type": row.notice_type, "label": row.label, "business_days": row.business_days, "day_basis": row.day_basis, "memo": row.memo} for row in fund.notice_periods]},
+            origin_model="fund_notice_period",
+            origin_id=fund.id,
+        )
     db.commit()
     db.refresh(fund)
     return sorted(fund.notice_periods, key=lambda row: row.id)
@@ -2774,6 +2879,7 @@ def replace_key_terms(
     if not fund:
         raise HTTPException(status_code=404, detail="조합을 찾을 수 없습니다")
 
+    before = [{"id": row.id, "category": row.category, "label": row.label, "value": row.value, "article_ref": row.article_ref} for row in fund.key_terms]
     fund.key_terms.clear()
     for item in data:
         fund.key_terms.append(
@@ -2785,6 +2891,18 @@ def replace_key_terms(
             )
         )
 
+    if backbone_enabled():
+        db.flush()
+        subject = sync_fund_graph(db, fund)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="fund.key_terms.updated",
+            before={"key_terms": before},
+            after={"key_terms": [{"category": row.category, "label": row.label, "value": row.value, "article_ref": row.article_ref} for row in fund.key_terms]},
+            origin_model="fund_key_term",
+            origin_id=fund.id,
+        )
     db.commit()
     db.refresh(fund)
     return sorted(fund.key_terms, key=lambda row: row.id)

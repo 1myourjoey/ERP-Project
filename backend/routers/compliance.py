@@ -38,6 +38,7 @@ from services.legal_rag import LegalRAGService, MonthlyTokenLimitExceededError
 from services.law_amendment_monitor import LawAmendmentMonitor
 from services.periodic_compliance_scanner import PeriodicComplianceScanner
 from services.document_service import build_variables_for_fund, generate_document_for_template
+from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_compliance_document_registry, sync_compliance_obligation_graph, sync_task_graph
 from services.scheduler import get_scheduler_service
 from services.vector_db import VectorDBService
 
@@ -364,6 +365,9 @@ def create_compliance_document(body: ComplianceDocumentCreateBody, db: Session =
         is_active=bool(body.is_active),
     )
     db.add(row)
+    db.flush()
+    if backbone_enabled():
+        sync_compliance_document_registry(db, row)
     db.commit()
     db.refresh(row)
     return _serialize_document(row)
@@ -465,6 +469,7 @@ def complete_compliance_obligation(
     if not row:
         raise HTTPException(status_code=404, detail="compliance obligation not found")
 
+    before = record_snapshot(row)
     row.status = "completed"
     row.completed_date = date.today()
     row.completed_by = body.completed_by.strip()
@@ -478,6 +483,22 @@ def complete_compliance_obligation(
             task.actual_time = task.actual_time or "0m"
 
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_compliance_obligation_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="compliance_obligation.completed",
+                before=before,
+                after=record_snapshot(row),
+                origin_model="compliance_obligation",
+                origin_id=row.id,
+            )
+            if row.task_id:
+                task = db.get(Task, row.task_id)
+                if task is not None:
+                    sync_task_graph(db, task)
         db.commit()
     except Exception:
         db.rollback()
@@ -497,6 +518,7 @@ def waive_compliance_obligation(
     if not row:
         raise HTTPException(status_code=404, detail="compliance obligation not found")
 
+    before = record_snapshot(row)
     row.status = "waived"
     reason = (body.reason or "").strip()
     row.evidence_note = f"[waived] {reason}" if reason else "[waived]"
@@ -509,6 +531,22 @@ def waive_compliance_obligation(
             task.actual_time = task.actual_time or "0m"
 
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_compliance_obligation_graph(db, row)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="compliance_obligation.waived",
+                before=before,
+                after=record_snapshot(row),
+                origin_model="compliance_obligation",
+                origin_id=row.id,
+            )
+            if row.task_id:
+                task = db.get(Task, row.task_id)
+                if task is not None:
+                    sync_task_graph(db, task)
         db.commit()
     except Exception:
         db.rollback()

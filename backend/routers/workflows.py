@@ -67,6 +67,16 @@ from services.fund_integrity import (
     validate_lp_paid_in_pair,
     validate_paid_in_deltas,
 )
+from services.erp_backbone import (
+    archive_document_record,
+    backbone_enabled,
+    maybe_emit_mutation,
+    record_snapshot,
+    sync_task_graph,
+    sync_workflow_instance_graph,
+    sync_workflow_step_document_registry,
+    sync_workflow_step_graph,
+)
 from services.notification_service import create_notification
 
 router = APIRouter(tags=["workflows"])
@@ -1105,6 +1115,7 @@ def update_instance(
     if instance.status != "active":
         raise HTTPException(status_code=400, detail="진행 중 인스턴스만 수정할 수 있습니다")
 
+    before_instance = record_snapshot(instance)
     old_name = instance.name
     old_prefix = f"[{old_name}] "
 
@@ -1129,6 +1140,26 @@ def update_instance(
                     task.deadline = datetime.combine(recalculated, time.min)
 
     try:
+        db.flush()
+        if backbone_enabled():
+            instance_subject = sync_workflow_instance_graph(db, instance)
+            maybe_emit_mutation(
+                db,
+                subject=instance_subject,
+                event_type="workflow_instance.updated",
+                before=before_instance,
+                after=record_snapshot(instance),
+                origin_model="workflow_instance",
+                origin_id=instance.id,
+            )
+            for step_instance in instance.step_instances:
+                sync_workflow_step_graph(db, step_instance)
+                if step_instance.task_id:
+                    task = db.get(Task, step_instance.task_id)
+                    if task is not None:
+                        sync_task_graph(db, task)
+                for document in step_instance.step_documents:
+                    sync_workflow_step_document_registry(db, document)
         db.commit()
     except Exception:
         db.rollback()
@@ -1150,6 +1181,7 @@ def swap_instance_template(
     if instance.status != "active":
         raise HTTPException(status_code=400, detail="진행 중 인스턴스만 템플릿을 교체할 수 있습니다")
 
+    before_instance = record_snapshot(instance)
     template = db.get(Workflow, data.template_id)
     if not template:
         raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
@@ -1185,6 +1217,13 @@ def swap_instance_template(
 
     handled_task_ids: set[int] = set()
     for step_instance in list(instance.step_instances):
+        for document in step_instance.step_documents:
+            if backbone_enabled():
+                archive_document_record(
+                    db,
+                    origin_model="workflow_step_instance_document",
+                    origin_id=document.id,
+                )
         if step_instance.task_id:
             task = db.get(Task, step_instance.task_id)
             step_instance.task_id = None
@@ -1212,6 +1251,7 @@ def swap_instance_template(
     instance.completed_at = None
     instance.memo = _upsert_template_id_in_memo(instance.memo, template.id)
 
+    created_step_instances: list[WorkflowStepInstance] = []
     for idx, step in enumerate(ordered_template_steps):
         calc_date = calculate_step_date(instance.trigger_date, step.timing_offset_days)
         step_status = "in_progress" if idx == 0 else "pending"
@@ -1243,8 +1283,30 @@ def swap_instance_template(
         )
         _clone_step_documents_to_instance_step(step_instance, step)
         db.add(step_instance)
+        created_step_instances.append(step_instance)
 
     try:
+        db.flush()
+        if backbone_enabled():
+            instance_subject = sync_workflow_instance_graph(db, instance)
+            maybe_emit_mutation(
+                db,
+                subject=instance_subject,
+                event_type="workflow_instance.updated",
+                before=before_instance,
+                after=record_snapshot(instance),
+                payload={"template_id": template.id},
+                origin_model="workflow_instance",
+                origin_id=instance.id,
+            )
+            for step_instance in created_step_instances:
+                sync_workflow_step_graph(db, step_instance)
+                if step_instance.task_id:
+                    task = db.get(Task, step_instance.task_id)
+                    if task is not None:
+                        sync_task_graph(db, task)
+                for document in step_instance.step_documents:
+                    sync_workflow_step_document_registry(db, document)
         db.commit()
     except Exception:
         db.rollback()
@@ -1314,6 +1376,19 @@ def add_step_instance_document(
     )
     db.add(document)
     try:
+        db.flush()
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            subject = sync_workflow_step_graph(db, step_instance)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="workflow_step_document.created",
+                after=record_snapshot(document),
+                payload={"document_id": document.id},
+                origin_model="workflow_step_instance_document",
+                origin_id=document.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -1343,6 +1418,7 @@ def update_step_instance_document(
         document_id=document_id,
     )
 
+    before = record_snapshot(document)
     payload = data.model_dump(exclude_unset=True)
     if "name" in payload or "document_template_id" in payload:
         document_payload = WorkflowStepDocumentInput(
@@ -1369,6 +1445,19 @@ def update_step_instance_document(
         document.attachment_ids = payload["attachment_ids"]
 
     try:
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            subject = sync_workflow_step_graph(db, step_instance)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="workflow_step_document.updated",
+                before=before,
+                after=record_snapshot(document),
+                payload={"document_id": document.id},
+                origin_model="workflow_step_instance_document",
+                origin_id=document.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -1393,6 +1482,19 @@ def delete_step_instance_document(
         step_instance_id=step_instance.id,
         document_id=document_id,
     )
+    before = record_snapshot(document)
+    if backbone_enabled():
+        archive_document_record(db, origin_model="workflow_step_instance_document", origin_id=document.id)
+        subject = sync_workflow_step_graph(db, step_instance)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="workflow_step_document.deleted",
+            before=before,
+            payload={"document_id": document.id},
+            origin_model="workflow_step_instance_document",
+            origin_id=document.id,
+        )
     db.delete(document)
     try:
         db.commit()
@@ -1422,8 +1524,22 @@ def check_step_instance_document(
         step_instance_id=step_instance.id,
         document_id=document_id,
     )
+    before = record_snapshot(document)
     document.checked = bool(data.checked)
     try:
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            subject = sync_workflow_step_graph(db, step_instance)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="workflow_step_document.updated",
+                before=before,
+                after=record_snapshot(document),
+                payload={"document_id": document.id},
+                origin_model="workflow_step_instance_document",
+                origin_id=document.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -1444,8 +1560,24 @@ def check_step_instance_document_by_id(
         db,
         document_id=document_id,
     )
+    before = record_snapshot(document)
     document.checked = True
     try:
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            step_instance = db.get(WorkflowStepInstance, document.step_instance_id)
+            if step_instance is not None:
+                subject = sync_workflow_step_graph(db, step_instance)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="workflow_step_document.updated",
+                    before=before,
+                    after=record_snapshot(document),
+                    payload={"document_id": document.id},
+                    origin_model="workflow_step_instance_document",
+                    origin_id=document.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -1466,8 +1598,24 @@ def uncheck_step_instance_document_by_id(
         db,
         document_id=document_id,
     )
+    before = record_snapshot(document)
     document.checked = False
     try:
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            step_instance = db.get(WorkflowStepInstance, document.step_instance_id)
+            if step_instance is not None:
+                subject = sync_workflow_step_graph(db, step_instance)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="workflow_step_document.updated",
+                    before=before,
+                    after=record_snapshot(document),
+                    payload={"document_id": document.id},
+                    origin_model="workflow_step_instance_document",
+                    origin_id=document.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -1491,6 +1639,7 @@ async def attach_step_instance_document_by_id(
         db,
         document_id=document_id,
     )
+    before = record_snapshot(document)
 
     uploaded_path: Path | None = None
     resolved_attachment_id: int | None = None
@@ -1534,6 +1683,21 @@ async def attach_step_instance_document_by_id(
     document.attachment_ids = attachment_ids
 
     try:
+        if backbone_enabled():
+            sync_workflow_step_document_registry(db, document)
+            step_instance = db.get(WorkflowStepInstance, document.step_instance_id)
+            if step_instance is not None:
+                subject = sync_workflow_step_graph(db, step_instance)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="workflow_step_document.updated",
+                    before=before,
+                    after=record_snapshot(document),
+                    payload={"document_id": document.id},
+                    origin_model="workflow_step_instance_document",
+                    origin_id=document.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -1571,6 +1735,8 @@ async def complete_step(
     if si.status in ("completed", "skipped"):
         raise HTTPException(status_code=400, detail="이미 완료된 단계입니다")
 
+    before_step = record_snapshot(si)
+    before_instance = record_snapshot(instance)
     si.status = "completed"
     si.completed_at = datetime.now()
     si.actual_time = data.actual_time
@@ -1673,6 +1839,34 @@ async def complete_step(
                     fund.formation_date = datetime.now().date()
 
     try:
+        db.flush()
+        if backbone_enabled():
+            step_subject = sync_workflow_step_graph(db, si)
+            maybe_emit_mutation(
+                db,
+                subject=step_subject,
+                event_type="workflow_step_instance.completed",
+                before=before_step,
+                after=record_snapshot(si),
+                actor_user_id=current_user.id,
+                origin_model="workflow_step_instance",
+                origin_id=si.id,
+            )
+            instance_subject = sync_workflow_instance_graph(db, instance)
+            maybe_emit_mutation(
+                db,
+                subject=instance_subject,
+                event_type="workflow_instance.updated",
+                before=before_instance,
+                after=record_snapshot(instance),
+                actor_user_id=current_user.id,
+                origin_model="workflow_instance",
+                origin_id=instance.id,
+            )
+            if linked_task is not None:
+                sync_task_graph(db, linked_task)
+            for document in si.step_documents:
+                sync_workflow_step_document_registry(db, document)
         db.commit()
     except Exception:
         db.rollback()
@@ -1713,6 +1907,8 @@ def undo_step_completion(
     if step_instance.status != "completed":
         raise HTTPException(status_code=400, detail="완료된 단계만 되돌릴 수 있습니다")
 
+    before_step = record_snapshot(step_instance)
+    before_instance = record_snapshot(instance)
     previous_notes = step_instance.notes
     step_instance.status = "pending"
     step_instance.completed_at = None
@@ -1753,6 +1949,34 @@ def undo_step_completion(
     _sync_next_active_step(instance, db)
 
     try:
+        db.flush()
+        if backbone_enabled():
+            step_subject = sync_workflow_step_graph(db, step_instance)
+            maybe_emit_mutation(
+                db,
+                subject=step_subject,
+                event_type="workflow_step_instance.reopened",
+                before=before_step,
+                after=record_snapshot(step_instance),
+                origin_model="workflow_step_instance",
+                origin_id=step_instance.id,
+            )
+            instance_subject = sync_workflow_instance_graph(db, instance)
+            maybe_emit_mutation(
+                db,
+                subject=instance_subject,
+                event_type="workflow_instance.updated",
+                before=before_instance,
+                after=record_snapshot(instance),
+                origin_model="workflow_instance",
+                origin_id=instance.id,
+            )
+            if step_instance.task_id:
+                task = db.get(Task, step_instance.task_id)
+                if task is not None:
+                    sync_task_graph(db, task)
+            for document in step_instance.step_documents:
+                sync_workflow_step_document_registry(db, document)
         db.commit()
     except Exception:
         db.rollback()
@@ -1781,6 +2005,13 @@ def delete_instance(instance_id: int, db: Session = Depends(get_db)):
 
     handled_task_ids: set[int] = set()
     for step_instance in instance.step_instances:
+        for document in step_instance.step_documents:
+            if backbone_enabled():
+                archive_document_record(
+                    db,
+                    origin_model="workflow_step_instance_document",
+                    origin_id=document.id,
+                )
         if not step_instance.task_id:
             continue
         task = db.get(Task, step_instance.task_id)

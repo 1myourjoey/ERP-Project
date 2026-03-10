@@ -37,6 +37,7 @@ from routers import (
     document_generation,
     document_status,
     documents,
+    entity_graph,
     cashflow,
     excel_export,
     excel_import,
@@ -205,6 +206,7 @@ include_protected_router(lp_contributions.router)
 include_protected_router(template_registration.router)
 include_protected_router(legal_documents.router)
 include_protected_router(analytics.router)
+include_protected_router(entity_graph.router)
 
 
 @app.exception_handler(RequestValidationError)

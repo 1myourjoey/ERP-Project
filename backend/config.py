@@ -57,5 +57,17 @@ class Settings:
             if token.strip()
         ]
 
+    @property
+    def ERP_BACKBONE_WRITE_THROUGH(self) -> bool:
+        return os.getenv("ERP_BACKBONE_WRITE_THROUGH", "true").strip().lower() == "true"
+
+    @property
+    def ERP_BACKBONE_READS(self) -> bool:
+        return os.getenv("ERP_BACKBONE_READS", "false").strip().lower() == "true"
+
+    @property
+    def ERP_BACKBONE_OUTBOX_ENABLED(self) -> bool:
+        return os.getenv("ERP_BACKBONE_OUTBOX_ENABLED", "true").strip().lower() == "true"
+
 
 settings = Settings()

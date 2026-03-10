@@ -11,6 +11,7 @@ from database import get_db
 from models.compliance import ComplianceDocument
 from models.fund import Fund
 from services.document_ingestion import DocumentIngestionService
+from services.erp_backbone import backbone_enabled, sync_compliance_document_registry
 from services.vector_db import VectorDBService
 
 router = APIRouter(tags=["legal_documents"])
@@ -147,6 +148,9 @@ async def upload_legal_document(
 
     db.add(row)
     try:
+        db.flush()
+        if backbone_enabled():
+            sync_compliance_document_registry(db, row)
         db.commit()
         db.refresh(row)
     except Exception:

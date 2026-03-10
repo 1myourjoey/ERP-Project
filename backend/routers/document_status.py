@@ -5,6 +5,7 @@ from datetime import date
 from database import get_db
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany, InvestmentDocument
+from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_investment_document_registry, sync_investment_graph
 from schemas.document_status import (
     DocumentStatusBulkUpdateRequest,
     DocumentStatusBulkUpdateResponse,
@@ -72,8 +73,32 @@ def bulk_update_document_status(
     if not docs:
         raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
 
+    before_payload = {doc.id: record_snapshot(doc) for doc in docs}
     for doc in docs:
         doc.status = data.status
+
+    if backbone_enabled():
+        investment_cache: dict[int, Investment] = {}
+        for doc in docs:
+            sync_investment_document_registry(db, doc)
+            investment = investment_cache.get(doc.investment_id)
+            if investment is None:
+                investment = db.get(Investment, doc.investment_id)
+                if investment is not None:
+                    investment_cache[doc.investment_id] = investment
+            if investment is None:
+                continue
+            subject = sync_investment_graph(db, investment)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="investment_document.bulk_status_updated",
+                before=before_payload[doc.id],
+                after=record_snapshot(doc),
+                payload={"document_id": doc.id},
+                origin_model="investment_document",
+                origin_id=doc.id,
+            )
 
     db.commit()
     updated_ids = [doc.id for doc in docs]

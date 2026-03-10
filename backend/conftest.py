@@ -10,6 +10,7 @@ from database import Base, get_db
 from seeds.document_templates import seed_document_templates
 
 os.environ["AUTO_CREATE_TABLES"] = "false"
+os.environ["AUTO_RUN_MIGRATIONS"] = "false"
 
 from main import app  # noqa: E402
 

@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from models.compliance import ComplianceObligation, ComplianceRule, InvestmentLimitCheck
 from models.fund import Fund
 from models.investment import Investment, PortfolioCompany
+from models.task import Task
 from services.task_auto_generator import create_task_for_obligation
+from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_compliance_obligation_graph, sync_task_graph
 from utils.business_days import add_business_days, is_business_day
 
 
@@ -193,6 +195,28 @@ class ComplianceEngine:
             rule_code=rule.rule_code,
             event_description=event_description,
         )
+        if backbone_enabled():
+            subject = sync_compliance_obligation_graph(self.db, obligation)
+            maybe_emit_mutation(
+                self.db,
+                subject=subject,
+                event_type="compliance_obligation.created",
+                after=record_snapshot(obligation),
+                origin_model="compliance_obligation",
+                origin_id=obligation.id,
+            )
+            if obligation.task_id:
+                task = self.db.get(Task, obligation.task_id)
+                if task is not None:
+                    task_subject = sync_task_graph(self.db, task)
+                    maybe_emit_mutation(
+                        self.db,
+                        subject=task_subject,
+                        event_type="task.created",
+                        after=record_snapshot(task),
+                        origin_model="task",
+                        origin_id=task.id,
+                    )
         return obligation, True
 
     def generate_periodic_obligations(self, year: int, month: int) -> dict[str, int]:

@@ -38,6 +38,7 @@ from schemas.biz_report import (
 )
 from services.generated_document_service import generate_and_store_document
 from services.biz_report_anomaly import detect_biz_report_anomalies
+from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_biz_report_request_document_registry, sync_investment_graph
 from services.biz_report_valuation_sync import suggest_valuation_updates
 
 router = APIRouter(tags=["biz-reports"])
@@ -456,6 +457,7 @@ def patch_biz_report_request_doc_status(
     if not column_name:
         raise HTTPException(status_code=400, detail="지원하지 않는 서류 유형입니다")
 
+    before = record_snapshot(row)
     setattr(row, column_name, data.status)
     if data.status != "not_requested" and row.request_sent_date is None:
         row.request_sent_date = date.today()
@@ -475,6 +477,21 @@ def patch_biz_report_request_doc_status(
             row.status = "요청"
 
     try:
+        if backbone_enabled():
+            sync_biz_report_request_document_registry(db, row)
+            investment = db.get(Investment, row.investment_id)
+            if investment is not None:
+                subject = sync_investment_graph(db, investment)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="biz_report_request.documents_updated",
+                    before=before,
+                    after=record_snapshot(row),
+                    payload={"request_id": row.id},
+                    origin_model="biz_report_request",
+                    origin_id=row.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -522,6 +539,22 @@ def send_doc_requests(
         pending_rows.append(row)
 
     try:
+        if backbone_enabled():
+            for row in pending_rows:
+                sync_biz_report_request_document_registry(db, row)
+                investment = db.get(Investment, row.investment_id)
+                if investment is None:
+                    continue
+                subject = sync_investment_graph(db, investment)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="biz_report_request.sent",
+                    after=record_snapshot(row),
+                    payload={"request_id": row.id},
+                    origin_model="biz_report_request",
+                    origin_id=row.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -600,6 +633,23 @@ def generate_biz_report_requests(report_id: int, db: Session = Depends(get_db)):
             db.add(row)
             generated.append(row)
     try:
+        db.flush()
+        if backbone_enabled():
+            for row in generated:
+                sync_biz_report_request_document_registry(db, row)
+                investment = db.get(Investment, row.investment_id)
+                if investment is None:
+                    continue
+                subject = sync_investment_graph(db, investment)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="biz_report_request.created",
+                    after=record_snapshot(row),
+                    payload={"request_id": row.id},
+                    origin_model="biz_report_request",
+                    origin_id=row.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -624,11 +674,27 @@ def update_biz_report_request(
     if not row:
         raise HTTPException(status_code=404, detail="요청 건을 찾을 수 없습니다")
 
+    before = record_snapshot(row)
     payload = data.model_dump(exclude_unset=True)
     for key, value in payload.items():
         setattr(row, key, value)
 
     try:
+        if backbone_enabled():
+            sync_biz_report_request_document_registry(db, row)
+            investment = db.get(Investment, row.investment_id)
+            if investment is not None:
+                subject = sync_investment_graph(db, investment)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="biz_report_request.updated",
+                    before=before,
+                    after=record_snapshot(row),
+                    payload={"request_id": row.id},
+                    origin_model="biz_report_request",
+                    origin_id=row.id,
+                )
         db.commit()
     except Exception:
         db.rollback()

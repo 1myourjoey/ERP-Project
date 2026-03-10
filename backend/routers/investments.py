@@ -20,6 +20,16 @@ from schemas.investment import (
 )
 from services.compliance_engine import ComplianceEngine
 from services.compliance_rule_engine import ComplianceRuleEngine
+from services.erp_backbone import (
+    archive_document_record,
+    backbone_enabled,
+    mark_subject_deleted,
+    maybe_emit_mutation,
+    record_snapshot,
+    sync_company_graph,
+    sync_investment_document_registry,
+    sync_investment_graph,
+)
 from services.proposal_data import sync_company_history
 
 router = APIRouter(tags=["investments"])
@@ -38,6 +48,16 @@ def create_company(data: PortfolioCompanyCreate, db: Session = Depends(get_db)):
     db.add(company)
     db.flush()
     sync_company_history(db, company)
+    if backbone_enabled():
+        subject = sync_company_graph(db, company)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="company.created",
+            after=record_snapshot(company),
+            origin_model="portfolio_company",
+            origin_id=company.id,
+        )
     db.commit()
     db.refresh(company)
     return company
@@ -49,10 +69,22 @@ def update_company(company_id: int, data: PortfolioCompanyUpdate, db: Session = 
     if not company:
         raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
+    before = record_snapshot(company)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(company, key, val)
 
     sync_company_history(db, company)
+    if backbone_enabled():
+        subject = sync_company_graph(db, company)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="company.updated",
+            before=before,
+            after=record_snapshot(company),
+            origin_model="portfolio_company",
+            origin_id=company.id,
+        )
     db.commit()
     db.refresh(company)
     return company
@@ -68,6 +100,22 @@ def delete_company(company_id: int, db: Session = Depends(get_db)):
     if has_investments:
         raise HTTPException(status_code=409, detail="투자 내역이 있어 회사를 삭제할 수 없습니다")
 
+    before = record_snapshot(company)
+    if backbone_enabled():
+        subject = mark_subject_deleted(
+            db,
+            subject_type="company",
+            native_id=company.id,
+            payload=before,
+        )
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="company.deleted",
+            before=before,
+            origin_model="portfolio_company",
+            origin_id=company.id,
+        )
     db.delete(company)
     db.commit()
 
@@ -130,6 +178,17 @@ def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
 
     investment = Investment(**data.model_dump())
     db.add(investment)
+    db.flush()
+    if backbone_enabled():
+        subject = sync_investment_graph(db, investment)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment.created",
+            after=record_snapshot(investment),
+            origin_model="investment",
+            origin_id=investment.id,
+        )
     db.commit()
     db.refresh(investment)
 
@@ -184,9 +243,22 @@ def update_investment(investment_id: int, data: InvestmentUpdate, db: Session = 
     if "company_id" in payload and payload["company_id"] is not None and not db.get(PortfolioCompany, payload["company_id"]):
         raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
 
+    before = record_snapshot(investment)
     for key, val in payload.items():
         setattr(investment, key, val)
 
+    if backbone_enabled():
+        db.flush()
+        subject = sync_investment_graph(db, investment)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment.updated",
+            before=before,
+            after=record_snapshot(investment),
+            origin_model="investment",
+            origin_id=investment.id,
+        )
     db.commit()
     db.refresh(investment)
 
@@ -224,6 +296,24 @@ def delete_investment(investment_id: int, db: Session = Depends(get_db)):
     if not investment:
         raise HTTPException(status_code=404, detail="투자를 찾을 수 없습니다")
 
+    before = record_snapshot(investment)
+    if backbone_enabled():
+        for document in list(investment.documents or []):
+            archive_document_record(db, origin_model="investment_document", origin_id=document.id)
+        subject = mark_subject_deleted(
+            db,
+            subject_type="investment",
+            native_id=investment.id,
+            payload=before,
+        )
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment.deleted",
+            before=before,
+            origin_model="investment",
+            origin_id=investment.id,
+        )
     db.delete(investment)
     db.commit()
 
@@ -245,6 +335,19 @@ def create_investment_document(investment_id: int, data: InvestmentDocumentCreat
 
     doc = InvestmentDocument(investment_id=investment_id, **data.model_dump())
     db.add(doc)
+    db.flush()
+    if backbone_enabled():
+        sync_investment_document_registry(db, doc)
+        subject = sync_investment_graph(db, inv)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment_document.created",
+            after=record_snapshot(doc),
+            payload={"document_id": doc.id},
+            origin_model="investment_document",
+            origin_id=doc.id,
+        )
     db.commit()
     db.refresh(doc)
     return doc
@@ -256,9 +359,23 @@ def update_investment_document(investment_id: int, document_id: int, data: Inves
     if not doc or doc.investment_id != investment_id:
         raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
 
+    before = record_snapshot(doc)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(doc, key, val)
 
+    if backbone_enabled():
+        sync_investment_document_registry(db, doc)
+        subject = sync_investment_graph(db, db.get(Investment, investment_id))
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment_document.updated",
+            before=before,
+            after=record_snapshot(doc),
+            payload={"document_id": doc.id},
+            origin_model="investment_document",
+            origin_id=doc.id,
+        )
     db.commit()
     db.refresh(doc)
     return doc
@@ -270,6 +387,19 @@ def delete_investment_document(investment_id: int, document_id: int, db: Session
     if not doc or doc.investment_id != investment_id:
         raise HTTPException(status_code=404, detail="서류를 찾을 수 없습니다")
 
+    before = record_snapshot(doc)
+    if backbone_enabled():
+        archive_document_record(db, origin_model="investment_document", origin_id=doc.id)
+        subject = sync_investment_graph(db, db.get(Investment, investment_id))
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="investment_document.deleted",
+            before=before,
+            payload={"document_id": doc.id},
+            origin_model="investment_document",
+            origin_id=doc.id,
+        )
     db.delete(doc)
     db.commit()
 

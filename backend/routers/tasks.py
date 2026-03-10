@@ -24,6 +24,7 @@ from models.workflow_instance import (
     WorkflowStepInstanceDocument,
 )
 from services.lp_transfer_service import apply_transfer_by_workflow_instance_id
+from services.erp_backbone import backbone_enabled, mark_subject_deleted, maybe_emit_mutation, record_snapshot, sync_task_graph
 from schemas.attachment import AttachmentResponse
 from schemas.task import (
     TaskBoardResponse,
@@ -712,6 +713,18 @@ def link_attachment_to_task(
                 linked_document_row = target_document
 
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.updated",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -766,6 +779,18 @@ def unlink_attachment_from_task(task_id: int, attachment_id: int, db: Session = 
     file_path = Path(attachment.file_path)
     db.delete(attachment)
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.updated",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -790,6 +815,7 @@ def generate_monthly_reminders(
 
     deadline = datetime(year, month, 5)
     created: list[str] = []
+    created_tasks: list[Task] = []
     skipped: list[str] = []
 
     for title_template in MONTHLY_REMINDER_TITLES:
@@ -811,6 +837,7 @@ def generate_monthly_reminders(
         _ensure_task_category_exists(db, task.category)
         db.add(task)
         db.flush()
+        created_tasks.append(task)
 
         db.add(
             CalendarEvent(
@@ -823,6 +850,18 @@ def generate_monthly_reminders(
         created.append(title)
 
     try:
+        if backbone_enabled():
+            for task in created_tasks:
+                subject = sync_task_graph(db, task)
+                maybe_emit_mutation(
+                    db,
+                    subject=subject,
+                    event_type="task.created",
+                    after=record_snapshot(task),
+                    actor_user_id=current_user.id,
+                    origin_model="task",
+                    origin_id=task.id,
+                )
         db.commit()
     except Exception:
         db.rollback()
@@ -864,6 +903,17 @@ def create_task(
         )
 
     try:
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.created",
+                after=record_snapshot(task),
+                actor_user_id=current_user.id,
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -878,6 +928,7 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
 
+    before = record_snapshot(task)
     payload = data.model_dump(exclude_unset=True)
     next_fund_id = payload.get('fund_id', task.fund_id)
     next_investment_id = payload.get('investment_id', task.investment_id)
@@ -921,6 +972,18 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
         db.delete(linked_event)
 
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.updated",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -937,8 +1000,20 @@ def move_task(task_id: int, data: TaskMove, db: Session = Depends(get_db)):
     if data.quadrant not in ('Q1', 'Q2', 'Q3', 'Q4'):
         raise HTTPException(status_code=400, detail='유효하지 않은 사분면입니다')
 
+    before = record_snapshot(task)
     task.quadrant = data.quadrant
     try:
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.moved",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -953,6 +1028,7 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
     if not task:
         raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
 
+    before = record_snapshot(task)
     task.status = 'completed'
     task.completed_at = datetime.now()
     task.actual_time = data.actual_time
@@ -986,6 +1062,18 @@ def complete_task(task_id: int, data: TaskComplete, db: Session = Depends(get_db
             db.add(WorkLogDetail(worklog_id=worklog.id, content=task.memo, order=0))
 
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.completed",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -1002,11 +1090,24 @@ def undo_complete_task(task_id: int, db: Session = Depends(get_db)):
     if task.status != 'completed':
         raise HTTPException(status_code=400, detail='완료된 작업이 아닙니다')
 
+    before = record_snapshot(task)
     task.status = 'pending'
     task.completed_at = None
     task.actual_time = None
     _sync_workflow_on_task_undo(db=db, task=task)
     try:
+        db.flush()
+        if backbone_enabled():
+            subject = sync_task_graph(db, task)
+            maybe_emit_mutation(
+                db,
+                subject=subject,
+                event_type="task.reopened",
+                before=before,
+                after=record_snapshot(task),
+                origin_model="task",
+                origin_id=task.id,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -1021,7 +1122,18 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail='작업을 찾을 수 없습니다')
 
+    before = record_snapshot(task)
     db.query(CalendarEvent).filter(CalendarEvent.task_id == task.id).delete()
+    if backbone_enabled():
+        subject = mark_subject_deleted(db, subject_type="task", native_id=task.id, payload=before)
+        maybe_emit_mutation(
+            db,
+            subject=subject,
+            event_type="task.deleted",
+            before=before,
+            origin_model="task",
+            origin_id=task.id,
+        )
     db.delete(task)
     try:
         db.commit()

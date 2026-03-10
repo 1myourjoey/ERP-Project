@@ -63,6 +63,14 @@ from .template_variable import TemplateVariable
 from .llm_usage import LLMUsage
 from .notification import Notification
 from .analytics_view import AnalyticsView
+from .erp_backbone import (
+    ErpAutomationOutbox,
+    ErpDocumentLink,
+    ErpDocumentRecord,
+    ErpEvent,
+    ErpRelation,
+    ErpSubject,
+)
 from .proposal_data import (
     FundHistory,
     ProposalApplication,
@@ -129,6 +137,12 @@ __all__ = [
     "LLMUsage",
     "Notification",
     "AnalyticsView",
+    "ErpSubject",
+    "ErpRelation",
+    "ErpEvent",
+    "ErpDocumentRecord",
+    "ErpDocumentLink",
+    "ErpAutomationOutbox",
     "GPEntityHistory",
     "FundHistory",
     "ProposalApplication",
