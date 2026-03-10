@@ -16,19 +16,17 @@ import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import SectionScaffold from '../components/common/page/SectionScaffold'
 import WorkbenchSplit from '../components/common/page/WorkbenchSplit'
 import { useToast } from '../contexts/ToastContext'
-
-const LP_TYPE_OPTIONS = ['institutional', 'individual', 'GP'] as const
-const LP_TYPE_LABEL: Record<string, string> = {
-  institutional: '기관투자자',
-  individual: '개인투자자',
-  GP: 'GP',
-  corporate: '법인',
-  government: '정부기관',
-}
+import {
+  DEFAULT_LP_TYPE,
+  isKnownLpType,
+  labelLpType,
+  LP_TYPE_SELECT_GROUPS,
+  normalizeLpTypeOrFallback,
+} from '../lib/lpTypes'
 
 const EMPTY_FORM: LPAddressBookInput = {
   name: '',
-  type: LP_TYPE_OPTIONS[0],
+  type: DEFAULT_LP_TYPE,
   business_number: '',
   contact: '',
   address: '',
@@ -103,7 +101,7 @@ export default function LPAddressBookPage() {
     const payload: LPAddressBookInput = {
       ...form,
       name: (form.name || '').trim(),
-      type: (form.type || '').trim(),
+      type: normalizeLpTypeOrFallback(form.type, DEFAULT_LP_TYPE),
       business_number: form.business_number?.trim() || null,
       contact: form.contact?.trim() || null,
       address: form.address?.trim() || null,
@@ -189,7 +187,7 @@ export default function LPAddressBookPage() {
                     {filteredBooks.map((book) => (
                       <tr key={book.id} className="hover:bg-[#f5f9ff]">
                         <td className="table-body-cell">{book.name}</td>
-                        <td className="table-body-cell">{LP_TYPE_LABEL[book.type] || book.type}</td>
+                        <td className="table-body-cell">{labelLpType(book.type)}</td>
                         <td className="table-body-cell">{book.business_number || '-'}</td>
                         <td className="table-body-cell">{book.contact || '-'}</td>
                         <td className="table-body-cell">{book.address || '-'}</td>
@@ -201,7 +199,7 @@ export default function LPAddressBookPage() {
                                 setEditing(book)
                                 setForm({
                                   name: book.name,
-                                  type: book.type,
+                                  type: normalizeLpTypeOrFallback(book.type, DEFAULT_LP_TYPE),
                                   business_number: book.business_number || '',
                                   contact: book.contact || '',
                                   address: book.address || '',
@@ -275,13 +273,17 @@ export default function LPAddressBookPage() {
                     onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
                     className="form-input"
                   >
-                    {!LP_TYPE_OPTIONS.includes(form.type as (typeof LP_TYPE_OPTIONS)[number]) && (
-                      <option value={form.type}>{LP_TYPE_LABEL[form.type] || form.type}</option>
+                    {!isKnownLpType(form.type) && (
+                      <option value={form.type}>{labelLpType(form.type)}</option>
                     )}
-                    {LP_TYPE_OPTIONS.map((type) => (
-                      <option key={type} value={type}>
-                        {LP_TYPE_LABEL[type] || type}
-                      </option>
+                    {LP_TYPE_SELECT_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>

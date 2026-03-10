@@ -41,7 +41,7 @@ def _env_flag(name: str, default: str = "false") -> bool:
 
 
 def _auth_disabled() -> bool:
-    return _env_flag("VON_AUTH_DISABLED") or _env_flag("AUTH_DISABLED")
+    return _env_flag("VON_AUTH_DISABLED", "true") or _env_flag("AUTH_DISABLED", "true")
 
 
 def _secret_key() -> str:

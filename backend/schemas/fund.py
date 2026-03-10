@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date
 from typing import Literal, Optional
 
+from services.lp_types import coerce_lp_type, normalize_lp_type
+
 
 class LPCreate(BaseModel):
     address_book_id: Optional[int] = None
@@ -16,10 +18,7 @@ class LPCreate(BaseModel):
     @field_validator("type")
     @classmethod
     def validate_lp_create_type(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("type must not be empty")
-        return value
+        return coerce_lp_type(value)
 
     @model_validator(mode="after")
     def validate_lp_create_paid_in(self):
@@ -47,10 +46,7 @@ class LPUpdate(BaseModel):
     def validate_lp_update_type(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
-        value = value.strip()
-        if not value:
-            raise ValueError("type must not be empty")
-        return value
+        return coerce_lp_type(value)
 
     @model_validator(mode="after")
     def validate_lp_update_paid_in(self):
@@ -74,6 +70,11 @@ class LPResponse(BaseModel):
     contact: Optional[str] = None
     business_number: Optional[str] = None
     address: Optional[str] = None
+
+    @field_validator("type")
+    @classmethod
+    def normalize_lp_response_type(cls, value: str) -> str:
+        return normalize_lp_type(value) or value
 
     model_config = {"from_attributes": True}
 

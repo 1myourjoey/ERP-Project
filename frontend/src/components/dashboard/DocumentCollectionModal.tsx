@@ -91,19 +91,24 @@ export default function DocumentCollectionModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-x-0 bottom-0 z-50 overflow-y-auto bg-black/40 px-4 pb-4 pt-4 sm:px-6"
+      style={{ top: 'var(--app-nav-height, 54px)' }}
+      onClick={onClose}
+    >
       <div
-        className="mx-auto flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-[#d8e5fb] bg-white shadow-[0_24px_80px_rgba(15,31,61,0.22)]"
+        className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-[#d8e5fb] bg-white shadow-[0_24px_80px_rgba(15,31,61,0.22)]"
+        style={{ maxHeight: 'calc(100dvh - var(--app-nav-height, 54px) - 2rem)' }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#eef3fb] px-6 py-5">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-1 text-[11px] font-semibold text-[#1a3660]">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-1 text-xs font-semibold text-[#1a3660]">
               <FolderCheck size={14} />
               서류모음
             </div>
-            <h3 className="mt-3 text-xl font-semibold text-[#0f1f3d]">수집이 필요한 서류만 모아서 처리</h3>
-            <p className="mt-1 text-sm text-[#64748b]">조합/회사 묶음으로 바로 수집완료 처리하고 다른 탭과 즉시 동기화합니다.</p>
+            <h3 className="mt-3 text-[22px] font-semibold leading-tight text-[#0f1f3d]">수집이 필요한 서류만 모아서 처리</h3>
+            <p className="mt-1 text-[13px] leading-5 text-[#64748b]">조합/회사 묶음으로 바로 수집완료 처리하고 다른 탭과 즉시 동기화합니다.</p>
           </div>
           <button type="button" onClick={onClose} className="icon-btn text-[#64748b]" aria-label="서류모음 닫기">
             <X size={16} />
@@ -111,7 +116,7 @@ export default function DocumentCollectionModal({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-b border-[#f1f5fb] bg-[#fbfdff] px-6 py-3">
-          <div className="text-sm text-[#64748b]">미수집/요청중/검토중 서류 {totalPending}건</div>
+          <div className="text-[13px] font-medium text-[#64748b]">미수집/요청중/검토중 서류 {totalPending}건</div>
           <button
             type="button"
             className="primary-btn btn-sm"
@@ -139,9 +144,9 @@ export default function DocumentCollectionModal({
                 return (
                   <section key={group.key} className="rounded-2xl border border-[#d8e5fb] bg-white">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef3fb] px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[#0f1f3d]">{group.companyName}</p>
-                        <p className="text-xs text-[#64748b]">{group.fundName} · 전체 {group.rows.length}건 · 미수집 {pendingRows.length}건</p>
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-semibold text-[#0f1f3d]">{group.companyName}</p>
+                        <p className="mt-1 text-[13px] leading-5 text-[#64748b]">{group.fundName} · 전체 {group.rows.length}건 · 미수집 {pendingRows.length}건</p>
                       </div>
                       <button
                         type="button"
@@ -157,11 +162,11 @@ export default function DocumentCollectionModal({
                       {group.rows.map((row) => {
                         const badge = dueBadge(row.days_remaining)
                         return (
-                          <div key={row.id} className="rounded-2xl border border-[#eef3fb] bg-[#fbfdff] p-3">
+                          <div key={row.id} className="rounded-2xl border border-[#eef3fb] bg-[#fbfdff] p-3.5">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <p className="text-sm font-medium text-[#0f1f3d]">{row.document_name}</p>
-                                <p className="mt-1 text-xs text-[#64748b]">
+                                <p className="text-sm font-semibold text-[#0f1f3d]">{row.document_name}</p>
+                                <p className="mt-1 text-[13px] leading-5 text-[#64748b]">
                                   상태 {row.status} · 마감 {row.due_date || '-'}
                                 </p>
                               </div>

@@ -42,6 +42,7 @@ from models.proposal_data import (
 from models.transaction import Transaction
 from models.user import User
 from models.valuation import Valuation
+from services.lp_types import normalize_lp_type
 
 _BASELINE_DATE = date(1900, 1, 1)
 _HEADER_FILL = PatternFill(fill_type="solid", start_color="1F6FB8", end_color="1F6FB8")
@@ -715,7 +716,7 @@ def _legacy_growth_finance_sheets(workspace: dict[str, Any], db: Session) -> lis
             for fund in funds
         ]),
         ("1.2.투자연혁내역", ["FundMemberType", "FundMemberName", "FundingAmt"], [
-            [lp.type, lp.name, lp.commitment] for lp in lps
+            [normalize_lp_type(lp.type) or lp.type, lp.name, lp.commitment] for lp in lps
         ]),
         ("2.1.운용사 개요", ["GPNAME", "CompanyNo", "CompanySSN", "CEO", "FoundationYMD", "Address", "TotalEmployees", "FundMgrCnt", "PaidInCapital"], [[
             gp.get("name"),
@@ -1300,7 +1301,7 @@ def _growth_finance_sheets(workspace: dict[str, Any], db: Session) -> list[tuple
             for fund in funds
         ]),
         ("1.2.출자예상내역", ["출자자유형", "출자자명", "출자약정예상액"], [
-            [lp.type, lp.name, lp.commitment] for lp in lps
+            [normalize_lp_type(lp.type) or lp.type, lp.name, lp.commitment] for lp in lps
         ]),
         ("2.1.제안사 개요", ["제안사명", "법인등록번호", "사업자등록번호", "대표자명", "설립일", "주소", "전체 인원수", "전문인력수", "납입자본금"], [[
             gp.get("name"),

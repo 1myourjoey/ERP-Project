@@ -3,6 +3,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from models.fund import LP, LPTransfer
+from services.lp_types import coerce_lp_type
 
 
 def apply_lp_transfer_completion(db: Session, transfer: LPTransfer) -> LPTransfer:
@@ -33,7 +34,7 @@ def apply_lp_transfer_completion(db: Session, transfer: LPTransfer) -> LPTransfe
             raise ValueError("양수 LP와 조합 정보가 일치하지 않습니다")
     else:
         to_name = (transfer.to_lp_name or "").strip()
-        to_type = (transfer.to_lp_type or "").strip()
+        to_type = coerce_lp_type(transfer.to_lp_type)
         if not to_name:
             raise ValueError("신규 양수 LP명은 필수입니다")
         if not to_type:

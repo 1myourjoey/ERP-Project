@@ -6,6 +6,7 @@ import RouteGuard from './components/RouteGuard'
 import Layout from './components/Layout'
 import { AuthProvider } from './contexts/AuthContext'
 import { PageSkeleton } from './components/ui/PageSkeleton'
+import { AUTH_DISABLED } from './lib/authMode'
 import AccessDeniedPage from './pages/AccessDeniedPage'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
@@ -52,10 +53,10 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/login" element={AUTH_DISABLED ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/register" element={AUTH_DISABLED ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+        <Route path="/forgot-password" element={AUTH_DISABLED ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
+        <Route path="/reset-password" element={AUTH_DISABLED ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />} />
 
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>

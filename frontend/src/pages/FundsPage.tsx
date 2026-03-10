@@ -27,11 +27,11 @@ import { Plus, X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import PageHeader from '../components/common/page/PageHeader'
 import PageMetricStrip from '../components/common/page/PageMetricStrip'
-import FundCoreFields, { FUND_TYPE_OPTIONS } from '../components/funds/FundCoreFields'
+import FundCoreFields from '../components/funds/FundCoreFields'
 import KrwAmountInput from '../components/common/KrwAmountInput'
+import { FUND_TYPE_OPTIONS } from '../lib/fundOptions'
+import { DEFAULT_LP_TYPE, isGpLpType, LP_TYPE_SELECT_GROUPS, normalizeLpTypeOrFallback } from '../lib/lpTypes'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
-
-const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
 
 const ENTITY_TYPE_LABEL: Record<string, string> = {
   vc: '창업투자회사 (VC)',
@@ -90,7 +90,7 @@ function createEmptyLpDraft(): LPDraft {
   return {
     _id: createDraftId(),
     name: '',
-    type: LP_TYPE_OPTIONS[0],
+    type: DEFAULT_LP_TYPE,
     commitment: null,
     paid_in: null,
     contact: '',
@@ -133,7 +133,7 @@ function normalizeLpPayload(rows: LPDraft[]): LPInput[] {
   return rows
     .map((lp) => ({
       name: lp.name.trim(),
-      type: (lp.type || LP_TYPE_OPTIONS[0]).trim(),
+      type: normalizeLpTypeOrFallback(lp.type, DEFAULT_LP_TYPE),
       commitment: lp.commitment ?? null,
       paid_in: lp.paid_in ?? null,
       contact: lp.contact?.trim() || null,
@@ -281,6 +281,7 @@ function FundForm({
   }
 
   const handleLpTypeChange = (draftId: string, nextType: string) => {
+    const canonicalType = normalizeLpTypeOrFallback(nextType, DEFAULT_LP_TYPE)
     const selectedGpName = (form.gp || '').trim()
     const matchedGp =
       gpEntities.find((entity) => entity.id === (form.gp_entity_id ?? null)) ||
@@ -290,8 +291,8 @@ function FundForm({
     setLps((prev) =>
       prev.map((lp) => {
         if (lp._id !== draftId) return lp
-        const next = { ...lp, type: nextType }
-        if (nextType !== 'GP') return next
+        const next = { ...lp, type: canonicalType }
+        if (!isGpLpType(canonicalType)) return next
         if (lp._gpAutoFilled) return next
         if (!matchedGp) return next
         return {
@@ -304,7 +305,7 @@ function FundForm({
       }),
     )
 
-    if (nextType === 'GP' && !matchedGp) {
+    if (isGpLpType(canonicalType) && !matchedGp) {
       addToast('info', '선택된 GP 고유계정 정보가 없어 자동입력을 건너뜁니다.')
     }
   }
@@ -321,7 +322,7 @@ function FundForm({
               ...lp,
               _addressBookId: addressBookId,
               name: selected.name,
-              type: selected.type,
+              type: normalizeLpTypeOrFallback(selected.type, DEFAULT_LP_TYPE),
               contact: selected.contact || '',
               business_number: selected.business_number || '',
               address: selected.address || '',
@@ -388,10 +389,14 @@ function FundForm({
                       onChange={(e) => handleLpTypeChange(lp._id, e.target.value)}
                       className="w-full rounded border px-2 py-1.5 text-sm"
                     >
-                      {LP_TYPE_OPTIONS.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
+                      {LP_TYPE_SELECT_GROUPS.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.options.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -436,8 +441,8 @@ function FundForm({
                 </div>
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-[#64748b]">
-                    {lp.type === 'GP'
-                      ? 'LP유형 GP는 최초 1회 GP 정보 자동입력 후, 주소록 선택으로 덮어쓸 수 있습니다.'
+                    {isGpLpType(lp.type)
+                      ? '업무집행조합원(GP)은 최초 1회 GP 정보 자동입력 후, 주소록 선택으로 덮어쓸 수 있습니다.'
                       : '주소록 선택 시 LP 입력값을 즉시 채웁니다.'}
                   </p>
                   <button
@@ -494,8 +499,18 @@ export default function FundsPage() {
   })
 
   const currentFileSignature = fileSignature(migrationFile)
+  const primaryGpCandidates = gpEntities.filter((entity) => entity.is_primary === 1)
+  const migrationPrimaryGp = primaryGpCandidates.length === 1 ? primaryGpCandidates[0] : null
+  const migrationPrimaryGpIssue =
+    primaryGpCandidates.length === 0
+      ? '대표 GP 법인이 없습니다. 고유계정에서 대표 GP를 먼저 등록하세요.'
+      : primaryGpCandidates.length > 1
+        ? '대표 GP 법인이 여러 개입니다. 고유계정에서 대표 GP를 1개만 남겨주세요.'
+        : null
+  const canValidateMigration = !!migrationFile && !migrationPrimaryGpIssue
   const canImportMigration = !!(
     migrationFile &&
+    migrationPrimaryGp &&
     migrationValidation &&
     migrationValidation.success &&
     migrationValidation.errors.length === 0 &&
@@ -519,9 +534,8 @@ export default function FundsPage() {
       const normalizedGpName = (fund.gp || '').trim()
       const lpsToCreate = lps.filter((lp) => {
         const lpName = (lp.name || '').trim()
-        const lpType = (lp.type || '').trim().toUpperCase()
         if (!normalizedGpName) return true
-        return !(lpType === 'GP' && lpName === normalizedGpName)
+        return !(isGpLpType(lp.type) && lpName === normalizedGpName)
       })
       for (const lp of lpsToCreate) {
         if (lp.name.trim()) {
@@ -562,7 +576,7 @@ export default function FundsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = '조합_및_LP_일괄등록_양식.xlsx'
+      link.download = '조합_마이그레이션_템플릿.xlsx'
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -594,7 +608,10 @@ export default function FundsPage() {
         return
       }
       invalidateFundRelated(queryClient)
-      addToast('success', `Import 완료 (조합 ${result.created_funds + result.updated_funds}건, LP ${result.created_lps + result.updated_lps}건)`)
+      addToast(
+        'success',
+        `Import 완료 (조합 ${result.created_funds + result.updated_funds}건, 고유 LP ${result.created_lps + result.updated_lps}건, 납입회차 ${result.created_contributions}행)`,
+      )
     },
   })
 
@@ -696,8 +713,19 @@ export default function FundsPage() {
           <p className="text-xs font-medium text-indigo-600">조합/LP 마이그레이션</p>
           <h3 className="text-base font-semibold text-[#0f1f3d]">초기 세팅용 엑셀 Import</h3>
           <p className="mt-1 text-xs text-[#64748b]">
-            조합, LP, LP 납입이력을 한 번에 초기 세팅합니다. 성공 후에는 ERP 화면에서 계속 관리합니다.
+            `조합` + `조합원(LP)` 2개 시트로 조합, 고유 LP, 납입회차를 함께 초기 세팅합니다. 대표 GP는 엑셀에 적지 않고 고유계정의 대표 GP 법인에 자동 연결됩니다.
           </p>
+        </div>
+        <div
+          className={`rounded-lg border px-3 py-2 text-xs ${
+            migrationPrimaryGp
+              ? 'border-[#b6e0d1] bg-[#eefbf5] text-[#0f766e]'
+              : 'border-[#f0b6b6] bg-[#fff5f5] text-[#b42318]'
+          }`}
+        >
+          {migrationPrimaryGp
+            ? `이번 import는 대표 GP ${migrationPrimaryGp.name}에 자동 연결됩니다.`
+            : migrationPrimaryGpIssue}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => downloadTemplateMut.mutate()} disabled={downloadTemplateMut.isPending} className="secondary-btn">
@@ -728,10 +756,10 @@ export default function FundsPage() {
           </label>
           <button
             onClick={() => {
-              if (!migrationFile) return
+              if (!migrationFile || !canValidateMigration) return
               validateMigrationMut.mutate(migrationFile)
             }}
-            disabled={!migrationFile || validateMigrationMut.isPending}
+            disabled={!canValidateMigration || validateMigrationMut.isPending}
             className="primary-btn"
           >
             {validateMigrationMut.isPending ? '검증 중...' : '검증'}
@@ -757,8 +785,7 @@ export default function FundsPage() {
               검증 결과: {migrationValidation.errors.length === 0 ? '통과' : `오류 ${migrationValidation.errors.length}건`}
             </p>
             <p className="mt-1 text-xs text-[#64748b]">
-              Funds {migrationValidation.fund_rows}행 / LPs {migrationValidation.lp_rows}행 / LPContributions{' '}
-              {migrationValidation.contribution_rows}행
+              조합 {migrationValidation.fund_rows}행 / 고유 LP {migrationValidation.lp_rows}건 / 납입회차 {migrationValidation.contribution_rows}행
             </p>
             {migrationValidation.warnings.length > 0 && (
               <div className="mt-2 rounded border border-[#d4a418] bg-[#fff7d6] px-3 py-2 text-xs text-[#624100]">

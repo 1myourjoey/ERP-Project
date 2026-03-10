@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from models.fund import LP
+from services.lp_types import normalize_lp_type, normalize_lp_type_group
 from services.analytics.common import apply_date_buckets
 from services.analytics.subject_types import SubjectDefinition, dimension, measure
 from services.analytics.subjects.shared import load_reference_maps
@@ -19,7 +20,8 @@ def load_rows(db):
             "id": row.id,
             "lp.id": row.id,
             "lp.name": row.name,
-            "lp.type": row.type,
+            "lp.type": normalize_lp_type(row.type) or row.type,
+            "lp.type_group": normalize_lp_type_group(row.type) or row.type,
             "lp.contact": row.contact,
             "lp.business_number": row.business_number,
             "lp.address": row.address,
@@ -48,6 +50,7 @@ DEFINITION = SubjectDefinition(
         dimension("fund.status", "조합 상태", "string", "기본 차원"),
         dimension("lp.name", "LP명", "string", "기본 차원"),
         dimension("lp.type", "LP 유형", "string", "기본 차원"),
+        dimension("lp.type_group", "LP 상위유형", "string", "기본 차원"),
         dimension("lp.contact", "담당자", "string", "기본 차원"),
         dimension("lp.business_number", "사업자번호", "string", "기본 차원"),
         dimension("fund.formation_date.year", "결성연도", "number", "날짜 파생"),

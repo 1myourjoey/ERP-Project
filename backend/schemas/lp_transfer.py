@@ -1,7 +1,9 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from services.lp_types import coerce_lp_type, normalize_lp_type
 
 
 class LPTransferCreate(BaseModel):
@@ -15,6 +17,13 @@ class LPTransferCreate(BaseModel):
     transfer_amount: int = Field(gt=0)
     transfer_date: Optional[date] = None
     notes: Optional[str] = None
+
+    @field_validator("to_lp_type")
+    @classmethod
+    def validate_to_lp_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        return coerce_lp_type(value)
 
 
 class LPTransferUpdate(BaseModel):
@@ -45,5 +54,10 @@ class LPTransferResponse(BaseModel):
     workflow_instance_id: Optional[int] = None
     notes: Optional[str] = None
     created_at: Optional[date] = None
+
+    @field_validator("to_lp_type")
+    @classmethod
+    def normalize_to_lp_type(cls, value: Optional[str]) -> Optional[str]:
+        return normalize_lp_type(value)
 
     model_config = {"from_attributes": True}

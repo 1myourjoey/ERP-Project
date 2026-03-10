@@ -8,6 +8,7 @@ from models.fund import Fund, LP
 from models.gp_entity import GPEntity
 from models.gp_profile import GPProfile
 from models.investment import Investment
+from services.lp_types import normalize_lp_type
 
 
 class VariableResolver:
@@ -115,7 +116,7 @@ class VariableResolver:
                         "LP_출자비율": f"{ownership_ratio:.2f}%",
                         # Existing marker compatibility
                         "lp_name": lp.name or "",
-                        "lp_type": lp.type or "",
+                        "lp_type": normalize_lp_type(lp.type) or lp.type or "",
                         "lp_commitment": self._format_krw(lp.commitment),
                         "lp_paid_in": self._format_krw(lp.paid_in),
                     }

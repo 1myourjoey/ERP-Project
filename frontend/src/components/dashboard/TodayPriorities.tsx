@@ -186,21 +186,21 @@ export default function TodayPriorities({
       )}
 
       {mode === 'priorities' && (
-        <div className="mt-3 rounded-2xl border border-[#d8e5fb] bg-[#f8fbff] px-3 py-3">
+        <div className="mt-3 rounded-2xl border border-[#d8e5fb] bg-[#f8fbff] px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold text-[#1a3660]">서류모음</p>
-              <p className="mt-1 text-xs text-[#64748b]">서류 취합이 필요한 건만 따로 열어서 처리합니다.</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#1a3660]">서류모음</p>
+              <p className="mt-1 text-[13px] leading-5 text-[#64748b]">서류 취합이 필요한 건만 따로 열어서 처리합니다.</p>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-semibold text-[#0f1f3d]">{documentCollectionCount}</p>
-              <p className="text-[11px] text-[#64748b]">수집 필요</p>
+            <div className="shrink-0 text-right">
+              <p className="text-2xl font-semibold leading-none text-[#0f1f3d]">{documentCollectionCount}</p>
+              <p className="mt-1 text-xs font-medium text-[#64748b]">수집 필요</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onOpenDocuments}
-            className="mt-3 w-full rounded-xl border border-[#c5d8fb] bg-white px-3 py-2 text-left text-sm font-medium text-[#0f1f3d] transition hover:-translate-y-[1px] hover:border-[#aac6fa] hover:bg-[#f5f9ff]"
+            className="mt-3 min-h-[44px] w-full rounded-xl border border-[#c5d8fb] bg-white px-3.5 py-2.5 text-left text-sm font-semibold text-[#0f1f3d] transition hover:-translate-y-[1px] hover:border-[#aac6fa] hover:bg-[#f5f9ff]"
           >
             미수집 서류 전용 모달 열기
           </button>

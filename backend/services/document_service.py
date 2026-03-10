@@ -9,6 +9,7 @@ from io import BytesIO
 
 from models.document_template import DocumentTemplate
 from models.fund import Fund, LP
+from services.lp_types import normalize_lp_type
 
 DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SPREADSHEET_MEDIA_TYPES = {
@@ -83,7 +84,8 @@ def build_variables_for_fund(fund: Fund, lps: list[LP], extra: dict | None = Non
     lp_lines: list[str] = []
     for index, lp in enumerate(lps, 1):
         commitment = getattr(lp, "commitment", None)
-        lp_lines.append(f"  {index}. {lp.name} ({lp.type or ''}): 약정 {fmt_amount(commitment)}원")
+        lp_type = normalize_lp_type(getattr(lp, "type", None)) or getattr(lp, "type", "") or ""
+        lp_lines.append(f"  {index}. {lp.name} ({lp_type}): 약정 {fmt_amount(commitment)}원")
     lp_list_text = "\n".join(lp_lines)
 
     total_commitment = sum(float(getattr(lp, "commitment", 0) or 0) for lp in lps)

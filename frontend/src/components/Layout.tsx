@@ -29,6 +29,7 @@ import NotificationPanel from './NotificationPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { PageSkeleton } from './ui/PageSkeleton'
 import { useAuth } from '../contexts/AuthContext'
+import { AUTH_DISABLED } from '../lib/authMode'
 import { getUnreadCount } from '../lib/api/notifications'
 import { queryKeys } from '../lib/queryKeys'
 
@@ -362,12 +363,14 @@ export default function Layout() {
                 >
                   내 프로필
                 </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-red-700 hover:bg-red-50"
-                >
-                  로그아웃
-                </button>
+                {!AUTH_DISABLED ? (
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-red-700 hover:bg-red-50"
+                  >
+                    로그아웃
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -428,12 +431,14 @@ export default function Layout() {
                   >
                     내 프로필
                   </button>
-                  <button
-                    onClick={handleLogout}
-                    className="danger-btn"
-                  >
-                    로그아웃
-                  </button>
+                  {!AUTH_DISABLED ? (
+                    <button
+                      onClick={handleLogout}
+                      className="danger-btn"
+                    >
+                      로그아웃
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>

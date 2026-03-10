@@ -29,9 +29,7 @@ import {
   type UserResponse,
   type UserRole,
 } from '../lib/api'
-
-const AUTH_DISABLED =
-  String(import.meta.env.VITE_AUTH_DISABLED ?? '').trim().toLowerCase() === 'true'
+import { AUTH_DISABLED } from '../lib/authMode'
 
 export interface AuthUser {
   id: number
@@ -87,6 +85,18 @@ function toAuthUser(user: UserResponse): AuthUser {
   }
 }
 
+const AUTH_DISABLED_FALLBACK_USER: AuthUser = {
+  id: 0,
+  username: 'system',
+  email: null,
+  name: 'System User',
+  role: 'master',
+  department: 'SYSTEM',
+  avatar_url: null,
+  google_id: null,
+  allowed_routes: null,
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [token, setToken] = useState<string | null>(() =>
@@ -104,17 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
     const bootstrap = async () => {
       if (AUTH_DISABLED) {
-        try {
-          const me = await fetchAuthMe()
-          if (!mounted) return
+        if (mounted) {
           setToken('auth-disabled')
-          setUser(toAuthUser(me))
-        } catch {
-          if (!mounted) return
-          setToken(null)
-          setUser(null)
-        } finally {
-          if (mounted) setIsLoading(false)
+          setUser(AUTH_DISABLED_FALLBACK_USER)
+          setIsLoading(false)
         }
         return
       }
@@ -158,9 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginId: string, password: string) => {
       if (AUTH_DISABLED) {
-        const me = await fetchAuthMe()
         setToken('auth-disabled')
-        setUser(toAuthUser(me))
+        setUser(AUTH_DISABLED_FALLBACK_USER)
         return
       }
       const payload = await authLogin({ login_id: loginId, password })
@@ -172,9 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(
     async (credential: string) => {
       if (AUTH_DISABLED) {
-        const me = await fetchAuthMe()
         setToken('auth-disabled')
-        setUser(toAuthUser(me))
+        setUser(AUTH_DISABLED_FALLBACK_USER)
         return
       }
       const payload = await authGoogleLogin({ credential })
@@ -186,9 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithInvite = useCallback(
     async (tokenValue: string, username: string, password: string, name?: string) => {
       if (AUTH_DISABLED) {
-        const me = await fetchAuthMe()
         setToken('auth-disabled')
-        setUser(toAuthUser(me))
+        setUser(AUTH_DISABLED_FALLBACK_USER)
         return
       }
       const payload = await registerWithInvite({

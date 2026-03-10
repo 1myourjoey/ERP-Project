@@ -14,6 +14,7 @@ from models.phase3 import CapitalCall, Distribution
 from models.task import Task
 from models.transaction import Transaction
 from models.worklog import WorkLog
+from services.lp_types import normalize_lp_type
 
 _HEADER_FILL = PatternFill(fill_type="solid", start_color="1F6FB8", end_color="1F6FB8")
 _HEADER_FONT = Font(color="FFFFFF", bold=True)
@@ -77,7 +78,7 @@ async def export_fund_summary(db: Session, fund_id: int) -> bytes:
     for lp in fund.lps:
         ws_lp.append([
             lp.name,
-            lp.type,
+            normalize_lp_type(lp.type) or lp.type,
             float(lp.commitment or 0),
             float(lp.paid_in or 0),
             lp.contact,

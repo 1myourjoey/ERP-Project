@@ -87,6 +87,13 @@ import LPContributionPanel from '../components/fund/LPContributionPanel'
 import FundCoreFields from '../components/funds/FundCoreFields'
 import WaterfallSummary from '../components/finance/WaterfallSummary'
 import { generateLPReport, previewLPReportData } from '../lib/api/lpReports'
+import {
+  DEFAULT_LP_TYPE,
+  groupLpType,
+  labelLpType,
+  LP_TYPE_SELECT_GROUPS,
+  normalizeLpTypeOrFallback,
+} from '../lib/lpTypes'
 import { invalidateFundRelated } from '../lib/queryInvalidation'
 
 interface FundInvestmentListItem {
@@ -142,8 +149,6 @@ const STANDARD_NOTICE_TYPES = [
   { notice_type: 'amendment', label: '규약 변경 통지', default_days: 14 },
 ]
 
-const LP_TYPE_OPTIONS = ['기관투자자', '개인투자자', 'GP']
-
 const FUND_DETAIL_TABS = [
   { id: 'overview', label: '개요' },
   { id: 'capital_lp', label: '자본 & LP' },
@@ -178,7 +183,7 @@ const FORMATION_WORKFLOW_STATUS_LABEL: Record<string, string> = {
 const EMPTY_LP: LPInput = {
   address_book_id: null,
   name: '',
-  type: '기관투자자',
+  type: DEFAULT_LP_TYPE,
   commitment: null,
   paid_in: null,
   contact: '',
@@ -393,7 +398,7 @@ function LPTransferModal({
   const [useExistingLp, setUseExistingLp] = useState(true)
   const [toLpId, setToLpId] = useState<number | ''>('')
   const [toLpName, setToLpName] = useState('')
-  const [toLpType, setToLpType] = useState('기관투자자')
+  const [toLpType, setToLpType] = useState<string>(DEFAULT_LP_TYPE)
   const [toLpBusinessNumber, setToLpBusinessNumber] = useState('')
   const [toLpAddress, setToLpAddress] = useState('')
   const [toLpContact, setToLpContact] = useState('')
@@ -419,7 +424,7 @@ function LPTransferModal({
     onSubmit({
       from_lp_id: fromLp.id,
       to_lp_name: toLpName.trim(),
-      to_lp_type: toLpType.trim(),
+      to_lp_type: normalizeLpTypeOrFallback(toLpType, DEFAULT_LP_TYPE),
       to_lp_business_number: toLpBusinessNumber.trim() || null,
       to_lp_address: toLpAddress.trim() || null,
       to_lp_contact: toLpContact.trim() || null,
@@ -503,12 +508,21 @@ function LPTransferModal({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#64748b]">양수 LP 유형</label>
-                  <input
+                  <select
                     value={toLpType}
                     onChange={(event) => setToLpType(event.target.value)}
-                    placeholder="예: 기관투자자"
                     className="w-full rounded border px-2 py-1.5 text-sm"
-                  />
+                  >
+                    {LP_TYPE_SELECT_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#64748b]">사업자등록번호/생년월일</label>
@@ -658,7 +672,7 @@ function LPForm({
                 ...prev,
                 address_book_id: selected.id,
                 name: selected.name,
-                type: selected.type,
+                type: normalizeLpTypeOrFallback(selected.type, DEFAULT_LP_TYPE),
                 contact: selected.contact || '',
                 business_number: selected.business_number || '',
                 address: selected.address || '',
@@ -679,8 +693,12 @@ function LPForm({
         <div>
           <label className="mb-1 block text-xs font-medium text-[#64748b]">LP 유형</label>
           <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="form-input">
-            {LP_TYPE_OPTIONS.map((type) => (
-              <option key={type} value={type}>{type}</option>
+            {LP_TYPE_SELECT_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -712,7 +730,7 @@ function LPForm({
             ...form,
             address_book_id: selectedAddressBookId ? Number(selectedAddressBookId) : (form.address_book_id ?? null),
             name: form.name.trim(),
-            type: form.type.trim(),
+            type: normalizeLpTypeOrFallback(form.type, DEFAULT_LP_TYPE),
             contact: form.contact?.trim() || null,
             business_number: form.business_number?.trim() || null,
             address: form.address?.trim() || null,
@@ -1349,12 +1367,7 @@ export default function FundDetailPage() {
         const commitment = Number(lp.commitment ?? 0)
         const paidIn = Number(lp.paid_in ?? 0)
         const shareRatio = capitalCommitmentBase > 0 ? (commitment / capitalCommitmentBase) * 100 : 0
-        const note =
-          lp.type === 'GP' || lp.type === '공동업무집행'
-            ? 'GP'
-            : lp.type === '기관투자자' || lp.type === '개인투자자'
-              ? 'LP'
-              : lp.type || '-'
+        const note = groupLpType(lp.type)
         return {
           ...lp,
           commitment,
@@ -2218,7 +2231,7 @@ export default function FundDetailPage() {
                                 {lp.name}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-[#0f1f3d]">{lp.type || '-'}</td>
+                            <td className="px-3 py-2 text-[#0f1f3d]">{labelLpType(lp.type)}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.commitment)}</td>
                             <td className="px-3 py-2 text-right">{formatKRW(lp.paidIn)}</td>
                             <td className="px-3 py-2 text-right">{lp.shareRatio.toFixed(2)}%</td>

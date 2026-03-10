@@ -3,6 +3,7 @@
 from datetime import date
 
 from models.lp_contribution import LPContribution
+from services.lp_types import normalize_lp_type, normalize_lp_type_group
 from services.analytics.common import apply_date_buckets
 from services.analytics.subject_types import SubjectDefinition, dimension, measure
 from services.analytics.subjects.shared import load_reference_maps
@@ -24,7 +25,8 @@ def load_rows(db):
             "fund.name": fund.name if fund else None,
             "fund.type": fund.type if fund else None,
             "lp.name": lp.name if lp else None,
-            "lp.type": lp.type if lp else None,
+            "lp.type": normalize_lp_type(lp.type) if lp else None,
+            "lp.type_group": normalize_lp_type_group(lp.type) if lp else None,
             "contribution.amount": float(row.amount or 0),
             "contribution.commitment_ratio": float(row.commitment_ratio or 0),
             "contribution.round_no": row.round_no,
@@ -50,6 +52,7 @@ DEFINITION = SubjectDefinition(
         dimension("fund.name", "조합명", "string", "기본 차원"),
         dimension("lp.name", "LP명", "string", "기본 차원"),
         dimension("lp.type", "LP 유형", "string", "기본 차원"),
+        dimension("lp.type_group", "LP 상위유형", "string", "기본 차원"),
         dimension("contribution.source", "생성 출처", "string", "기본 차원"),
         dimension("contribution.status", "납입 상태", "string", "기본 차원"),
         dimension("contribution.round_no", "회차", "number", "기본 차원"),

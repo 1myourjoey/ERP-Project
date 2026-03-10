@@ -15,6 +15,7 @@ from models.phase3 import Distribution
 from models.transaction import Transaction
 from models.valuation import Valuation
 from models.vics_report import VicsMonthlyReport
+from services.lp_types import normalize_lp_type
 
 
 class VicsReportService:
@@ -146,7 +147,7 @@ class VicsReportService:
                 {
                     "lp_id": lp.id,
                     "name": lp.name,
-                    "type": lp.type,
+                    "type": normalize_lp_type(lp.type) or lp.type,
                     "commitment": float(lp.commitment or 0),
                     "paid_in": float(lp.paid_in or 0),
                     "ownership_pct": round(ownership_pct, 2),

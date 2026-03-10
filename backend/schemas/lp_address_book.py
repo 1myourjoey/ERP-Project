@@ -1,7 +1,9 @@
 ﻿from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from services.lp_types import coerce_lp_type, normalize_lp_type
 
 
 class LPAddressBookBase(BaseModel):
@@ -13,6 +15,11 @@ class LPAddressBookBase(BaseModel):
     memo: Optional[str] = None
     gp_entity_id: Optional[int] = None
     is_active: int = 1
+
+    @field_validator("type")
+    @classmethod
+    def validate_lp_address_book_type(cls, value: str) -> str:
+        return coerce_lp_type(value)
 
 
 class LPAddressBookCreate(LPAddressBookBase):
@@ -28,6 +35,13 @@ class LPAddressBookUpdate(BaseModel):
     memo: Optional[str] = None
     gp_entity_id: Optional[int] = None
     is_active: Optional[int] = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_lp_address_book_update_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        return coerce_lp_type(value)
 
 
 class LPAddressBookRelatedFund(BaseModel):
@@ -56,5 +70,10 @@ class LPAddressBookResponse(BaseModel):
     related_lps_count: int = 0
     sync_suggestion: bool = False
     message: Optional[str] = None
+
+    @field_validator("type")
+    @classmethod
+    def normalize_lp_address_book_response_type(cls, value: str) -> str:
+        return normalize_lp_type(value) or value
 
     model_config = {"from_attributes": True}

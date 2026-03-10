@@ -4,6 +4,7 @@ from models.phase3 import CapitalCall, CapitalCallItem
 from models.task import Task
 from models.workflow import Workflow, WorkflowStep
 from models.workflow_instance import WorkflowInstance
+from services.lp_types import LP_TYPE_GP, LP_TYPE_INDIVIDUAL, LP_TYPE_INSTITUTIONAL
 from services.workflow_service import instantiate_workflow
 
 
@@ -86,7 +87,7 @@ class TestFundsCRUD:
         lp_response = client.get(f"/api/funds/{fund['id']}/lps")
         assert lp_response.status_code == 200
         lps = lp_response.json()
-        gp_lp = next((row for row in lps if row["type"] == "GP"), None)
+        gp_lp = next((row for row in lps if row["type"] == LP_TYPE_GP), None)
         assert gp_lp is not None
         assert gp_lp["name"] == gp_name
         assert gp_lp["commitment"] == gp_commitment
@@ -287,7 +288,7 @@ class TestFundsCRUD:
         lp_response = client.get(f"/api/funds/{data['id']}/lps")
         assert lp_response.status_code == 200
         lps = lp_response.json()
-        gp_lp = next((row for row in lps if row["type"] == "GP"), None)
+        gp_lp = next((row for row in lps if row["type"] == LP_TYPE_GP), None)
         assert gp_lp is not None
         assert gp_lp["name"] == "별칭 GP"
         assert gp_lp["commitment"] == 2_000_000
@@ -349,14 +350,19 @@ class TestFundLPs:
         )
         assert response.status_code == 201
         assert response.json()["name"] == "신규 LP"
+        assert response.json()["type"] == LP_TYPE_INSTITUTIONAL
 
     def test_list_lps(self, client, sample_fund_with_lps):
         response = client.get(f"/api/funds/{sample_fund_with_lps['id']}/lps")
         assert response.status_code == 200
-        lp_names = {row["name"] for row in response.json()}
+        rows = response.json()
+        lp_names = {row["name"] for row in rows}
+        lp_types = {row["type"] for row in rows}
         assert "(주)한국투자" in lp_names
         assert "김철수" in lp_names
         assert "(주)미래에셋" in lp_names
+        assert LP_TYPE_INSTITUTIONAL in lp_types
+        assert LP_TYPE_INDIVIDUAL in lp_types
 
     def test_update_lp(self, client, sample_fund):
         create_response = client.post(
@@ -368,6 +374,7 @@ class TestFundLPs:
             },
         )
         assert create_response.status_code == 201
+        assert create_response.json()["type"] == LP_TYPE_INDIVIDUAL
         lp_id = create_response.json()["id"]
 
         update_response = client.put(
