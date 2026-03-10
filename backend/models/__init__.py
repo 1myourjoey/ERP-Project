@@ -42,8 +42,11 @@ from .compliance import (
     ComplianceObligation,
     InvestmentLimitCheck,
     ComplianceDocument,
+    ComplianceDocumentChunk,
     FundComplianceRule,
     ComplianceCheck,
+    ComplianceReviewRun,
+    ComplianceReviewEvidence,
 )
 from .vics_report import VicsMonthlyReport
 from .internal_review import InternalReview, CompanyReview
@@ -118,7 +121,8 @@ __all__ = [
     "ExitCommittee", "ExitCommitteeFund", "ExitTrade",
     "ManagementFee", "FeeConfig", "PerformanceFeeSimulation",
     "ComplianceRule", "ComplianceObligation", "InvestmentLimitCheck",
-    "ComplianceDocument", "FundComplianceRule", "ComplianceCheck",
+    "ComplianceDocument", "ComplianceDocumentChunk", "FundComplianceRule", "ComplianceCheck",
+    "ComplianceReviewRun", "ComplianceReviewEvidence",
     "VicsMonthlyReport",
     "InternalReview", "CompanyReview",
     "User",

@@ -160,11 +160,37 @@ class VectorDBService:
         normalized = str(value).strip()
         return normalized or None
 
+    @staticmethod
+    def _metadata_investment_id(row: dict[str, Any]) -> int | None:
+        metadata = row.get("metadata") or {}
+        value = metadata.get("investment_id")
+        if value in (None, ""):
+            return None
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _source_tier_rank(row: dict[str, Any]) -> int:
+        metadata = row.get("metadata") or {}
+        source_tier = str(metadata.get("source_tier") or "").strip().lower()
+        if source_tier == "law":
+            return 0
+        if source_tier == "fund_bylaw":
+            return 1
+        if source_tier == "special_guideline":
+            return 2
+        if source_tier == "investment_contract":
+            return 3
+        return 99
+
     def search_with_scope(
         self,
         query: str,
         fund_id: int | None = None,
         fund_type: str | None = None,
+        investment_id: int | None = None,
         n_results: int = 10,
     ) -> list[dict[str, Any]]:
         self._require_embedding()
@@ -205,7 +231,7 @@ class VectorDBService:
                     if scope not in ("", "global"):
                         continue
                     # Avoid cross-fund leakage for sensitive collections when metadata is incomplete.
-                    if name in {"agreements", "internal"}:
+                    if name in {"agreements", "internal", "guidelines"}:
                         meta_fund_id = self._metadata_fund_id(row)
                         if fund_id is None or meta_fund_id != fund_id:
                             continue
@@ -251,9 +277,9 @@ class VectorDBService:
 
             add_rows("guidelines", rows)
 
-        # 3) Fund scope (agreements/internal only)
+        # 3) Fund scope (agreements/internal/guidelines for fund-specific docs)
         if fund_id is not None:
-            for name in ("agreements", "internal"):
+            for name in ("agreements", "internal", "guidelines"):
                 collection = self._get_collection(name)
                 rows = []
                 try:
@@ -288,6 +314,42 @@ class VectorDBService:
 
                 add_rows(name, rows)
 
+        # 4) Investment scope (agreements only)
+        if investment_id is not None:
+            collection = self._get_collection("agreements")
+            rows = []
+            try:
+                rows = self._parse_query_result(
+                    collection.query(
+                        query_texts=[query],
+                        n_results=n_results,
+                        where={
+                            "$and": [
+                                {"scope": "investment"},
+                                {"investment_id": int(investment_id)},
+                            ]
+                        },
+                    )
+                )
+            except Exception:
+                rows = []
+
+            if not rows:
+                try:
+                    legacy_rows = self._parse_query_result(
+                        collection.query(query_texts=[query], n_results=n_results)
+                    )
+                except Exception:
+                    legacy_rows = []
+                rows = [
+                    row
+                    for row in legacy_rows
+                    if self._metadata_scope(row) == "investment"
+                    and self._metadata_investment_id(row) == int(investment_id)
+                ]
+
+            add_rows("agreements", rows)
+
         # Dedupe by (collection, chunk id), keep best distance first.
         def _distance_value(row: dict[str, Any]) -> float:
             value = row.get("distance")
@@ -295,7 +357,7 @@ class VectorDBService:
 
         deduped: list[dict[str, Any]] = []
         seen: set[tuple[str, str]] = set()
-        for row in sorted(all_rows, key=_distance_value):
+        for row in sorted(all_rows, key=lambda item: (self._source_tier_rank(item), _distance_value(item))):
             key = (str(row.get("collection", "")), str(row.get("id", "")))
             if key in seen:
                 continue

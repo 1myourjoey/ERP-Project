@@ -101,6 +101,7 @@ class LegalRAGService:
         self,
         query: str,
         fund_id: int | None = None,
+        investment_id: int | None = None,
         db: Session | None = None,
         user_id: int | None = None,
     ) -> dict[str, Any]:
@@ -135,6 +136,7 @@ class LegalRAGService:
                 query=normalized_query,
                 fund_id=fund_id,
                 fund_type=fund_type,
+                investment_id=investment_id,
                 n_results=10,
             )
         else:

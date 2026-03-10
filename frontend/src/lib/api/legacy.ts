@@ -1,11 +1,10 @@
 import axios, { AxiosError } from 'axios'
+import { AUTH_DISABLED } from '../authMode'
 import { pushToast } from '../toastBridge'
 
 export const api = axios.create({ baseURL: '/api' })
 const ACCESS_TOKEN_KEY = 'von_access_token'
 const REFRESH_TOKEN_KEY = 'von_refresh_token'
-const AUTH_DISABLED =
-  String(import.meta.env.VITE_AUTH_DISABLED ?? '').trim().toLowerCase() === 'true'
 
 type RetriableRequestConfig = {
   _retry?: boolean
@@ -211,12 +210,14 @@ export const fetchComplianceDocuments = (activeOnly = false): Promise<Compliance
   api.get('/compliance/documents', { params: { active_only: activeOnly } }).then(r => r.data)
 export const createComplianceDocument = (data: ComplianceDocumentCreateInput): Promise<ComplianceDocument> =>
   api.post('/compliance/documents', data).then(r => r.data)
-export const fetchLegalDocuments = (): Promise<LegalDocument[]> =>
-  api.get('/legal-documents').then(r => r.data)
+export const fetchLegalDocuments = (
+  params?: { source_tier?: string; fund_id?: number; investment_id?: number; active_only?: boolean },
+): Promise<LegalDocument[]> =>
+  api.get('/legal-documents', { params }).then(r => r.data)
 export const fetchLegalDocumentStats = (): Promise<LegalDocumentStatsResponse> =>
   api.get('/legal-documents/stats').then(r => r.data)
 export const searchLegalDocuments = (
-  params: { query: string; collection?: LegalDocumentType | string; n_results?: number },
+  params: { query: string; collection?: LegalDocumentType | string; fund_id?: number; investment_id?: number; n_results?: number },
 ): Promise<LegalDocumentSearchResponse> =>
   api.get('/legal-documents/search', { params }).then(r => r.data)
 export const uploadLegalDocument = (payload: LegalDocumentUploadInput): Promise<LegalDocumentUploadResponse> => {
@@ -224,14 +225,32 @@ export const uploadLegalDocument = (payload: LegalDocumentUploadInput): Promise<
   formData.append('file', payload.file)
   formData.append('title', payload.title)
   formData.append('document_type', payload.document_type)
+  if (payload.source_tier) {
+    formData.append('source_tier', payload.source_tier)
+  }
   if (payload.version) {
     formData.append('version', payload.version)
   }
   if (payload.fund_id != null) {
     formData.append('fund_id', String(payload.fund_id))
   }
+  if (payload.investment_id != null) {
+    formData.append('investment_id', String(payload.investment_id))
+  }
   if (payload.fund_type_filter) {
     formData.append('fund_type_filter', payload.fund_type_filter)
+  }
+  if (payload.document_role) {
+    formData.append('document_role', payload.document_role)
+  }
+  if (payload.effective_from) {
+    formData.append('effective_from', payload.effective_from)
+  }
+  if (payload.effective_to) {
+    formData.append('effective_to', payload.effective_to)
+  }
+  if (payload.supersedes_document_id != null) {
+    formData.append('supersedes_document_id', String(payload.supersedes_document_id))
   }
   return api.post('/legal-documents/upload', formData).then(r => r.data)
 }
@@ -253,6 +272,8 @@ export const waiveComplianceObligation = (
   api.post(`/compliance/obligations/${obligationId}/waive`, data).then(r => r.data)
 export const fetchComplianceDashboard = (): Promise<ComplianceDashboardSummary> =>
   api.get('/compliance/dashboard').then(r => r.data)
+export const fetchComplianceOfficerBrief = (fundId: number): Promise<ComplianceOfficerBrief> =>
+  api.get(`/compliance/funds/${fundId}/officer-brief`).then(r => r.data)
 export const generateCompliancePeriodic = (data: { year: number; month: number }): Promise<{ year: number; month: number; generated: number; skipped: number }> =>
   api.post('/compliance/generate-periodic', data).then(r => r.data)
 export const checkInvestmentLimits = (
@@ -263,6 +284,14 @@ export const updateComplianceOverdue = (): Promise<{ updated: number }> =>
 export const interpretComplianceQuery = (
   data: ComplianceInterpretRequest,
 ): Promise<ComplianceInterpretResponse> => api.post('/compliance/interpret', data).then(r => r.data)
+export const runComplianceReview = (
+  data: ComplianceReviewRunInput,
+): Promise<ComplianceReviewRunResponse> => api.post('/compliance/reviews/run', data).then(r => r.data)
+export const fetchComplianceReviews = (
+  params?: { fund_id?: number; investment_id?: number; scenario?: string; limit?: number },
+): Promise<ComplianceReview[]> => api.get('/compliance/reviews', { params }).then(r => r.data)
+export const fetchComplianceReview = (reviewId: number): Promise<ComplianceReview> =>
+  api.get(`/compliance/reviews/${reviewId}`).then(r => r.data)
 export const fetchComplianceLLMUsage = (
   period: 'month' | 'week' | 'all' = 'month',
 ): Promise<ComplianceLLMUsageResponse> => api.get('/compliance/llm-usage', { params: { period } }).then(r => r.data)
@@ -1268,6 +1297,11 @@ export interface ComplianceRule {
   auto_task: boolean
   is_active: boolean
   created_at: string | null
+  plain_summary?: string | null
+  check_basis?: string | null
+  applies_to?: string | null
+  recommended_action?: string | null
+  editor_mode?: 'simple' | 'advanced' | string
 }
 
 export interface ComplianceRuleCreateInput {
@@ -1461,13 +1495,29 @@ export interface ComplianceDocumentCreateInput {
 }
 
 export type LegalDocumentType = 'laws' | 'regulations' | 'guidelines' | 'agreements' | 'internal'
-export type LegalDocumentScope = 'global' | 'fund_type' | 'fund'
+export type LegalDocumentScope = 'global' | 'fund_type' | 'fund' | 'investment'
+export type LegalDocumentSourceTier = 'law' | 'fund_bylaw' | 'special_guideline' | 'investment_contract'
 
 export interface LegalDocument extends ComplianceDocument {
   scope: LegalDocumentScope
+  source_tier: LegalDocumentSourceTier | string
+  source_tier_label?: string | null
+  attribution_mode?: string | null
   fund_id: number | null
   fund_name: string | null
+  investment_id: number | null
+  investment_label?: string | null
+  company_id: number | null
+  company_name?: string | null
+  document_role: string | null
+  ownership_label?: string | null
   fund_type_filter: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  ingest_status?: string | null
+  ocr_status?: string | null
+  index_status?: string | null
+  extraction_quality?: number | null
   chunk_count?: number | null
 }
 
@@ -1475,15 +1525,23 @@ export interface LegalDocumentUploadInput {
   file: File
   title: string
   document_type: LegalDocumentType | string
+  source_tier?: LegalDocumentSourceTier | string
   version?: string | null
   fund_id?: number | null
+  investment_id?: number | null
   fund_type_filter?: string | null
+  document_role?: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  supersedes_document_id?: number | null
 }
 
 export interface LegalDocumentUploadResponse {
   document: LegalDocument
   chunk_count: number
   collection: LegalDocumentType | string
+  auto_review?: ComplianceReviewRunResponse | null
+  auto_review_error?: string | null
 }
 
 export interface LegalDocumentSearchResult {
@@ -1497,6 +1555,8 @@ export interface LegalDocumentSearchResult {
 export interface LegalDocumentSearchResponse {
   query: string
   collection?: string | null
+  fund_id?: number | null
+  investment_id?: number | null
   count: number
   results: LegalDocumentSearchResult[]
 }
@@ -1535,6 +1595,7 @@ export interface ComplianceLimitCheckResponse {
 export interface ComplianceInterpretRequest {
   query: string
   fund_id?: number | null
+  investment_id?: number | null
 }
 
 export interface ComplianceInterpretSource {
@@ -1567,6 +1628,108 @@ export interface ComplianceInterpretResponse {
   sources: ComplianceInterpretSource[]
   rule_check: ComplianceInterpretRuleCheck | null
   tokens_used: number
+}
+
+export interface ComplianceReviewEvidence {
+  id: number
+  document_id: number
+  chunk_id: number | null
+  source_tier: LegalDocumentSourceTier | string
+  role: 'supporting' | 'contradicting' | 'prevailing' | string
+  page_no: number | null
+  section_ref: string | null
+  snippet: string
+  relevance_score: number | null
+  metadata: Record<string, unknown>
+}
+
+export interface ComplianceReview {
+  id: number
+  fund_id: number
+  fund_name: string | null
+  investment_id: number | null
+  company_id: number | null
+  target_type: 'fund' | 'investment' | string
+  scenario: string
+  query: string
+  trigger_type: string
+  result: 'pass' | 'warn' | 'fail' | 'conflict' | 'needs_review' | string
+  prevailing_tier: LegalDocumentSourceTier | null
+  summary: string | null
+  review_status: string
+  created_by: number | null
+  created_at: string | null
+  evidence: ComplianceReviewEvidence[]
+}
+
+export interface ComplianceReviewRunInput {
+  fund_id: number
+  scenario: string
+  query?: string | null
+  investment_id?: number | null
+  run_rule_engine?: boolean
+}
+
+export interface ComplianceReviewRunResponse {
+  review: ComplianceReview
+  rule_summary: {
+    checked_count: number
+    failed_count: number
+    warning_count: number
+    results: Array<{
+      rule_id: number
+      result: string
+      detail: string | null
+      actual_value: string | null
+      threshold_value: string | null
+    }>
+  } | null
+}
+
+export interface ComplianceOfficerRequiredItem {
+  kind: string
+  priority: 'high' | 'medium' | 'low' | string
+  title: string
+  detail: string
+  fund_id: number
+  investment_id: number | null
+  due_date: string | null
+}
+
+export interface ComplianceOfficerNoticeItem {
+  notice_type: string
+  label: string
+  business_days: number
+  day_basis: 'business' | 'calendar' | string
+  notify_today: string
+  earliest_target_date: string
+  memo?: string | null
+}
+
+export interface ComplianceOfficerBrief {
+  fund_id: number
+  fund_name: string
+  document_tiers: Record<LegalDocumentSourceTier | string, number>
+  special_partner_exists: boolean
+  missing_contracts: Array<{
+    investment_id: number
+    company_id: number
+    company_name: string
+  }>
+  due_today_count: number
+  due_week_count: number
+  review_summary: {
+    pass: number
+    warn: number
+    fail: number
+    conflict: number
+    needs_review: number
+  }
+  required_today: ComplianceOfficerRequiredItem[]
+  notice_schedule: ComplianceOfficerNoticeItem[]
+  key_terms: FundKeyTermResponse[]
+  special_guidelines: LegalDocument[]
+  recent_reviews: ComplianceReview[]
 }
 
 export interface ComplianceLLMUsageRecord {

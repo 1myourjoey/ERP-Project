@@ -10,10 +10,14 @@ import {
   fetchComplianceDashboard,
   fetchComplianceLLMUsage,
   fetchComplianceObligations,
+  fetchComplianceOfficerBrief,
+  fetchComplianceReviews,
   fetchComplianceRules,
   fetchComplianceScanHistory,
   fetchFunds,
+  fetchInvestments,
   interpretComplianceQuery,
+  runComplianceReview,
   runComplianceCheck,
   triggerComplianceManualScan,
   updateComplianceRule,
@@ -23,14 +27,18 @@ import {
   type ComplianceCheckRecord,
   type ComplianceDashboardSummary,
   type ComplianceDocument,
+  type ComplianceOfficerBrief,
   type ComplianceInterpretResponse,
   type ComplianceLLMUsageResponse,
   type ComplianceManualScanResponse,
   type ComplianceObligation,
+  type ComplianceReview,
+  type ComplianceReviewRunResponse,
   type ComplianceRule,
   type ComplianceRuleCreateInput,
   type ComplianceScanHistoryResponse,
   type Fund,
+  type Investment,
 } from '../lib/api'
 import { useToast } from '../contexts/ToastContext'
 import EmptyState from '../components/EmptyState'
@@ -52,14 +60,42 @@ import { queryKeys } from '../lib/queryKeys'
 type TabKey = 'dashboard' | 'obligations' | 'rules' | 'checks' | 'documents' | 'schedule' | 'history'
 
 const COMPLIANCE_TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'dashboard', label: '대시보드' },
-  { key: 'obligations', label: '의무사항' },
-  { key: 'rules', label: '규칙' },
-  { key: 'checks', label: '점검' },
-  { key: 'documents', label: '문서 라이브러리' },
-  { key: 'schedule', label: '스케줄/개정' },
-  { key: 'history', label: '이력/리포트' },
+  { key: 'dashboard', label: '오늘 해야 할 일' },
+  { key: 'obligations', label: '의무와 마감' },
+  { key: 'rules', label: '검토 기준' },
+  { key: 'checks', label: '검토 결과' },
+  { key: 'documents', label: '문서 기준' },
+  { key: 'schedule', label: '정기 점검' },
+  { key: 'history', label: '이력과 리포트' },
 ]
+
+function reviewBadge(result: string): { label: string; className: string } {
+  if (result === 'pass') return { label: '문제 없음', className: 'tag tag-green' }
+  if (result === 'warn') return { label: '주의', className: 'tag tag-amber' }
+  if (result === 'fail') return { label: '위반 우려', className: 'tag tag-red' }
+  if (result === 'conflict') return { label: '문서 충돌', className: 'tag tag-red' }
+  if (result === 'needs_review') return { label: '추가 검토 필요', className: 'tag tag-blue' }
+  return { label: result, className: 'tag tag-gray' }
+}
+
+function levelPlainLabel(level: string | null | undefined): string {
+  if (level === 'L1') return '기본 존재 확인'
+  if (level === 'L2') return '수치 기준 확인'
+  if (level === 'L3') return '기한 확인'
+  if (level === 'L4') return '서로 맞는지 확인'
+  if (level === 'L5') return '종합 판단'
+  return level || '-'
+}
+
+function ruleTypePlainLabel(condition: Record<string, unknown> | null | undefined): string {
+  const type = String(condition?.type || '').trim().toLowerCase()
+  if (type === 'exists') return '존재 확인'
+  if (type === 'range') return '수치 한도 확인'
+  if (type === 'deadline') return '기한 확인'
+  if (type === 'cross_validate') return '서로 맞는지 확인'
+  if (type === 'composite') return '종합 판단'
+  return '기타 기준'
+}
 
 function statusBadge(row: ComplianceObligation): { label: string; className: string } {
   if (row.status === 'completed') return { label: '완료', className: 'tag tag-green' }
@@ -87,6 +123,12 @@ function dDayLabel(dDay: number | null | undefined): string {
 }
 
 function scopeMeta(scope?: string): { label: string; className: string } {
+  if (scope === 'investment') {
+    return {
+      label: '투자계약',
+      className: 'border-[#d2c3ff] bg-[#f5f0ff] text-[#50338a]',
+    }
+  }
   if (scope === 'fund_type') {
     return {
       label: '유형 가이드',
@@ -130,6 +172,14 @@ function defaultYearMonth(): string {
   return `${year}-${month}`
 }
 
+const RULE_CONDITION_PRESETS: Record<string, Record<string, unknown>> = {
+  exists: { type: 'exists', target: 'document', document_type: '' },
+  range: { type: 'range', target: 'investment_ratio', max: 0.2 },
+  deadline: { type: 'deadline', target: 'quarterly_report', days_before: 7 },
+  cross_validate: { type: 'cross_validate', source: 'lp_commitment_sum', target: 'fund_commitment_total', tolerance: 0 },
+  composite: { type: 'composite', logic: 'AND', rules: [] },
+}
+
 const emptyRuleForm: ComplianceRuleCreateInput = {
   rule_code: '',
   rule_name: '',
@@ -161,11 +211,15 @@ export default function CompliancePage() {
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null)
   const [ruleForm, setRuleForm] = useState<ComplianceRuleCreateInput>(emptyRuleForm)
   const [conditionText, setConditionText] = useState<string>(stringifyCondition(emptyRuleForm.condition))
+  const [showAdvancedRuleEditor, setShowAdvancedRuleEditor] = useState(false)
 
   const [legalQuery, setLegalQuery] = useState('')
   const [legalFundId, setLegalFundId] = useState<number | ''>('')
+  const [legalInvestmentId, setLegalInvestmentId] = useState<number | ''>('')
+  const [reviewScenario, setReviewScenario] = useState<'investment_precheck' | 'report_precheck' | 'fund_document_check'>('investment_precheck')
   const [usagePeriod, setUsagePeriod] = useState<'month' | 'week' | 'all'>('month')
   const [interpretResult, setInterpretResult] = useState<ComplianceInterpretResponse | null>(null)
+  const [reviewResult, setReviewResult] = useState<ComplianceReviewRunResponse | null>(null)
 
   const [scanPeriod, setScanPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [manualScanMode, setManualScanMode] = useState<'daily' | 'full' | 'law'>('daily')
@@ -206,6 +260,16 @@ export default function CompliancePage() {
     queryKey: ['funds'],
     queryFn: fetchFunds,
   })
+  const { data: legalInvestments = [] } = useQuery<Investment[]>({
+    queryKey: ['investments', { fund_id: legalFundId === '' ? undefined : legalFundId }],
+    queryFn: () => fetchInvestments({ fund_id: legalFundId === '' ? undefined : legalFundId }),
+    enabled: legalFundId !== '',
+  })
+  const { data: officerBrief, isLoading: isOfficerBriefLoading } = useQuery<ComplianceOfficerBrief>({
+    queryKey: ['complianceOfficerBrief', legalFundId],
+    queryFn: () => fetchComplianceOfficerBrief(Number(legalFundId)),
+    enabled: legalFundId !== '',
+  })
   const { data: dashboard, isLoading: isDashboardLoading } = useQuery<ComplianceDashboardSummary>({
     queryKey: ['complianceDashboard'],
     queryFn: fetchComplianceDashboard,
@@ -233,6 +297,16 @@ export default function CompliancePage() {
   const { data: amendmentAlerts = [], isLoading: isAmendmentsLoading } = useQuery<ComplianceDocument[]>({
     queryKey: ['complianceAmendments'],
     queryFn: () => fetchComplianceAmendments(20),
+  })
+  const { data: recentReviews = [] } = useQuery<ComplianceReview[]>({
+    queryKey: ['complianceReviews', { fund_id: legalFundId === '' ? undefined : legalFundId, investment_id: legalInvestmentId === '' ? undefined : legalInvestmentId }],
+    queryFn: () =>
+      fetchComplianceReviews({
+        fund_id: legalFundId === '' ? undefined : legalFundId,
+        investment_id: legalInvestmentId === '' ? undefined : legalInvestmentId,
+        limit: 10,
+      }),
+    enabled: legalFundId !== '',
   })
 
   const completeMut = useMutation({
@@ -279,16 +353,32 @@ export default function CompliancePage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['complianceDashboard'] })
       queryClient.invalidateQueries({ queryKey: ['complianceChecks'] })
-      addToast('success', `수동 점검이 완료되었습니다. 점검 ${result.checked_count}건, 위반 ${result.failed_count}건`)
+      addToast('success', `다시 확인이 완료되었습니다. 확인 ${result.checked_count}건, 위반 우려 ${result.failed_count}건`)
     },
   })
 
   const interpretMut = useMutation({
-    mutationFn: (payload: { query: string; fund_id?: number | null }) => interpretComplianceQuery(payload),
+    mutationFn: (payload: { query: string; fund_id?: number | null; investment_id?: number | null }) => interpretComplianceQuery(payload),
     onSuccess: (result) => {
       setInterpretResult(result)
       queryClient.invalidateQueries({ queryKey: ['complianceLlmUsage'] })
-      addToast('success', result.tier === 'L1' ? '규칙 엔진(L1)으로 답변했습니다.' : 'RAG + LLM(L2)으로 답변했습니다.')
+      addToast('success', result.tier === 'L1' ? '등록된 규칙 기준으로 설명했습니다.' : '문서 근거까지 반영해 설명했습니다.')
+    },
+  })
+
+  const reviewMut = useMutation({
+    mutationFn: (payload: {
+      fund_id: number
+      scenario: string
+      query?: string | null
+      investment_id?: number | null
+      run_rule_engine?: boolean
+    }) => runComplianceReview(payload),
+    onSuccess: (result) => {
+      setReviewResult(result)
+      queryClient.invalidateQueries({ queryKey: ['complianceReviews'] })
+      queryClient.invalidateQueries({ queryKey: ['complianceChecks'] })
+      addToast('success', `계층 검증 완료: ${result.review.result}`)
     },
   })
 
@@ -313,10 +403,24 @@ export default function CompliancePage() {
     (row) => row.rule_code?.startsWith('RPT-E') && row.status !== 'completed' && row.status !== 'waived',
   )
 
+  const editableCondition = useMemo<Record<string, unknown>>(
+    () => parseCondition(conditionText) ?? ruleForm.condition,
+    [conditionText, ruleForm.condition],
+  )
+
+  function replaceConditionDraft(next: Record<string, unknown>) {
+    setConditionText(stringifyCondition(next))
+  }
+
+  function updateConditionField(key: string, value: unknown) {
+    replaceConditionDraft({ ...editableCondition, [key]: value })
+  }
+
   function startCreateRule() {
     setEditingRuleId(null)
     setRuleForm(emptyRuleForm)
     setConditionText(stringifyCondition(emptyRuleForm.condition))
+    setShowAdvancedRuleEditor(false)
   }
 
   function startEditRule(rule: ComplianceRule) {
@@ -335,22 +439,25 @@ export default function CompliancePage() {
       is_active: rule.is_active,
     })
     setConditionText(stringifyCondition(rule.condition))
+    setShowAdvancedRuleEditor(false)
   }
 
   function submitRule() {
-    const condition = parseCondition(conditionText)
+    const condition = showAdvancedRuleEditor ? parseCondition(conditionText) : editableCondition
     if (!condition) {
       addToast('warning', '조건 JSON 형식이 올바르지 않습니다.')
       return
     }
-    if (!ruleForm.rule_code.trim() || !ruleForm.rule_name.trim() || !ruleForm.category.trim()) {
-      addToast('warning', 'rule_code, rule_name, category를 입력해주세요.')
+    if (!ruleForm.rule_name.trim() || !ruleForm.category.trim()) {
+      addToast('warning', '검토 기준 이름과 카테고리를 입력해주세요.')
       return
     }
 
+    const nextRuleCode = ruleForm.rule_code.trim() || `RULE-${Date.now()}`
+
     saveRuleMut.mutate({
       ...ruleForm,
-      rule_code: ruleForm.rule_code.trim(),
+      rule_code: nextRuleCode,
       rule_name: ruleForm.rule_name.trim(),
       category: ruleForm.category.trim(),
       condition,
@@ -360,7 +467,7 @@ export default function CompliancePage() {
 
   function runManualCheck() {
     if (ruleFundFilter === '') {
-      addToast('warning', '수동 점검 전에 조합을 선택해주세요.')
+      addToast('warning', '다시 확인할 조합을 선택해주세요.')
       return
     }
     manualCheckMut.mutate(ruleFundFilter)
@@ -369,12 +476,31 @@ export default function CompliancePage() {
   function submitLegalQuery() {
     const normalized = legalQuery.trim()
     if (!normalized) {
-      addToast('warning', '법률 질의 내용을 입력해주세요.')
+      addToast('warning', '검토할 내용을 입력해주세요.')
       return
     }
     interpretMut.mutate({
       query: normalized,
       fund_id: legalFundId === '' ? null : legalFundId,
+      investment_id: legalInvestmentId === '' ? null : legalInvestmentId,
+    })
+  }
+
+  function submitComplianceReview() {
+    if (legalFundId === '') {
+      addToast('warning', '우선순위 검토 전에 조합을 선택해주세요.')
+      return
+    }
+    if (reviewScenario === 'investment_precheck' && legalInvestmentId === '') {
+      addToast('warning', '투자 실행 검증은 투자건 선택이 필요합니다.')
+      return
+    }
+    reviewMut.mutate({
+      fund_id: legalFundId,
+      scenario: reviewScenario,
+      query: legalQuery.trim() || null,
+      investment_id: legalInvestmentId === '' ? null : legalInvestmentId,
+      run_rule_engine: true,
     })
   }
 
@@ -386,12 +512,6 @@ export default function CompliancePage() {
       payload.fund_id = manualScanFundId
     }
     manualScheduledScanMut.mutate(payload)
-  }
-
-  function jumpToFundChecks(fundId: number) {
-    setRuleFundFilter(fundId)
-    setCheckResultFilter('fail')
-    setActiveTab('checks')
   }
 
   function jumpToCheckResult(result: 'fail' | 'warning') {
@@ -455,7 +575,7 @@ export default function CompliancePage() {
     <div className="page-container space-y-4">
       <PageHeader
         title="컴플라이언스"
-        subtitle="의무사항, 규칙, 점검, 문서 인덱스를 한 화면에서 관리합니다."
+        subtitle="준법감시 관점에서 오늘 해야 할 일, 문서 충돌, 통지 일정, 검토 결과를 한 화면에서 봅니다."
         meta={(
           <span className="rounded-full border border-[#d8e5fb] bg-[#f5f9ff] px-2.5 py-1 text-[11px] font-semibold text-[#64748b]">
             {activeTabLabel}
@@ -466,39 +586,41 @@ export default function CompliancePage() {
       <PageMetricStrip items={[...complianceMetrics]} columns={4} />
 
       <SectionScaffold
-        title="법률 질의"
-        description="L1 규칙 엔진을 우선 사용하고, 필요 시 L2 RAG + GPT 분석을 수행합니다."
+        title="법령·규약·계약서 검토"
+        description="질문하면 먼저 등록된 규칙을 보고, 부족하면 공통 법령·조합 규약·투자계약서를 찾아 근거와 함께 설명합니다."
         actions={(
           <span className={`tag ${interpretResult?.tier === 'L1' ? 'tag-green' : 'tag-indigo'}`}>
-            {interpretResult?.tier ? `최근 답변: ${interpretResult.tier}` : '답변 대기'}
+            {interpretResult?.tier
+              ? `최근 설명: ${interpretResult.tier === 'L1' ? '등록 규칙 기준' : '문서 근거 포함'}`
+              : '검토 대기'}
           </span>
         )}
       >
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div className="rounded-2xl border border-[#d8e5fb] bg-[#f8fbff] p-3">
-            <p className="text-xs font-semibold text-[#1a3660]">1. L1 규칙 엔진</p>
+            <p className="text-xs font-semibold text-[#1a3660]">1. 등록된 규칙 먼저 확인</p>
             <p className="mt-1 text-xs leading-5 text-[#64748b]">
-              등록된 컴플라이언스 규칙과 체크 결과를 먼저 조회합니다. 명확한 규칙 답변이 가능하면 여기서 바로 종료합니다.
+              이미 등록된 컴플라이언스 규칙과 최근 점검 결과를 먼저 확인합니다. 여기서 답이 분명하면 바로 설명합니다.
             </p>
           </div>
           <div className="rounded-2xl border border-[#d8e5fb] bg-white p-3">
-            <p className="text-xs font-semibold text-[#1a3660]">2. L2 문서 검색</p>
+            <p className="text-xs font-semibold text-[#1a3660]">2. 관련 문서 찾기</p>
             <p className="mt-1 text-xs leading-5 text-[#64748b]">
-              L1만으로 부족하면 공통 법령, 조합 유형 가이드, 해당 조합 문서를 RAG로 검색해 근거 문서를 우선 추립니다.
+              공통 법령, 해당 조합 규약, 해당 투자건 계약서를 우선순위대로 찾아 근거가 되는 조항을 추립니다.
             </p>
           </div>
           <div className="rounded-2xl border border-[#d8e5fb] bg-white p-3">
-            <p className="text-xs font-semibold text-[#1a3660]">3. GPT 해석</p>
+            <p className="text-xs font-semibold text-[#1a3660]">3. 근거를 바탕으로 설명</p>
             <p className="mt-1 text-xs leading-5 text-[#64748b]">
-              검색된 근거를 바탕으로 최종 해석을 생성합니다. 답변 아래에서 어떤 문서가 근거인지 바로 확인할 수 있습니다.
+              찾은 조항을 바탕으로 허용 여부와 주의사항을 설명합니다. 아래에서 어떤 문서가 근거인지 바로 확인할 수 있습니다.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
           <input
-            className="form-input md:col-span-4"
-            placeholder="예: 동일 발행인 집중투자가 현재 위반인지 알려줘"
+            className="form-input md:col-span-3"
+            placeholder="예: 이 투자 실행이 규약과 계약서 기준으로 가능한지 알려줘"
             value={legalQuery}
             onChange={(event) => setLegalQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -508,27 +630,54 @@ export default function CompliancePage() {
           <select
             className="form-input"
             value={legalFundId}
-            onChange={(event) => setLegalFundId(event.target.value ? Number(event.target.value) : '')}
+            onChange={(event) => {
+              setLegalFundId(event.target.value ? Number(event.target.value) : '')
+              setLegalInvestmentId('')
+            }}
           >
-            <option value="">조합 필터 없음</option>
+            <option value="">조합 선택 안 함</option>
             {funds.map((fund) => (
               <option key={fund.id} value={fund.id}>
                 {fund.name}
               </option>
             ))}
           </select>
+          <select
+            className="form-input"
+            value={legalInvestmentId}
+            onChange={(event) => setLegalInvestmentId(event.target.value ? Number(event.target.value) : '')}
+            disabled={legalFundId === ''}
+          >
+            <option value="">투자건 선택 안 함</option>
+            {legalInvestments.map((investment) => (
+              <option key={investment.id} value={investment.id}>
+                {investment.company_name || `투자건 #${investment.id}`}
+              </option>
+            ))}
+          </select>
+          <select
+            className="form-input"
+            value={reviewScenario}
+            onChange={(event) => setReviewScenario(event.target.value as 'investment_precheck' | 'report_precheck' | 'fund_document_check')}
+          >
+            <option value="investment_precheck">투자 실행 검증</option>
+            <option value="report_precheck">보고 전 검증</option>
+            <option value="fund_document_check">문서 변경 검증</option>
+          </select>
           <button className="primary-btn" onClick={submitLegalQuery} disabled={interpretMut.isPending}>
-            {interpretMut.isPending ? '질의 중...' : '질의'}
+            {interpretMut.isPending ? '설명 정리 중...' : '설명 받기'}
+          </button>
+          <button className="secondary-btn" onClick={submitComplianceReview} disabled={reviewMut.isPending}>
+            {reviewMut.isPending ? '우선순위 검토 중...' : '우선순위 검토'}
           </button>
         </div>
         <p className="text-xs text-[#64748b]">
-          조합을 선택하면 공통 법령, 조합 유형 가이드, 해당 조합 문서를 함께 검색합니다. 조합을 선택하지 않으면 공통 법령만
-          검색합니다.
+          `설명 받기`는 빠르게 해석을 보여주고, `우선순위 검토`는 `법령 → 조합 규약 → 투자계약서` 순서로 근거를 모아 검토 이력을 남깁니다.
         </p>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 lg:col-span-2">
-            <p className="mb-1 text-xs font-semibold text-[#64748b]">답변</p>
+            <p className="mb-1 text-xs font-semibold text-[#64748b]">설명 결과</p>
             {interpretResult ? (
               <>
                 <pre className="whitespace-pre-wrap text-sm text-[#0f1f3d]">{interpretResult.answer}</pre>
@@ -566,11 +715,55 @@ export default function CompliancePage() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-[#64748b]">질의를 입력하면 법률 해석 결과를 확인할 수 있습니다.</p>
+              <p className="text-sm text-[#64748b]">질문을 입력하면 관련 법령, 규약, 계약서를 바탕으로 설명을 확인할 수 있습니다.</p>
             )}
           </div>
 
           <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+            <div className="mb-3 rounded-xl border border-[#d8e5fb] bg-[#f8fbff] p-3 text-xs text-[#0f1f3d]">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="font-semibold text-[#1a3660]">최근 우선순위 검토</p>
+                {reviewResult?.review && (
+                  <span className="tag tag-indigo">{reviewResult.review.result}</span>
+                )}
+              </div>
+              {reviewResult?.review ? (
+                <div className="space-y-2">
+                  <p className="font-medium text-[#0f1f3d]">{reviewResult.review.summary || '요약 없음'}</p>
+                  <p className="text-[#64748b]">
+                    우선 문서 계층: <span className="font-semibold">{reviewResult.review.prevailing_tier || '미정'}</span>
+                  </p>
+                  {reviewResult.review.evidence.length > 0 && (
+                    <div className="space-y-1">
+                      {reviewResult.review.evidence.slice(0, 3).map((evidence) => (
+                        <div key={evidence.id} className="rounded border border-[#e6eefc] bg-white px-2 py-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{evidence.source_tier}</span>
+                            <span className="text-[#64748b]">{evidence.section_ref || `p.${evidence.page_no ?? '-'}`}</span>
+                          </div>
+                          <div className="mt-1 line-clamp-3 text-[#64748b]">{evidence.snippet}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[#64748b]">아직 우선순위 검토를 실행하지 않았습니다.</p>
+              )}
+              {recentReviews.length > 0 && (
+                <div className="mt-3 border-t border-[#e6eefc] pt-2">
+                  <p className="mb-1 font-semibold text-[#64748b]">최근 이력</p>
+                  <div className="space-y-1">
+                    {recentReviews.slice(0, 3).map((row) => (
+                      <div key={row.id} className="flex items-center justify-between gap-2 rounded border border-[#eef4ff] bg-white px-2 py-1">
+                        <span className="truncate">{row.scenario}</span>
+                        <span className="tag tag-blue">{row.result}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-[#64748b]">토큰 사용량</p>
               <select
@@ -630,78 +823,257 @@ export default function CompliancePage() {
 
       {activeTab === 'dashboard' && (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            <FundComplianceGrid
-              rows={dashboardFundStatus}
-              isLoading={isDashboardLoading}
-              selectedFundId={ruleFundFilter}
-              onSelectFund={jumpToFundChecks}
-            />
-            <AuditTimeline rows={dashboardRecentChecks} isLoading={isDashboardLoading} maxItems={15} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            <AmendmentAlerts rows={dashboardAmendments} isLoading={isDashboardLoading} />
-
-            <div className="card-base space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-[#0f1f3d]">인덱싱 및 LLM 사용량</h3>
-                <p className="mt-1 text-xs text-[#64748b]">벡터 문서 청크 수와 월간 법률 LLM 사용량입니다.</p>
+          <div className="card-base">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[260px] flex-1">
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">준법감시 대상 조합</label>
+                <select
+                  className="form-input"
+                  value={legalFundId}
+                  onChange={(event) => {
+                    setLegalFundId(event.target.value ? Number(event.target.value) : '')
+                    setLegalInvestmentId('')
+                  }}
+                >
+                  <option value="">조합 선택</option>
+                  {funds.map((fund) => (
+                    <option key={fund.id} value={fund.id}>
+                      {fund.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs text-[#0f1f3d]">
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">법률</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.laws ?? 0}</p>
-                </div>
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">시행령/규칙</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.regulations ?? 0}</p>
-                </div>
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">가이드라인</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.guidelines ?? 0}</p>
-                </div>
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">규약/계약</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.agreements ?? 0}</p>
-                </div>
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">내부지침</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.internal ?? 0}</p>
-                </div>
-                <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
-                  <p className="text-[#64748b]">총 청크 수</p>
-                  <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.total_chunks ?? 0}</p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 text-xs text-[#0f1f3d]">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-[#0f1f3d]">월간 토큰 사용량</p>
-                  <span className={dashboardLlmUsageProgress >= 90 ? 'tag tag-red' : dashboardLlmUsageProgress >= 70 ? 'tag tag-amber' : 'tag tag-blue'}>
-                    {dashboardLlmUsageProgress.toFixed(1)}%
-                  </span>
-                </div>
-                <p className="mt-2">
-                  {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} 토큰
-                </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f5f9ff]">
-                  <div
-                    className={`h-full rounded-full ${
-                      dashboardLlmUsageProgress >= 90
-                        ? 'bg-[#6d3e44]'
-                        : dashboardLlmUsageProgress >= 70
-                          ? 'bg-[#b68a00]'
-                          : 'bg-[#558ef8]'
-                    }`}
-                    style={{ width: `${dashboardLlmUsageProgress}%` }}
-                  />
-                </div>
-                <p className="mt-2">비용: ${(dashboardLlmUsage?.month_cost_usd ?? 0).toFixed(4)}</p>
+              <div className="text-xs text-[#64748b]">
+                조합을 선택하면 규약, 특별조합원 가이드라인, 투자계약서, 마감 일정, 최근 검토 결과를 한 번에 봅니다.
               </div>
             </div>
           </div>
+
+          {legalFundId === '' ? (
+            <div className="card-base">
+              <EmptyState message="준법감시 관점으로 볼 조합을 선택해 주세요." className="py-10" />
+            </div>
+          ) : isOfficerBriefLoading || !officerBrief ? (
+            <div className="card-base">
+              <PageLoading />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+                <div className="card-base">
+                  <p className="text-xs text-[#64748b]">오늘 바로 확인</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#0f1f3d]">{officerBrief.due_today_count}</p>
+                </div>
+                <div className="card-base">
+                  <p className="text-xs text-[#64748b]">이번 주 마감</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#0f1f3d]">{officerBrief.due_week_count}</p>
+                </div>
+                <div className="card-base">
+                  <p className="text-xs text-[#64748b]">문서 충돌</p>
+                  <p className="mt-2 text-2xl font-semibold text-red-700">{officerBrief.review_summary.conflict}</p>
+                </div>
+                <div className="card-base">
+                  <p className="text-xs text-[#64748b]">추가 검토 필요</p>
+                  <p className="mt-2 text-2xl font-semibold text-amber-700">{officerBrief.review_summary.needs_review}</p>
+                </div>
+                <div className="card-base">
+                  <p className="text-xs text-[#64748b]">투자계약서 미등록</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#0f1f3d]">{officerBrief.missing_contracts.length}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="card-base">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">오늘 해야 할 일</h3>
+                    <span className="text-xs text-[#64748b]">{officerBrief.required_today.length}건</span>
+                  </div>
+                  {!officerBrief.required_today.length ? (
+                    <EmptyState message="오늘 바로 처리할 항목이 없습니다." className="py-8" />
+                  ) : (
+                    <div className="space-y-2">
+                      {officerBrief.required_today.map((item, index) => (
+                        <div key={`${item.kind}-${index}`} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#0f1f3d]">{item.title}</p>
+                            <span className={item.priority === 'high' ? 'tag tag-red' : 'tag tag-amber'}>
+                              {item.priority === 'high' ? '우선 확인' : '확인 필요'}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-[#64748b]">{item.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-base">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">오늘 통지하면 가능한 일정</h3>
+                    <span className="text-xs text-[#64748b]">규약 기준</span>
+                  </div>
+                  <div className="space-y-2">
+                    {officerBrief.notice_schedule.map((item) => (
+                      <div key={item.notice_type} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#0f1f3d]">{item.label}</p>
+                          <span className="tag tag-blue">
+                            {item.business_days}{item.day_basis === 'calendar' ? '일' : '영업일'}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          오늘 통지 시 가장 빠른 기준일: {new Date(item.earliest_target_date).toLocaleDateString('ko-KR')}
+                        </p>
+                        {item.memo && <p className="mt-1 text-xs text-[#0f1f3d]">메모: {item.memo}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <div className="card-base">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">문서 기준 현황</h3>
+                    <span className="text-xs text-[#64748b]">업로드 기준</span>
+                  </div>
+                  <div className="space-y-2 text-sm text-[#0f1f3d]">
+                    <div className="rounded-lg border border-[#d8e5fb] bg-white/70 px-3 py-2">조합 규약 {officerBrief.document_tiers.fund_bylaw ?? 0}건</div>
+                    <div className="rounded-lg border border-[#d8e5fb] bg-white/70 px-3 py-2">특별조합원 가이드라인 {officerBrief.document_tiers.special_guideline ?? 0}건</div>
+                    <div className="rounded-lg border border-[#d8e5fb] bg-white/70 px-3 py-2">투자계약서 {officerBrief.document_tiers.investment_contract ?? 0}건</div>
+                    {officerBrief.special_partner_exists && (officerBrief.document_tiers.special_guideline ?? 0) === 0 && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                        특별조합원이 있지만 관련 가이드라인이 아직 없습니다.
+                      </div>
+                    )}
+                    {officerBrief.special_guidelines.length > 0 && (
+                      <div className="rounded-lg border border-[#d8e5fb] bg-[#f8fbff] px-3 py-2 text-xs text-[#0f1f3d]">
+                        <p className="font-semibold text-[#64748b]">등록된 특별조합원 가이드라인</p>
+                        <div className="mt-1 space-y-1">
+                          {officerBrief.special_guidelines.slice(0, 3).map((row) => (
+                            <div key={row.id}>
+                              {(row.document_role || '가이드라인')} · {row.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="card-base">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">주요 계약/규약 포인트</h3>
+                    <span className="text-xs text-[#64748b]">{officerBrief.key_terms.length}건</span>
+                  </div>
+                  {!officerBrief.key_terms.length ? (
+                    <EmptyState message="등록된 주요 조항이 없습니다." className="py-8" />
+                  ) : (
+                    <div className="space-y-2">
+                      {officerBrief.key_terms.slice(0, 6).map((term) => (
+                        <div key={term.id} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                          <p className="text-xs text-[#64748b]">{term.category}</p>
+                          <p className="mt-1 text-sm font-semibold text-[#0f1f3d]">{term.label}</p>
+                          <p className="mt-1 text-sm text-[#0f1f3d]">{term.value}</p>
+                          {term.article_ref && <p className="mt-1 text-xs text-[#64748b]">{term.article_ref}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-base">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">최근 검토 결과</h3>
+                    <span className="text-xs text-[#64748b]">{officerBrief.recent_reviews.length}건</span>
+                  </div>
+                  {!officerBrief.recent_reviews.length ? (
+                    <EmptyState message="최근 검토 기록이 없습니다." className="py-8" />
+                  ) : (
+                    <div className="space-y-2">
+                      {officerBrief.recent_reviews.map((review) => {
+                        const badge = reviewBadge(review.result)
+                        return (
+                          <div key={review.id} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-[#0f1f3d]">{review.scenario}</p>
+                              <span className={badge.className}>{badge.label}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-[#64748b]">우선 기준: {review.prevailing_tier || '-'}</p>
+                            <p className="mt-1 text-xs text-[#0f1f3d]">{review.summary || '요약 없음'}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <FundComplianceGrid
+                  rows={dashboardFundStatus}
+                  isLoading={isDashboardLoading}
+                  selectedFundId={legalFundId}
+                  onSelectFund={(fundId) => setLegalFundId(fundId)}
+                />
+                <AmendmentAlerts rows={dashboardAmendments} isLoading={isDashboardLoading} />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <AuditTimeline rows={dashboardRecentChecks} isLoading={isDashboardLoading} maxItems={15} />
+                <div className="card-base space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">전체 문서 인덱싱 및 사용량</h3>
+                    <p className="mt-1 text-xs text-[#64748b]">법령·가이드라인 인덱싱 현황과 월간 설명 사용량입니다.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-[#0f1f3d]">
+                    <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                      <p className="text-[#64748b]">법률</p>
+                      <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.laws ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                      <p className="text-[#64748b]">시행령/규칙</p>
+                      <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.regulations ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                      <p className="text-[#64748b]">가이드라인</p>
+                      <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.guidelines ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                      <p className="text-[#64748b]">규약/계약</p>
+                      <p className="text-lg font-semibold text-[#0f1f3d]">{dashboardDocumentStats?.agreements ?? 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3 text-xs text-[#0f1f3d]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-[#0f1f3d]">월간 설명 사용량</p>
+                      <span className={dashboardLlmUsageProgress >= 90 ? 'tag tag-red' : dashboardLlmUsageProgress >= 70 ? 'tag tag-amber' : 'tag tag-blue'}>
+                        {dashboardLlmUsageProgress.toFixed(1)}%
+                      </span>
+                    </div>
+                    <p className="mt-2">
+                      {(dashboardLlmUsage?.month_total_tokens ?? 0).toLocaleString()} / {(dashboardLlmUsage?.month_limit ?? 0).toLocaleString()} 토큰
+                    </p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f5f9ff]">
+                      <div
+                        className={`h-full rounded-full ${
+                          dashboardLlmUsageProgress >= 90
+                            ? 'bg-[#6d3e44]'
+                            : dashboardLlmUsageProgress >= 70
+                              ? 'bg-[#b68a00]'
+                              : 'bg-[#558ef8]'
+                        }`}
+                        style={{ width: `${dashboardLlmUsageProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-2">비용: ${(dashboardLlmUsage?.month_cost_usd ?? 0).toFixed(4)}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -819,9 +1191,12 @@ export default function CompliancePage() {
       {activeTab === 'rules' && (
         <>
           <div className="card-base">
+            <div className="mb-3 rounded-xl border border-[#d8e5fb] bg-[#f8fbff] p-3 text-xs text-[#64748b]">
+              이 화면은 `어떤 기준을 자동으로 보는지`를 쉽게 관리하는 곳입니다. 보통은 검토 방식과 중요도만 바꾸면 되고, JSON은 고급 설정에서만 다룹니다.
+            </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#64748b]">조합</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">적용 조합</label>
                 <select
                   className="form-input"
                   value={ruleFundFilter}
@@ -836,22 +1211,22 @@ export default function CompliancePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#64748b]">레벨</label>
+                <label className="mb-1 block text-xs font-medium text-[#64748b]">검토 방식</label>
                 <select className="form-input" value={ruleLevelFilter} onChange={(event) => setRuleLevelFilter(event.target.value)}>
                   <option value="">전체</option>
-                  <option value="L1">L1</option>
-                  <option value="L2">L2</option>
-                  <option value="L3">L3</option>
-                  <option value="L4">L4</option>
-                  <option value="L5">L5</option>
+                  <option value="L1">기본 존재 확인</option>
+                  <option value="L2">수치 기준 확인</option>
+                  <option value="L3">기한 확인</option>
+                  <option value="L4">서로 맞는지 확인</option>
+                  <option value="L5">종합 판단</option>
                 </select>
               </div>
               <div className="flex items-end gap-2 md:col-span-2">
                 <button className="secondary-btn" onClick={startCreateRule}>
-                  규칙 추가
+                  검토 기준 추가
                 </button>
                 <button className="primary-btn" onClick={runManualCheck} disabled={manualCheckMut.isPending || ruleFundFilter === ''}>
-                  {manualCheckMut.isPending ? '실행 중...' : '수동 점검 실행'}
+                  {manualCheckMut.isPending ? '다시 확인 중...' : '선택 조합 다시 점검'}
                 </button>
               </div>
             </div>
@@ -859,7 +1234,7 @@ export default function CompliancePage() {
 
           <div className="card-base space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#0f1f3d]">{editingRuleId ? `규칙 수정 #${editingRuleId}` : '규칙 생성'}</p>
+              <p className="text-sm font-semibold text-[#0f1f3d]">{editingRuleId ? `검토 기준 수정 #${editingRuleId}` : '검토 기준 추가'}</p>
               {editingRuleId && (
                 <button className="text-xs text-[#64748b] hover:text-[#0f1f3d]" onClick={startCreateRule}>
                   취소
@@ -870,33 +1245,54 @@ export default function CompliancePage() {
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input
                 className="form-input"
-                placeholder="rule_code (예: INV-LIMIT-001)"
-                value={ruleForm.rule_code}
-                onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_code: event.target.value }))}
-              />
-              <input
-                className="form-input"
-                placeholder="규칙명"
+                placeholder="검토 기준 이름 (예: 투자계약서 필수 조항 확인)"
                 value={ruleForm.rule_name}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_name: event.target.value }))}
+              />
+              <select
+                className="form-input"
+                value={String(editableCondition.type || 'exists')}
+                onChange={(event) => {
+                  const nextType = event.target.value
+                  replaceConditionDraft({ ...(RULE_CONDITION_PRESETS[nextType] || RULE_CONDITION_PRESETS.exists) })
+                  setRuleForm((prev) => ({
+                    ...prev,
+                    level:
+                      nextType === 'exists'
+                        ? 'L1'
+                        : nextType === 'range'
+                          ? 'L2'
+                          : nextType === 'deadline'
+                            ? 'L3'
+                            : nextType === 'cross_validate'
+                              ? 'L4'
+                              : 'L5',
+                  }))
+                }}
+              >
+                <option value="exists">존재 확인</option>
+                <option value="range">수치 기준 확인</option>
+                <option value="deadline">기한 확인</option>
+                <option value="cross_validate">서로 맞는지 확인</option>
+                <option value="composite">종합 판단</option>
+              </select>
+              <input
+                className="form-input"
+                placeholder="업무 분야 (예: 통지, 보고, 투자집행)"
+                value={ruleForm.category}
+                onChange={(event) => setRuleForm((prev) => ({ ...prev, category: event.target.value }))}
               />
               <select
                 className="form-input"
                 value={ruleForm.level}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, level: event.target.value }))}
               >
-                <option value="L1">L1</option>
-                <option value="L2">L2</option>
-                <option value="L3">L3</option>
-                <option value="L4">L4</option>
-                <option value="L5">L5</option>
+                <option value="L1">기본 존재 확인</option>
+                <option value="L2">수치 기준 확인</option>
+                <option value="L3">기한 확인</option>
+                <option value="L4">서로 맞는지 확인</option>
+                <option value="L5">종합 판단</option>
               </select>
-              <input
-                className="form-input"
-                placeholder="카테고리"
-                value={ruleForm.category}
-                onChange={(event) => setRuleForm((prev) => ({ ...prev, category: event.target.value }))}
-              />
               <select
                 className="form-input"
                 value={ruleForm.severity}
@@ -912,23 +1308,169 @@ export default function CompliancePage() {
                 value={ruleForm.auto_task ? 'true' : 'false'}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, auto_task: event.target.value === 'true' }))}
               >
-                <option value="false">자동업무: 비활성</option>
-                <option value="true">자동업무: 활성</option>
+                <option value="false">문제만 표시</option>
+                <option value="true">문제 시 업무 자동 생성</option>
               </select>
-              <textarea className="form-input md:col-span-2" rows={8} value={conditionText} onChange={(event) => setConditionText(event.target.value)} />
+
+              {String(editableCondition.type || 'exists') === 'exists' && (
+                <>
+                  <input
+                    className="form-input"
+                    placeholder="확인 대상 (예: document, investment)"
+                    value={String(editableCondition.target || '')}
+                    onChange={(event) => updateConditionField('target', event.target.value)}
+                  />
+                  <input
+                    className="form-input"
+                    placeholder="문서명/문서유형 (예: 투자계약서, 조합규약)"
+                    value={String(editableCondition.document_type || editableCondition.document_name || '')}
+                    onChange={(event) => {
+                      updateConditionField('document_type', event.target.value)
+                      updateConditionField('document_name', event.target.value)
+                    }}
+                  />
+                </>
+              )}
+
+              {String(editableCondition.type || 'exists') === 'range' && (
+                <>
+                  <input
+                    className="form-input"
+                    placeholder="확인 대상 (예: investment_ratio)"
+                    value={String(editableCondition.target || '')}
+                    onChange={(event) => updateConditionField('target', event.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="form-input"
+                      type="number"
+                      step="0.01"
+                      placeholder="최소값"
+                      value={editableCondition.min == null ? '' : String(editableCondition.min)}
+                      onChange={(event) => updateConditionField('min', event.target.value ? Number(event.target.value) : null)}
+                    />
+                    <input
+                      className="form-input"
+                      type="number"
+                      step="0.01"
+                      placeholder="최대값"
+                      value={editableCondition.max == null ? '' : String(editableCondition.max)}
+                      onChange={(event) => updateConditionField('max', event.target.value ? Number(event.target.value) : null)}
+                    />
+                  </div>
+                </>
+              )}
+
+              {String(editableCondition.type || 'exists') === 'deadline' && (
+                <>
+                  <input
+                    className="form-input"
+                    placeholder="확인 대상 (예: quarterly_report)"
+                    value={String(editableCondition.target || '')}
+                    onChange={(event) => updateConditionField('target', event.target.value)}
+                  />
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={0}
+                    placeholder="몇 일 전부터 경고할지"
+                    value={editableCondition.days_before == null ? '' : String(editableCondition.days_before)}
+                    onChange={(event) => updateConditionField('days_before', Number(event.target.value || 0))}
+                  />
+                </>
+              )}
+
+              {String(editableCondition.type || 'exists') === 'cross_validate' && (
+                <>
+                  <input
+                    className="form-input"
+                    placeholder="비교 기준 A (예: lp_commitment_sum)"
+                    value={String(editableCondition.source || '')}
+                    onChange={(event) => updateConditionField('source', event.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="form-input"
+                      placeholder="비교 기준 B (예: fund_commitment_total)"
+                      value={String(editableCondition.target || '')}
+                      onChange={(event) => updateConditionField('target', event.target.value)}
+                    />
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={0}
+                      placeholder="허용 오차"
+                      value={editableCondition.tolerance == null ? '' : String(editableCondition.tolerance)}
+                      onChange={(event) => updateConditionField('tolerance', Number(event.target.value || 0))}
+                    />
+                  </div>
+                </>
+              )}
+
+              {String(editableCondition.type || 'exists') === 'composite' && (
+                <>
+                  <select
+                    className="form-input"
+                    value={String(editableCondition.logic || 'AND')}
+                    onChange={(event) => updateConditionField('logic', event.target.value)}
+                  >
+                    <option value="AND">모두 충족</option>
+                    <option value="OR">하나 이상 충족</option>
+                  </select>
+                  <input
+                    className="form-input"
+                    placeholder="묶을 규칙 코드들 (쉼표 구분)"
+                    value={Array.isArray(editableCondition.rules) ? editableCondition.rules.join(', ') : ''}
+                    onChange={(event) =>
+                      updateConditionField(
+                        'rules',
+                        event.target.value
+                          .split(',')
+                          .map((item) => item.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                </>
+              )}
+
               <input
                 className="form-input md:col-span-2"
-                placeholder="설명"
+                placeholder="왜 필요한 기준인지 설명"
                 value={ruleForm.description ?? ''}
                 onChange={(event) => setRuleForm((prev) => ({ ...prev, description: event.target.value }))}
               />
             </div>
 
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="secondary-btn btn-sm"
+                onClick={() => setShowAdvancedRuleEditor((prev) => !prev)}
+              >
+                {showAdvancedRuleEditor ? '고급 설정 닫기' : '고급 설정 보기'}
+              </button>
               <button className="primary-btn" onClick={submitRule} disabled={saveRuleMut.isPending}>
-                {saveRuleMut.isPending ? '저장 중...' : editingRuleId ? '규칙 수정' : '규칙 생성'}
+                {saveRuleMut.isPending ? '저장 중...' : editingRuleId ? '검토 기준 수정' : '검토 기준 저장'}
               </button>
             </div>
+
+            {showAdvancedRuleEditor && (
+              <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d8e5fb] bg-[#f8fbff] p-3 md:grid-cols-2">
+                <input
+                  className="form-input"
+                  placeholder="내부 식별코드 (비워두면 자동 생성)"
+                  value={ruleForm.rule_code}
+                  onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_code: event.target.value }))}
+                />
+                <textarea
+                  className="form-input md:col-span-2"
+                  rows={8}
+                  value={conditionText}
+                  onChange={(event) => setConditionText(event.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="card-base overflow-auto">
@@ -940,26 +1482,33 @@ export default function CompliancePage() {
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
-                    <th className="px-3 py-2 text-left">코드</th>
-                    <th className="px-3 py-2 text-left">이름</th>
-                    <th className="px-3 py-2 text-left">레벨</th>
-                    <th className="px-3 py-2 text-left">카테고리</th>
-                    <th className="px-3 py-2 text-left">심각도</th>
-                    <th className="px-3 py-2 text-left">자동 업무</th>
-                    <th className="px-3 py-2 text-left">활성</th>
+                    <th className="px-3 py-2 text-left">검토 기준</th>
+                    <th className="px-3 py-2 text-left">확인 방식</th>
+                    <th className="px-3 py-2 text-left">무엇을 보는지</th>
+                    <th className="px-3 py-2 text-left">적용 범위</th>
+                    <th className="px-3 py-2 text-left">중요도</th>
+                    <th className="px-3 py-2 text-left">문제 시 처리</th>
                     <th className="px-3 py-2 text-left">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {rules.map((rule) => (
                     <tr key={rule.id}>
-                      <td className="px-3 py-2 font-mono text-xs">{rule.rule_code}</td>
-                      <td className="px-3 py-2">{rule.rule_name}</td>
-                      <td className="px-3 py-2">{rule.level}</td>
-                      <td className="px-3 py-2">{rule.category}</td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-[#0f1f3d]">{rule.rule_name}</div>
+                        <div className="text-xs text-[#64748b]">{rule.rule_code}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div>{levelPlainLabel(rule.level)}</div>
+                        <div className="text-xs text-[#64748b]">{ruleTypePlainLabel(rule.condition)}</div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#0f1f3d]">
+                        <div>{rule.plain_summary || rule.description || '-'}</div>
+                        <div className="mt-1 text-[#64748b]">기준 자료: {rule.check_basis || '-'}</div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#0f1f3d]">{rule.applies_to || '-'}</td>
                       <td className="px-3 py-2">{rule.severity}</td>
-                      <td className="px-3 py-2">{rule.auto_task ? '예' : '아니오'}</td>
-                      <td className="px-3 py-2">{rule.is_active ? '예' : '아니오'}</td>
+                      <td className="px-3 py-2 text-xs text-[#0f1f3d]">{rule.recommended_action || (rule.auto_task ? '자동 업무 생성' : '표시만')}</td>
                       <td className="px-3 py-2 space-x-2">
                         <button className="secondary-btn btn-sm" onClick={() => startEditRule(rule)}>
                           수정
@@ -1012,7 +1561,7 @@ export default function CompliancePage() {
               </div>
               <div className="flex items-end md:col-span-2">
                 <button className="primary-btn" onClick={runManualCheck} disabled={manualCheckMut.isPending || ruleFundFilter === ''}>
-                  {manualCheckMut.isPending ? '실행 중...' : '수동 점검 실행'}
+                  {manualCheckMut.isPending ? '다시 확인 중...' : '선택 조합 다시 확인'}
                 </button>
               </div>
             </div>
@@ -1027,10 +1576,10 @@ export default function CompliancePage() {
               <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                   <tr>
-                    <th className="px-3 py-2 text-left">점검 시각</th>
+                    <th className="px-3 py-2 text-left">확인 시각</th>
                     <th className="px-3 py-2 text-left">조합</th>
-                    <th className="px-3 py-2 text-left">규칙</th>
-                    <th className="px-3 py-2 text-left">레벨</th>
+                    <th className="px-3 py-2 text-left">검토 기준</th>
+                    <th className="px-3 py-2 text-left">확인 방식</th>
                     <th className="px-3 py-2 text-left">결과</th>
                     <th className="px-3 py-2 text-left">상세</th>
                     <th className="px-3 py-2 text-left">트리거</th>
@@ -1048,7 +1597,7 @@ export default function CompliancePage() {
                           <div className="font-mono text-xs text-[#64748b]">{check.rule_code || '-'}</div>
                           <div>{check.rule_name || '-'}</div>
                         </td>
-                        <td className="px-3 py-2">{check.level || '-'}</td>
+                        <td className="px-3 py-2">{levelPlainLabel(check.level)}</td>
                         <td className="px-3 py-2">
                           <span className={badge.className}>{badge.label}</span>
                         </td>
@@ -1122,8 +1671,8 @@ export default function CompliancePage() {
                 value={manualScanMode}
                 onChange={(event) => setManualScanMode(event.target.value as 'daily' | 'full' | 'law')}
               >
-                <option value="daily">일간 범위 (L1-L3)</option>
-                <option value="full">월간 전체 감사 (L1-L5)</option>
+                <option value="daily">일간 빠른 확인</option>
+                <option value="full">월간 전체 확인</option>
                 <option value="law">법령 개정 점검</option>
               </select>
               <select

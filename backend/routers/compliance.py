@@ -18,11 +18,14 @@ from models.compliance import (
     ComplianceDocument,
     ComplianceObligation,
     ComplianceRule,
+    ComplianceReviewEvidence,
+    ComplianceReviewRun,
     FundComplianceRule,
 )
 from models.attachment import Attachment
 from models.document_template import DocumentTemplate
 from models.fund import Fund
+from models.investment import Investment
 from models.llm_usage import LLMUsage
 from models.task import Task
 from schemas.compliance_history import (
@@ -33,14 +36,17 @@ from schemas.compliance_history import (
 )
 from services.compliance_engine import ComplianceEngine
 from services.compliance_history_analyzer import ComplianceHistoryAnalyzer
+from services.compliance_orchestrator import ComplianceOrchestrator
 from services.compliance_rule_engine import ComplianceRuleEngine
 from services.legal_rag import LegalRAGService, MonthlyTokenLimitExceededError
 from services.law_amendment_monitor import LawAmendmentMonitor
 from services.periodic_compliance_scanner import PeriodicComplianceScanner
 from services.document_service import build_variables_for_fund, generate_document_for_template
 from services.erp_backbone import backbone_enabled, maybe_emit_mutation, record_snapshot, sync_compliance_document_registry, sync_compliance_obligation_graph, sync_task_graph
+from services.lp_types import is_special_lp_type
 from services.scheduler import get_scheduler_service
 from services.vector_db import VectorDBService
+from utils.business_days import add_business_days
 
 router = APIRouter(tags=["compliance"])
 _COMPLIANCE_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads" / "compliance"
@@ -110,6 +116,81 @@ class ComplianceDocumentCreateBody(BaseModel):
 class ComplianceInterpretBody(BaseModel):
     query: str = Field(..., min_length=1)
     fund_id: int | None = Field(default=None, ge=1)
+    investment_id: int | None = Field(default=None, ge=1)
+
+
+class ComplianceReviewRunBody(BaseModel):
+    fund_id: int = Field(..., ge=1)
+    scenario: str = Field(..., min_length=1)
+    query: str | None = None
+    investment_id: int | None = Field(default=None, ge=1)
+    run_rule_engine: bool = True
+
+
+def _rule_type_label(condition: dict[str, Any]) -> str:
+    condition_type = str(condition.get("type") or "").strip().lower()
+    return {
+        "exists": "존재 확인",
+        "range": "수치 한도 확인",
+        "deadline": "기한 확인",
+        "cross_validate": "서로 맞는지 확인",
+        "composite": "종합 판단",
+    }.get(condition_type, condition_type or "기준 확인")
+
+
+def _rule_plain_summary(row: FundComplianceRule) -> str:
+    condition = row.condition if isinstance(row.condition, dict) else {}
+    condition_type = str(condition.get("type") or "").strip().lower()
+    if condition_type == "exists":
+        target = str(condition.get("target") or "대상").strip()
+        doc_type = str(condition.get("document_type") or condition.get("document_name") or "").strip()
+        if doc_type:
+            return f"{target} 기준으로 `{doc_type}` 문서가 있는지 확인합니다."
+        return f"{target} 관련 데이터가 존재하는지 확인합니다."
+    if condition_type == "range":
+        target = str(condition.get("target") or "대상").strip()
+        min_val = condition.get("min")
+        max_val = condition.get("max")
+        if min_val is not None and max_val is not None:
+            return f"{target} 값이 {min_val} 이상 {max_val} 이하인지 확인합니다."
+        if max_val is not None:
+            return f"{target} 값이 {max_val} 이하인지 확인합니다."
+        if min_val is not None:
+            return f"{target} 값이 {min_val} 이상인지 확인합니다."
+    if condition_type == "deadline":
+        target = str(condition.get("target") or "대상").strip()
+        days_before = int(condition.get("days_before") or 0)
+        return f"{target} 마감 {days_before}일 전부터 경고가 필요한지 확인합니다."
+    if condition_type == "cross_validate":
+        source = str(condition.get("source") or "A").strip()
+        target = str(condition.get("target") or "B").strip()
+        tolerance = condition.get("tolerance")
+        return f"{source}와 {target}가 맞는지 확인합니다{f' (허용 오차 {tolerance})' if tolerance is not None else ''}."
+    if condition_type == "composite":
+        logic = str(condition.get("logic") or "AND").strip().upper()
+        rules = [str(item).strip() for item in (condition.get("rules") or []) if str(item).strip()]
+        return f"{' / '.join(rules) if rules else '여러 기준'}을 {logic} 조건으로 함께 판단합니다."
+    return row.description or row.rule_name
+
+
+def _rule_check_basis(row: FundComplianceRule, doc: ComplianceDocument | None) -> str:
+    if doc:
+        return doc.title
+    if row.description:
+        return row.description
+    return row.category
+
+
+def _rule_applies_to(row: FundComplianceRule) -> str:
+    return "선택 조합만 적용" if row.fund_id is not None else "공통 기준"
+
+
+def _rule_recommended_action(row: FundComplianceRule) -> str:
+    if row.auto_task:
+        return "문제가 발견되면 후속 업무를 자동 생성합니다."
+    if row.severity in {"error", "critical"}:
+        return "문제가 보이면 준법감시 검토와 조치 여부 확인이 필요합니다."
+    return "문제가 보이면 참고/보완 대상으로 표시합니다."
 
 
 class ComplianceManualScanBody(BaseModel):
@@ -152,6 +233,11 @@ def _serialize_fund_rule(db: Session, row: FundComplianceRule) -> dict:
         "auto_task": bool(row.auto_task),
         "is_active": bool(row.is_active),
         "created_at": row.created_at.isoformat() if row.created_at else None,
+        "plain_summary": _rule_plain_summary(row),
+        "check_basis": _rule_check_basis(row, doc),
+        "applies_to": _rule_applies_to(row),
+        "recommended_action": _rule_recommended_action(row),
+        "editor_mode": "simple",
     }
 
 
@@ -160,13 +246,92 @@ def _serialize_document(row: ComplianceDocument) -> dict:
         "id": row.id,
         "title": row.title,
         "document_type": row.document_type,
+        "source_tier": row.source_tier,
+        "scope": row.scope,
+        "fund_id": row.fund_id,
+        "investment_id": row.investment_id,
+        "company_id": row.company_id,
+        "document_role": row.document_role,
         "version": row.version,
         "effective_date": row.effective_date.isoformat() if row.effective_date else None,
+        "effective_from": row.effective_from.isoformat() if row.effective_from else None,
+        "effective_to": row.effective_to.isoformat() if row.effective_to else None,
         "content_summary": row.content_summary,
         "file_path": row.file_path,
+        "ingest_status": row.ingest_status,
+        "ocr_status": row.ocr_status,
+        "index_status": row.index_status,
+        "extraction_quality": row.extraction_quality,
         "is_active": bool(row.is_active),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
+
+
+def _serialize_review_evidence(row: ComplianceReviewEvidence) -> dict:
+    return {
+        "id": row.id,
+        "document_id": row.document_id,
+        "chunk_id": row.chunk_id,
+        "source_tier": row.source_tier,
+        "role": row.role,
+        "page_no": row.page_no,
+        "section_ref": row.section_ref,
+        "snippet": row.snippet,
+        "relevance_score": row.relevance_score,
+        "metadata": row.metadata_json if isinstance(row.metadata_json, dict) else {},
+    }
+
+
+def _serialize_review_run(db: Session, row: ComplianceReviewRun) -> dict:
+    fund = db.get(Fund, row.fund_id)
+    investment = db.get(Investment, row.investment_id) if row.investment_id else None
+    evidence_rows = (
+        db.query(ComplianceReviewEvidence)
+        .filter(ComplianceReviewEvidence.review_run_id == row.id)
+        .order_by(ComplianceReviewEvidence.id.asc())
+        .all()
+    )
+    return {
+        "id": row.id,
+        "fund_id": row.fund_id,
+        "fund_name": fund.name if fund else None,
+        "investment_id": row.investment_id,
+        "company_id": row.company_id,
+        "target_type": row.target_type,
+        "scenario": row.scenario,
+        "query": row.query,
+        "trigger_type": row.trigger_type,
+        "result": row.result,
+        "prevailing_tier": row.prevailing_tier,
+        "summary": row.summary,
+        "review_status": row.review_status,
+        "created_by": row.created_by,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "investment_company_id": investment.company_id if investment else None,
+        "evidence": [_serialize_review_evidence(item) for item in evidence_rows],
+        "recommendation_only": row.prevailing_tier == "special_guideline",
+        "action_items": _review_action_items(row),
+        "conflict_summary": row.summary if row.result == "conflict" else None,
+    }
+
+
+def _review_action_items(row: ComplianceReviewRun) -> list[str]:
+    if row.result == "conflict":
+        return [
+            "충돌하는 조항을 비교 검토하세요.",
+            "상위 기준을 우선 적용할지 확인하세요.",
+            "필요하면 문서 수정 또는 추가 협의를 진행하세요.",
+        ]
+    if row.result == "fail":
+        return [
+            "즉시 준법감시 검토를 진행하세요.",
+            "관련 업무를 보류할지 판단하세요.",
+        ]
+    if row.result == "warn":
+        return ["권고사항 또는 주의 포인트를 확인하고 반영 여부를 검토하세요."]
+    if row.result == "needs_review":
+        return ["근거 문서를 추가하거나 수동 법리 검토를 진행하세요."]
+    return []
 
 
 def _serialize_check(db: Session, row: ComplianceCheck) -> dict:
@@ -846,6 +1011,242 @@ def get_compliance_dashboard(db: Session = Depends(get_db)):
     }
 
 
+DEFAULT_NOTICE_PERIODS = [
+    {"notice_type": "assembly", "label": "총회 소집 통지", "business_days": 14, "day_basis": "business"},
+    {"notice_type": "capital_call_initial", "label": "최초 출자금 납입 요청", "business_days": 10, "day_basis": "business"},
+    {"notice_type": "capital_call_additional", "label": "수시 출자금 납입 요청", "business_days": 10, "day_basis": "business"},
+    {"notice_type": "ic_agenda", "label": "투자심의위원회 안건 통지", "business_days": 7, "day_basis": "business"},
+    {"notice_type": "distribution", "label": "분배 통지", "business_days": 5, "day_basis": "business"},
+    {"notice_type": "dissolution", "label": "해산/청산 통지", "business_days": 30, "day_basis": "business"},
+    {"notice_type": "lp_report", "label": "조합원 보고", "business_days": 0, "day_basis": "business"},
+    {"notice_type": "amendment", "label": "규약 변경 통지", "business_days": 14, "day_basis": "business"},
+]
+
+
+def _notice_target_date_from_today(today: date, business_days: int, day_basis: str) -> date:
+    if (day_basis or "business").strip().lower() == "calendar":
+        return today + timedelta(days=max(0, business_days))
+    return add_business_days(today, max(0, business_days))
+
+
+@router.get("/api/compliance/funds/{fund_id}/officer-brief")
+def get_compliance_officer_brief(
+    fund_id: int,
+    db: Session = Depends(get_db),
+):
+    fund = db.get(Fund, fund_id)
+    if not fund:
+        raise HTTPException(status_code=404, detail="fund not found")
+
+    today = date.today()
+    week_end = today + timedelta(days=7)
+    docs = (
+        db.query(ComplianceDocument)
+        .filter(
+            ComplianceDocument.fund_id == fund_id,
+            ComplianceDocument.is_active == True,
+        )
+        .order_by(ComplianceDocument.created_at.desc(), ComplianceDocument.id.desc())
+        .all()
+    )
+    reviews = (
+        db.query(ComplianceReviewRun)
+        .filter(ComplianceReviewRun.fund_id == fund_id)
+        .order_by(ComplianceReviewRun.created_at.desc(), ComplianceReviewRun.id.desc())
+        .limit(30)
+        .all()
+    )
+    obligations = (
+        db.query(ComplianceObligation)
+        .filter(ComplianceObligation.fund_id == fund_id)
+        .order_by(ComplianceObligation.due_date.asc(), ComplianceObligation.id.asc())
+        .all()
+    )
+    investments = (
+        db.query(Investment)
+        .filter(Investment.fund_id == fund_id)
+        .order_by(Investment.id.asc())
+        .all()
+    )
+
+    by_tier = {
+        "law": 0,
+        "fund_bylaw": 0,
+        "special_guideline": 0,
+        "investment_contract": 0,
+    }
+    for row in docs:
+        key = (row.source_tier or "").strip()
+        if key in by_tier:
+            by_tier[key] += 1
+
+    special_partner_exists = any(is_special_lp_type(lp.type) for lp in (fund.lps or []))
+    contract_investment_ids = {
+        int(row.investment_id)
+        for row in docs
+        if row.source_tier == "investment_contract" and row.investment_id is not None
+    }
+    missing_contracts = [
+        {
+            "investment_id": row.id,
+            "company_id": row.company_id,
+            "company_name": row.company.name if getattr(row, "company", None) else f"Company #{row.company_id}",
+        }
+        for row in investments
+        if row.id not in contract_investment_ids
+    ]
+
+    pending_obligations = [
+        row for row in obligations
+        if row.status in {"pending", "in_progress", "overdue"}
+    ]
+    due_today_count = sum(1 for row in pending_obligations if row.due_date is not None and row.due_date <= today)
+    due_week_count = sum(1 for row in pending_obligations if row.due_date is not None and today <= row.due_date <= week_end)
+
+    review_summary = {
+        "pass": sum(1 for row in reviews if row.result == "pass"),
+        "warn": sum(1 for row in reviews if row.result == "warn"),
+        "fail": sum(1 for row in reviews if row.result == "fail"),
+        "conflict": sum(1 for row in reviews if row.result == "conflict"),
+        "needs_review": sum(1 for row in reviews if row.result == "needs_review"),
+    }
+
+    required_today: list[dict[str, Any]] = []
+    for row in pending_obligations:
+        if row.due_date is None or row.due_date > week_end:
+            continue
+        serialized = _serialize_obligation(db, row)
+        required_today.append(
+            {
+                "kind": "obligation",
+                "priority": "high" if row.due_date <= today else "medium",
+                "title": serialized.get("rule_title") or serialized.get("rule_code") or "의무사항",
+                "detail": f"마감 {serialized.get('due_date')} ({serialized.get('d_day')})",
+                "fund_id": fund_id,
+                "investment_id": serialized.get("investment_id"),
+                "due_date": serialized.get("due_date"),
+            }
+        )
+
+    for row in reviews[:10]:
+        if row.result not in {"conflict", "needs_review", "fail", "warn"}:
+            continue
+        required_today.append(
+            {
+                "kind": "review",
+                "priority": "high" if row.result in {"fail", "conflict"} else "medium",
+                "title": row.summary or row.scenario,
+                "detail": f"검토결과 {row.result} / 우선기준 {row.prevailing_tier or '-'}",
+                "fund_id": fund_id,
+                "investment_id": row.investment_id,
+                "due_date": None,
+            }
+        )
+
+    if by_tier["fund_bylaw"] == 0:
+        required_today.append(
+            {
+                "kind": "document_gap",
+                "priority": "high",
+                "title": "조합 규약 문서가 없습니다.",
+                "detail": "조합 규약을 업로드해야 조합별 준법 검토가 가능합니다.",
+                "fund_id": fund_id,
+                "investment_id": None,
+                "due_date": None,
+            }
+        )
+    if special_partner_exists and by_tier["special_guideline"] == 0:
+        required_today.append(
+            {
+                "kind": "document_gap",
+                "priority": "medium",
+                "title": "특별조합원 가이드라인이 없습니다.",
+                "detail": "특별조합원이 요구하는 수시보고/권고사항을 반영하려면 가이드라인 업로드가 필요합니다.",
+                "fund_id": fund_id,
+                "investment_id": None,
+                "due_date": None,
+            }
+        )
+    if missing_contracts:
+        required_today.append(
+            {
+                "kind": "document_gap",
+                "priority": "medium",
+                "title": f"투자계약서 미등록 {len(missing_contracts)}건",
+                "detail": "투자건별 계약서가 있어야 계약 기준 검토가 가능합니다.",
+                "fund_id": fund_id,
+                "investment_id": None,
+                "due_date": None,
+            }
+        )
+
+    notice_rows = []
+    if fund.notice_periods:
+        source_rows = [
+            {
+                "notice_type": row.notice_type,
+                "label": row.label,
+                "business_days": row.business_days,
+                "day_basis": row.day_basis,
+                "memo": row.memo,
+            }
+            for row in fund.notice_periods
+        ]
+    else:
+        source_rows = DEFAULT_NOTICE_PERIODS
+
+    for row in source_rows:
+        target_date = _notice_target_date_from_today(
+            today=today,
+            business_days=int(row.get("business_days") or 0),
+            day_basis=str(row.get("day_basis") or "business"),
+        )
+        notice_rows.append(
+            {
+                "notice_type": row.get("notice_type"),
+                "label": row.get("label"),
+                "business_days": int(row.get("business_days") or 0),
+                "day_basis": row.get("day_basis") or "business",
+                "notify_today": today.isoformat(),
+                "earliest_target_date": target_date.isoformat(),
+                "memo": row.get("memo"),
+            }
+        )
+
+    key_terms = [
+        {
+            "id": row.id,
+            "category": row.category,
+            "label": row.label,
+            "value": row.value,
+            "article_ref": row.article_ref,
+        }
+        for row in sorted(fund.key_terms, key=lambda item: item.id)
+    ]
+
+    special_guidelines = [
+        _serialize_document(row)
+        for row in docs
+        if row.source_tier == "special_guideline"
+    ]
+
+    return {
+        "fund_id": fund.id,
+        "fund_name": fund.name,
+        "document_tiers": by_tier,
+        "special_partner_exists": special_partner_exists,
+        "missing_contracts": missing_contracts,
+        "due_today_count": due_today_count,
+        "due_week_count": due_week_count,
+        "review_summary": review_summary,
+        "required_today": required_today[:12],
+        "notice_schedule": notice_rows,
+        "key_terms": key_terms,
+        "special_guidelines": special_guidelines,
+        "recent_reviews": [_serialize_review_run(db, row) for row in reviews[:5]],
+    }
+
+
 @router.post("/api/compliance/interpret")
 async def interpret_legal_query(
     body: ComplianceInterpretBody = Body(...),
@@ -856,6 +1257,7 @@ async def interpret_legal_query(
         return await service.interpret(
             query=body.query,
             fund_id=body.fund_id,
+            investment_id=body.investment_id,
             db=db,
             user_id=None,
         )
@@ -865,6 +1267,74 @@ async def interpret_legal_query(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/api/compliance/reviews/run")
+async def run_compliance_review(
+    body: ComplianceReviewRunBody = Body(...),
+    db: Session = Depends(get_db),
+):
+    if not db.get(Fund, body.fund_id):
+        raise HTTPException(status_code=404, detail="fund not found")
+    if body.investment_id is not None:
+        investment = db.get(Investment, body.investment_id)
+        if not investment:
+            raise HTTPException(status_code=404, detail="investment not found")
+        if investment.fund_id != body.fund_id:
+            raise HTTPException(status_code=400, detail="investment does not belong to the selected fund")
+
+    orchestrator = ComplianceOrchestrator()
+    try:
+        payload = await orchestrator.run_review(
+            db=db,
+            fund_id=body.fund_id,
+            scenario=body.scenario.strip(),
+            query=body.query,
+            investment_id=body.investment_id,
+            trigger_type="manual",
+            created_by=None,
+            run_rule_engine=body.run_rule_engine,
+        )
+        db.commit()
+        review_id = payload["review"]["id"]
+        row = db.get(ComplianceReviewRun, review_id)
+        return {
+            **payload,
+            "review": _serialize_review_run(db, row) if row else payload["review"],
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/api/compliance/reviews")
+def list_compliance_reviews(
+    fund_id: int | None = Query(default=None, ge=1),
+    investment_id: int | None = Query(default=None, ge=1),
+    scenario: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    query = db.query(ComplianceReviewRun)
+    if fund_id is not None:
+        query = query.filter(ComplianceReviewRun.fund_id == fund_id)
+    if investment_id is not None:
+        query = query.filter(ComplianceReviewRun.investment_id == investment_id)
+    if scenario:
+        query = query.filter(ComplianceReviewRun.scenario == scenario.strip())
+    rows = query.order_by(ComplianceReviewRun.created_at.desc(), ComplianceReviewRun.id.desc()).limit(limit).all()
+    return [_serialize_review_run(db, row) for row in rows]
+
+
+@router.get("/api/compliance/reviews/{review_id}")
+def get_compliance_review(review_id: int, db: Session = Depends(get_db)):
+    row = db.get(ComplianceReviewRun, review_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="review not found")
+    return _serialize_review_run(db, row)
 
 
 @router.get("/api/compliance/llm-usage")

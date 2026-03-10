@@ -7,13 +7,16 @@ import { useToast } from '../../contexts/ToastContext'
 import {
   deleteLegalDocument,
   fetchFunds,
+  fetchInvestments,
   fetchLegalDocuments,
   fetchLegalDocumentStats,
   searchLegalDocuments,
   uploadLegalDocument,
   type Fund,
+  type Investment,
   type LegalDocument,
   type LegalDocumentScope,
+  type LegalDocumentSourceTier,
   type LegalDocumentSearchResponse,
   type LegalDocumentType,
 } from '../../lib/api'
@@ -21,6 +24,13 @@ import {
 type DocumentLibraryProps = {
   funds?: Fund[]
 }
+
+const SOURCE_TIER_OPTIONS: Array<{ value: LegalDocumentSourceTier; label: string }> = [
+  { value: 'law', label: '1순위 법령' },
+  { value: 'fund_bylaw', label: '2순위 조합 규약' },
+  { value: 'special_guideline', label: '3순위 특별조합원 가이드라인' },
+  { value: 'investment_contract', label: '4순위 투자계약서' },
+]
 
 const DOC_TYPES: Array<{ value: LegalDocumentType; label: string }> = [
   { value: 'laws', label: '법률' },
@@ -34,10 +44,25 @@ const SCOPE_META: Record<LegalDocumentScope, { icon: string; label: string }> = 
   global: { icon: '🌐', label: '공통' },
   fund_type: { icon: '📋', label: '유형별' },
   fund: { icon: '🏢', label: '조합별' },
+  investment: { icon: '📄', label: '투자건별' },
 }
 
 function typeLabel(type: string): string {
   return DOC_TYPES.find((item) => item.value === type)?.label ?? type
+}
+
+function availableDocTypes(sourceTier: LegalDocumentSourceTier): LegalDocumentType[] {
+  if (sourceTier === 'law') return ['laws', 'regulations']
+  if (sourceTier === 'fund_bylaw') return ['guidelines', 'agreements', 'internal']
+  if (sourceTier === 'special_guideline') return ['guidelines', 'agreements']
+  return ['agreements', 'internal']
+}
+
+function sourceTierHelp(sourceTier: LegalDocumentSourceTier): string {
+  if (sourceTier === 'law') return '전체 조합에 공통으로 적용되는 상위 기준입니다.'
+  if (sourceTier === 'fund_bylaw') return '선택한 조합 전체에 적용되는 규약/내부 기준입니다.'
+  if (sourceTier === 'special_guideline') return '특별조합원이 요구하는 권고성 가이드라인입니다.'
+  return '선택한 투자건에 직접 연결되는 계약 기준입니다.'
 }
 
 function similarityLabel(distance: number | null | undefined): string {
@@ -49,6 +74,7 @@ function similarityLabel(distance: number | null | undefined): string {
 function normalizeScope(raw: unknown): LegalDocumentScope {
   if (raw === 'fund_type') return 'fund_type'
   if (raw === 'fund') return 'fund'
+  if (raw === 'investment') return 'investment'
   return 'global'
 }
 
@@ -66,11 +92,14 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
   const { addToast } = useToast()
 
   const [title, setTitle] = useState('')
+  const [sourceTier, setSourceTier] = useState<LegalDocumentSourceTier>('law')
   const [documentType, setDocumentType] = useState<LegalDocumentType>('laws')
   const [version, setVersion] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFundId, setSelectedFundId] = useState<number | null>(null)
+  const [selectedInvestmentId, setSelectedInvestmentId] = useState<number | null>(null)
   const [fundTypeFilter, setFundTypeFilter] = useState('')
+  const [documentRole, setDocumentRole] = useState('')
 
   const [searchText, setSearchText] = useState('')
   const [searchCollection, setSearchCollection] = useState('')
@@ -83,6 +112,11 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     enabled: !hasFundsProp,
   })
   const funds = hasFundsProp ? (fundsProp as Fund[]) : fetchedFunds
+  const { data: investments = [] } = useQuery<Investment[]>({
+    queryKey: ['investments', { fund_id: selectedFundId }],
+    queryFn: () => fetchInvestments({ fund_id: selectedFundId ?? undefined }),
+    enabled: selectedFundId != null && sourceTier === 'investment_contract',
+  })
 
   const fundTypeOptions = useMemo(() => {
     const unique = new Set<string>()
@@ -95,7 +129,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
 
   const { data: documents = [], isLoading: isDocumentsLoading } = useQuery<LegalDocument[]>({
     queryKey: ['legal-documents'],
-    queryFn: fetchLegalDocuments,
+    queryFn: () => fetchLegalDocuments(),
   })
 
   const { data: stats, isLoading: isStatsLoading } = useQuery({
@@ -107,9 +141,11 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     () => ({
       query: submittedQuery,
       collection: searchCollection || undefined,
+      fund_id: selectedFundId ?? undefined,
+      investment_id: selectedInvestmentId ?? undefined,
       n_results: 10,
     }),
-    [submittedQuery, searchCollection],
+    [submittedQuery, searchCollection, selectedFundId, selectedInvestmentId],
   )
 
   const { data: searchResult, isFetching: isSearchLoading } = useQuery<LegalDocumentSearchResponse>({
@@ -131,7 +167,13 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       setSelectedFile(null)
       setSelectedFundId(null)
       setFundTypeFilter('')
-      addToast('success', `${result.document.title} 업로드 및 인덱싱 완료 (${result.chunk_count} 청크)`)
+      setSelectedInvestmentId(null)
+      setDocumentRole('')
+      if (result.auto_review?.review) {
+        addToast('success', `${result.document.title} 업로드 및 인덱싱 완료 (${result.chunk_count} 청크) · 자동 검토 ${result.auto_review.review.result}`)
+      } else {
+        addToast('success', `${result.document.title} 업로드 및 인덱싱 완료 (${result.chunk_count} 청크)`)
+      }
     },
   })
 
@@ -151,8 +193,8 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
   }))
 
   const totalChunks = stats?.total_chunks ?? 0
-  const isGuidelines = documentType === 'guidelines'
-  const isFundScoped = documentType === 'agreements' || documentType === 'internal'
+  const isFundScoped = sourceTier === 'fund_bylaw' || sourceTier === 'special_guideline'
+  const isInvestmentScoped = sourceTier === 'investment_contract'
 
   function onUpload() {
     const normalizedTitle = title.trim()
@@ -164,21 +206,32 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
       addToast('warning', '업로드할 파일을 선택해주세요.')
       return
     }
-    if (isGuidelines && !fundTypeFilter.trim()) {
-      addToast('warning', '가이드라인 문서는 조합 유형을 선택해야 합니다.')
+    if (isFundScoped && selectedFundId === null) {
+      addToast('warning', `${sourceTier === 'special_guideline' ? '특별조합원 가이드라인' : '규약'} 문서는 귀속 조합을 선택해야 합니다.`)
       return
     }
-    if (isFundScoped && selectedFundId === null) {
-      addToast('warning', '규약/내부지침 문서는 귀속 조합을 선택해야 합니다.')
+    if (isInvestmentScoped && selectedFundId === null) {
+      addToast('warning', '투자계약서는 조합을 먼저 선택해야 합니다.')
+      return
+    }
+    if (isInvestmentScoped && selectedInvestmentId === null) {
+      addToast('warning', '투자계약서는 귀속 투자건을 선택해야 합니다.')
+      return
+    }
+    if (sourceTier === 'special_guideline' && !documentRole.trim()) {
+      addToast('warning', '특별조합원 가이드라인은 발행 주체를 적어주세요. 예: 모태, 성장금융')
       return
     }
     uploadMut.mutate({
       file: selectedFile,
       title: normalizedTitle,
       document_type: documentType,
+      source_tier: sourceTier,
       version: version.trim() || null,
-      fund_id: isFundScoped ? selectedFundId : null,
-      fund_type_filter: isGuidelines ? fundTypeFilter.trim() : null,
+      fund_id: isFundScoped || isInvestmentScoped ? selectedFundId : null,
+      investment_id: isInvestmentScoped ? selectedInvestmentId : null,
+      fund_type_filter: sourceTier === 'law' ? null : (fundTypeFilter.trim() || null),
+      document_role: documentRole.trim() || null,
     })
   }
 
@@ -197,16 +250,47 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
     deleteMut.mutate(documentId)
   }
 
+  const selectedFund = funds.find((fund) => fund.id === selectedFundId) ?? null
+  const selectedInvestment = investments.find((investment) => investment.id === selectedInvestmentId) ?? null
+  const ownershipPreview =
+    sourceTier === 'law'
+      ? '전체 공통 기준'
+      : sourceTier === 'fund_bylaw'
+        ? `${selectedFund?.name || '조합 선택 필요'} 기준`
+        : sourceTier === 'special_guideline'
+          ? `${selectedFund?.name || '조합 선택 필요'} / ${documentRole.trim() || '발행 주체 입력 필요'}`
+          : `${selectedFund?.name || '조합 선택 필요'} / ${selectedInvestment?.company_name || (selectedInvestmentId ? `투자건 #${selectedInvestmentId}` : '투자건 선택 필요')}`
+
   return (
     <div className="space-y-4">
       <div className="card-base">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#0f1f3d]">법률 문서 라이브러리</h3>
+          <h3 className="text-sm font-semibold text-[#0f1f3d]">준법 문서 기준</h3>
           <span className="tag tag-indigo">총 {totalChunks} 청크</span>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+          <select
+            className="form-input"
+            value={sourceTier}
+            onChange={(event) => {
+              const nextTier = event.target.value as LegalDocumentSourceTier
+              setSourceTier(nextTier)
+              setSelectedInvestmentId(null)
+              setDocumentRole('')
+              if (nextTier === 'law') setDocumentType('laws')
+              if (nextTier === 'fund_bylaw') setDocumentType('agreements')
+              if (nextTier === 'special_guideline') setDocumentType('guidelines')
+              if (nextTier === 'investment_contract') setDocumentType('agreements')
+            }}
+          >
+            {SOURCE_TIER_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
           <input
-            className="form-input md:col-span-2"
+            className="form-input md:col-span-1"
             placeholder="문서 제목"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -221,7 +305,7 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
               if (nextType !== 'agreements' && nextType !== 'internal') setSelectedFundId(null)
             }}
           >
-            {DOC_TYPES.map((item) => (
+            {DOC_TYPES.filter((item) => availableDocTypes(sourceTier).includes(item.value)).map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
@@ -241,8 +325,26 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
           />
         </div>
 
-        {isGuidelines && (
+        {(isFundScoped || isInvestmentScoped) && (
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+            <label className="md:col-span-1">
+              <span className="mb-1 block text-xs font-medium text-[#64748b]">귀속 조합</span>
+              <select
+                className="form-input"
+                value={selectedFundId ?? ''}
+                onChange={(event) => {
+                  setSelectedFundId(event.target.value ? Number(event.target.value) : null)
+                  setSelectedInvestmentId(null)
+                }}
+              >
+                <option value="">선택</option>
+                {funds.map((fund) => (
+                  <option key={fund.id} value={fund.id}>
+                    {fund.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="md:col-span-1">
               <span className="mb-1 block text-xs font-medium text-[#64748b]">조합 유형</span>
               {fundTypeOptions.length > 0 ? (
@@ -267,28 +369,49 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
                 />
               )}
             </label>
+            <label className="md:col-span-1">
+              <span className="mb-1 block text-xs font-medium text-[#64748b]">문서 역할</span>
+              <input
+                className="form-input"
+                placeholder={
+                  isInvestmentScoped
+                    ? '예: 주주간계약, 신주인수계약'
+                    : sourceTier === 'special_guideline'
+                      ? '예: 모태, 농모태, 성장금융'
+                      : '예: 조합규약, 총회결의'
+                }
+                value={documentRole}
+                onChange={(event) => setDocumentRole(event.target.value)}
+              />
+            </label>
           </div>
         )}
 
-        {isFundScoped && (
+        {isInvestmentScoped && (
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="md:col-span-1">
-              <span className="mb-1 block text-xs font-medium text-[#64748b]">귀속 조합</span>
+              <span className="mb-1 block text-xs font-medium text-[#64748b]">귀속 투자건</span>
               <select
                 className="form-input"
-                value={selectedFundId ?? ''}
-                onChange={(event) => setSelectedFundId(event.target.value ? Number(event.target.value) : null)}
+                value={selectedInvestmentId ?? ''}
+                onChange={(event) => setSelectedInvestmentId(event.target.value ? Number(event.target.value) : null)}
               >
                 <option value="">선택</option>
-                {funds.map((fund) => (
-                  <option key={fund.id} value={fund.id}>
-                    {fund.name}
+                {investments.map((investment) => (
+                  <option key={investment.id} value={investment.id}>
+                    {investment.company_name || `투자건 #${investment.id}`}
                   </option>
                 ))}
               </select>
             </label>
           </div>
         )}
+
+        <div className="mt-3 rounded-xl border border-[#d8e5fb] bg-[#f8fbff] p-3 text-xs text-[#0f1f3d]">
+          <p className="font-semibold text-[#1a3660]">귀속 미리보기</p>
+          <p className="mt-1">{ownershipPreview}</p>
+          <p className="mt-1 text-[#64748b]">{sourceTierHelp(sourceTier)}</p>
+        </div>
 
         <div className="mt-3 flex justify-end">
           <button className="primary-btn" onClick={onUpload} disabled={uploadMut.isPending}>
@@ -324,6 +447,9 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
             검색
           </button>
         </div>
+        <p className="mt-2 text-xs text-[#64748b]">
+          조합이나 투자건을 선택한 상태에서 검색하면 해당 범위를 우선해서 보여줍니다.
+        </p>
       </div>
 
       <div className="card-base">
@@ -350,7 +476,9 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
           <table className="min-w-[1100px] w-full text-sm">
             <thead className="table-head-row">
               <tr>
+                <th className="table-head-cell">우선순위</th>
                 <th className="table-head-cell">유형</th>
+                <th className="table-head-cell">귀속 방식</th>
                 <th className="table-head-cell">스코프</th>
                 <th className="table-head-cell">제목</th>
                 <th className="table-head-cell">귀속</th>
@@ -364,17 +492,23 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
               {documents.map((row) => {
                 const scope = normalizeScope(row.scope)
                 const ownership =
-                  scope === 'fund'
+                  scope === 'investment'
+                    ? `투자건 #${row.investment_id ?? '-'} / 회사 #${row.company_id ?? '-'}`
+                    : scope === 'fund'
                     ? row.fund_name || '-'
                     : scope === 'fund_type'
                       ? row.fund_type_filter || '-'
                       : '-'
                 return (
                   <tr key={row.id}>
+                    <td className="table-body-cell">
+                      {row.source_tier_label || SOURCE_TIER_OPTIONS.find((item) => item.value === row.source_tier)?.label || row.source_tier}
+                    </td>
                     <td className="table-body-cell">{typeLabel(row.document_type)}</td>
+                    <td className="table-body-cell">{row.attribution_mode || '-'}</td>
                     <td className="table-body-cell">{scopeBadge(scope)}</td>
                     <td className="table-body-cell">{row.title}</td>
-                    <td className="table-body-cell">{ownership}</td>
+                    <td className="table-body-cell">{row.ownership_label || ownership}</td>
                     <td className="table-body-cell">{row.version || '-'}</td>
                     <td className="table-body-cell">{row.chunk_count ?? '-'}</td>
                     <td className="table-body-cell">
@@ -413,9 +547,13 @@ export default function DocumentLibrary({ funds: fundsProp }: DocumentLibraryPro
               {(searchResult?.results ?? []).map((result) => {
                 const metadata = result.metadata as Record<string, unknown>
                 const scope = normalizeScope(metadata?.scope)
+                const sourceTier = String(metadata?.source_tier || '')
                 return (
                   <div key={result.id} className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="tag tag-indigo">
+                        {SOURCE_TIER_OPTIONS.find((item) => item.value === sourceTier)?.label || sourceTier || '미분류'}
+                      </span>
                       <span className="tag tag-purple">{typeLabel(result.collection)}</span>
                       {scopeBadge(scope)}
                       <span className="text-xs text-[#64748b]">유사도 {similarityLabel(result.distance)}</span>
