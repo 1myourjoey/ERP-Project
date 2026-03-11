@@ -23,13 +23,17 @@ import {
   fetchDistributionItems,
   fetchDistributions,
   fetchDocumentStatus,
+  fetchFundMeetingPacketPlan,
+  fetchMeetingPacket,
   fetchFeeConfig,
   fetchFeeWaterfall,
   fetchFund,
+  fetchLegalDocuments,
   fetchGPEntities,
   fetchInvestments,
   fetchTasks,
   fetchManagementFeesByFund,
+  generateMeetingPacket,
   fetchPerformanceFeeSimulations,
   fetchLPTransfers,
   fetchLPAddressBooks,
@@ -37,6 +41,8 @@ import {
   fetchWorkflows,
   fetchWorkflowInstances,
   generateDocumentByBuilder,
+  prepareMeetingPacket,
+  updateMeetingPacket,
   updateAssembly,
   updateDistribution,
   updateDistributionItem,
@@ -65,7 +71,11 @@ import {
   type LPTransfer,
   type LPTransferInput,
   type GPEntity,
+  type LegalDocument,
   type ManagementFeeResponse,
+  type MeetingPacketAgendaItemInput,
+  type MeetingPacketDraftResponse,
+  type MeetingPacketGenerationPlanResponse,
   type NoticeDeadlineResult,
   type PerformanceFeeSimulationResponse,
   type Task,
@@ -156,6 +166,14 @@ const FUND_DETAIL_TABS = [
   { id: 'finance', label: '재무' },
   { id: 'documents', label: '서류' },
 ] as const
+
+const MEETING_PACKET_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: '자동 추천 사용' },
+  { value: 'fund_lp_regular_meeting_pex', label: '조합원총회 + 온기보고회(PEX형)' },
+  { value: 'fund_lp_regular_meeting_project', label: '조합원총회(프로젝트형)' },
+  { value: 'fund_lp_regular_meeting_project_with_bylaw_amendment', label: '조합원총회(규약변경 포함)' },
+  { value: 'gp_shareholders_meeting', label: 'GP 사원총회' },
+]
 
 type FundDetailTab = typeof FUND_DETAIL_TABS[number]['id']
 
@@ -1074,6 +1092,18 @@ export default function FundDetailPage() {
   const [selectedFormationTemplateId, setSelectedFormationTemplateId] = useState<number | ''>('')
   const [lpReportYear, setLpReportYear] = useState(new Date().getFullYear())
   const [lpReportQuarter, setLpReportQuarter] = useState(Math.floor(new Date().getMonth() / 3) + 1)
+  const [meetingPacketType, setMeetingPacketType] = useState<string>('')
+  const [includeBylawAmendmentInPacket, setIncludeBylawAmendmentInPacket] = useState(false)
+  const [meetingPacketRunId, setMeetingPacketRunId] = useState<number | null>(null)
+  const [meetingPacketMeetingDate, setMeetingPacketMeetingDate] = useState(todayIso())
+  const [meetingPacketMeetingTime, setMeetingPacketMeetingTime] = useState('10:00')
+  const [meetingPacketMeetingMethod, setMeetingPacketMeetingMethod] = useState('서면결의')
+  const [meetingPacketLocation, setMeetingPacketLocation] = useState('')
+  const [meetingPacketChairName, setMeetingPacketChairName] = useState('')
+  const [meetingPacketDocumentNumber, setMeetingPacketDocumentNumber] = useState('')
+  const [meetingPacketAgendaItems, setMeetingPacketAgendaItems] = useState<MeetingPacketAgendaItemInput[]>([])
+  const [meetingPacketExternalBindings, setMeetingPacketExternalBindings] = useState<Record<string, number | ''>>({})
+  const [meetingPacketDraft, setMeetingPacketDraft] = useState<MeetingPacketDraftResponse | null>(null)
   const [newDistribution, setNewDistribution] = useState<DistributionInput>({
     fund_id: 0,
     dist_date: todayIso(),
@@ -1228,6 +1258,86 @@ export default function FundDetailPage() {
     queryFn: () => previewLPReportData(fundId, { year: lpReportYear, quarter: lpReportQuarter }),
     enabled: Number.isFinite(fundId) && fundId > 0 && activeTab === 'documents',
   })
+  const { data: meetingPacketPlan } = useQuery<MeetingPacketGenerationPlanResponse>({
+    queryKey: [
+      'meetingPacketPlan',
+      fundId,
+      meetingPacketType,
+      includeBylawAmendmentInPacket,
+    ],
+    queryFn: () =>
+      fetchFundMeetingPacketPlan(fundId, {
+        packet_type: meetingPacketType || undefined,
+        report_year: lpReportYear,
+        include_bylaw_amendment: includeBylawAmendmentInPacket,
+    }),
+    enabled: Number.isFinite(fundId) && fundId > 0 && activeTab === 'documents',
+  })
+  const { data: meetingPacketDraftQuery } = useQuery<MeetingPacketDraftResponse>({
+    queryKey: ['meetingPacketDraft', meetingPacketRunId],
+    queryFn: () => fetchMeetingPacket(meetingPacketRunId as number),
+    enabled: !!meetingPacketRunId && activeTab === 'documents',
+  })
+  const { data: fundLegalDocuments = [] } = useQuery<LegalDocument[]>({
+    queryKey: ['fundLegalDocuments', fundId],
+    queryFn: () => fetchLegalDocuments({ fund_id: fundId, active_only: true }),
+    enabled: Number.isFinite(fundId) && fundId > 0 && activeTab === 'documents',
+  })
+
+  const prepareMeetingPacketMut = useMutation({
+    mutationFn: (payload: {
+      fund_id: number
+      packet_type: MeetingPacketDraftResponse['packet_type']
+      meeting_date: string
+      meeting_time?: string | null
+      meeting_method?: string | null
+      location?: string | null
+      chair_name?: string | null
+      document_number?: string | null
+      report_year?: number | null
+      include_bylaw_amendment?: boolean
+    }) => prepareMeetingPacket(fundId, payload),
+    onSuccess: (result) => {
+      setMeetingPacketRunId(result.run_id)
+      setMeetingPacketDraft(result)
+      queryClient.setQueryData(['meetingPacketDraft', result.run_id], result)
+      addToast('success', '총회 패키지 초안을 준비했습니다.')
+    },
+    onError: (error) => addToast('error', error instanceof Error ? error.message : '총회 패키지 준비에 실패했습니다.'),
+  })
+
+  const saveMeetingPacketMut = useMutation({
+    mutationFn: (payload: { runId: number; data: Parameters<typeof updateMeetingPacket>[1] }) =>
+      updateMeetingPacket(payload.runId, payload.data),
+    onSuccess: (result) => {
+      setMeetingPacketDraft(result)
+      queryClient.setQueryData(['meetingPacketDraft', result.run_id], result)
+      addToast('success', '총회 패키지 초안을 저장했습니다.')
+    },
+    onError: (error) => addToast('error', error instanceof Error ? error.message : '총회 패키지 저장에 실패했습니다.'),
+  })
+
+  const generateMeetingPacketMut = useMutation({
+    mutationFn: (runId: number) => generateMeetingPacket(runId),
+    onSuccess: (result) => {
+      setMeetingPacketDraft((prev) =>
+        prev && prev.run_id === result.run_id
+          ? {
+              ...prev,
+              status: result.status,
+              documents: result.documents,
+              zip_attachment_id: result.zip_attachment_id,
+              zip_download_url: result.zip_download_url,
+            }
+          : prev,
+      )
+      addToast('success', result.missing_slots.length ? '문서 생성 후 부분 패키지를 만들었습니다.' : '문서 생성과 패키징을 완료했습니다.')
+      if (meetingPacketRunId) {
+        queryClient.invalidateQueries({ queryKey: ['meetingPacketDraft', meetingPacketRunId] })
+      }
+    },
+    onError: (error) => addToast('error', error instanceof Error ? error.message : '총회 패키지 생성에 실패했습니다.'),
+  })
 
   useEffect(() => {
     if (!fundDetail) return
@@ -1237,7 +1347,118 @@ export default function FundDetailPage() {
     if (!editingKeyTerms) {
       setKeyTermDraft(buildKeyTermDraft(fundDetail))
     }
+    if (!meetingPacketLocation) {
+      setMeetingPacketLocation(fundDetail.gp || fundDetail.name || '')
+    }
+    if (!meetingPacketChairName) {
+      setMeetingPacketChairName(fundDetail.gp || fundDetail.fund_manager || '')
+    }
   }, [fundDetail, editingNotices, editingKeyTerms])
+
+  useEffect(() => {
+    if (!meetingPacketDraftQuery) return
+    setMeetingPacketDraft(meetingPacketDraftQuery)
+    setMeetingPacketMeetingDate(meetingPacketDraftQuery.meeting_date || todayIso())
+    setMeetingPacketMeetingTime(meetingPacketDraftQuery.meeting_time || '10:00')
+    setMeetingPacketMeetingMethod(meetingPacketDraftQuery.meeting_method || '서면결의')
+    setMeetingPacketLocation(meetingPacketDraftQuery.location || '')
+    setMeetingPacketChairName(meetingPacketDraftQuery.chair_name || '')
+    setMeetingPacketDocumentNumber(meetingPacketDraftQuery.document_number || '')
+    setMeetingPacketAgendaItems(meetingPacketDraftQuery.agenda_items || [])
+    setMeetingPacketExternalBindings(
+      Object.fromEntries(
+        (meetingPacketDraftQuery.documents || [])
+          .filter((item) => item.external_document_id != null)
+          .map((item) => [item.slot, item.external_document_id as number]),
+      ),
+    )
+  }, [meetingPacketDraftQuery])
+
+  useEffect(() => {
+    setMeetingPacketRunId(null)
+    setMeetingPacketDraft(null)
+    setMeetingPacketAgendaItems([])
+    setMeetingPacketExternalBindings({})
+    setMeetingPacketDocumentNumber('')
+  }, [fundId])
+
+  const activeMeetingPacketDraft = meetingPacketDraft ?? meetingPacketDraftQuery ?? null
+  const meetingPacketExternalSlots = activeMeetingPacketDraft?.slots.filter((slot) => slot.generation_mode === 'external_receive') ?? []
+
+  const prepareMeetingPacketDraft = async () => {
+    const packetType = (meetingPacketType || meetingPacketPlan?.recommended_packet_type || 'fund_lp_regular_meeting_project') as MeetingPacketDraftResponse['packet_type']
+    const result = await prepareMeetingPacketMut.mutateAsync({
+      fund_id: fundId,
+      packet_type: packetType,
+      meeting_date: meetingPacketMeetingDate,
+      meeting_time: meetingPacketMeetingTime,
+      meeting_method: meetingPacketMeetingMethod,
+      location: meetingPacketLocation || null,
+      chair_name: meetingPacketChairName || null,
+      document_number: meetingPacketDocumentNumber || null,
+      report_year: lpReportYear,
+      include_bylaw_amendment: includeBylawAmendmentInPacket,
+    })
+    setMeetingPacketAgendaItems(result.agenda_items || [])
+    return result
+  }
+
+  const saveMeetingPacketDraft = async (runId: number) => {
+    const external_bindings = Object.entries(meetingPacketExternalBindings).map(([slot, external_document_id]) => ({
+      slot,
+      external_document_id: external_document_id === '' ? null : Number(external_document_id),
+    }))
+    return saveMeetingPacketMut.mutateAsync({
+      runId,
+      data: {
+        meeting_date: meetingPacketMeetingDate,
+        meeting_time: meetingPacketMeetingTime,
+        meeting_method: meetingPacketMeetingMethod,
+        location: meetingPacketLocation || null,
+        chair_name: meetingPacketChairName || null,
+        document_number: meetingPacketDocumentNumber || null,
+        report_year: lpReportYear,
+        include_bylaw_amendment: includeBylawAmendmentInPacket,
+        agenda_items: meetingPacketAgendaItems.map((item, index) => ({
+          ...item,
+          sort_order: index,
+        })),
+        external_bindings,
+      },
+    })
+  }
+
+  const runMeetingPacketGeneration = async () => {
+    const draft = activeMeetingPacketDraft ?? (await prepareMeetingPacketDraft())
+    const saved = await saveMeetingPacketDraft(draft.run_id)
+    setMeetingPacketRunId(saved.run_id)
+    setMeetingPacketDraft(saved)
+    await generateMeetingPacketMut.mutateAsync(saved.run_id)
+  }
+
+  const updateMeetingAgendaItem = (index: number, patch: Partial<MeetingPacketAgendaItemInput>) => {
+    setMeetingPacketAgendaItems((prev) =>
+      prev.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    )
+  }
+
+  const addMeetingAgendaItem = () => {
+    setMeetingPacketAgendaItems((prev) => [
+      ...prev,
+      {
+        sort_order: prev.length,
+        kind: 'custom',
+        title: '',
+        short_title: '',
+        description: '',
+        requires_vote: true,
+      },
+    ])
+  }
+
+  const removeMeetingAgendaItem = (index: number) => {
+    setMeetingPacketAgendaItems((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+  }
 
   useEffect(() => {
     setFormationWorkflowTriggerDate('')
@@ -3458,6 +3679,354 @@ export default function FundDetailPage() {
 
           {activeTab === 'documents' && (
             <div className="space-y-4">
+              <div className="card-base space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0f1f3d]">총회 패키지 준비</h3>
+                    <p className="mt-1 text-xs text-[#64748b]">
+                      공문, 의안설명서, 영업보고서, 의결서, 의사록 패키지를 ERP 데이터 기준으로 어떤 방식으로 준비할지 보여줍니다.
+                    </p>
+                  </div>
+                  {meetingPacketPlan && (
+                    <span className="tag tag-blue">추천: {meetingPacketPlan.recommended_packet_label}</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <label htmlFor="meeting-packet-type">
+                    <span className="mb-1 block text-xs font-medium text-[#64748b]">패키지 유형</span>
+                    <select
+                      id="meeting-packet-type"
+                      name="meeting_packet_type"
+                      className="form-input"
+                      value={meetingPacketType}
+                      onChange={(event) => setMeetingPacketType(event.target.value)}
+                    >
+                      {MEETING_PACKET_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value || 'auto'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-end">
+                    <span className="inline-flex items-center gap-2 rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-xs text-[#0f1f3d]">
+                      <input
+                        id="meeting-packet-include-bylaw"
+                        name="meeting_packet_include_bylaw"
+                        type="checkbox"
+                        checked={includeBylawAmendmentInPacket}
+                        onChange={(event) => setIncludeBylawAmendmentInPacket(event.target.checked)}
+                      />
+                      규약 변경 안건 포함
+                    </span>
+                  </label>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    <p className="text-xs text-[#64748b]">수신자 미리보기</p>
+                    <p className="mt-1 font-medium text-[#0f1f3d]">{meetingPacketPlan?.recipients_preview.slice(0, 3).join(', ') || '조합원 데이터 확인 필요'}</p>
+                  </div>
+                  <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
+                    <p className="text-xs text-[#64748b]">안건 미리보기</p>
+                    <p className="mt-1 font-medium text-[#0f1f3d]">{meetingPacketPlan?.agenda_preview.join(' / ') || '기본 안건 미정'}</p>
+                  </div>
+                </div>
+
+                {meetingPacketPlan && (
+                  <>
+                    <div className="rounded-xl border border-[#d8e5fb] bg-white/70 p-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold text-[#64748b]">추천 이유</p>
+                          <div className="mt-2 space-y-1 text-sm text-[#0f1f3d]">
+                            {meetingPacketPlan.packet_reasoning.length > 0 ? (
+                              meetingPacketPlan.packet_reasoning.map((item, idx) => (
+                                <p key={`packet-reason-${idx}`}>- {item}</p>
+                              ))
+                            ) : (
+                              <p>- 기본 패키지 유형을 사용합니다.</p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-[#64748b]">사전 확인 경고</p>
+                          <div className="mt-2 space-y-1 text-sm text-[#0f1f3d]">
+                            {meetingPacketPlan.warnings.length > 0 ? (
+                              meetingPacketPlan.warnings.map((item, idx) => (
+                                <p key={`packet-warning-${idx}`} className="text-amber-700">- {item}</p>
+                              ))
+                            ) : (
+                              <p>- 현재 기준으로 큰 경고는 없습니다.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-auto rounded-xl border border-[#d8e5fb]">
+                      <table className="min-w-[980px] w-full text-sm">
+                        <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
+                          <tr>
+                            <th className="px-3 py-2 text-left">문서</th>
+                            <th className="px-3 py-2 text-left">준비 상태</th>
+                            <th className="px-3 py-2 text-left">생성 방식</th>
+                            <th className="px-3 py-2 text-left">레이아웃</th>
+                            <th className="px-3 py-2 text-left">연결 데이터</th>
+                            <th className="px-3 py-2 text-left">사전 확인</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {meetingPacketPlan.slots.map((slot) => (
+                            <tr key={slot.slot}>
+                              <td className="px-3 py-2">
+                                <div className="font-medium text-[#0f1f3d]">{slot.slot_label}</div>
+                                <div className="text-xs text-[#64748b]">
+                                  {slot.template_candidate || slot.builder_candidate || '-'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span
+                                  className={
+                                    slot.status === 'ready'
+                                      ? 'tag tag-green'
+                                      : slot.status === 'partial' || slot.status === 'assisted'
+                                        ? 'tag tag-amber'
+                                        : slot.status === 'external_required'
+                                          ? 'tag tag-red'
+                                          : 'tag tag-gray'
+                                  }
+                                >
+                                  {slot.status === 'ready'
+                                    ? '바로 준비 가능'
+                                    : slot.status === 'partial'
+                                      ? '일부 데이터 보완 필요'
+                                      : slot.status === 'assisted'
+                                        ? '작성 보조 필요'
+                                        : slot.status === 'external_required'
+                                          ? '외부 수령 필요'
+                                          : slot.status}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">{slot.generation_mode}</td>
+                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">
+                                {slot.recommended_layout === 'one_page'
+                                  ? '한 페이지 우선'
+                                  : slot.recommended_layout === 'compact_table'
+                                    ? '표 중심 요약형'
+                                    : slot.recommended_layout === 'full_report'
+                                      ? '리포트형'
+                                      : slot.recommended_layout === 'external_attachment'
+                                        ? '외부 첨부'
+                                        : slot.recommended_layout}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">{slot.source_systems.join(', ') || '-'}</td>
+                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">
+                                {[...slot.required_external_documents, ...slot.preflight_warnings, ...slot.notes].slice(0, 3).join(' / ') || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                      <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold text-[#64748b]">회의 기본정보</p>
+                            <p className="mt-1 text-xs text-[#64748b]">초안을 만든 뒤 안건과 외부 첨부를 조정하고 Word/ZIP을 생성합니다.</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              disabled={prepareMeetingPacketMut.isPending}
+                              onClick={() => { void prepareMeetingPacketDraft().catch(() => undefined) }}
+                            >
+                              {prepareMeetingPacketMut.isPending ? '준비 중...' : '초안 만들기'}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              disabled={!activeMeetingPacketDraft || saveMeetingPacketMut.isPending}
+                              onClick={() => {
+                                if (!activeMeetingPacketDraft) return
+                                void saveMeetingPacketDraft(activeMeetingPacketDraft.run_id).catch(() => undefined)
+                              }}
+                            >
+                              {saveMeetingPacketMut.isPending ? '저장 중...' : '초안 저장'}
+                            </button>
+                            <button
+                              type="button"
+                              className="primary-btn"
+                              disabled={generateMeetingPacketMut.isPending}
+                              onClick={() => { void runMeetingPacketGeneration().catch(() => undefined) }}
+                            >
+                              {generateMeetingPacketMut.isPending ? '생성 중...' : 'Word + ZIP 생성'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <label htmlFor="meeting-packet-date" className="mb-1 block text-xs font-medium text-[#64748b]">회의일</label>
+                            <input id="meeting-packet-date" name="meeting_packet_date" type="date" value={meetingPacketMeetingDate} onChange={(event) => setMeetingPacketMeetingDate(event.target.value)} className="form-input" />
+                          </div>
+                          <div>
+                            <label htmlFor="meeting-packet-time" className="mb-1 block text-xs font-medium text-[#64748b]">회의시간</label>
+                            <input id="meeting-packet-time" name="meeting_packet_time" value={meetingPacketMeetingTime} onChange={(event) => setMeetingPacketMeetingTime(event.target.value)} className="form-input" placeholder="10:00" />
+                          </div>
+                          <div>
+                            <label htmlFor="meeting-packet-method" className="mb-1 block text-xs font-medium text-[#64748b]">개최방식</label>
+                            <input id="meeting-packet-method" name="meeting_packet_method" value={meetingPacketMeetingMethod} onChange={(event) => setMeetingPacketMeetingMethod(event.target.value)} className="form-input" placeholder="서면결의" />
+                          </div>
+                          <div className="md:col-span-2 xl:col-span-1">
+                            <label htmlFor="meeting-packet-location" className="mb-1 block text-xs font-medium text-[#64748b]">장소</label>
+                            <input id="meeting-packet-location" name="meeting_packet_location" value={meetingPacketLocation} onChange={(event) => setMeetingPacketLocation(event.target.value)} className="form-input" placeholder="회의실 또는 본점" />
+                          </div>
+                          <div>
+                            <label htmlFor="meeting-packet-chair" className="mb-1 block text-xs font-medium text-[#64748b]">의장/대표</label>
+                            <input id="meeting-packet-chair" name="meeting_packet_chair" value={meetingPacketChairName} onChange={(event) => setMeetingPacketChairName(event.target.value)} className="form-input" placeholder="대표이사 또는 GP" />
+                          </div>
+                          <div>
+                            <label htmlFor="meeting-packet-docno" className="mb-1 block text-xs font-medium text-[#64748b]">문서번호</label>
+                            <input id="meeting-packet-docno" name="meeting_packet_document_number" value={meetingPacketDocumentNumber} onChange={(event) => setMeetingPacketDocumentNumber(event.target.value)} className="form-input" placeholder="트리거-2026-07호" />
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-[#d8e5fb] bg-[#f8fbff] p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-semibold text-[#64748b]">안건 편집</p>
+                              <p className="mt-1 text-xs text-[#64748b]">의결서에는 축약 제목이 들어가므로 필요하면 짧은 제목도 같이 다듬습니다.</p>
+                            </div>
+                            <button type="button" className="secondary-btn" onClick={addMeetingAgendaItem}>안건 추가</button>
+                          </div>
+                          <div className="mt-3 space-y-3">
+                            {meetingPacketAgendaItems.length === 0 ? (
+                              <p className="text-sm text-[#64748b]">초안을 만들면 추천 안건이 여기에 채워집니다.</p>
+                            ) : (
+                              meetingPacketAgendaItems.map((item, index) => (
+                                <div key={`agenda-${item.id ?? index}`} className="rounded-lg border border-[#d8e5fb] bg-white p-3">
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <span className="text-xs font-semibold text-[#64748b]">안건 {index + 1}</span>
+                                    <button type="button" className="text-xs text-red-600 hover:text-red-700" onClick={() => removeMeetingAgendaItem(index)}>삭제</button>
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    <div className="md:col-span-2">
+                                      <label htmlFor={`meeting-agenda-title-${index}`} className="mb-1 block text-xs font-medium text-[#64748b]">전체 제목</label>
+                                      <input id={`meeting-agenda-title-${index}`} name={`meeting_agenda_title_${index}`} value={item.title} onChange={(event) => updateMeetingAgendaItem(index, { title: event.target.value })} className="form-input" />
+                                    </div>
+                                    <div>
+                                      <label htmlFor={`meeting-agenda-short-title-${index}`} className="mb-1 block text-xs font-medium text-[#64748b]">축약 제목</label>
+                                      <input id={`meeting-agenda-short-title-${index}`} name={`meeting_agenda_short_title_${index}`} value={item.short_title || ''} onChange={(event) => updateMeetingAgendaItem(index, { short_title: event.target.value })} className="form-input" />
+                                    </div>
+                                    <div>
+                                      <label htmlFor={`meeting-agenda-kind-${index}`} className="mb-1 block text-xs font-medium text-[#64748b]">안건 종류</label>
+                                      <input id={`meeting-agenda-kind-${index}`} name={`meeting_agenda_kind_${index}`} value={item.kind} onChange={(event) => updateMeetingAgendaItem(index, { kind: event.target.value })} className="form-input" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                      <label htmlFor={`meeting-agenda-description-${index}`} className="mb-1 block text-xs font-medium text-[#64748b]">설명문</label>
+                                      <textarea id={`meeting-agenda-description-${index}`} name={`meeting_agenda_description_${index}`} value={item.description || ''} onChange={(event) => updateMeetingAgendaItem(index, { description: event.target.value })} className="form-input min-h-[96px]" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                      <label htmlFor={`meeting-agenda-resolution-${index}`} className="mb-1 block text-xs font-medium text-[#64748b]">의사록 결의문</label>
+                                      <textarea id={`meeting-agenda-resolution-${index}`} name={`meeting_agenda_resolution_${index}`} value={item.resolution_text || ''} onChange={(event) => updateMeetingAgendaItem(index, { resolution_text: event.target.value })} className="form-input min-h-[72px]" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white p-3">
+                        <div>
+                          <p className="text-xs font-semibold text-[#64748b]">외부 첨부 연결</p>
+                          <p className="mt-1 text-xs text-[#64748b]">감사보고서나 재무제표 증명원처럼 외부에서 받은 문서를 총회 패키지 슬롯에 연결합니다.</p>
+                        </div>
+                        {meetingPacketExternalSlots.length === 0 ? (
+                          <p className="text-sm text-[#64748b]">현재 외부 첨부가 필요한 슬롯이 없습니다.</p>
+                        ) : (
+                          meetingPacketExternalSlots.map((slot) => (
+                            <div key={`binding-${slot.slot}`} className="block">
+                              <label htmlFor={`meeting-binding-${slot.slot}`} className="mb-1 block text-xs font-medium text-[#64748b]">{slot.slot_label}</label>
+                              <select
+                                id={`meeting-binding-${slot.slot}`}
+                                name={`meeting_binding_${slot.slot}`}
+                                value={meetingPacketExternalBindings[slot.slot] ?? ''}
+                                onChange={(event) =>
+                                  setMeetingPacketExternalBindings((prev) => ({
+                                    ...prev,
+                                    [slot.slot]: event.target.value ? Number(event.target.value) : '',
+                                  }))
+                                }
+                                className="form-input"
+                              >
+                                <option value="">문서 선택 안 함</option>
+                                {fundLegalDocuments.map((doc) => (
+                                  <option key={`${slot.slot}-${doc.id}`} value={doc.id}>
+                                    {doc.title}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ))
+                        )}
+
+                        <div className="rounded-lg border border-[#d8e5fb] bg-[#f8fbff] p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-[#64748b]">생성 결과</p>
+                            {activeMeetingPacketDraft?.zip_attachment_id ? (
+                              <button
+                                type="button"
+                                className="secondary-btn"
+                                onClick={() => {
+                                  void downloadGeneratedDocument(activeMeetingPacketDraft.zip_attachment_id as number)
+                                    .then((blob) => downloadBlob(blob, `${fundDetail?.name || 'meeting_packet'}.zip`))
+                                    .catch(() => undefined)
+                                }}
+                              >
+                                ZIP 다운로드
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {(activeMeetingPacketDraft?.documents || []).length === 0 ? (
+                              <p className="text-sm text-[#64748b]">생성 후 문서별 다운로드 링크가 여기에 표시됩니다.</p>
+                            ) : (
+                              activeMeetingPacketDraft?.documents.map((doc) => (
+                                <div key={`generated-doc-${doc.id}`} className="flex items-center justify-between gap-2 rounded border border-[#d8e5fb] bg-white px-3 py-2">
+                                  <div>
+                                    <p className="text-sm font-medium text-[#0f1f3d]">{doc.slot_label}</p>
+                                    <p className="text-xs text-[#64748b]">
+                                      {doc.filename || doc.external_document_name || '-'} / {doc.status} / {doc.source_mode}
+                                    </p>
+                                  </div>
+                                  {doc.attachment_id ? (
+                                    <button
+                                      type="button"
+                                      className="secondary-btn"
+                                      onClick={() => {
+                                        void downloadGeneratedDocument(doc.attachment_id as number)
+                                          .then((blob) => downloadBlob(blob, doc.filename || `${doc.slot}.docx`))
+                                          .catch(() => undefined)
+                                      }}
+                                    >
+                                      다운로드
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <div className="card-base">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-[#0f1f3d]">LP 보고서 생성</h3>

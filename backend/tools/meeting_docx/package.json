@@ -1,0 +1,8 @@
+{
+  "name": "meeting-docx",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "docx": "^9.5.1"
+  }
+}

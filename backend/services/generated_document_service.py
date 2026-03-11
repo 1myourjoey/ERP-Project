@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
@@ -15,10 +13,9 @@ from services.document_builders.follow_up_report import build_follow_up_report
 from services.document_builders.internal_review_report import build_internal_review_report
 from services.document_builders.irc_minutes import build_irc_minutes
 from services.document_builders.operation_instruction import build_operation_instruction
+from services.generated_attachment_service import sanitize_generated_filename, store_generated_attachment
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
-_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 BUILDER_LABELS: dict[str, str] = {
     "follow_up_report": "후속관리보고서",
@@ -42,8 +39,7 @@ def _require_int(params: dict[str, Any], key: str) -> int:
 
 
 def _sanitize_filename(value: str) -> str:
-    sanitized = re.sub(r'[\\/:*?"<>|]+', "_", value).strip()
-    return sanitized or "generated_document.docx"
+    return sanitize_generated_filename(value, fallback="generated_document.docx")
 
 
 def _build_filename(builder: str, params: dict[str, Any]) -> str:
@@ -119,25 +115,22 @@ def generate_and_store_document(builder: str, params: dict[str, Any], db: Sessio
     if not payload:
         raise RuntimeError("문서 생성 결과가 비어 있습니다.")
 
-    stored_name = f"{uuid4().hex}.docx"
-    stored_path = _UPLOAD_DIR / stored_name
-    stored_path.write_bytes(payload)
-
-    attachment = Attachment(
-        filename=stored_name,
+    attachment = store_generated_attachment(
+        db=db,
+        payload=payload,
         original_filename=filename,
-        file_path=str(stored_path),
-        file_size=len(payload),
         mime_type=DOCX_MIME,
         entity_type=f"generated_document:{builder}",
         entity_id=_extract_entity_id(params),
+        commit=False,
     )
-    db.add(attachment)
     try:
         db.commit()
     except Exception:
         db.rollback()
-        stored_path.unlink(missing_ok=True)
+        from pathlib import Path
+
+        Path(attachment.file_path).unlink(missing_ok=True)
         raise
 
     db.refresh(attachment)

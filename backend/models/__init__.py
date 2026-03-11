@@ -36,6 +36,7 @@ from .phase3 import (
     ExitCommitteeFund,
     ExitTrade,
 )
+from .meeting_packet import AssemblyAgendaItem, MeetingPacketDocument, MeetingPacketRun
 from .fee import ManagementFee, FeeConfig, PerformanceFeeSimulation
 from .compliance import (
     ComplianceRule,
@@ -118,6 +119,9 @@ __all__ = [
     "CapitalCall", "CapitalCallItem", "CapitalCallDetail",
     "Distribution", "DistributionItem", "DistributionDetail",
     "Assembly",
+    "AssemblyAgendaItem",
+    "MeetingPacketRun",
+    "MeetingPacketDocument",
     "ExitCommittee", "ExitCommitteeFund", "ExitTrade",
     "ManagementFee", "FeeConfig", "PerformanceFeeSimulation",
     "ComplianceRule", "ComplianceObligation", "InvestmentLimitCheck",

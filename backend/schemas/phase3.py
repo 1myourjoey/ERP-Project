@@ -242,14 +242,43 @@ class DistributionDetailResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssemblyAgendaItemInput(BaseModel):
+    sort_order: int = 0
+    kind: str = "custom"
+    title: str
+    short_title: Optional[str] = None
+    description: Optional[str] = None
+    requires_vote: bool = True
+    source_type: Optional[str] = None
+    source_ref: Optional[str] = None
+    resolution_text: Optional[str] = None
+    vote_result: Optional[str] = None
+
+
+class AssemblyAgendaItemResponse(AssemblyAgendaItemInput):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class AssemblyCreate(BaseModel):
     fund_id: int
     type: str
     date: date
     agenda: Optional[str] = None
+    meeting_time: Optional[str] = None
+    meeting_method: Optional[str] = None
+    location: Optional[str] = None
+    chair_name: Optional[str] = None
+    document_number: Optional[str] = None
+    packet_type: Optional[str] = None
+    include_bylaw_amendment: bool = False
     status: str = "planned"
     minutes_completed: bool = False
     memo: Optional[str] = None
+    agenda_items: list[AssemblyAgendaItemInput] = Field(default_factory=list)
 
 
 class AssemblyUpdate(BaseModel):
@@ -257,9 +286,17 @@ class AssemblyUpdate(BaseModel):
     type: Optional[str] = None
     date: Optional[date] = None
     agenda: Optional[str] = None
+    meeting_time: Optional[str] = None
+    meeting_method: Optional[str] = None
+    location: Optional[str] = None
+    chair_name: Optional[str] = None
+    document_number: Optional[str] = None
+    packet_type: Optional[str] = None
+    include_bylaw_amendment: Optional[bool] = None
     status: Optional[str] = None
     minutes_completed: Optional[bool] = None
     memo: Optional[str] = None
+    agenda_items: Optional[list[AssemblyAgendaItemInput]] = None
 
 
 class AssemblyResponse(BaseModel):
@@ -268,9 +305,17 @@ class AssemblyResponse(BaseModel):
     type: str
     date: date
     agenda: Optional[str] = None
+    meeting_time: Optional[str] = None
+    meeting_method: Optional[str] = None
+    location: Optional[str] = None
+    chair_name: Optional[str] = None
+    document_number: Optional[str] = None
+    packet_type: Optional[str] = None
+    include_bylaw_amendment: bool = False
     status: str
     minutes_completed: bool
     memo: Optional[str] = None
+    agenda_items: list[AssemblyAgendaItemResponse] = Field(default_factory=list)
     created_at: datetime
 
     model_config = {"from_attributes": True}

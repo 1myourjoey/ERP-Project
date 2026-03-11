@@ -51,6 +51,7 @@ from routers import (
     investment_reviews,
     investments,
     legal_documents,
+    meeting_rpa,
     lp_address_books,
     lp_reports,
     lp_contributions,
@@ -205,6 +206,7 @@ include_protected_router(document_generation.router)
 include_protected_router(lp_contributions.router)
 include_protected_router(template_registration.router)
 include_protected_router(legal_documents.router)
+include_protected_router(meeting_rpa.router)
 include_protected_router(analytics.router)
 include_protected_router(entity_graph.router)
 

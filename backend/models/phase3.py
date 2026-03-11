@@ -108,10 +108,19 @@ class Assembly(Base):
     type = Column(String, nullable=False)
     date = Column(Date, nullable=False)
     agenda = Column(Text, nullable=True)
+    meeting_time = Column(String, nullable=True)
+    meeting_method = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    chair_name = Column(String, nullable=True)
+    document_number = Column(String, nullable=True)
+    packet_type = Column(String, nullable=True)
+    include_bylaw_amendment = Column(Boolean, nullable=False, default=False)
     status = Column(String, nullable=False, default="planned")
     minutes_completed = Column(Integer, nullable=False, default=0)  # 0/1
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    agenda_items = relationship("AssemblyAgendaItem", back_populates="assembly", cascade="all, delete-orphan", order_by="AssemblyAgendaItem.sort_order")
+    meeting_packet_runs = relationship("MeetingPacketRun", back_populates="assembly", cascade="all, delete-orphan", order_by="MeetingPacketRun.id.desc()")
 
 
 class ExitCommittee(Base):

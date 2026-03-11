@@ -151,7 +151,8 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
     entity_type = (row.entity_type or "") if row else ""
     is_legacy = entity_type.startswith("generated_document:")
     is_template_generated = entity_type.startswith("generated_template_document:")
-    if not row or not (is_legacy or is_template_generated):
+    is_meeting_packet = entity_type.startswith("meeting_packet:")
+    if not row or not (is_legacy or is_template_generated or is_meeting_packet):
         raise HTTPException(status_code=404, detail="생성 문서를 찾을 수 없습니다.")
 
     path = Path(row.file_path)

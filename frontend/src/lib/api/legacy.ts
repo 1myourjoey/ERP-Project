@@ -670,6 +670,35 @@ export const fetchFunds = (): Promise<Fund[]> => api.get('/funds').then(r => r.d
 export const fetchFundOverview = (referenceDate?: string): Promise<FundOverviewResponse> =>
   api.get('/funds/overview', { params: { reference_date: referenceDate } }).then(r => r.data)
 export const fetchFund = (id: number): Promise<Fund> => api.get(`/funds/${id}`).then(r => r.data)
+export const fetchFundMeetingPacketPlan = (
+  fundId: number,
+  params?: {
+    packet_type?: string
+    meeting_date?: string | null
+    meeting_time?: string | null
+    meeting_method?: string | null
+    report_year?: number | null
+    include_bylaw_amendment?: boolean
+  },
+): Promise<MeetingPacketGenerationPlanResponse> =>
+  api.get(`/funds/${fundId}/meeting-rpa/plan`, { params }).then(r => r.data)
+export const prepareMeetingPacket = (
+  fundId: number,
+  data: MeetingPacketPrepareInput,
+): Promise<MeetingPacketDraftResponse> =>
+  api.post(`/funds/${fundId}/meeting-packets/prepare`, data).then(r => r.data)
+export const fetchMeetingPacket = (runId: number): Promise<MeetingPacketDraftResponse> =>
+  api.get(`/meeting-packets/${runId}`).then(r => r.data)
+export const updateMeetingPacket = (
+  runId: number,
+  data: MeetingPacketUpdateInput,
+): Promise<MeetingPacketDraftResponse> =>
+  api.put(`/meeting-packets/${runId}`, data).then(r => r.data)
+export const generateMeetingPacket = (
+  runId: number,
+  data?: MeetingPacketGenerateInput,
+): Promise<MeetingPacketGenerateResponse> =>
+  api.post(`/meeting-packets/${runId}/generate`, data ?? {}).then(r => r.data)
 export const createFund = (data: FundInput) => api.post('/funds', data).then(r => r.data)
 export const updateFund = (id: number, data: Partial<FundInput>) => api.put(`/funds/${id}`, data).then(r => r.data)
 export const deleteFund = (id: number) => api.delete(`/funds/${id}`)
@@ -2286,6 +2315,146 @@ export interface DocumentTemplate {
   workflow_step_label: string | null
   created_at?: string | null
   updated_at?: string | null
+}
+
+export type MeetingPacketType =
+  | 'fund_lp_regular_meeting_pex'
+  | 'fund_lp_regular_meeting_project'
+  | 'fund_lp_regular_meeting_project_with_bylaw_amendment'
+  | 'gp_shareholders_meeting'
+  | 'unknown'
+
+export interface MeetingPacketGenerationSlot {
+  slot: string
+  slot_label: string
+  generation_mode: string
+  status: string
+  recommended_layout: string
+  builder_candidate?: string | null
+  template_candidate?: string | null
+  source_systems: string[]
+  data_points: string[]
+  preflight_warnings: string[]
+  required_external_documents: string[]
+  notes: string[]
+}
+
+export interface MeetingPacketGenerationPlanResponse {
+  fund_id: number
+  fund_name: string
+  packet_type: MeetingPacketType
+  packet_label: string
+  recommended_packet_type: MeetingPacketType
+  recommended_packet_label: string
+  packet_reasoning: string[]
+  meeting_date?: string | null
+  meeting_time?: string | null
+  meeting_method?: string | null
+  slots: MeetingPacketGenerationSlot[]
+  recipients_preview: string[]
+  agenda_preview: string[]
+  warnings: string[]
+}
+
+export interface MeetingPacketAgendaItemInput {
+  id?: number | null
+  sort_order: number
+  kind: string
+  title: string
+  short_title?: string | null
+  description?: string | null
+  requires_vote: boolean
+  source_type?: string | null
+  source_ref?: string | null
+  resolution_text?: string | null
+  vote_result?: string | null
+}
+
+export interface MeetingPacketDocumentItem {
+  id: number
+  slot: string
+  slot_label: string
+  status: string
+  source_mode: string
+  layout_mode?: string | null
+  attachment_id?: number | null
+  filename?: string | null
+  download_url?: string | null
+  external_document_id?: number | null
+  external_document_name?: string | null
+}
+
+export interface MeetingPacketPrepareInput {
+  fund_id: number
+  assembly_id?: number | null
+  packet_type: MeetingPacketType
+  meeting_date: string
+  meeting_time?: string | null
+  meeting_method?: string | null
+  location?: string | null
+  chair_name?: string | null
+  document_number?: string | null
+  report_year?: number | null
+  include_bylaw_amendment?: boolean
+}
+
+export interface MeetingPacketSlotBindingInput {
+  slot: string
+  external_document_id?: number | null
+  attachment_id?: number | null
+}
+
+export interface MeetingPacketUpdateInput {
+  meeting_date?: string | null
+  meeting_time?: string | null
+  meeting_method?: string | null
+  location?: string | null
+  chair_name?: string | null
+  document_number?: string | null
+  report_year?: number | null
+  include_bylaw_amendment?: boolean | null
+  agenda_items?: MeetingPacketAgendaItemInput[] | null
+  external_bindings?: MeetingPacketSlotBindingInput[] | null
+}
+
+export interface MeetingPacketDraftResponse {
+  run_id: number
+  assembly_id: number
+  fund_id: number
+  fund_name: string
+  packet_type: MeetingPacketType
+  packet_label: string
+  status: string
+  meeting_date: string
+  meeting_time?: string | null
+  meeting_method?: string | null
+  location?: string | null
+  chair_name?: string | null
+  document_number?: string | null
+  report_year?: number | null
+  include_bylaw_amendment: boolean
+  packet_reasoning: string[]
+  warnings: string[]
+  recipients_preview: string[]
+  slots: MeetingPacketGenerationSlot[]
+  agenda_items: MeetingPacketAgendaItemInput[]
+  documents: MeetingPacketDocumentItem[]
+  zip_attachment_id?: number | null
+  zip_download_url?: string | null
+}
+
+export interface MeetingPacketGenerateInput {
+  selected_slots?: string[] | null
+}
+
+export interface MeetingPacketGenerateResponse {
+  run_id: number
+  status: string
+  warnings: string[]
+  missing_slots: string[]
+  documents: MeetingPacketDocumentItem[]
+  zip_attachment_id?: number | null
+  zip_download_url?: string | null
 }
 
 export interface WorkflowStepInstanceDocument {
