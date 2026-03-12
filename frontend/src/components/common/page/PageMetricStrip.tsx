@@ -29,9 +29,9 @@ export default function PageMetricStrip({
 }: PageMetricStripProps) {
   return (
     <section className={`page-metric-strip ${COLUMN_CLASS[columns]} ${className}`.trim()}>
-      {items.map((item) => (
+      {items.map((item, index) => (
         <button
-          key={`${item.label}-${item.value}`}
+          key={`${item.label}-${index}`}
           type="button"
           onClick={item.onClick}
           aria-label={item.ariaLabel || item.label}

@@ -25,23 +25,28 @@ def build_name_map(rows: list[Any], value_attr: str = "name") -> dict[int, str |
     return result
 
 
-def load_reference_maps(db: Session) -> dict[str, dict[int, Any]]:
-    funds = db.query(Fund).all()
-    companies = db.query(PortfolioCompany).all()
-    investments = db.query(Investment).all()
-    workflows = db.query(Workflow).all()
-    steps = db.query(WorkflowStep).all()
-    users = db.query(User).all()
-    lps = db.query(LP).all()
-    return {
-        "fund": {row.id: row for row in funds},
-        "company": {row.id: row for row in companies},
-        "investment": {row.id: row for row in investments},
-        "workflow": {row.id: row for row in workflows},
-        "workflow_step": {row.id: row for row in steps},
-        "user": {row.id: row for row in users},
-        "lp": {row.id: row for row in lps},
-    }
+def load_reference_maps(
+    db: Session,
+    *,
+    include: set[str] | None = None,
+) -> dict[str, dict[int, Any]]:
+    requested = include or {"fund", "company", "investment", "workflow", "workflow_step", "user", "lp"}
+    result: dict[str, dict[int, Any]] = {}
+    if "fund" in requested:
+        result["fund"] = {row.id: row for row in db.query(Fund).all()}
+    if "company" in requested:
+        result["company"] = {row.id: row for row in db.query(PortfolioCompany).all()}
+    if "investment" in requested:
+        result["investment"] = {row.id: row for row in db.query(Investment).all()}
+    if "workflow" in requested:
+        result["workflow"] = {row.id: row for row in db.query(Workflow).all()}
+    if "workflow_step" in requested:
+        result["workflow_step"] = {row.id: row for row in db.query(WorkflowStep).all()}
+    if "user" in requested:
+        result["user"] = {row.id: row for row in db.query(User).all()}
+    if "lp" in requested:
+        result["lp"] = {row.id: row for row in db.query(LP).all()}
+    return result
 
 
 def group_sum(rows: list[Any], key_attr: str, value_attr: str) -> dict[int, float]:
@@ -95,73 +100,175 @@ def latest_valuation_totals_by_fund(db: Session) -> dict[int, float]:
 
 
 def active_workflow_counts_by_fund(db: Session) -> dict[int, int]:
-    rows = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active", WorkflowInstance.fund_id.isnot(None)).all()
-    return group_count(rows, "fund_id")
+    return {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(WorkflowInstance.fund_id, func.count(WorkflowInstance.id))
+        .filter(WorkflowInstance.status == "active", WorkflowInstance.fund_id.isnot(None))
+        .group_by(WorkflowInstance.fund_id)
+        .all()
+    }
 
 
 def active_workflow_counts_by_investment(db: Session) -> dict[int, int]:
-    rows = db.query(WorkflowInstance).filter(WorkflowInstance.status == "active", WorkflowInstance.investment_id.isnot(None)).all()
-    return group_count(rows, "investment_id")
+    return {
+        int(investment_id): int(count or 0)
+        for investment_id, count in db.query(WorkflowInstance.investment_id, func.count(WorkflowInstance.id))
+        .filter(WorkflowInstance.status == "active", WorkflowInstance.investment_id.isnot(None))
+        .group_by(WorkflowInstance.investment_id)
+        .all()
+    }
 
 
 def open_task_counts_by_fund(db: Session) -> dict[int, int]:
-    rows = db.query(Task).filter(Task.fund_id.isnot(None), Task.status != "completed").all()
-    return group_count(rows, "fund_id")
+    return {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(Task.fund_id, func.count(Task.id))
+        .filter(Task.fund_id.isnot(None), Task.status != "completed")
+        .group_by(Task.fund_id)
+        .all()
+    }
 
 
 def open_task_counts_by_investment(db: Session) -> dict[int, int]:
-    rows = db.query(Task).filter(Task.investment_id.isnot(None), Task.status != "completed").all()
-    return group_count(rows, "investment_id")
+    return {
+        int(investment_id): int(count or 0)
+        for investment_id, count in db.query(Task.investment_id, func.count(Task.id))
+        .filter(Task.investment_id.isnot(None), Task.status != "completed")
+        .group_by(Task.investment_id)
+        .all()
+    }
 
 
 def overdue_task_counts_by_fund(db: Session) -> dict[int, int]:
     today = date.today()
-    rows = db.query(Task).filter(Task.fund_id.isnot(None), Task.deadline.isnot(None), Task.status != "completed").all()
-    return group_count(rows, "fund_id", predicate=lambda row: row.deadline.date() < today if hasattr(row.deadline, "date") else row.deadline < today)
+    return {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(Task.fund_id, func.count(Task.id))
+        .filter(
+            Task.fund_id.isnot(None),
+            Task.deadline.isnot(None),
+            Task.status != "completed",
+            func.date(Task.deadline) < today,
+        )
+        .group_by(Task.fund_id)
+        .all()
+    }
 
 
 def overdue_document_counts_by_investment(db: Session) -> dict[int, int]:
     today = date.today()
-    rows = db.query(InvestmentDocument).filter(InvestmentDocument.due_date.isnot(None)).all()
-    return group_count(rows, "investment_id", predicate=lambda row: row.status != "completed" and row.due_date < today)
+    return {
+        int(investment_id): int(count or 0)
+        for investment_id, count in db.query(InvestmentDocument.investment_id, func.count(InvestmentDocument.id))
+        .filter(
+            InvestmentDocument.investment_id.isnot(None),
+            InvestmentDocument.due_date.isnot(None),
+            InvestmentDocument.status != "completed",
+            InvestmentDocument.due_date < today,
+        )
+        .group_by(InvestmentDocument.investment_id)
+        .all()
+    }
 
 
 def overdue_document_counts_by_fund(db: Session) -> dict[int, int]:
     today = date.today()
-    rows = db.query(InvestmentDocument, Investment).join(Investment, Investment.id == InvestmentDocument.investment_id).filter(InvestmentDocument.due_date.isnot(None)).all()
-    result: dict[int, int] = defaultdict(int)
-    for doc, investment in rows:
-        if doc.status == "completed" or doc.due_date >= today:
-            continue
-        result[int(investment.fund_id)] += 1
-    return dict(result)
+    return {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(Investment.fund_id, func.count(InvestmentDocument.id))
+        .join(Investment, Investment.id == InvestmentDocument.investment_id)
+        .filter(
+            Investment.fund_id.isnot(None),
+            InvestmentDocument.due_date.isnot(None),
+            InvestmentDocument.status != "completed",
+            InvestmentDocument.due_date < today,
+        )
+        .group_by(Investment.fund_id)
+        .all()
+    }
 
 
 def compliance_counts_by_fund(db: Session) -> tuple[dict[int, int], dict[int, int]]:
-    rows = db.query(ComplianceObligation).all()
-    open_counts = group_count(rows, "fund_id", predicate=lambda row: row.status != "completed")
-    overdue_counts = group_count(rows, "fund_id", predicate=lambda row: row.status == "overdue")
+    open_counts = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(ComplianceObligation.fund_id, func.count(ComplianceObligation.id))
+        .filter(ComplianceObligation.fund_id.isnot(None), ComplianceObligation.status != "completed")
+        .group_by(ComplianceObligation.fund_id)
+        .all()
+    }
+    overdue_counts = {
+        int(fund_id): int(count or 0)
+        for fund_id, count in db.query(ComplianceObligation.fund_id, func.count(ComplianceObligation.id))
+        .filter(ComplianceObligation.fund_id.isnot(None), ComplianceObligation.status == "overdue")
+        .group_by(ComplianceObligation.fund_id)
+        .all()
+    }
     return open_counts, overdue_counts
 
 
 def compliance_counts_by_investment(db: Session) -> dict[int, int]:
-    rows = db.query(ComplianceObligation).filter(ComplianceObligation.investment_id.isnot(None)).all()
-    return group_count(rows, "investment_id", predicate=lambda row: row.status != "completed")
+    return {
+        int(investment_id): int(count or 0)
+        for investment_id, count in db.query(ComplianceObligation.investment_id, func.count(ComplianceObligation.id))
+        .filter(
+            ComplianceObligation.investment_id.isnot(None),
+            ComplianceObligation.status != "completed",
+        )
+        .group_by(ComplianceObligation.investment_id)
+        .all()
+    }
 
 
 def workflow_step_doc_stats(db: Session) -> tuple[dict[int, int], dict[int, int]]:
-    rows = db.query(WorkflowStepInstanceDocument).all()
-    checked = group_count(rows, "step_instance_id", predicate=lambda row: bool(row.checked))
-    required_unchecked = group_count(rows, "step_instance_id", predicate=lambda row: bool(row.required) and not bool(row.checked))
+    checked = {
+        int(step_instance_id): int(count or 0)
+        for step_instance_id, count in db.query(
+            WorkflowStepInstanceDocument.step_instance_id,
+            func.count(WorkflowStepInstanceDocument.id),
+        )
+        .filter(
+            WorkflowStepInstanceDocument.step_instance_id.isnot(None),
+            WorkflowStepInstanceDocument.checked == True,
+        )
+        .group_by(WorkflowStepInstanceDocument.step_instance_id)
+        .all()
+    }
+    required_unchecked = {
+        int(step_instance_id): int(count or 0)
+        for step_instance_id, count in db.query(
+            WorkflowStepInstanceDocument.step_instance_id,
+            func.count(WorkflowStepInstanceDocument.id),
+        )
+        .filter(
+            WorkflowStepInstanceDocument.step_instance_id.isnot(None),
+            WorkflowStepInstanceDocument.required == True,
+            WorkflowStepInstanceDocument.checked == False,
+        )
+        .group_by(WorkflowStepInstanceDocument.step_instance_id)
+        .all()
+    }
     return checked, required_unchecked
 
 
 def transaction_counts_by_investment(db: Session) -> dict[int, int]:
-    rows = db.query(Transaction).all()
-    return group_count(rows, "investment_id")
+    return {
+        int(investment_id): int(count or 0)
+        for investment_id, count in db.query(Transaction.investment_id, func.count(Transaction.id))
+        .filter(Transaction.investment_id.isnot(None))
+        .group_by(Transaction.investment_id)
+        .all()
+    }
 
 
 def realized_gain_by_investment(db: Session) -> dict[int, float]:
-    rows = db.query(Transaction).all()
-    return group_sum(rows, "investment_id", "realized_gain")
+    return {
+        int(investment_id): float(total or 0)
+        for investment_id, total in db.query(
+            Transaction.investment_id,
+            func.coalesce(func.sum(Transaction.realized_gain), 0),
+        )
+        .filter(Transaction.investment_id.isnot(None))
+        .group_by(Transaction.investment_id)
+        .all()
+    }
 

@@ -11,7 +11,7 @@ from services.analytics.subjects.shared import load_reference_maps
 
 
 def load_rows(db):
-    refs = load_reference_maps(db)
+    refs = load_reference_maps(db, include={"company", "fund", "investment", "user", "workflow"})
     obligation_map = {row.id: row for row in db.query(ComplianceObligation).all()}
     workflow_instance_map = {row.id: row for row in db.query(WorkflowInstance).all()}
     rows = db.query(Task).all()

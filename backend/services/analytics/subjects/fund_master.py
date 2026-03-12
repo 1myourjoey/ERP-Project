@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+from sqlalchemy import func
+
 from models.fund import Fund
 from models.fund import LP
 from models.investment import Investment
@@ -17,22 +19,31 @@ from services.analytics.subjects.shared import (
 
 def load_rows(db):
     funds = db.query(Fund).all()
-    lps = db.query(LP).all()
-    investments = db.query(Investment).all()
+    lp_rows = (
+        db.query(
+            LP.fund_id,
+            func.count(LP.id),
+            func.coalesce(func.sum(LP.commitment), 0),
+            func.coalesce(func.sum(LP.paid_in), 0),
+        )
+        .group_by(LP.fund_id)
+        .all()
+    )
+    lp_count_map = {int(fund_id): int(count or 0) for fund_id, count, _, _ in lp_rows}
+    commitment_map = {int(fund_id): float(total_commitment or 0) for fund_id, _, total_commitment, _ in lp_rows}
+    paid_in_map = {int(fund_id): float(total_paid_in or 0) for fund_id, _, _, total_paid_in in lp_rows}
 
-    lp_count_map: dict[int, int] = {}
-    commitment_map: dict[int, float] = {}
-    paid_in_map: dict[int, float] = {}
-    for row in lps:
-        lp_count_map[row.fund_id] = lp_count_map.get(row.fund_id, 0) + 1
-        commitment_map[row.fund_id] = commitment_map.get(row.fund_id, 0.0) + float(row.commitment or 0)
-        paid_in_map[row.fund_id] = paid_in_map.get(row.fund_id, 0.0) + float(row.paid_in or 0)
-
-    investment_count_map: dict[int, int] = {}
-    invested_amount_map: dict[int, float] = {}
-    for row in investments:
-        investment_count_map[row.fund_id] = investment_count_map.get(row.fund_id, 0) + 1
-        invested_amount_map[row.fund_id] = invested_amount_map.get(row.fund_id, 0.0) + float(row.amount or 0)
+    investment_rows = (
+        db.query(
+            Investment.fund_id,
+            func.count(Investment.id),
+            func.coalesce(func.sum(Investment.amount), 0),
+        )
+        .group_by(Investment.fund_id)
+        .all()
+    )
+    investment_count_map = {int(fund_id): int(count or 0) for fund_id, count, _ in investment_rows}
+    invested_amount_map = {int(fund_id): float(total_amount or 0) for fund_id, _, total_amount in investment_rows}
 
     workflow_map = active_workflow_counts_by_fund(db)
     task_map = open_task_counts_by_fund(db)

@@ -4,7 +4,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from models.task_category import TaskCategory
@@ -19,6 +19,14 @@ from schemas.worklog import (
 )
 
 router = APIRouter(prefix="/api/worklogs", tags=["worklogs"])
+
+
+def _worklog_query_with_relations(db: Session):
+    return db.query(WorkLog).options(
+        selectinload(WorkLog.details),
+        selectinload(WorkLog.lessons),
+        selectinload(WorkLog.follow_ups),
+    )
 
 
 def _normalize_category_name(value: str | None) -> str:
@@ -86,12 +94,19 @@ def get_categories():
 
 @router.get("/stats", response_model=WorkLogStatsResponse)
 def get_stats(db: Session = Depends(get_db)):
-    logs = db.query(WorkLog).all()
-    total = len(logs)
-    completed = sum(1 for log in logs if log.status == "완료")
-    by_category: dict[str, int] = {}
-    for log in logs:
-        by_category[log.category] = by_category.get(log.category, 0) + 1
+    total = int(db.query(func.count(WorkLog.id)).scalar() or 0)
+    completed = int(
+        db.query(func.count(WorkLog.id))
+        .filter(WorkLog.status == "완료")
+        .scalar()
+        or 0
+    )
+    by_category = {
+        str(category or "기타"): int(count or 0)
+        for category, count in db.query(WorkLog.category, func.count(WorkLog.id))
+        .group_by(WorkLog.category)
+        .all()
+    }
     return {
         "total": total,
         "completed": completed,
@@ -114,7 +129,12 @@ def get_worklog_insights(
     else:
         start_date = today - timedelta(days=90)
 
-    logs = db.query(WorkLog).filter(WorkLog.date >= start_date).all()
+    logs = (
+        _worklog_query_with_relations(db)
+        .filter(WorkLog.date >= start_date)
+        .order_by(WorkLog.date.desc(), WorkLog.id.desc())
+        .all()
+    )
 
     time_by_category: dict[str, int] = {}
     time_accuracy = {"over": 0, "under": 0, "accurate": 0}
@@ -197,7 +217,7 @@ def list_worklogs(
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
-    query = db.query(WorkLog)
+    query = _worklog_query_with_relations(db)
     if date_from:
         query = query.filter(WorkLog.date >= date_from)
     if date_to:
@@ -209,7 +229,7 @@ def list_worklogs(
 
 @router.get("/{worklog_id}", response_model=WorkLogResponse)
 def get_worklog(worklog_id: int, db: Session = Depends(get_db)):
-    wl = db.get(WorkLog, worklog_id)
+    wl = _worklog_query_with_relations(db).filter(WorkLog.id == worklog_id).first()
     if not wl:
         raise HTTPException(status_code=404, detail="업무 기록을 찾을 수 없습니다")
     return wl

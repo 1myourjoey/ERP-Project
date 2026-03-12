@@ -573,6 +573,7 @@ class MeetingPacketService:
         slot: str,
     ) -> dict[str, Any] | None:
         agendas = list(assembly.agenda_items or [])
+        latest_biz_report = self._latest_biz_report(db, fund.id) if slot == "agenda_explanation" else None
         meeting = {
             "date_iso": assembly.date.isoformat(),
             "date_label": self._format_date_label(assembly.date),
@@ -614,12 +615,16 @@ class MeetingPacketService:
                             fund=fund,
                             agenda_kind=item.kind,
                             title=item.title,
-                            latest_biz_report=self._latest_biz_report(db, fund.id),
+                            latest_biz_report=latest_biz_report,
                         ),
                     }
                     for item in agendas
                 ],
-                "financial_summary": self._financial_summary(db=db, fund=fund),
+                "financial_summary": self._financial_summary(
+                    db=db,
+                    fund=fund,
+                    latest_biz_report=latest_biz_report,
+                ),
             }
         if slot in {"written_resolution", "proxy_vote_notice"}:
             return {
@@ -846,8 +851,15 @@ class MeetingPacketService:
             .first()
         )
 
-    def _financial_summary(self, *, db: Session, fund: Fund) -> list[dict[str, str]]:
-        latest_biz_report = self._latest_biz_report(db, fund.id)
+    def _financial_summary(
+        self,
+        *,
+        db: Session,
+        fund: Fund,
+        latest_biz_report: BizReport | None = None,
+    ) -> list[dict[str, str]]:
+        if latest_biz_report is None:
+            latest_biz_report = self._latest_biz_report(db, fund.id)
         if latest_biz_report:
             return [
                 {"label": "총 약정액", "value": self._fmt_money(latest_biz_report.total_commitment), "note": "BizReport"},

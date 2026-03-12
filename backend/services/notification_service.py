@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, func
@@ -8,6 +8,10 @@ from sqlalchemy.orm import Session
 
 from models.notification import Notification
 from models.user import User
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _normalize_severity(value: str | None) -> str:
@@ -38,7 +42,7 @@ async def create_notification(
     action_payload: dict[str, Any] | None = None,
 ) -> Notification:
     """Create a notification with 24-hour duplicate guard."""
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    cutoff = _utcnow_naive() - timedelta(hours=24)
     existing = (
         db.query(Notification)
         .filter(
@@ -86,43 +90,55 @@ async def create_notifications_for_active_users(
     action_url: str | None = None,
     action_payload: dict[str, Any] | None = None,
 ) -> int:
-    user_ids = [
-        int(row.id)
-        for row in db.query(User.id)
-        .filter(User.is_active == True)
-        .all()
-    ]
-    created = 0
-    for user_id in user_ids:
-        before_count = (
-            db.query(func.count(Notification.id))
-            .filter(
-                Notification.user_id == user_id,
-                Notification.title == title,
-                Notification.category == _normalize_category(category),
-                Notification.target_type == target_type,
-                Notification.target_id == target_id,
-                Notification.created_at >= datetime.utcnow() - timedelta(hours=24),
-            )
-            .scalar()
-            or 0
+    normalized_category = _normalize_category(category)
+    normalized_severity = _normalize_severity(severity)
+    normalized_title = (title or "").strip()[:200] or "알림"
+    normalized_message = (message or "").strip() or None
+    normalized_target_type = (target_type or "").strip() or None
+    normalized_action_type = (action_type or "navigate").strip() or "navigate"
+    normalized_action_url = (action_url or "").strip() or None
+    cutoff = _utcnow_naive() - timedelta(hours=24)
+
+    user_ids = [int(row.id) for row in db.query(User.id).filter(User.is_active == True).all()]
+    if not user_ids:
+        return 0
+
+    existing_user_ids = {
+        int(row.user_id)
+        for row in db.query(Notification.user_id)
+        .filter(
+            Notification.user_id.in_(user_ids),
+            Notification.title == normalized_title,
+            Notification.category == normalized_category,
+            Notification.target_type == normalized_target_type,
+            Notification.target_id == target_id,
+            Notification.created_at >= cutoff,
         )
-        await create_notification(
-            db,
+        .all()
+    }
+
+    pending_rows = [
+        Notification(
             user_id=user_id,
-            category=category,
-            severity=severity,
-            title=title,
-            message=message,
-            target_type=target_type,
+            category=normalized_category,
+            severity=normalized_severity,
+            title=normalized_title,
+            message=normalized_message,
+            target_type=normalized_target_type,
             target_id=target_id,
-            action_type=action_type,
-            action_url=action_url,
+            action_type=normalized_action_type,
+            action_url=normalized_action_url,
             action_payload=action_payload,
         )
-        if before_count == 0:
-            created += 1
-    return created
+        for user_id in user_ids
+        if user_id not in existing_user_ids
+    ]
+    if not pending_rows:
+        return 0
+
+    db.add_all(pending_rows)
+    db.commit()
+    return len(pending_rows)
 
 
 async def get_unread_count(db: Session, user_id: int) -> int:

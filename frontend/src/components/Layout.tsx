@@ -170,7 +170,8 @@ export default function Layout() {
   const { data: unreadCount = 0 } = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: getUnreadCount,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: () => (document.visibilityState === 'visible' ? 60_000 : false),
   })
 
 

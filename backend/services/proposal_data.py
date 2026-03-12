@@ -546,9 +546,14 @@ def resolve_proposal_workspace(
     selected_fund_ids = [int(value) for value in (fund_ids or [])]
     if not selected_fund_ids and candidate_funds and auto_select_all_funds:
         selected_fund_ids = [fund.id for fund in candidate_funds]
-    selected_funds = [fund for fund in candidate_funds if fund.id in set(selected_fund_ids)]
-    candidate_fund_snapshots = [_build_fund_snapshot(db, fund, as_of_date) for fund in candidate_funds]
-    fund_snapshots = [_build_fund_snapshot(db, fund, as_of_date) for fund in selected_funds]
+    selected_fund_id_set = set(selected_fund_ids)
+    selected_funds = [fund for fund in candidate_funds if fund.id in selected_fund_id_set]
+    fund_snapshot_by_id = {
+        fund.id: _build_fund_snapshot(db, fund, as_of_date)
+        for fund in candidate_funds
+    }
+    candidate_fund_snapshots = [fund_snapshot_by_id[fund.id] for fund in candidate_funds]
+    fund_snapshots = [fund_snapshot_by_id[fund.id] for fund in selected_funds]
 
     gp_financials = []
     gp_shareholders = []

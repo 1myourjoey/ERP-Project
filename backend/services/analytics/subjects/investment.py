@@ -16,7 +16,7 @@ from services.analytics.subjects.shared import (
 
 
 def load_rows(db):
-    refs = load_reference_maps(db)
+    refs = load_reference_maps(db, include={"company", "fund"})
     investments = db.query(Investment).all()
     latest_valuation_map = latest_valuation_by_investment(db)
     workflow_counts = active_workflow_counts_by_investment(db)

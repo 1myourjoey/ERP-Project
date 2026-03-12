@@ -7,7 +7,7 @@ from services.analytics.subjects.shared import load_reference_maps, workflow_ste
 
 
 def load_rows(db):
-    refs = load_reference_maps(db)
+    refs = load_reference_maps(db, include={"company", "fund", "investment", "user", "workflow", "workflow_step"})
     instances = db.query(WorkflowInstance).all()
     step_instances = db.query(WorkflowStepInstance).all()
     checked_docs_map, required_unchecked_map = workflow_step_doc_stats(db)

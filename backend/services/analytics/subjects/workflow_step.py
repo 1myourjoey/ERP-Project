@@ -9,7 +9,7 @@ from services.analytics.subjects.shared import load_reference_maps, workflow_ste
 
 
 def load_rows(db):
-    refs = load_reference_maps(db)
+    refs = load_reference_maps(db, include={"company", "fund", "investment", "workflow", "workflow_step"})
     rows = db.query(WorkflowStepInstance).all()
     checked_docs_map, required_unchecked_map = workflow_step_doc_stats(db)
     today = date.today()

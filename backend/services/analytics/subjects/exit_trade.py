@@ -7,7 +7,7 @@ from services.analytics.subjects.shared import load_reference_maps
 
 
 def load_rows(db):
-    refs = load_reference_maps(db)
+    refs = load_reference_maps(db, include={"company", "fund"})
     rows = db.query(ExitTrade).all()
     result = []
     for row in rows:

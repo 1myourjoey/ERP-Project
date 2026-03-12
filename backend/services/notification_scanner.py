@@ -24,6 +24,7 @@ async def scan_task_deadlines(db: Session) -> int:
         .filter(
             Task.status.in_(["pending", "in_progress"]),
             Task.deadline.isnot(None),
+            Task.deadline <= tomorrow,
         )
         .all()
     )
@@ -64,9 +65,14 @@ async def scan_task_deadlines(db: Session) -> int:
 
 async def scan_compliance_deadlines(db: Session) -> int:
     today = date.today()
+    warning_cutoff = today + timedelta(days=7)
     rows = (
         db.query(ComplianceObligation)
-        .filter(ComplianceObligation.status.in_(["pending", "in_progress", "overdue"]))
+        .filter(
+            ComplianceObligation.status.in_(["pending", "in_progress", "overdue"]),
+            ComplianceObligation.due_date.isnot(None),
+            ComplianceObligation.due_date <= warning_cutoff,
+        )
         .all()
     )
 
@@ -105,30 +111,51 @@ async def scan_compliance_deadlines(db: Session) -> int:
 
 async def scan_capital_call_deadlines(db: Session) -> int:
     today = date.today()
-    calls = db.query(CapitalCall).order_by(CapitalCall.call_date.asc()).all()
+    warning_cutoff = today + timedelta(days=5)
+    calls = (
+        db.query(CapitalCall)
+        .filter(CapitalCall.call_date <= warning_cutoff)
+        .order_by(CapitalCall.call_date.asc())
+        .all()
+    )
+    call_ids = [int(call.id) for call in calls]
+    if not call_ids:
+        return 0
+
+    detail_rows = (
+        db.query(
+            CapitalCallDetail.capital_call_id,
+            CapitalCallDetail.status,
+            CapitalCallDetail.paid_amount,
+            CapitalCallDetail.call_amount,
+        )
+        .filter(CapitalCallDetail.capital_call_id.in_(call_ids))
+        .all()
+    )
+    item_rows = (
+        db.query(
+            CapitalCallItem.capital_call_id,
+            CapitalCallItem.paid,
+        )
+        .filter(CapitalCallItem.capital_call_id.in_(call_ids))
+        .all()
+    )
+
+    detail_unpaid_by_call: dict[int, int] = {}
+    for row in detail_rows:
+        if (row.status or "") != "완납" or float(row.paid_amount or 0) < float(row.call_amount or 0):
+            detail_unpaid_by_call[int(row.capital_call_id)] = detail_unpaid_by_call.get(int(row.capital_call_id), 0) + 1
+
+    item_unpaid_by_call: dict[int, int] = {}
+    for row in item_rows:
+        if int(row.paid or 0) == 0:
+            item_unpaid_by_call[int(row.capital_call_id)] = item_unpaid_by_call.get(int(row.capital_call_id), 0) + 1
 
     created = 0
     for call in calls:
-        unpaid_count = 0
-        detail_rows = (
-            db.query(CapitalCallDetail)
-            .filter(CapitalCallDetail.capital_call_id == call.id)
-            .all()
-        )
-        if detail_rows:
-            unpaid_count = sum(
-                1
-                for detail in detail_rows
-                if (detail.status or "") != "완납"
-                or float(detail.paid_amount or 0) < float(detail.call_amount or 0)
-            )
-        else:
-            item_rows = (
-                db.query(CapitalCallItem)
-                .filter(CapitalCallItem.capital_call_id == call.id)
-                .all()
-            )
-            unpaid_count = sum(1 for item in item_rows if int(item.paid or 0) == 0)
+        unpaid_count = detail_unpaid_by_call.get(int(call.id), 0)
+        if unpaid_count == 0 and int(call.id) not in detail_unpaid_by_call:
+            unpaid_count = item_unpaid_by_call.get(int(call.id), 0)
 
         if unpaid_count <= 0:
             continue
@@ -161,11 +188,16 @@ async def scan_capital_call_deadlines(db: Session) -> int:
 
 async def scan_document_expiry(db: Session) -> int:
     today = date.today()
+    info_cutoff = today + timedelta(days=30)
     created = 0
 
     docs = (
         db.query(InvestmentDocument)
-        .filter(InvestmentDocument.status != "collected", InvestmentDocument.due_date.isnot(None))
+        .filter(
+            InvestmentDocument.status != "collected",
+            InvestmentDocument.due_date.isnot(None),
+            InvestmentDocument.due_date <= info_cutoff,
+        )
         .all()
     )
     for doc in docs:
