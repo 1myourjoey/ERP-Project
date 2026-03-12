@@ -7,6 +7,15 @@ from pydantic import BaseModel, Field
 
 
 PacketType = Literal[
+    "fund_lp_regular_meeting_nongmotae",
+    "fund_lp_regular_meeting_project",
+    "fund_lp_regular_meeting_project_with_bylaw_amendment",
+    "gp_shareholders_meeting",
+    "unknown",
+]
+
+PacketTypeInput = Literal[
+    "fund_lp_regular_meeting_nongmotae",
     "fund_lp_regular_meeting_pex",
     "fund_lp_regular_meeting_project",
     "fund_lp_regular_meeting_project_with_bylaw_amendment",
@@ -59,7 +68,7 @@ class MeetingPacketAnalyzeResponse(BaseModel):
 
 class MeetingPacketGenerationPlanRequest(BaseModel):
     fund_id: int = Field(ge=1)
-    packet_type: PacketType
+    packet_type: PacketTypeInput
     meeting_date: Optional[date] = None
     meeting_time: Optional[str] = None
     meeting_method: Optional[str] = None
@@ -123,10 +132,15 @@ class MeetingPacketSlotBindingInput(BaseModel):
     attachment_id: int | None = None
 
 
+class MeetingPacketDocumentOrderInput(BaseModel):
+    slot: str
+    sort_order: int = 0
+
+
 class MeetingPacketPrepareRequest(BaseModel):
     fund_id: int = Field(ge=1)
     assembly_id: int | None = Field(default=None, ge=1)
-    packet_type: PacketType
+    packet_type: PacketTypeInput
     meeting_date: date
     meeting_time: str | None = None
     meeting_method: str | None = None
@@ -148,12 +162,14 @@ class MeetingPacketUpdateRequest(BaseModel):
     include_bylaw_amendment: bool | None = None
     agenda_items: list[MeetingPacketAgendaItemInput] | None = None
     external_bindings: list[MeetingPacketSlotBindingInput] | None = None
+    document_orders: list[MeetingPacketDocumentOrderInput] | None = None
 
 
 class MeetingPacketDocumentItem(BaseModel):
     id: int
     slot: str
     slot_label: str
+    sort_order: int
     status: str
     source_mode: str
     layout_mode: str | None = None

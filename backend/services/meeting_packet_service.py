@@ -21,6 +21,7 @@ from schemas.meeting_packet import (
     MeetingPacketAgendaItemInput,
     MeetingPacketAgendaItemResponse,
     MeetingPacketDocumentItem,
+    MeetingPacketDocumentOrderInput,
     MeetingPacketDraftResponse,
     MeetingPacketGenerateResponse,
     MeetingPacketGenerationSlot,
@@ -28,7 +29,11 @@ from schemas.meeting_packet import (
     MeetingPacketSlotBindingInput,
     MeetingPacketUpdateRequest,
 )
-from services.generated_attachment_service import sanitize_generated_filename, store_generated_attachment
+from services.generated_attachment_service import (
+    cleanup_generated_attachment,
+    sanitize_generated_filename,
+    store_generated_attachment,
+)
 from services.meeting_packet_docx_service import DOCX_MIME, MeetingPacketDocxService
 from services.meeting_packet_narrative_service import MeetingPacketNarrativeService
 from services.meeting_packet_rpa import (
@@ -37,6 +42,8 @@ from services.meeting_packet_rpa import (
     PACKET_REQUIRED_SLOTS,
     SLOT_LABELS,
     MeetingPacketRPAService,
+    is_nongmotae_packet_type,
+    normalize_packet_type,
 )
 
 ZIP_MIME = "application/zip"
@@ -66,11 +73,12 @@ class MeetingPacketService:
         fund = db.get(Fund, request.fund_id)
         if not fund:
             raise ValueError("fund not found")
+        normalized_packet_type = normalize_packet_type(request.packet_type)
         assembly = self._resolve_assembly(db=db, fund=fund, request=request)
         run = self._resolve_run(
             db=db,
             assembly=assembly,
-            packet_type=request.packet_type,
+            packet_type=normalized_packet_type,
             report_year=request.report_year,
             include_bylaw_amendment=request.include_bylaw_amendment,
             user_id=user_id,
@@ -78,7 +86,7 @@ class MeetingPacketService:
         plan = self._rpa.build_generation_plan(
             db=db,
             fund_id=fund.id,
-            packet_type=request.packet_type,
+            packet_type=normalized_packet_type,
             meeting_date=request.meeting_date,
             meeting_time=request.meeting_time,
             meeting_method=request.meeting_method,
@@ -87,6 +95,7 @@ class MeetingPacketService:
         )
         self._ensure_default_agendas(db=db, assembly=assembly, plan=plan, fund=fund)
         self._sync_run_documents(db=db, run=run, slots=plan.slots)
+        self._ensure_document_sort_orders(run=run, slots=plan.slots)
         db.commit()
         db.refresh(run)
         return self._serialize_draft(db=db, run=run, plan=plan)
@@ -105,6 +114,7 @@ class MeetingPacketService:
         fund = db.get(Fund, run.fund_id)
         if not assembly or not fund:
             raise ValueError("meeting packet data is inconsistent")
+        self._normalize_run_packet_type(run=run, assembly=assembly)
 
         payload = request.model_dump(exclude_unset=True)
         if "meeting_date" in payload and payload["meeting_date"] is not None:
@@ -126,7 +136,7 @@ class MeetingPacketService:
         plan = self._rpa.build_generation_plan(
             db=db,
             fund_id=fund.id,
-            packet_type=run.packet_type,
+            packet_type=normalize_packet_type(run.packet_type),
             meeting_date=assembly.date,
             meeting_time=assembly.meeting_time,
             meeting_method=assembly.meeting_method,
@@ -134,6 +144,9 @@ class MeetingPacketService:
             include_bylaw_amendment=bool(assembly.include_bylaw_amendment),
         )
         self._sync_run_documents(db=db, run=run, slots=plan.slots)
+        self._ensure_document_sort_orders(run=run, slots=plan.slots)
+        if request.document_orders is not None:
+            self._apply_document_orders(run=run, slots=plan.slots, document_orders=request.document_orders)
         db.commit()
         db.refresh(run)
         return self._serialize_draft(db=db, run=run, plan=plan)
@@ -145,10 +158,11 @@ class MeetingPacketService:
         assembly = db.get(Assembly, run.assembly_id)
         if not assembly:
             raise ValueError("assembly not found")
+        self._normalize_run_packet_type(run=run, assembly=assembly)
         plan = self._rpa.build_generation_plan(
             db=db,
             fund_id=run.fund_id,
-            packet_type=run.packet_type,
+            packet_type=normalize_packet_type(run.packet_type),
             meeting_date=assembly.date,
             meeting_time=assembly.meeting_time,
             meeting_method=assembly.meeting_method,
@@ -156,6 +170,7 @@ class MeetingPacketService:
             include_bylaw_amendment=bool(run.include_bylaw_amendment),
         )
         self._sync_run_documents(db=db, run=run, slots=plan.slots)
+        self._ensure_document_sort_orders(run=run, slots=plan.slots)
         db.commit()
         db.refresh(run)
         return self._serialize_draft(db=db, run=run, plan=plan)
@@ -175,11 +190,12 @@ class MeetingPacketService:
         fund = db.get(Fund, run.fund_id)
         if not assembly or not fund:
             raise ValueError("meeting packet data is inconsistent")
+        self._normalize_run_packet_type(run=run, assembly=assembly)
 
         plan = self._rpa.build_generation_plan(
             db=db,
             fund_id=fund.id,
-            packet_type=run.packet_type,
+            packet_type=normalize_packet_type(run.packet_type),
             meeting_date=assembly.date,
             meeting_time=assembly.meeting_time,
             meeting_method=assembly.meeting_method,
@@ -187,68 +203,80 @@ class MeetingPacketService:
             include_bylaw_amendment=bool(run.include_bylaw_amendment),
         )
         self._sync_run_documents(db=db, run=run, slots=plan.slots)
-        target_slots = [slot.slot for slot in plan.slots if slot.slot in AUTO_GENERATED_SLOTS]
+        self._ensure_document_sort_orders(run=run, slots=plan.slots)
+        target_slots = [row.slot for row in self._sorted_documents(run) if row.slot in AUTO_GENERATED_SLOTS]
         if selected_slots:
             target_slots = [slot for slot in target_slots if slot in set(selected_slots)]
+        created_attachments: list[Attachment] = []
+        try:
+            for slot in target_slots:
+                doc_row = self._ensure_document_row(run=run, slot=slot)
+                payload = self._build_doc_payload(db=db, run=run, assembly=assembly, fund=fund, slot=slot)
+                if payload is None:
+                    continue
+                file_bytes = self._docx.render(payload)
+                filename = self._build_slot_filename(fund.name, slot, assembly.date)
+                attachment = store_generated_attachment(
+                    db=db,
+                    payload=file_bytes,
+                    original_filename=filename,
+                    mime_type=DOCX_MIME,
+                    entity_type=f"meeting_packet:{slot}",
+                    entity_id=run.id,
+                    uploaded_by=user_id,
+                    commit=False,
+                )
+                created_attachments.append(attachment)
+                doc_row.attachment = attachment
+                doc_row.external_document_id = None
+                doc_row.source_mode = "generated"
+                doc_row.status = "ready"
+                doc_row.layout_mode = LAYOUT_RECOMMENDATIONS.get(slot)
+                doc_row.generation_payload_json = json.dumps(payload, ensure_ascii=False)
 
-        for slot in target_slots:
-            doc_row = self._ensure_document_row(run=run, slot=slot)
-            payload = self._build_doc_payload(db=db, run=run, assembly=assembly, fund=fund, slot=slot)
-            if payload is None:
-                continue
-            file_bytes = self._docx.render(payload)
-            filename = self._build_slot_filename(fund.name, slot, assembly.date)
-            attachment = store_generated_attachment(
-                db=db,
-                payload=file_bytes,
-                original_filename=filename,
-                mime_type=DOCX_MIME,
-                entity_type=f"meeting_packet:{slot}",
-                entity_id=run.id,
-                uploaded_by=user_id,
-                commit=False,
-            )
-            doc_row.attachment = attachment
-            doc_row.external_document_id = None
-            doc_row.source_mode = "generated"
-            doc_row.status = "ready"
-            doc_row.layout_mode = LAYOUT_RECOMMENDATIONS.get(slot)
-            doc_row.generation_payload_json = json.dumps(payload, ensure_ascii=False)
-
-        missing_slots = self._missing_required_slots(db=db, run=run, plan=plan)
-        zip_attachment = self._build_zip(db=db, run=run, fund=fund, missing_slots=missing_slots, user_id=user_id)
-        run.zip_attachment = zip_attachment
-        run.warnings_json = json.dumps(plan.warnings, ensure_ascii=False)
-        run.missing_slots_json = json.dumps(missing_slots, ensure_ascii=False)
-        run.status = "complete" if not missing_slots else "partial"
-        db.commit()
+            missing_slots = self._missing_required_slots(db=db, run=run, plan=plan)
+            zip_attachment = self._build_zip(db=db, run=run, fund=fund, missing_slots=missing_slots, user_id=user_id)
+            created_attachments.append(zip_attachment)
+            run.zip_attachment = zip_attachment
+            run.warnings_json = json.dumps(plan.warnings, ensure_ascii=False)
+            run.missing_slots_json = json.dumps(missing_slots, ensure_ascii=False)
+            run.status = "complete" if not missing_slots else "partial"
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            for attachment in created_attachments:
+                cleanup_generated_attachment(attachment)
+            if isinstance(exc, RuntimeError):
+                raise
+            raise RuntimeError("총회 패키지 생성에 실패했습니다.") from exc
         db.refresh(run)
         return MeetingPacketGenerateResponse(
             run_id=run.id,
             status=run.status,
             warnings=list(plan.warnings),
             missing_slots=missing_slots,
-            documents=[self._serialize_document(db=db, row=row) for row in list(run.documents or [])],
+            documents=[self._serialize_document(db=db, row=row) for row in self._sorted_documents(run)],
             zip_attachment_id=run.zip_attachment_id,
             zip_download_url=f"/api/documents/{run.zip_attachment_id}/download" if run.zip_attachment_id else None,
         )
 
     def _resolve_assembly(self, *, db: Session, fund: Fund, request: MeetingPacketPrepareRequest) -> Assembly:
+        normalized_packet_type = normalize_packet_type(request.packet_type)
         assembly = db.get(Assembly, request.assembly_id) if request.assembly_id else None
         if assembly is None:
             assembly = Assembly(
                 fund_id=fund.id,
-                type="regular" if "gp_shareholders" not in request.packet_type else "shareholders",
+                type="regular" if "gp_shareholders" not in normalized_packet_type else "shareholders",
                 date=request.meeting_date,
             )
             db.add(assembly)
         assembly.date = request.meeting_date
         assembly.meeting_time = request.meeting_time
-        assembly.meeting_method = request.meeting_method or ("서면결의" if "gp_shareholders" not in request.packet_type else "대면총회")
+        assembly.meeting_method = request.meeting_method or ("서면결의" if "gp_shareholders" not in normalized_packet_type else "대면총회")
         assembly.location = request.location or fund.gp or "확인 필요"
         assembly.chair_name = request.chair_name or fund.gp or fund.fund_manager or "확인 필요"
         assembly.document_number = request.document_number
-        assembly.packet_type = request.packet_type
+        assembly.packet_type = normalized_packet_type
         assembly.include_bylaw_amendment = bool(request.include_bylaw_amendment)
         db.flush()
         return assembly
@@ -285,6 +313,13 @@ class MeetingPacketService:
             run.report_year = report_year
             run.include_bylaw_amendment = include_bylaw_amendment
         return run
+
+    def _normalize_run_packet_type(self, *, run: MeetingPacketRun, assembly: Assembly | None = None) -> None:
+        normalized_packet_type = normalize_packet_type(run.packet_type)
+        if normalized_packet_type and run.packet_type != normalized_packet_type:
+            run.packet_type = normalized_packet_type
+        if assembly and assembly.packet_type and assembly.packet_type != normalized_packet_type:
+            assembly.packet_type = normalized_packet_type
 
     def _ensure_default_agendas(self, *, db: Session, assembly: Assembly, plan, fund: Fund) -> None:
         if list(assembly.agenda_items or []):
@@ -367,12 +402,13 @@ class MeetingPacketService:
     def _sync_run_documents(self, *, db: Session, run: MeetingPacketRun, slots: list[MeetingPacketGenerationSlot]) -> None:
         required_slots = {slot.slot for slot in slots}
         existing = {row.slot: row for row in list(run.documents or [])}
-        for slot in slots:
+        for index, slot in enumerate(slots):
             row = existing.get(slot.slot)
             if row is None:
                 row = MeetingPacketDocument(
                     run_id=run.id,
                     slot=slot.slot,
+                    sort_order=index,
                     source_mode="generated" if slot.slot in AUTO_GENERATED_SLOTS else "missing",
                     status="draft" if slot.slot in AUTO_GENERATED_SLOTS else ("missing" if slot.generation_mode == "external_receive" else "pending"),
                     layout_mode=slot.recommended_layout,
@@ -395,9 +431,69 @@ class MeetingPacketService:
         for row in list(run.documents or []):
             if row.slot == slot:
                 return row
-        row = MeetingPacketDocument(run_id=run.id, slot=slot, source_mode="generated", status="draft")
+        row = MeetingPacketDocument(
+            run_id=run.id,
+            slot=slot,
+            sort_order=len(list(run.documents or [])),
+            source_mode="generated",
+            status="draft",
+        )
         run.documents.append(row)
         return row
+
+    def _sorted_documents(self, run: MeetingPacketRun) -> list[MeetingPacketDocument]:
+        return sorted(
+            list(run.documents or []),
+            key=lambda row: (int(row.sort_order or 0), row.id or 0, row.slot),
+        )
+
+    def _ensure_document_sort_orders(self, *, run: MeetingPacketRun, slots: list[MeetingPacketGenerationSlot]) -> None:
+        rows = list(run.documents or [])
+        if not rows:
+            return
+        current_orders = [int(row.sort_order or 0) for row in rows]
+        if len(set(current_orders)) == len(rows) and not all(order == 0 for order in current_orders):
+            return
+
+        rows_by_slot = {row.slot: row for row in rows}
+        assigned_slots: set[str] = set()
+        next_order = 0
+        for slot in slots:
+            row = rows_by_slot.get(slot.slot)
+            if row is None:
+                continue
+            row.sort_order = next_order
+            assigned_slots.add(row.slot)
+            next_order += 1
+        for row in sorted(rows, key=lambda item: (item.id or 0, item.slot)):
+            if row.slot in assigned_slots:
+                continue
+            row.sort_order = next_order
+            next_order += 1
+
+    def _apply_document_orders(
+        self,
+        *,
+        run: MeetingPacketRun,
+        slots: list[MeetingPacketGenerationSlot],
+        document_orders: list[MeetingPacketDocumentOrderInput],
+    ) -> None:
+        rows_by_slot = {row.slot: row for row in list(run.documents or [])}
+        ordered_slots = [
+            item.slot
+            for item in sorted(document_orders, key=lambda item: (item.sort_order, item.slot))
+            if item.slot in rows_by_slot
+        ]
+        ordered_slots.extend(
+            slot.slot
+            for slot in slots
+            if slot.slot in rows_by_slot and slot.slot not in ordered_slots
+        )
+        ordered_slots.extend(
+            row.slot for row in self._sorted_documents(run) if row.slot not in ordered_slots
+        )
+        for index, slot_name in enumerate(ordered_slots):
+            rows_by_slot[slot_name].sort_order = index
 
     def _serialize_draft(self, *, db: Session, run: MeetingPacketRun, plan) -> MeetingPacketDraftResponse:
         assembly = db.get(Assembly, run.assembly_id)
@@ -440,25 +536,30 @@ class MeetingPacketService:
                 )
                 for item in list(assembly.agenda_items or [])
             ],
-            documents=[self._serialize_document(db=db, row=row) for row in list(run.documents or [])],
+            documents=[self._serialize_document(db=db, row=row) for row in self._sorted_documents(run)],
             zip_attachment_id=run.zip_attachment_id,
             zip_download_url=f"/api/documents/{run.zip_attachment_id}/download" if run.zip_attachment_id else None,
         )
 
     def _serialize_document(self, *, db: Session, row: MeetingPacketDocument) -> MeetingPacketDocumentItem:
-        attachment = row.attachment if row.attachment_id else (db.get(Attachment, row.attachment_id) if row.attachment_id else None)
-        external = row.external_document if row.external_document_id else (db.get(ComplianceDocument, row.external_document_id) if row.external_document_id else None)
+        attachment = row.attachment or (db.get(Attachment, row.attachment_id) if row.attachment_id else None)
+        external = row.external_document or (
+            db.get(ComplianceDocument, row.external_document_id) if row.external_document_id else None
+        )
+        attachment_id = row.attachment_id or (attachment.id if attachment else None)
+        external_document_id = row.external_document_id or (external.id if external else None)
         return MeetingPacketDocumentItem(
             id=row.id,
             slot=row.slot,
             slot_label=SLOT_LABELS.get(row.slot, row.slot),
+            sort_order=int(row.sort_order or 0),
             status=row.status,
             source_mode=row.source_mode,
             layout_mode=row.layout_mode,
-            attachment_id=row.attachment_id,
+            attachment_id=attachment_id,
             filename=attachment.original_filename if attachment else None,
             download_url=f"/api/documents/{attachment.id}/download" if attachment else None,
-            external_document_id=row.external_document_id,
+            external_document_id=external_document_id,
             external_document_name=external.title if external else None,
         )
 
@@ -494,7 +595,7 @@ class MeetingPacketService:
                 "meeting": meeting,
                 "report_items": self._report_items(run.packet_type),
                 "agendas": [{"title": item.title, "short_title": item.short_title} for item in agendas],
-                "attachments": [{"label": label} for label in self._attachment_labels(run.packet_type, bool(run.include_bylaw_amendment))],
+                "attachments": [{"label": label} for label in self._attachment_labels(run=run, include_bylaw_amendment=bool(run.include_bylaw_amendment))],
                 "signoff_date": self._format_date_label(assembly.date),
                 "signoff_name": self._sender_signature(fund=fund, packet_type=run.packet_type),
             }
@@ -630,7 +731,7 @@ class MeetingPacketService:
                 },
             },
             {
-                "title": "Ⅲ. 기타 점검사항" if "pex" in packet_type else "Ⅳ. 기타 점검사항",
+                "title": "Ⅲ. 기타 점검사항" if is_nongmotae_packet_type(packet_type) else "Ⅳ. 기타 점검사항",
                 "paragraphs": [
                     latest_biz_report.key_issues if latest_biz_report and latest_biz_report.key_issues else "추가납입, 분배, 준법 현황을 점검했습니다.",
                     f"준법 검토 요약: {compliance_text}",
@@ -675,11 +776,13 @@ class MeetingPacketService:
                     indent=2,
                 ),
             )
-            for row in list(run.documents or []):
+            sort_index = 1
+            for row in self._sorted_documents(run):
                 file_path = self._resolve_document_path(db=db, row=row)
                 if not file_path:
                     continue
-                archive.write(file_path, arcname=self._zip_arcname(row, file_path))
+                archive.write(file_path, arcname=self._zip_arcname(row, file_path, sort_index))
+                sort_index += 1
         filename = sanitize_generated_filename(f"[{fund.name}]_meeting_packet_{date.today().isoformat()}.zip")
         return store_generated_attachment(
             db=db,
@@ -693,37 +796,29 @@ class MeetingPacketService:
         )
 
     def _resolve_document_path(self, *, db: Session, row: MeetingPacketDocument) -> Path | None:
-        if row.attachment_id:
-            attachment = row.attachment or db.get(Attachment, row.attachment_id)
-            if attachment and attachment.file_path:
-                return Path(attachment.file_path)
-        if row.external_document_id:
-            external = row.external_document or db.get(ComplianceDocument, row.external_document_id)
-            if external is None:
-                return None
-            if external.attachment_id:
-                attachment = db.get(Attachment, external.attachment_id)
-                if attachment and attachment.file_path:
-                    return Path(attachment.file_path)
-            if external.file_path:
-                candidate = Path(external.file_path)
-                return candidate if candidate.is_absolute() else (Path(__file__).resolve().parents[2] / candidate)
+        attachment = row.attachment or (db.get(Attachment, row.attachment_id) if row.attachment_id else None)
+        if attachment and attachment.file_path:
+            return Path(attachment.file_path)
+
+        external = row.external_document or (
+            db.get(ComplianceDocument, row.external_document_id) if row.external_document_id else None
+        )
+        if external is None:
+            return None
+
+        external_attachment = getattr(external, "attachment", None) or (
+            db.get(Attachment, external.attachment_id) if external.attachment_id else None
+        )
+        if external_attachment and external_attachment.file_path:
+            return Path(external_attachment.file_path)
+        if external.file_path:
+            candidate = Path(external.file_path)
+            return candidate if candidate.is_absolute() else (Path(__file__).resolve().parents[2] / candidate)
         return None
 
-    def _zip_arcname(self, row: MeetingPacketDocument, file_path: Path) -> str:
-        prefix = {
-            "official_notice": "01_공문",
-            "agenda_explanation": "02_의안설명서",
-            "audit_report": "03_감사보고서",
-            "financial_statement_certificate": "03_재무제표증명원",
-            "business_report": "04_영업보고서",
-            "bylaw_amendment_draft": "05_개정규약안",
-            "bylaw_redline": "06_규약신구대조표",
-            "written_resolution": "07_서면의결서",
-            "proxy_vote_notice": "07_의결권행사통보서",
-            "minutes": "08_의사록",
-        }.get(row.slot, row.slot)
-        return f"{prefix}{file_path.suffix}"
+    def _zip_arcname(self, row: MeetingPacketDocument, file_path: Path, sort_index: int) -> str:
+        prefix = SLOT_LABELS.get(row.slot, row.slot)
+        return f"{sort_index:02d}_{prefix}{file_path.suffix}"
 
     def _missing_required_slots(self, *, db: Session, run: MeetingPacketRun, plan) -> list[str]:
         rows = {row.slot: row for row in list(run.documents or [])}
@@ -733,11 +828,13 @@ class MeetingPacketService:
             if row is None:
                 missing.append(slot.slot)
                 continue
+            has_attachment = row.attachment is not None or row.attachment_id is not None
+            has_external_document = row.external_document is not None or row.external_document_id is not None
             if slot.generation_mode == "external_receive":
-                if not row.attachment_id and not row.external_document_id:
+                if not has_attachment and not has_external_document:
                     missing.append(slot.slot)
             elif slot.slot in AUTO_GENERATED_SLOTS:
-                if not row.attachment_id:
+                if not has_attachment:
                     missing.append(slot.slot)
         return missing
 
@@ -769,12 +866,13 @@ class MeetingPacketService:
         names = [lp.name for lp in list(fund.lps or []) if lp.name]
         return names or [f"{fund.name} 조합원"]
 
-    def _attachment_labels(self, packet_type: str, include_bylaw_amendment: bool) -> list[str]:
+    def _attachment_labels(self, *, run: MeetingPacketRun, include_bylaw_amendment: bool) -> list[str]:
         labels: list[str] = []
-        for slot in PACKET_REQUIRED_SLOTS.get(packet_type, []):
-            if slot == "minutes":
+        for row in self._sorted_documents(run):
+            slot = row.slot
+            if slot in {"official_notice", "minutes"}:
                 continue
-            if slot == "bylaw_amendment_draft" and not include_bylaw_amendment and packet_type != "fund_lp_regular_meeting_project_with_bylaw_amendment":
+            if slot == "bylaw_amendment_draft" and not include_bylaw_amendment and run.packet_type != "fund_lp_regular_meeting_project_with_bylaw_amendment":
                 continue
             labels.append(SLOT_LABELS.get(slot, slot))
         return labels
@@ -787,7 +885,7 @@ class MeetingPacketService:
     def _subject_text(self, *, fund: Fund, packet_type: str) -> str:
         if packet_type == "gp_shareholders_meeting":
             return f"{fund.gp or fund.name} 정기사원총회 개최의 건"
-        if packet_type == "fund_lp_regular_meeting_pex":
+        if packet_type == "fund_lp_regular_meeting_nongmotae":
             return f"{fund.name} 정기조합원총회 및 온기 투자보고회 개최의 건"
         return f"{fund.name} 정기조합원총회 개최의 건"
 

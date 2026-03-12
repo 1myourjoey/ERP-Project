@@ -2318,7 +2318,7 @@ export interface DocumentTemplate {
 }
 
 export type MeetingPacketType =
-  | 'fund_lp_regular_meeting_pex'
+  | 'fund_lp_regular_meeting_nongmotae'
   | 'fund_lp_regular_meeting_project'
   | 'fund_lp_regular_meeting_project_with_bylaw_amendment'
   | 'gp_shareholders_meeting'
@@ -2374,6 +2374,7 @@ export interface MeetingPacketDocumentItem {
   id: number
   slot: string
   slot_label: string
+  sort_order: number
   status: string
   source_mode: string
   layout_mode?: string | null
@@ -2404,6 +2405,11 @@ export interface MeetingPacketSlotBindingInput {
   attachment_id?: number | null
 }
 
+export interface MeetingPacketDocumentOrderInput {
+  slot: string
+  sort_order: number
+}
+
 export interface MeetingPacketUpdateInput {
   meeting_date?: string | null
   meeting_time?: string | null
@@ -2415,6 +2421,7 @@ export interface MeetingPacketUpdateInput {
   include_bylaw_amendment?: boolean | null
   agenda_items?: MeetingPacketAgendaItemInput[] | null
   external_bindings?: MeetingPacketSlotBindingInput[] | null
+  document_orders?: MeetingPacketDocumentOrderInput[] | null
 }
 
 export interface MeetingPacketDraftResponse {

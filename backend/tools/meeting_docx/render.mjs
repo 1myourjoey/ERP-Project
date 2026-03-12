@@ -18,11 +18,22 @@ import {
 
 const A4_WIDTH = 11906;
 const A4_HEIGHT = 16838;
-const CONTENT_WIDTH_COMPACT = 10106;
+const CONTENT_WIDTH_COMPACT = 9360;
+const CONTENT_WIDTH_FORMAL = 9360;
 const CONTENT_WIDTH_REPORT = 9360;
 const DEFAULT_FONT = "Malgun Gothic";
 const BORDER = { style: BorderStyle.SINGLE, size: 2, color: "BFC8D6" };
 const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
+const SECTION_LAYOUTS = {
+  compact: { top: 1080, right: 1260, bottom: 1080, left: 1260 },
+  formal: { top: 1260, right: 1260, bottom: 1260, left: 1260 },
+  report: { top: 1080, right: 1260, bottom: 1080, left: 1260 },
+};
+const TITLE_PRESETS = {
+  compact: { size: 30, after: 240, line: 320 },
+  formal: { size: 30, after: 260, line: 320 },
+  report: { size: 28, after: 180, line: 280 },
+};
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -49,8 +60,8 @@ function paragraph(text, options = {}) {
     alignment: options.alignment ?? AlignmentType.LEFT,
     spacing: {
       before: options.before ?? 0,
-      after: options.after ?? 80,
-      line: options.line ?? 240,
+      after: options.after ?? 100,
+      line: options.line ?? 260,
     },
   });
 }
@@ -60,14 +71,14 @@ function plainCell(text, width, options = {}) {
     width: { size: width, type: WidthType.DXA },
     borders: options.borders ?? BORDERS,
     shading: options.fill ? { fill: options.fill, type: ShadingType.CLEAR } : undefined,
-    margins: options.margins ?? { top: 60, bottom: 60, left: 100, right: 100 },
+    margins: options.margins ?? { top: 100, bottom: 100, left: 140, right: 140 },
     children: [
       paragraph(text, {
-        size: options.size ?? 18,
+        size: options.size ?? 19,
         bold: options.bold,
         alignment: options.alignment ?? AlignmentType.LEFT,
         after: 0,
-        line: options.line ?? 220,
+        line: options.line ?? 260,
       }),
     ],
   });
@@ -89,7 +100,14 @@ function makeTable(columnWidths, rowValues, options = {}) {
   });
 }
 
-function compactSection(children, compact = false) {
+function resolveLayout(layout = "report") {
+  if (layout === true) return "compact";
+  if (layout === false || layout == null) return "report";
+  return SECTION_LAYOUTS[layout] ? layout : "report";
+}
+
+function compactSection(children, layout = "report") {
+  const preset = SECTION_LAYOUTS[resolveLayout(layout)];
   return {
     properties: {
       page: {
@@ -98,16 +116,15 @@ function compactSection(children, compact = false) {
           height: A4_HEIGHT,
           orientation: PageOrientation.PORTRAIT,
         },
-        margin: compact
-          ? { top: 720, right: 900, bottom: 720, left: 900 }
-          : { top: 1080, right: 1260, bottom: 1080, left: 1260 },
+        margin: preset,
       },
     },
     children,
   };
 }
 
-function createDocument(children, { compact = false } = {}) {
+function createDocument(children, { compact = false, layout } = {}) {
+  const resolvedLayout = layout ?? (compact ? "compact" : "report");
   return new Document({
     styles: {
       default: {
@@ -116,18 +133,19 @@ function createDocument(children, { compact = false } = {}) {
         },
       },
     },
-    sections: [compactSection(children, compact)],
+    sections: [compactSection(children, resolvedLayout)],
   });
 }
 
-function docTitle(text, compact = false) {
+function docTitle(text, layout = "report") {
+  const preset = TITLE_PRESETS[resolveLayout(layout)];
   return paragraph(text, {
     alignment: AlignmentType.CENTER,
-    size: compact ? 26 : 28,
+    size: preset.size,
     bold: true,
     before: 0,
-    after: compact ? 120 : 180,
-    line: 260,
+    after: preset.after,
+    line: preset.line,
   });
 }
 
@@ -143,12 +161,12 @@ function buildOfficialNotice(payload) {
   ];
   const children = [
     docTitle(payload.sender_name || payload.fund_name || "총회 공문", true),
-    makeTable([1700, CONTENT_WIDTH_COMPACT - 1700], rows, {
+    makeTable([1900, CONTENT_WIDTH_COMPACT - 1900], rows, {
       width: CONTENT_WIDTH_COMPACT,
       cellOptions: rows.map(() => [{ fill: "EAF2FB", bold: true }, {}]),
     }),
-    paragraph(payload.greeting || "귀 원(사)의 무궁한 발전을 기원합니다.", { size: 18, after: 80 }),
-    paragraph(payload.legal_basis || "", { size: 17, after: 80 }),
+    paragraph(payload.greeting || "귀 원(사)의 무궁한 발전을 기원합니다.", { size: 20, after: 140, line: 300 }),
+    paragraph(payload.legal_basis || "", { size: 19, after: 140, line: 300 }),
     paragraph("- 다   음 -", { alignment: AlignmentType.CENTER, bold: true, size: 18, before: 40, after: 80 }),
     paragraph(`1) 일시 : ${meeting.date_label || ""} ${meeting.time || ""}`, { size: 18, after: 30 }),
     paragraph(`2) 개최방식 : ${meeting.method || ""}`, { size: 18, after: 30 }),
@@ -165,7 +183,7 @@ function buildOfficialNotice(payload) {
     ...(attachments.length
       ? [
           makeTable(
-            [1200, CONTENT_WIDTH_COMPACT - 1200],
+            [1400, CONTENT_WIDTH_COMPACT - 1400],
             attachments.map((item, index) => [`별첨${index + 1}`, item.label || item]),
             {
               width: CONTENT_WIDTH_COMPACT,
@@ -176,18 +194,20 @@ function buildOfficialNotice(payload) {
       : []),
     paragraph(payload.signoff_date || meeting.date_label || payload.document_date || "", {
       alignment: AlignmentType.CENTER,
-      size: 18,
-      before: 120,
-      after: 50,
+      size: 19,
+      before: 180,
+      after: 70,
+      line: 280,
     }),
     paragraph(payload.signoff_name || payload.sender_name || payload.fund_name || "", {
       alignment: AlignmentType.CENTER,
-      size: 22,
+      size: 24,
       bold: true,
-      after: 40,
+      after: 60,
+      line: 300,
     }),
   ].filter(Boolean);
-  return createDocument(children, { compact: true });
+  return createDocument(children, { layout: "formal" });
 }
 
 function buildAgendaExplanation(payload) {
@@ -249,36 +269,37 @@ function buildVoteForm(payload, isProxy = false) {
   const recipient = payload.recipient_label || payload.fund_name || "";
   const children = [
     docTitle(isProxy ? "의결권 행사 통보서" : "서면의결서", true),
-    paragraph(`${recipient} 귀중`, { size: 18, after: 70 }),
-    paragraph(payload.introduction || "", { size: 17, after: 80 }),
+    paragraph(`${recipient} 귀중`, { size: 19, after: 100, line: 280 }),
+    paragraph(payload.introduction || "", { size: 18, after: 120, line: 300 }),
     paragraph("다   음", { alignment: AlignmentType.CENTER, size: 18, bold: true, after: 50 }),
     makeTable(
-      [CONTENT_WIDTH_COMPACT - 2400, 1200, 1200],
+      [CONTENT_WIDTH_COMPACT - 3000, 1500, 1500],
       [["부의안건", "찬성", "반대"], ...agendas.map((agenda) => [agenda.short_title || agenda.title || "", "", ""])],
       {
         width: CONTENT_WIDTH_COMPACT,
         cellOptions: [
           [
-            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 17 },
-            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 17 },
-            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 17 },
+            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 18, line: 260 },
+            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 18, line: 260 },
+            { fill: "EAF2FB", bold: true, alignment: AlignmentType.CENTER, size: 18, line: 260 },
           ],
           ...agendas.map(() => [
-            { size: 17, line: 200 },
-            { alignment: AlignmentType.CENTER, size: 17, line: 200 },
-            { alignment: AlignmentType.CENTER, size: 17, line: 200 },
+            { size: 18, line: 340, margins: { top: 140, bottom: 140, left: 160, right: 160 } },
+            { alignment: AlignmentType.CENTER, size: 18, line: 340, margins: { top: 140, bottom: 140, left: 160, right: 160 } },
+            { alignment: AlignmentType.CENTER, size: 18, line: 340, margins: { top: 140, bottom: 140, left: 160, right: 160 } },
           ]),
         ],
       },
     ),
-    paragraph(payload.vote_note || "* 찬성 또는 반대에 표시해 주시기 바랍니다.", { size: 16, before: 40, after: 120 }),
+    paragraph(payload.vote_note || "* 찬성 또는 반대에 표시해 주시기 바랍니다.", { size: 17, before: 60, after: 160, line: 280 }),
     paragraph(payload.signoff_date || payload.meeting?.date_label || "", {
       alignment: AlignmentType.CENTER,
-      size: 18,
-      after: 60,
+      size: 19,
+      after: 100,
+      line: 280,
     }),
     makeTable(
-      [2200, CONTENT_WIDTH_COMPACT - 2200],
+      [2400, CONTENT_WIDTH_COMPACT - 2400],
       [
         [payload.seat_label || "약정좌수", ""],
         [payload.name_label || "조합원명", "(인)"],
@@ -294,7 +315,7 @@ function buildVoteForm(payload, isProxy = false) {
       },
     ),
   ];
-  return createDocument(children, { compact: true });
+  return createDocument(children, { layout: "formal" });
 }
 
 function buildMinutes(payload) {

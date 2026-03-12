@@ -92,7 +92,6 @@ import PageHeader from '../components/common/page/PageHeader'
 import PageMetricStrip from '../components/common/page/PageMetricStrip'
 import PageLoading from '../components/PageLoading'
 import KrwAmountInput from '../components/common/KrwAmountInput'
-import FundDocumentGenerator from '../components/fund/FundDocumentGenerator'
 import LPContributionPanel from '../components/fund/LPContributionPanel'
 import FundCoreFields from '../components/funds/FundCoreFields'
 import WaterfallSummary from '../components/finance/WaterfallSummary'
@@ -169,7 +168,7 @@ const FUND_DETAIL_TABS = [
 
 const MEETING_PACKET_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: '자동 추천 사용' },
-  { value: 'fund_lp_regular_meeting_pex', label: '조합원총회 + 온기보고회(PEX형)' },
+  { value: 'fund_lp_regular_meeting_nongmotae', label: '조합원총회(농모태형)' },
   { value: 'fund_lp_regular_meeting_project', label: '조합원총회(프로젝트형)' },
   { value: 'fund_lp_regular_meeting_project_with_bylaw_amendment', label: '조합원총회(규약변경 포함)' },
   { value: 'gp_shareholders_meeting', label: 'GP 사원총회' },
@@ -367,6 +366,27 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.click()
   anchor.remove()
   URL.revokeObjectURL(url)
+}
+
+function buildMeetingPacketDocumentOrder(
+  documents: MeetingPacketDraftResponse['documents'] | null | undefined,
+): string[] {
+  return [...(documents || [])]
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id)
+    .map((item) => item.slot)
+}
+
+function sortMeetingPacketRowsByOrder<T extends { slot: string }>(rows: T[], documentOrder: string[]): T[] {
+  if (documentOrder.length === 0) return rows
+  const orderMap = new Map(documentOrder.map((slot, index) => [slot, index]))
+  return [...rows].sort((a, b) => {
+    const left = orderMap.get(a.slot)
+    const right = orderMap.get(b.slot)
+    if (left == null && right == null) return a.slot.localeCompare(b.slot)
+    if (left == null) return 1
+    if (right == null) return -1
+    return left - right
+  })
 }
 
 function normalizeCallType(value: string | null | undefined): string {
@@ -1103,6 +1123,7 @@ export default function FundDetailPage() {
   const [meetingPacketDocumentNumber, setMeetingPacketDocumentNumber] = useState('')
   const [meetingPacketAgendaItems, setMeetingPacketAgendaItems] = useState<MeetingPacketAgendaItemInput[]>([])
   const [meetingPacketExternalBindings, setMeetingPacketExternalBindings] = useState<Record<string, number | ''>>({})
+  const [meetingPacketDocumentOrder, setMeetingPacketDocumentOrder] = useState<string[]>([])
   const [meetingPacketDraft, setMeetingPacketDraft] = useState<MeetingPacketDraftResponse | null>(null)
   const [newDistribution, setNewDistribution] = useState<DistributionInput>({
     fund_id: 0,
@@ -1300,6 +1321,7 @@ export default function FundDetailPage() {
     onSuccess: (result) => {
       setMeetingPacketRunId(result.run_id)
       setMeetingPacketDraft(result)
+      setMeetingPacketDocumentOrder(buildMeetingPacketDocumentOrder(result.documents))
       queryClient.setQueryData(['meetingPacketDraft', result.run_id], result)
       addToast('success', '총회 패키지 초안을 준비했습니다.')
     },
@@ -1311,6 +1333,7 @@ export default function FundDetailPage() {
       updateMeetingPacket(payload.runId, payload.data),
     onSuccess: (result) => {
       setMeetingPacketDraft(result)
+      setMeetingPacketDocumentOrder(buildMeetingPacketDocumentOrder(result.documents))
       queryClient.setQueryData(['meetingPacketDraft', result.run_id], result)
       addToast('success', '총회 패키지 초안을 저장했습니다.')
     },
@@ -1331,6 +1354,7 @@ export default function FundDetailPage() {
             }
           : prev,
       )
+      setMeetingPacketDocumentOrder(buildMeetingPacketDocumentOrder(result.documents))
       addToast('success', result.missing_slots.length ? '문서 생성 후 부분 패키지를 만들었습니다.' : '문서 생성과 패키징을 완료했습니다.')
       if (meetingPacketRunId) {
         queryClient.invalidateQueries({ queryKey: ['meetingPacketDraft', meetingPacketRunId] })
@@ -1358,6 +1382,7 @@ export default function FundDetailPage() {
   useEffect(() => {
     if (!meetingPacketDraftQuery) return
     setMeetingPacketDraft(meetingPacketDraftQuery)
+    setMeetingPacketDocumentOrder(buildMeetingPacketDocumentOrder(meetingPacketDraftQuery.documents))
     setMeetingPacketMeetingDate(meetingPacketDraftQuery.meeting_date || todayIso())
     setMeetingPacketMeetingTime(meetingPacketDraftQuery.meeting_time || '10:00')
     setMeetingPacketMeetingMethod(meetingPacketDraftQuery.meeting_method || '서면결의')
@@ -1379,11 +1404,23 @@ export default function FundDetailPage() {
     setMeetingPacketDraft(null)
     setMeetingPacketAgendaItems([])
     setMeetingPacketExternalBindings({})
+    setMeetingPacketDocumentOrder([])
     setMeetingPacketDocumentNumber('')
   }, [fundId])
 
   const activeMeetingPacketDraft = meetingPacketDraft ?? meetingPacketDraftQuery ?? null
-  const meetingPacketExternalSlots = activeMeetingPacketDraft?.slots.filter((slot) => slot.generation_mode === 'external_receive') ?? []
+  const resolvedMeetingPacketDocumentOrder = meetingPacketDocumentOrder.length > 0
+    ? meetingPacketDocumentOrder
+    : buildMeetingPacketDocumentOrder(activeMeetingPacketDraft?.documents)
+  const orderedMeetingPacketSlots = sortMeetingPacketRowsByOrder(
+    activeMeetingPacketDraft?.slots ?? meetingPacketPlan?.slots ?? [],
+    resolvedMeetingPacketDocumentOrder,
+  )
+  const orderedMeetingPacketDocuments = sortMeetingPacketRowsByOrder(
+    activeMeetingPacketDraft?.documents ?? [],
+    resolvedMeetingPacketDocumentOrder,
+  )
+  const meetingPacketExternalSlots = orderedMeetingPacketSlots.filter((slot) => slot.generation_mode === 'external_receive')
 
   const prepareMeetingPacketDraft = async () => {
     const packetType = (meetingPacketType || meetingPacketPlan?.recommended_packet_type || 'fund_lp_regular_meeting_project') as MeetingPacketDraftResponse['packet_type']
@@ -1424,6 +1461,10 @@ export default function FundDetailPage() {
           sort_order: index,
         })),
         external_bindings,
+        document_orders: resolvedMeetingPacketDocumentOrder.map((slot, index) => ({
+          slot,
+          sort_order: index,
+        })),
       },
     })
   }
@@ -1458,6 +1499,20 @@ export default function FundDetailPage() {
 
   const removeMeetingAgendaItem = (index: number) => {
     setMeetingPacketAgendaItems((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  const moveMeetingPacketDocument = (slot: string, direction: -1 | 1) => {
+    setMeetingPacketDocumentOrder((prev) => {
+      const baseOrder = prev.length > 0 ? [...prev] : buildMeetingPacketDocumentOrder(activeMeetingPacketDraft?.documents)
+      const currentIndex = baseOrder.indexOf(slot)
+      if (currentIndex < 0) return baseOrder
+      const nextIndex = currentIndex + direction
+      if (nextIndex < 0 || nextIndex >= baseOrder.length) return baseOrder
+      const nextOrder = [...baseOrder]
+      const [moved] = nextOrder.splice(currentIndex, 1)
+      nextOrder.splice(nextIndex, 0, moved)
+      return nextOrder
+    })
   }
 
   useEffect(() => {
@@ -3709,16 +3764,17 @@ export default function FundDetailPage() {
                       ))}
                     </select>
                   </label>
-                  <label className="flex items-end">
-                    <span className="inline-flex items-center gap-2 rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-xs text-[#0f1f3d]">
+                  <label className="flex items-center">
+                    <span className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm leading-none text-[#0f1f3d]">
                       <input
                         id="meeting-packet-include-bylaw"
                         name="meeting_packet_include_bylaw"
                         type="checkbox"
+                        className="m-0 h-4 w-4 shrink-0"
                         checked={includeBylawAmendmentInPacket}
                         onChange={(event) => setIncludeBylawAmendmentInPacket(event.target.checked)}
                       />
-                      규약 변경 안건 포함
+                      <span className="leading-none">규약 변경 안건 포함</span>
                     </span>
                   </label>
                   <div className="rounded border border-[#d8e5fb] bg-[#f5f9ff] px-3 py-2 text-sm">
@@ -3763,25 +3819,19 @@ export default function FundDetailPage() {
                     </div>
 
                     <div className="overflow-auto rounded-xl border border-[#d8e5fb]">
-                      <table className="min-w-[980px] w-full text-sm">
+                      <table className="min-w-[640px] w-full text-sm">
                         <thead className="bg-[#f5f9ff] text-xs text-[#64748b]">
                           <tr>
                             <th className="px-3 py-2 text-left">문서</th>
                             <th className="px-3 py-2 text-left">준비 상태</th>
-                            <th className="px-3 py-2 text-left">생성 방식</th>
-                            <th className="px-3 py-2 text-left">레이아웃</th>
-                            <th className="px-3 py-2 text-left">연결 데이터</th>
                             <th className="px-3 py-2 text-left">사전 확인</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {meetingPacketPlan.slots.map((slot) => (
+                          {orderedMeetingPacketSlots.map((slot) => (
                             <tr key={slot.slot}>
                               <td className="px-3 py-2">
                                 <div className="font-medium text-[#0f1f3d]">{slot.slot_label}</div>
-                                <div className="text-xs text-[#64748b]">
-                                  {slot.template_candidate || slot.builder_candidate || '-'}
-                                </div>
                               </td>
                               <td className="px-3 py-2">
                                 <span
@@ -3806,19 +3856,6 @@ export default function FundDetailPage() {
                                           : slot.status}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">{slot.generation_mode}</td>
-                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">
-                                {slot.recommended_layout === 'one_page'
-                                  ? '한 페이지 우선'
-                                  : slot.recommended_layout === 'compact_table'
-                                    ? '표 중심 요약형'
-                                    : slot.recommended_layout === 'full_report'
-                                      ? '리포트형'
-                                      : slot.recommended_layout === 'external_attachment'
-                                        ? '외부 첨부'
-                                        : slot.recommended_layout}
-                              </td>
-                              <td className="px-3 py-2 text-xs text-[#0f1f3d]">{slot.source_systems.join(', ') || '-'}</td>
                               <td className="px-3 py-2 text-xs text-[#0f1f3d]">
                                 {[...slot.required_external_documents, ...slot.preflight_warnings, ...slot.notes].slice(0, 3).join(' / ') || '-'}
                               </td>
@@ -3889,7 +3926,7 @@ export default function FundDetailPage() {
                           </div>
                           <div>
                             <label htmlFor="meeting-packet-docno" className="mb-1 block text-xs font-medium text-[#64748b]">문서번호</label>
-                            <input id="meeting-packet-docno" name="meeting_packet_document_number" value={meetingPacketDocumentNumber} onChange={(event) => setMeetingPacketDocumentNumber(event.target.value)} className="form-input" placeholder="트리거-2026-07호" />
+                            <input id="meeting-packet-docno" name="meeting_packet_document_number" value={meetingPacketDocumentNumber} onChange={(event) => setMeetingPacketDocumentNumber(event.target.value)} className="form-input" />
                           </div>
                         </div>
 
@@ -3941,6 +3978,42 @@ export default function FundDetailPage() {
                       </div>
 
                       <div className="space-y-3 rounded-xl border border-[#d8e5fb] bg-white p-3">
+                        <div className="rounded-lg border border-[#d8e5fb] bg-[#f8fbff] p-3">
+                          <div>
+                            <p className="text-xs font-semibold text-[#64748b]">패키지 문서 순서</p>
+                            <p className="mt-1 text-xs text-[#64748b]">저장한 순서가 공문 첨부표, 외부 첨부 연결, ZIP 묶기 순서에 같이 반영됩니다.</p>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {orderedMeetingPacketDocuments.length === 0 ? (
+                              <p className="text-sm text-[#64748b]">초안을 만들면 문서 순서를 조정할 수 있습니다.</p>
+                            ) : (
+                              orderedMeetingPacketDocuments.map((doc, index) => (
+                                <div key={`meeting-doc-order-${doc.slot}`} className="flex items-center justify-between gap-2 rounded border border-[#d8e5fb] bg-white px-3 py-2">
+                                  <p className="text-sm font-medium text-[#0f1f3d]">{doc.slot_label}</p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      className="secondary-btn"
+                                      disabled={index === 0}
+                                      onClick={() => moveMeetingPacketDocument(doc.slot, -1)}
+                                    >
+                                      위로
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary-btn"
+                                      disabled={index === orderedMeetingPacketDocuments.length - 1}
+                                      onClick={() => moveMeetingPacketDocument(doc.slot, 1)}
+                                    >
+                                      아래로
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
                         <div>
                           <p className="text-xs font-semibold text-[#64748b]">외부 첨부 연결</p>
                           <p className="mt-1 text-xs text-[#64748b]">감사보고서나 재무제표 증명원처럼 외부에서 받은 문서를 총회 패키지 슬롯에 연결합니다.</p>
@@ -3995,7 +4068,7 @@ export default function FundDetailPage() {
                             {(activeMeetingPacketDraft?.documents || []).length === 0 ? (
                               <p className="text-sm text-[#64748b]">생성 후 문서별 다운로드 링크가 여기에 표시됩니다.</p>
                             ) : (
-                              activeMeetingPacketDraft?.documents.map((doc) => (
+                              orderedMeetingPacketDocuments.map((doc) => (
                                 <div key={`generated-doc-${doc.id}`} className="flex items-center justify-between gap-2 rounded border border-[#d8e5fb] bg-white px-3 py-2">
                                   <div>
                                     <p className="text-sm font-medium text-[#0f1f3d]">{doc.slot_label}</p>
@@ -4076,7 +4149,6 @@ export default function FundDetailPage() {
                   </div>
                 </div>
               </div>
-              <FundDocumentGenerator fundId={fundId} fundName={fundDetail.name} />
             </div>
           )}
 

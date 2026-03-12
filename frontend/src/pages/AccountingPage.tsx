@@ -441,6 +441,7 @@ export default function AccountingPage() {
 
       <PageMetricStrip
         columns={5}
+        className="page-metric-strip-inline-balanced"
         items={[
           { label: '선택 조합', value: selectedFund?.name || '-', hint: '현재 작업 기준', tone: 'info' },
           { label: '계정과목 수', value: `${accounts.length}개`, hint: '선택 조합 기준', tone: 'default' },

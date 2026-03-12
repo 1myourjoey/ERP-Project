@@ -53,7 +53,7 @@ GENERATION_MODE = {
 }
 
 PACKET_LABELS = {
-    "fund_lp_regular_meeting_pex": "조합원총회 + 온기보고회(PEX형)",
+    "fund_lp_regular_meeting_nongmotae": "조합원총회(농모태형)",
     "fund_lp_regular_meeting_project": "조합원총회(프로젝트형)",
     "fund_lp_regular_meeting_project_with_bylaw_amendment": "조합원총회(규약변경 포함)",
     "gp_shareholders_meeting": "GP 사원총회",
@@ -61,7 +61,7 @@ PACKET_LABELS = {
 }
 
 PACKET_REQUIRED_SLOTS = {
-    "fund_lp_regular_meeting_pex": [
+    "fund_lp_regular_meeting_nongmotae": [
         "official_notice",
         "agenda_explanation",
         "audit_report",
@@ -115,6 +115,19 @@ SLOT_TEMPLATE_HINTS = {
     "proxy_vote_notice": "별첨6_서면결의서",
 }
 
+LEGACY_PACKET_TYPE_ALIASES = {
+    "fund_lp_regular_meeting_pex": "fund_lp_regular_meeting_nongmotae",
+}
+
+
+def normalize_packet_type(packet_type: str | None) -> str:
+    normalized = (packet_type or "").strip()
+    return LEGACY_PACKET_TYPE_ALIASES.get(normalized, normalized)
+
+
+def is_nongmotae_packet_type(packet_type: str | None) -> bool:
+    return normalize_packet_type(packet_type) == "fund_lp_regular_meeting_nongmotae"
+
 
 class MeetingPacketRPAService:
     def recommend_packet_type(
@@ -124,18 +137,15 @@ class MeetingPacketRPAService:
         include_bylaw_amendment: bool = False,
     ) -> tuple[str, list[str]]:
         reasons: list[str] = []
-        normalized_name = (fund.name or "").strip().lower()
         has_special_partner = any(is_special_lp_type(lp.type) for lp in list(fund.lps or []))
 
-        if "pex" in normalized_name:
-            reasons.append("조합명에 PEX가 포함되어 PEX형 총회 패키지를 우선 추천합니다.")
         if has_special_partner:
-            reasons.append("특별조합원이 포함되어 보고/통지 문서 구성이 중요합니다.")
+            reasons.append("농모태/특수 출자자가 포함되어 농모태형 총회 패키지를 우선 추천합니다.")
         if include_bylaw_amendment:
             reasons.append("규약 변경 안건이 포함되어 변경안과 신구대조표 세트를 포함합니다.")
 
-        if "pex" in normalized_name:
-            return "fund_lp_regular_meeting_pex", reasons or ["PEX형 총회 패키지입니다."]
+        if has_special_partner:
+            return "fund_lp_regular_meeting_nongmotae", reasons or ["농모태형 총회 패키지입니다."]
         if include_bylaw_amendment:
             return "fund_lp_regular_meeting_project_with_bylaw_amendment", reasons or ["규약 변경 안건 포함 패키지입니다."]
         return "fund_lp_regular_meeting_project", reasons or ["프로젝트 조합 기본 총회 패키지입니다."]
@@ -186,7 +196,8 @@ class MeetingPacketRPAService:
             fund=fund,
             include_bylaw_amendment=include_bylaw_amendment,
         )
-        normalized_type = packet_type if packet_type in PACKET_LABELS else recommended_type
+        requested_type = normalize_packet_type(packet_type)
+        normalized_type = requested_type if requested_type in PACKET_LABELS else recommended_type
         slots = list(PACKET_REQUIRED_SLOTS.get(normalized_type, []))
         if include_bylaw_amendment and "bylaw_amendment_draft" not in slots:
             slots.extend(["bylaw_amendment_draft", "bylaw_redline", "written_resolution"])
@@ -292,8 +303,8 @@ class MeetingPacketRPAService:
         extra_files = [item.filename for item in analyzed_files if item.slot not in required_slots and item.slot != "unknown"]
 
         package_notes: list[str] = []
-        if packet_type == "fund_lp_regular_meeting_pex":
-            package_notes.append("PEX/농모태형 영업보고서 패키지로 보이며 투자보고회 문구가 함께 포함됩니다.")
+        if packet_type == "fund_lp_regular_meeting_nongmotae":
+            package_notes.append("농모태형 영업보고서 패키지로 보이며 투자보고회 문구가 함께 포함됩니다.")
         if packet_type == "fund_lp_regular_meeting_project_with_bylaw_amendment":
             package_notes.append("규약 변경 안건이 포함되어 개정 규약안과 신구대조표가 함께 필요합니다.")
         if packet_type == "gp_shareholders_meeting":
@@ -320,7 +331,7 @@ class MeetingPacketRPAService:
 
     def _packet_dependencies(self, packet_type: str) -> list[str]:
         common = ["Fund", "LP/GPEntity", "FundNoticePeriod", "FundKeyTerm"]
-        if packet_type == "fund_lp_regular_meeting_pex":
+        if packet_type == "fund_lp_regular_meeting_nongmotae":
             return [*common, "BizReport", "ComplianceReviewRun", "Investment/Valuation"]
         if packet_type in {"fund_lp_regular_meeting_project", "fund_lp_regular_meeting_project_with_bylaw_amendment"}:
             return [*common, "BizReport", "Investment/Valuation", "RegularReport", "ComplianceReviewRun"]
@@ -342,7 +353,7 @@ class MeetingPacketRPAService:
         if "사원총회" in folder_name:
             return "gp_shareholders_meeting"
         if "pex" in lowered_name or "투자보고회" in preview_joined:
-            return "fund_lp_regular_meeting_pex"
+            return "fund_lp_regular_meeting_nongmotae"
         if has_bylaw_amendment:
             return "fund_lp_regular_meeting_project_with_bylaw_amendment"
         if "조합원총회" in file_names or extracted.get("fund_name"):
@@ -527,8 +538,8 @@ class MeetingPacketRPAService:
                 preflight_warnings.append("최신 BizReport가 없어 ERP 원천 데이터 기반 초안으로 생성됩니다.")
             if not investments:
                 preflight_warnings.append("투자 데이터가 없어 영업보고서 투자 현황 섹션이 비어 있을 수 있습니다.")
-            if packet_type == "fund_lp_regular_meeting_pex":
-                notes.append("PEX/농모태형 영업보고서 목차를 사용합니다.")
+            if packet_type == "fund_lp_regular_meeting_nongmotae":
+                notes.append("농모태형 영업보고서 목차를 사용합니다.")
             else:
                 notes.append("프로젝트 조합 내부 준표준 영업보고서 목차를 사용합니다.")
         elif slot == "bylaw_amendment_draft":

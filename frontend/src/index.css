@@ -253,6 +253,14 @@ input[type="radio"] {
   @apply grid grid-cols-2 gap-2 md:grid-cols-4;
 }
 
+.page-metric-strip-inline-balanced {
+  @apply lg:grid-cols-5 lg:gap-3;
+}
+
+.page-metric-strip-inline-balanced .metric-tile {
+  @apply flex min-h-[104px] flex-col justify-between px-4 py-3.5;
+}
+
 .metric-tile {
   @apply rounded-xl border bg-white px-3 py-3;
   border-color: var(--color-border);

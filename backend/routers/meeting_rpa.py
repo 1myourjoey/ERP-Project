@@ -133,3 +133,5 @@ def generate_meeting_packet(
         return service.generate(db=db, run_id=run_id, selected_slots=body.selected_slots)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -57,6 +57,7 @@ class MeetingPacketDocument(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     run_id = Column(Integer, ForeignKey("meeting_packet_runs.id", ondelete="CASCADE"), nullable=False, index=True)
     slot = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
     attachment_id = Column(Integer, ForeignKey("attachments.id", ondelete="SET NULL"), nullable=True)
     external_document_id = Column(Integer, ForeignKey("compliance_documents.id", ondelete="SET NULL"), nullable=True)
     source_mode = Column(String, nullable=False, default="generated")

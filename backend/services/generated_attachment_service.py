@@ -17,6 +17,15 @@ def sanitize_generated_filename(value: str, fallback: str = "generated_document"
     return sanitized or fallback
 
 
+def cleanup_generated_attachment(attachment: Attachment | None) -> None:
+    if attachment is None:
+        return
+    try:
+        Path(attachment.file_path).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def store_generated_attachment(
     *,
     db: Session,
