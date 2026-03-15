@@ -96,6 +96,14 @@ from .proposal_data import (
     PortfolioCompanyHistory,
     ProposalVersion,
 )
+from .proposal_template import (
+    ProposalTemplate,
+    ProposalTemplateFieldMapping,
+    ProposalTemplateSheet,
+    ProposalTemplateTableMapping,
+    ProposalTemplateValidationRule,
+    ProposalTemplateVersion,
+)
 
 __all__ = [
     "Task",
@@ -170,4 +178,10 @@ __all__ = [
     "FundSubscription",
     "ManagerAward",
     "ProposalVersion",
+    "ProposalTemplate",
+    "ProposalTemplateVersion",
+    "ProposalTemplateSheet",
+    "ProposalTemplateFieldMapping",
+    "ProposalTemplateTableMapping",
+    "ProposalTemplateValidationRule",
 ]

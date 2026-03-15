@@ -60,6 +60,7 @@ from routers import (
     performance,
     periodic_schedules,
     proposal_data,
+    proposal_templates,
     provisional_fs,
     regular_reports,
     reports,
@@ -202,6 +203,7 @@ include_protected_router(internal_reviews.router)
 include_protected_router(attachments.router)
 include_protected_router(periodic_schedules.router)
 include_protected_router(proposal_data.router)
+include_protected_router(proposal_templates.router)
 include_protected_router(document_generation.router)
 include_protected_router(lp_contributions.router)
 include_protected_router(template_registration.router)

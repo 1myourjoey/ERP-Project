@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom'
 import EmptyState from '../components/EmptyState'
 import PageLoading from '../components/PageLoading'
 import ProposalManagerWorkspace from '../components/proposal/ProposalManagerWorkspace'
+import ProposalTemplateRegistry from '../components/proposal/ProposalTemplateRegistry'
 import PageControlStrip from '../components/common/page/PageControlStrip'
 import PageHeader from '../components/common/page/PageHeader'
 import SectionScaffold from '../components/common/page/SectionScaffold'
@@ -29,7 +30,7 @@ import {
   type ProposalTemplateType,
 } from '../lib/api'
 
-type ViewMode = 'workbench' | 'reference'
+type ViewMode = 'workbench' | 'reference' | 'templates'
 type EditableRow = {
   row_key: string
   cells: Record<string, unknown>
@@ -46,6 +47,9 @@ const TEMPLATE_OPTIONS: Array<{ value: ProposalTemplateType; label: string }> = 
   { value: 'nong-motae', label: '농모태' },
 ]
 
+const proposalTableHeadClass = 'table-head-cell break-keep text-[11px] font-semibold leading-snug'
+const proposalTableBodyClass = 'table-body-cell'
+
 function todayString() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -57,6 +61,35 @@ function parseNumber(value: string | null) {
 
 function templateLabel(templateType: ProposalTemplateType) {
   return TEMPLATE_OPTIONS.find((item) => item.value === templateType)?.label ?? templateType
+}
+
+function proposalColumnWidthClass(columnKey: string, label: string) {
+  const lowerKey = columnKey.toLowerCase()
+  const lowerLabel = label.toLowerCase()
+
+  if (lowerKey.includes('name') || label.includes('명') || label.includes('조합')) return 'w-[170px]'
+  if (lowerKey.includes('date') || label.includes('일') || label.includes('기간')) return 'w-[110px]'
+  if (lowerKey.includes('count') || label.includes('수')) return 'w-[88px]'
+  if (lowerKey.startsWith('is_') || lowerKey.startsWith('has_') || label.includes('여부')) return 'w-[120px]'
+  if (lowerKey.includes('amount') || lowerKey.includes('total') || label.includes('총액') || label.includes('금액')) return 'w-[118px]'
+  if (lowerLabel.includes('status') || label.includes('상태')) return 'w-[96px]'
+  return 'w-[128px]'
+}
+
+function proposalColumnAlignClass(columnKey: string, label: string) {
+  const lowerKey = columnKey.toLowerCase()
+  if (
+    lowerKey.includes('date') ||
+    lowerKey.includes('count') ||
+    lowerKey.startsWith('is_') ||
+    lowerKey.startsWith('has_') ||
+    label.includes('일') ||
+    label.includes('수') ||
+    label.includes('여부')
+  ) {
+    return 'text-center'
+  }
+  return 'text-left'
 }
 
 function textValue(value: unknown) {
@@ -338,6 +371,18 @@ export default function ProposalDataPage() {
 
   return (
     <div className="page-container space-y-4">
+      {view === 'templates' ? (
+        <PageHeader
+          title="제안서 데이터 관리"
+          subtitle="기관별 제안서 양식을 버전 단위로 등록하고, 새 양식이 오면 복제와 비교로 변경점을 관리합니다."
+          meta={
+            <>
+              <span className="tag tag-indigo">양식 레지스트리</span>
+              <span className="tag tag-gray">버전 복제 · 비교</span>
+            </>
+          }
+        />
+      ) : (
       <PageHeader
         title="제안서 데이터 관리"
         subtitle="청약 건별 초안을 만들고, 시트 단위로 값을 복사하거나 내려받는 반자동 작업대입니다."
@@ -349,14 +394,17 @@ export default function ProposalDataPage() {
           </>
         }
       />
+      )}
 
       <PageControlStrip className="space-y-3">
         <div className="flex flex-wrap gap-2">
+          <button type="button" className={view === 'templates' ? 'primary-btn' : 'secondary-btn'} onClick={() => patchSearchParams({ view: 'templates' })}>양식 레지스트리</button>
           <button type="button" className={view === 'workbench' ? 'primary-btn' : 'secondary-btn'} onClick={() => patchSearchParams({ view: 'workbench' })}>초안 작업대</button>
           <button type="button" className={view === 'reference' ? 'primary-btn' : 'secondary-btn'} onClick={() => patchSearchParams({ view: 'reference' })}>기준 데이터 보완</button>
         </div>
       </PageControlStrip>
 
+      {view === 'templates' ? <ProposalTemplateRegistry /> : (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
         <div className="space-y-4">
           <SectionScaffold title="초안 만들기" description="템플릿, 기준일, GP, 대상 조합을 선택해 청약 건별 초안을 생성합니다.">
@@ -547,7 +595,117 @@ export default function ProposalDataPage() {
                           </div>
                         </div>
                         ) : (
-                          <div className="space-y-1.5">
+                          <>
+                          <div className="card-base overflow-hidden p-0">
+                            <div className="flex flex-col items-start justify-between gap-1.5 border-b border-[#d8e5fb] px-3 py-2.5 sm:flex-row sm:items-center">
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#0f1f3d]">{selectedSheet.title}</h3>
+                                <p className="text-[11px] leading-tight text-[#64748b]">
+                                  총 {editableRows.length}개 행 · 컬럼 {selectedSheet.columns.length}개
+                                </p>
+                              </div>
+                              {selectedDraft.status !== 'frozen' ? (
+                                <button
+                                  type="button"
+                                  className="secondary-btn h-8 gap-1 whitespace-nowrap px-2.5 text-[11px]"
+                                  onClick={() =>
+                                    setEditableRows((prev) => [
+                                      ...prev,
+                                      {
+                                        row_key: `manual-${crypto.randomUUID()}`,
+                                        cells: Object.fromEntries(selectedSheet.columns.map((column) => [column.key, ''])),
+                                        is_manual: true,
+                                        source: 'manual',
+                                        is_overridden: true,
+                                      },
+                                    ])
+                                  }
+                                >
+                                  <Plus size={14} />
+                                  수기 행 추가
+                                </button>
+                              ) : null}
+                            </div>
+
+                            <div className="relative">
+                              <div className="pointer-events-none absolute inset-y-0 right-0 z-30 w-5 bg-gradient-to-l from-white to-transparent" aria-hidden="true" />
+                              <div className="max-h-[72vh] overflow-auto">
+                                <table className="w-full min-w-[860px] table-fixed text-sm">
+                                  <thead className="table-head-row sticky top-0 z-20 border-b border-[#d8e5fb] bg-[#f5f9ff]">
+                                    <tr>
+                                      <th className={`${proposalTableHeadClass} sticky left-0 z-30 w-[46px] bg-[#f5f9ff] px-2 py-1.5 text-center`}>NO</th>
+                                      {selectedSheet.columns.map((column) => (
+                                        <th
+                                          key={column.key}
+                                          className={`${proposalTableHeadClass} ${proposalColumnWidthClass(column.key, column.label)} ${proposalColumnAlignClass(column.key, column.label)} px-2 py-1.5`}
+                                        >
+                                          {column.label}
+                                        </th>
+                                      ))}
+                                      <th className={`${proposalTableHeadClass} w-[132px] px-2.5 py-2 text-center`}>작업</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {editableRows.map((row, rowIndex) => (
+                                      <tr key={row.row_key} className="group cursor-default border-t border-[#e6eefc] hover:bg-[#f5f9ff]">
+                                        <td className={`${proposalTableBodyClass} sticky left-0 z-10 bg-white px-2 py-1.5 text-center text-[11px] font-medium group-hover:bg-[#f5f9ff]`}>
+                                          {rowIndex + 1}
+                                        </td>
+                                        {selectedSheet.columns.map((column) => (
+                                          <td
+                                            key={column.key}
+                                            className={`${proposalTableBodyClass} ${proposalColumnWidthClass(column.key, column.label)} ${proposalColumnAlignClass(column.key, column.label)} px-2 py-1.5 align-top`}
+                                          >
+                                            <input
+                                              className={`h-8 w-full rounded-md border border-[#d8e5fb] bg-white px-2 py-1 text-[12px] text-[#0f172a] shadow-sm outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#94a3b8] ${proposalColumnAlignClass(column.key, column.label)}`}
+                                              value={textValue(row.cells[column.key])}
+                                              onChange={(event) =>
+                                                setEditableRows((prev) =>
+                                                  prev.map((candidate, candidateIndex) =>
+                                                    candidateIndex === rowIndex
+                                                      ? { ...candidate, cells: { ...candidate.cells, [column.key]: event.target.value } }
+                                                      : candidate,
+                                                  ),
+                                                )
+                                              }
+                                              disabled={selectedDraft.status === 'frozen' || selectedSheet.kind !== 'table'}
+                                            />
+                                          </td>
+                                        ))}
+                                        <td className={`${proposalTableBodyClass} w-[124px] px-2 py-1.5 align-top`}>
+                                          <div className="flex flex-wrap justify-center gap-1">
+                                            <button
+                                              type="button"
+                                              className="secondary-btn !h-6 !px-2 !py-0 text-[10px]"
+                                              onClick={() => copyText(selectedSheet.columns.map((column) => textValue(row.cells[column.key])).join('\t'), addToast)}
+                                            >
+                                              복사
+                                            </button>
+                                            {row.is_manual && selectedDraft.status !== 'frozen' ? (
+                                              <button
+                                                type="button"
+                                                className="secondary-btn !h-6 !border-[#fecaca] !bg-[#fff1f2] !px-2 !py-0 text-[10px] !text-[#b91c1c] hover:!bg-[#ffe4e6]"
+                                                onClick={() => setEditableRows((prev) => prev.filter((candidate) => candidate.row_key !== row.row_key))}
+                                              >
+                                                제거
+                                              </button>
+                                            ) : null}
+                                          </div>
+                                          <div className="mt-1 flex flex-wrap justify-center gap-1 text-[9px] font-semibold leading-none">
+                                            <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-[#1d4ed8]">{row.source}</span>
+                                            {row.is_manual ? <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[#b45309]">수기 행</span> : null}
+                                            {row.is_overridden ? <span className="rounded-full bg-[#dbeafe] px-2 py-0.5 text-[#1d4ed8]">수정됨</span> : null}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 hidden">
                             {selectedSheet.kind === 'table' && selectedDraft.status !== 'frozen' ? (
                               <div className="flex items-center justify-between gap-3">
                                 <div className="text-[10px] font-semibold text-[#64748b]">{editableRows.length}개 행</div>
@@ -613,6 +771,7 @@ export default function ProposalDataPage() {
                               </div>
                             </div>
                           </div>
+                          </>
                         )}
                       </SectionScaffold>
                     )}
@@ -623,6 +782,7 @@ export default function ProposalDataPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

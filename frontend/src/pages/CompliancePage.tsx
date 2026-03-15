@@ -617,7 +617,7 @@ export default function CompliancePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-7 md:gap-4">
           <input
             className="form-input md:col-span-3"
             placeholder="예: 이 투자 실행이 규약과 계약서 기준으로 가능한지 알려줘"
@@ -671,7 +671,7 @@ export default function CompliancePage() {
             {reviewMut.isPending ? '우선순위 검토 중...' : '우선순위 검토'}
           </button>
         </div>
-        <p className="text-xs text-[#64748b]">
+        <p className="mt-2 text-xs text-[#64748b]">
           `설명 받기`는 빠르게 해석을 보여주고, `우선순위 검토`는 `법령 → 조합 규약 → 투자계약서` 순서로 근거를 모아 검토 이력을 남깁니다.
         </p>
 

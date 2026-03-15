@@ -566,6 +566,268 @@ export async function exportProposalTemplate(payload: ProposalExportInput) {
   return data as Blob
 }
 
+export interface ProposalTemplateRegistrySummary {
+  id: number
+  code: string
+  name: string
+  institution_type: string | null
+  legacy_template_type: string | null
+  description: string | null
+  output_format: string
+  source_family: string
+  is_active: boolean
+  version_count: number
+  active_version_id: number | null
+  active_version_label: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistryCreateInput {
+  code: string
+  name: string
+  institution_type?: string | null
+  legacy_template_type?: string | null
+  description?: string | null
+  output_format?: string
+  source_family?: string
+  is_active?: boolean
+}
+
+export interface ProposalTemplateRegistryVersionSummary {
+  id: number
+  template_id: number
+  version_label: string
+  status: string
+  source_path: string | null
+  source_filename: string | null
+  effective_from: string | null
+  effective_to: string | null
+  notes: string | null
+  sheet_count: number
+  field_mapping_count: number
+  table_mapping_count: number
+  validation_rule_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistrySheet {
+  id: number
+  sheet_code: string
+  sheet_name: string
+  sheet_kind: string
+  display_order: number
+  is_required: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistryFieldMapping {
+  id: number
+  sheet_code: string
+  field_key: string
+  target_cell: string
+  value_source: string | null
+  transform_rule: string | null
+  default_value: unknown
+  source_note_hint: string | null
+  is_required: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistryTableMapping {
+  id: number
+  sheet_code: string
+  table_key: string
+  start_cell: string
+  row_source: string
+  columns: Array<Record<string, unknown>>
+  row_key_field: string | null
+  append_mode: string
+  max_rows: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistryValidationRule {
+  id: number
+  sheet_code: string | null
+  rule_code: string
+  rule_type: string
+  severity: string
+  target_ref: string | null
+  rule_payload: Record<string, unknown>
+  message: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalTemplateRegistryDetail extends ProposalTemplateRegistrySummary {
+  versions: ProposalTemplateRegistryVersionSummary[]
+}
+
+export interface ProposalTemplateRegistryVersionDetail extends ProposalTemplateRegistryVersionSummary {
+  template_code: string
+  template_name: string
+  sheets: ProposalTemplateRegistrySheet[]
+  field_mappings: ProposalTemplateRegistryFieldMapping[]
+  table_mappings: ProposalTemplateRegistryTableMapping[]
+  validation_rules: ProposalTemplateRegistryValidationRule[]
+}
+
+export interface ProposalTemplateRegistryVersionCreateInput {
+  version_label: string
+  status?: string
+  source_path?: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  notes?: string | null
+  import_workbook_sheets?: boolean
+}
+
+export interface ProposalTemplateRegistryVersionCloneInput {
+  version_label: string
+  status?: string
+  source_path?: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  notes?: string | null
+}
+
+export interface ProposalTemplateRegistrySheetInput {
+  sheet_code?: string | null
+  sheet_name: string
+  sheet_kind?: string
+  display_order?: number
+  is_required?: boolean
+  notes?: string | null
+}
+
+export interface ProposalTemplateRegistryFieldMappingInput {
+  sheet_code: string
+  field_key: string
+  target_cell: string
+  value_source?: string | null
+  transform_rule?: string | null
+  default_value?: unknown
+  source_note_hint?: string | null
+  is_required?: boolean
+  display_order?: number
+}
+
+export interface ProposalTemplateRegistryTableColumnInput {
+  field_key: string
+  target_column?: string | null
+  header_label?: string | null
+  value_source?: string | null
+  transform_rule?: string | null
+}
+
+export interface ProposalTemplateRegistryTableMappingInput {
+  sheet_code: string
+  table_key: string
+  start_cell: string
+  row_source: string
+  columns?: ProposalTemplateRegistryTableColumnInput[]
+  row_key_field?: string | null
+  append_mode?: string
+  max_rows?: number | null
+  notes?: string | null
+}
+
+export interface ProposalTemplateRegistryValidationRuleInput {
+  sheet_code?: string | null
+  rule_code: string
+  rule_type: string
+  severity?: string
+  target_ref?: string | null
+  rule_payload?: Record<string, unknown>
+  message: string
+}
+
+export interface ProposalTemplateRegistryVersionRegistryUpdateInput {
+  sheets: ProposalTemplateRegistrySheetInput[]
+  field_mappings: ProposalTemplateRegistryFieldMappingInput[]
+  table_mappings: ProposalTemplateRegistryTableMappingInput[]
+  validation_rules: ProposalTemplateRegistryValidationRuleInput[]
+}
+
+export interface ProposalTemplateRegistryVersionDiffItem {
+  key: string
+  sheet_code: string | null
+  change_type: 'added' | 'removed' | 'modified'
+  changed_fields: string[]
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+}
+
+export interface ProposalTemplateRegistryVersionDiffResponse {
+  base_version_id: number
+  base_version_label: string
+  target_version_id: number
+  target_version_label: string
+  sheet_changes: ProposalTemplateRegistryVersionDiffItem[]
+  field_mapping_changes: ProposalTemplateRegistryVersionDiffItem[]
+  table_mapping_changes: ProposalTemplateRegistryVersionDiffItem[]
+  validation_rule_changes: ProposalTemplateRegistryVersionDiffItem[]
+  changed_sheet_codes: string[]
+}
+
+export async function fetchProposalTemplates() {
+  const { data } = await api.get<ProposalTemplateRegistrySummary[]>('/proposal-templates')
+  return data
+}
+
+export async function createProposalTemplateRegistry(payload: ProposalTemplateRegistryCreateInput) {
+  const { data } = await api.post<ProposalTemplateRegistrySummary>('/proposal-templates', payload)
+  return data
+}
+
+export async function fetchProposalTemplateRegistry(templateId: number) {
+  const { data } = await api.get<ProposalTemplateRegistryDetail>(`/proposal-templates/${templateId}`)
+  return data
+}
+
+export async function createProposalTemplateRegistryVersion(templateId: number, payload: ProposalTemplateRegistryVersionCreateInput) {
+  const { data } = await api.post<ProposalTemplateRegistryVersionDetail>(`/proposal-templates/${templateId}/versions`, payload)
+  return data
+}
+
+export async function fetchProposalTemplateRegistryVersion(versionId: number) {
+  const { data } = await api.get<ProposalTemplateRegistryVersionDetail>(`/proposal-template-versions/${versionId}`)
+  return data
+}
+
+export async function cloneProposalTemplateRegistryVersion(versionId: number, payload: ProposalTemplateRegistryVersionCloneInput) {
+  const { data } = await api.post<ProposalTemplateRegistryVersionDetail>(`/proposal-template-versions/${versionId}/clone`, payload)
+  return data
+}
+
+export async function saveProposalTemplateRegistryVersion(versionId: number, payload: ProposalTemplateRegistryVersionRegistryUpdateInput) {
+  const { data } = await api.put<ProposalTemplateRegistryVersionDetail>(`/proposal-template-versions/${versionId}/registry`, payload)
+  return data
+}
+
+export async function compareProposalTemplateRegistryVersions(baseVersionId: number, targetVersionId: number) {
+  const { data } = await api.get<ProposalTemplateRegistryVersionDiffResponse>('/proposal-template-versions/compare', {
+    params: {
+      base_version_id: baseVersionId,
+      target_version_id: targetVersionId,
+    },
+  })
+  return data
+}
+
+export async function activateProposalTemplateRegistryVersion(versionId: number) {
+  const { data } = await api.post<ProposalTemplateRegistryVersionDetail>(`/proposal-template-versions/${versionId}/activate`)
+  return data
+}
+
 export interface ProposalApplication {
   id: number
   title: string
